@@ -136,6 +136,58 @@ Ensure:
   return { id: docRef.id, ...newCourse };
 }
 
+// 1.5 Generate Lesson Content
+export async function generateLessonContent(courseId, nodeId, courseTitle, topicLabel, topicDesc) {
+  const apiKey = getGeminiApiKey();
+  if (!apiKey) throw new Error('MISSING_API_KEY');
+
+  const prompt = `You are an expert instructor. Write a comprehensive, deeply educational lesson for the topic: "${topicLabel}" which is part of a broader course on "${courseTitle}".
+Description of this specific lesson: "${topicDesc}".
+
+Format the output strictly in beautiful Markdown.
+Include:
+1. An engaging introduction.
+2. Core concepts explained clearly with examples.
+3. Code snippets (if applicable) with proper markdown formatting and language tags.
+4. Best practices or common pitfalls.
+5. A brief summary at the end.
+
+Do not include any JSON wrappers, just output the raw Markdown text. Make it highly educational, long, and detailed so the user can genuinely learn from it.`;
+
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }]
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
+  }
+
+  const result = await response.json();
+  const textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!textResponse) throw new Error('Empty response from Gemini API');
+
+  // Save the generated content directly to the specific node in Firestore
+  const courseRef = doc(db, 'courses', courseId);
+  const snap = await getDoc(courseRef);
+  if (snap.exists()) {
+    const data = snap.data();
+    const updatedNodes = data.nodes.map(n => {
+      if (n.id === nodeId) {
+        return { ...n, content: textResponse };
+      }
+      return n;
+    });
+    await updateDoc(courseRef, { nodes: updatedNodes });
+  }
+
+  return textResponse;
+}
+
+
 // 2. Fetch User Courses
 export async function getUserCourses(userId) {
   const coursesCol = collection(db, 'courses');

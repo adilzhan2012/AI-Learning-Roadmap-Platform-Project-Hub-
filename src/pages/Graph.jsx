@@ -156,14 +156,23 @@ export default function Graph() {
       interaction: { hover: true, zoomView: true, dragView: true, dragNodes: true },
       physics: {
         enabled: true,
-        solver: 'barnesHut',
-        barnesHut: { 
-          gravitationalConstant: -2000, 
-          centralGravity: 0.3, 
-          springLength: 150, 
-          springConstant: 0.04, 
-          damping: 0.09, 
-          avoidOverlap: 1 
+        solver: 'forceAtlas2Based',
+        forceAtlas2Based: {
+          gravitationalConstant: -50,
+          centralGravity: 0.01,
+          springConstant: 0.08,
+          springLength: 100,
+          damping: 0.4,
+          avoidOverlap: 1
+        },
+        maxVelocity: 50,
+        minVelocity: 0.1,
+        stabilization: {
+          enabled: true,
+          iterations: 1000,
+          updateInterval: 100,
+          onlyDynamicEdges: false,
+          fit: true
         }
       }
     };

@@ -13,6 +13,7 @@ import GraphComponent from './pages/Graph.jsx';
 import ResourcesComponent from './pages/Resources.jsx';
 import InsightsComponent from './pages/Insights.jsx';
 import SettingsComponent from './pages/Settings.jsx';
+import LessonsComponent from './pages/Lessons.jsx';
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -30,6 +31,7 @@ function AnimatedRoutes() {
           <Route path="/dashboard" element={<PageTransition><DashboardComponent /></PageTransition>} />
           <Route path="/courses" element={<PageTransition><CoursesComponent /></PageTransition>} />
           <Route path="/graph" element={<PageTransition><GraphComponent /></PageTransition>} />
+          <Route path="/lessons" element={<PageTransition><LessonsComponent /></PageTransition>} />
           <Route path="/resources" element={<PageTransition><ResourcesComponent /></PageTransition>} />
           <Route path="/insights" element={<PageTransition><InsightsComponent /></PageTransition>} />
           <Route path="/settings" element={<PageTransition><SettingsComponent /></PageTransition>} />

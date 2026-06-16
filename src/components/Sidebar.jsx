@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { id: 'dashboard',  icon: 'dashboard',     label: 'Dashboard' },
   { id: 'courses',    icon: 'school',        label: 'Courses' },
   { id: 'graph',      icon: 'hub',           label: 'Knowledge Graph' },
+  { id: 'lessons',    icon: 'menu_book',     label: 'Lessons' },
   { id: 'resources',  icon: 'library_books', label: 'Resources' },
   { id: 'insights',   icon: 'insights',      label: 'Insights' },
   { id: 'settings',   icon: 'settings',      label: 'Settings' },
