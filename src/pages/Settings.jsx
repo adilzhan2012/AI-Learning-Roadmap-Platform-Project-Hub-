@@ -371,9 +371,8 @@ export default function Settings() {
             </div>
           )}
 
-          </div>
-        </form>
-      </motion.div>
+          </form>
+        </motion.div>
 
     </motion.main>
   );
