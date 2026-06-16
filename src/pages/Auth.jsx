@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, ArrowLeft, Loader2 } from 'lucide-react';
 import { auth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from '../firebase.js';
+import { getUserStats } from '../services/courseService.js';
 
 function getFriendlyErrorMessage(code) {
   switch (code) {
@@ -57,7 +58,10 @@ export default function Auth({ type }) {
       if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        // Initialize user profile in Firestore
+        await getUserStats(user.uid);
       }
       navigate('/dashboard');
     } catch (err) {
@@ -67,6 +71,7 @@ export default function Auth({ type }) {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 dark:bg-[#000000] p-6 relative overflow-hidden">

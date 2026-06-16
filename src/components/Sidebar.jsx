@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { auth, signOut } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
+import { getUserStats } from '../services/courseService.js';
 
 const NAV_ITEMS = [
   { id: 'dashboard',  icon: 'dashboard',     label: 'Dashboard' },
@@ -16,10 +17,21 @@ const NAV_ITEMS = [
 export default function Sidebar() {
   const location = useLocation();
   const [user, setUser] = useState(auth.currentUser);
+  const [profile, setProfile] = useState({ firstName: 'User' });
   const [isDarkMode, setIsDarkMode] = useState(document.documentElement.classList.contains('dark'));
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, setUser);
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        try {
+          const stats = await getUserStats(currentUser.uid);
+          setProfile(stats);
+        } catch (e) {
+          console.error("Error loading user stats in sidebar:", e);
+        }
+      }
+    });
     return () => unsubscribe();
   }, []);
 
@@ -45,7 +57,8 @@ export default function Sidebar() {
   };
 
   const userEmail = user ? user.email : 'Not logged in';
-  const userInitial = user && user.email ? user.email.charAt(0).toUpperCase() : '?';
+  const userInitial = profile.firstName ? profile.firstName.charAt(0).toUpperCase() : (user && user.email ? user.email.charAt(0).toUpperCase() : '?');
+
 
   return (
     <>
@@ -97,10 +110,11 @@ export default function Sidebar() {
                 {userInitial}
               </div>
               <div className="flex-1 overflow-hidden">
-                <p className="text-body-md font-semibold text-on-surface truncate">User</p>
+                <p className="text-body-md font-semibold text-on-surface truncate">{profile.firstName || 'User'}</p>
                 <p className="text-caption text-on-surface-variant truncate">{userEmail}</p>
               </div>
             </div>
+
             <button onClick={handleSignOut} title="Sign Out" className="p-2 text-secondary hover:text-error transition-colors rounded-lg hover:bg-error-container">
               <span className="material-symbols-outlined text-[20px]">logout</span>
             </button>

@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, Target, Clock, Zap, Award, Activity } from 'lucide-react';
+import { TrendingUp, Target, Clock, Zap, Activity, Loader2 } from 'lucide-react';
+import { auth } from '../firebase.js';
+import { onAuthStateChanged } from 'firebase/auth';
+import { getUserStats, getUserCourses } from '../services/courseService.js';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -17,17 +20,24 @@ function AnimatedNumber({ value }) {
 
   useEffect(() => {
     let start = 0;
-    const end = parseInt(value, 10);
-    if (isNaN(end)) return;
+    const end = Math.round(parseFloat(value) || 0);
+    if (end <= 0) {
+      setCount(0);
+      return;
+    }
     if (start === end) return;
 
-    const totalDuration = 1500;
+    const totalDuration = 1000;
     let incrementTime = (totalDuration / end) * 2;
+    if (incrementTime < 10) incrementTime = 10;
 
     const timer = setInterval(() => {
       start += 1;
       setCount(start);
-      if (start >= end) clearInterval(timer);
+      if (start >= end) {
+        setCount(end);
+        clearInterval(timer);
+      }
     }, incrementTime);
 
     return () => clearInterval(timer);
@@ -37,7 +47,75 @@ function AnimatedNumber({ value }) {
 }
 
 export default function Insights() {
-  const learningData = [20, 35, 25, 45, 55, 40, 65, 80, 75, 90, 85, 100];
+  const [user, setUser] = useState(auth.currentUser);
+  const [stats, setStats] = useState(null);
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        try {
+          const fetchedStats = await getUserStats(currentUser.uid);
+          setStats(fetchedStats);
+
+          const fetchedCourses = await getUserCourses(currentUser.uid);
+          setCourses(fetchedCourses);
+        } catch (e) {
+          console.error("Error fetching insights data:", e);
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setLoading(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-[#000000] text-white gap-4">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-sm font-medium tracking-wide">Loading Insights...</p>
+      </div>
+    );
+  }
+
+  // Calculate stats
+  const totalHours = stats ? Math.round(stats.hoursLearned || 0) : 0;
+  const activeRoadmaps = stats ? stats.activeCoursesCount || 0 : 0;
+  const streakDays = stats ? stats.streakDays || 1 : 1;
+
+  // Calculate average completion rate
+  let avgCompletion = 0;
+  if (courses.length > 0) {
+    const totalProgress = courses.reduce((acc, c) => acc + (c.progress || 0), 0);
+    avgCompletion = Math.round(totalProgress / courses.length);
+  }
+
+  // Build chart data points based on course progress sorted by date
+  // We want at least 5 points to draw a nice curve
+  let learningData = [10, 20, 15, 30, 45]; // default fallback
+  if (courses.length > 0) {
+    // Take progress of all courses, reverse to show chronological order
+    const progressList = courses.map(c => c.progress || 0).reverse();
+    if (progressList.length === 1) {
+      learningData = [0, progressList[0] * 0.25, progressList[0] * 0.5, progressList[0] * 0.75, progressList[0]];
+    } else {
+      learningData = progressList;
+      // Pad to have at least 5 elements
+      while (learningData.length < 5) {
+        // Linearly interpolate backwards or pad with 0s
+        learningData.unshift(0);
+      }
+    }
+  } else {
+    learningData = [0, 0, 0, 0, 0];
+  }
+
   const points = learningData.map((val, i) => `${(i / (learningData.length - 1)) * 100},${100 - val}`).join(' ');
 
   return (
@@ -53,12 +131,10 @@ export default function Insights() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h2 className="text-xl font-bold text-on-surface">Knowledge Growth Trajectory</h2>
-            <p className="text-sm text-on-surface-variant mt-1">Based on course completions, quiz scores, and daily activity.</p>
+            <p className="text-sm text-on-surface-variant mt-1">Based on course completions and roadmap progress.</p>
           </div>
           <select className="bg-surface-container text-on-surface border border-outline-variant rounded-lg px-4 py-2 text-sm font-semibold outline-none focus:ring-2 focus:ring-primary">
-            <option>Last 30 Days</option>
-            <option>Last 3 Months</option>
-            <option>This Year</option>
+            <option>All-Time Roadmaps</option>
           </select>
         </div>
 
@@ -106,26 +182,26 @@ export default function Insights() {
         
         <motion.div variants={itemVariants} whileHover={{ y: -5, scale: 1.02 }} className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-3xl p-8 text-white shadow-lg relative overflow-hidden group">
           <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-colors"></div>
-          <Activity className="w-8 h-8 text-white/80 mb-6" />
+          <Clock className="w-8 h-8 text-white/80 mb-6" />
           <h3 className="text-sm font-semibold text-white/80 uppercase tracking-wider mb-2">Total Learning Hours</h3>
-          <div className="text-5xl font-bold tracking-tight mb-2"><AnimatedNumber value={148} /><span className="text-2xl text-white/60 ml-1">h</span></div>
-          <p className="text-sm text-green-300 font-medium flex items-center gap-1"><TrendingUp className="w-4 h-4" /> +12h this week</p>
+          <div className="text-5xl font-bold tracking-tight mb-2"><AnimatedNumber value={totalHours} /><span className="text-2xl text-white/60 ml-1">h</span></div>
+          <p className="text-sm text-green-300 font-medium flex items-center gap-1"><TrendingUp className="w-4 h-4" /> Live study tracker active</p>
         </motion.div>
 
         <motion.div variants={itemVariants} whileHover={{ y: -5, scale: 1.02 }} className="bg-surface border border-outline-variant rounded-3xl p-8 shadow-sm relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors"></div>
           <Target className="w-8 h-8 text-primary mb-6" />
-          <h3 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-2">Quiz Accuracy</h3>
-          <div className="text-5xl font-bold text-on-surface mb-2"><AnimatedNumber value={92} /><span className="text-2xl text-on-surface-variant ml-1">%</span></div>
-          <p className="text-sm text-green-500 font-medium flex items-center gap-1"><TrendingUp className="w-4 h-4" /> Top 5% of learners</p>
+          <h3 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-2">Avg Course Progress</h3>
+          <div className="text-5xl font-bold text-on-surface mb-2"><AnimatedNumber value={avgCompletion} /><span className="text-2xl text-on-surface-variant ml-1">%</span></div>
+          <p className="text-sm text-green-500 font-medium flex items-center gap-1"><TrendingUp className="w-4 h-4" /> Across {courses.length} roadmaps</p>
         </motion.div>
 
         <motion.div variants={itemVariants} whileHover={{ y: -5, scale: 1.02 }} className="bg-surface border border-outline-variant rounded-3xl p-8 shadow-sm relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full blur-3xl group-hover:bg-orange-500/10 transition-colors"></div>
           <Zap className="w-8 h-8 text-orange-500 mb-6" />
           <h3 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-2">Current Streak</h3>
-          <div className="text-5xl font-bold text-on-surface mb-2"><AnimatedNumber value={23} /><span className="text-2xl text-on-surface-variant ml-1">days</span></div>
-          <p className="text-sm text-on-surface-variant font-medium flex items-center gap-1">Personal record is 31 days</p>
+          <div className="text-5xl font-bold text-on-surface mb-2"><AnimatedNumber value={streakDays} /><span className="text-2xl text-on-surface-variant ml-1">days</span></div>
+          <p className="text-sm text-on-surface-variant font-medium flex items-center gap-1">Daily consistency streak</p>
         </motion.div>
 
       </div>

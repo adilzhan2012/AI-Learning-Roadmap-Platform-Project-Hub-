@@ -1,18 +1,57 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Brain, Cpu, Network, Languages, Eye, Gamepad2, Sparkles, Scale, Cloud, Star, StarHalf, Clock, BookOpen, CheckCircle } from 'lucide-react';
+import { 
+  Search, 
+  Brain, 
+  Cpu, 
+  Network, 
+  Languages, 
+  Eye, 
+  Gamepad2, 
+  Sparkles, 
+  Scale, 
+  Cloud, 
+  Star, 
+  StarHalf, 
+  Clock, 
+  BookOpen, 
+  CheckCircle,
+  Loader2
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { auth, db } from '../firebase.js';
+import { onAuthStateChanged } from 'firebase/auth';
+import { getUserCourses, updateUserStats, logActivity } from '../services/courseService.js';
+import { addDoc, collection, increment } from 'firebase/firestore';
 
-const coursesData = [
-  { id: 1, title: 'Introduction to AI', instructor: 'Dr. Sarah Chen', rating: 4.9, students: '2,340', level: 'Beginner', hours: '8h', lessons: 24, icon: Brain, progress: 100, category: 'AI Fundamentals', gradient: 'from-blue-500 to-cyan-400' },
-  { id: 2, title: 'Machine Learning Fundamentals', instructor: 'Prof. James Liu', rating: 4.8, students: '1,890', level: 'Beginner', hours: '12h', lessons: 36, icon: Cpu, progress: 78, category: 'Machine Learning', gradient: 'from-emerald-500 to-teal-400' },
-  { id: 3, title: 'Neural Networks Deep Dive', instructor: 'Dr. Emily Watson', rating: 4.7, students: '1,200', level: 'Intermediate', hours: '15h', lessons: 42, icon: Network, progress: 65, category: 'Deep Learning', gradient: 'from-violet-500 to-purple-400' },
-  { id: 4, title: 'NLP with Transformers', instructor: 'Dr. Alex Kumar', rating: 4.9, students: '980', level: 'Intermediate', hours: '10h', lessons: 28, icon: Languages, progress: 40, category: 'NLP', gradient: 'from-orange-500 to-amber-400' },
-  { id: 5, title: 'Computer Vision Fundamentals', instructor: 'Prof. Lisa Park', rating: 4.6, students: '1,500', level: 'Intermediate', hours: '14h', lessons: 38, icon: Eye, progress: 85, category: 'Computer Vision', gradient: 'from-pink-500 to-rose-400' },
-  { id: 6, title: 'Reinforcement Learning', instructor: 'Dr. Michael Torres', rating: 4.8, students: '750', level: 'Advanced', hours: '18h', lessons: 48, icon: Gamepad2, progress: null, category: 'Machine Learning', gradient: 'from-indigo-500 to-blue-400' },
-  { id: 7, title: 'GANs & Generative AI', instructor: 'Dr. Nina Patel', rating: 4.9, students: '2,100', level: 'Advanced', hours: '16h', lessons: 44, icon: Sparkles, progress: null, category: 'Deep Learning', gradient: 'from-fuchsia-500 to-pink-400' },
-  { id: 8, title: 'AI Ethics & Governance', instructor: 'Prof. David Kim', rating: 4.5, students: '3,200', level: 'Beginner', hours: '6h', lessons: 18, icon: Scale, progress: null, category: 'AI Fundamentals', gradient: 'from-teal-500 to-green-400' },
-  { id: 9, title: 'MLOps & Deployment', instructor: 'Dr. Rachel Green', rating: 4.7, students: '890', level: 'Advanced', hours: '20h', lessons: 52, icon: Cloud, progress: null, category: 'Machine Learning', gradient: 'from-sky-500 to-indigo-400' },
+const presetCoursesCatalog = [
+  { id: 1, title: 'Introduction to AI', instructor: 'Dr. Sarah Chen', rating: 4.9, students: '2,340', level: 'Beginner', hours: '8h', lessons: 24, iconName: 'brain', category: 'AI Fundamentals', gradient: 'from-blue-500 to-cyan-400', desc: 'Learn the foundational concepts of artificial intelligence, history, and basic terminology.' },
+  { id: 2, title: 'Machine Learning Fundamentals', instructor: 'Prof. James Liu', rating: 4.8, students: '1,890', level: 'Beginner', hours: '12h', lessons: 36, iconName: 'cpu', category: 'Machine Learning', gradient: 'from-emerald-500 to-teal-400', desc: 'Dive into supervised and unsupervised learning, regressions, classification models, and algorithms.' },
+  { id: 3, title: 'Neural Networks Deep Dive', instructor: 'Dr. Emily Watson', rating: 4.7, students: '1,200', level: 'Intermediate', hours: '15h', lessons: 42, iconName: 'network', category: 'Deep Learning', gradient: 'from-violet-500 to-purple-400', desc: 'Understand artificial neural networks, backpropagation, and training deep learning models.' },
+  { id: 4, title: 'NLP with Transformers', instructor: 'Dr. Alex Kumar', rating: 4.9, students: '980', level: 'Intermediate', hours: '10h', lessons: 28, iconName: 'languages', category: 'NLP', gradient: 'from-orange-500 to-amber-400', desc: 'Explore natural language processing techniques, tokenization, and state-of-the-art Transformer architectures.' },
+  { id: 5, title: 'Computer Vision Fundamentals', instructor: 'Prof. Lisa Park', rating: 4.6, students: '1,500', level: 'Intermediate', hours: '14h', lessons: 38, iconName: 'eye', category: 'Computer Vision', gradient: 'from-pink-500 to-rose-400', desc: 'Learn to process images, apply convolutions, and build models for object detection and classification.' },
+  { id: 6, title: 'Reinforcement Learning', instructor: 'Dr. Michael Torres', rating: 4.8, students: '750', level: 'Advanced', hours: '18h', lessons: 48, iconName: 'gamepad', category: 'Machine Learning', gradient: 'from-indigo-500 to-blue-400', desc: 'Master Markov decision processes, Q-learning, policy gradients, and decision making under uncertainty.' },
+  { id: 7, title: 'GANs & Generative AI', instructor: 'Dr. Nina Patel', rating: 4.9, students: '2,100', level: 'Advanced', hours: '16h', lessons: 44, iconName: 'sparkles', category: 'Deep Learning', gradient: 'from-fuchsia-500 to-pink-400', desc: 'Learn about Generative Adversarial Networks, image generation, autoencoders, and diffusion models.' },
+  { id: 8, title: 'AI Ethics & Governance', instructor: 'Prof. David Kim', rating: 4.5, students: '3,200', level: 'Beginner', hours: '6h', lessons: 18, iconName: 'scale', category: 'AI Fundamentals', gradient: 'from-teal-500 to-green-400', desc: 'Analyze bias in AI, ethical frameworks, privacy, regulations, and responsible deployment models.' },
+  { id: 9, title: 'MLOps & Deployment', instructor: 'Dr. Rachel Green', rating: 4.7, students: '890', level: 'Advanced', hours: '20h', lessons: 52, iconName: 'cloud', category: 'Machine Learning', gradient: 'from-sky-500 to-indigo-400', desc: 'Bridge the gap between model development and deployment. Setup pipelines, monitoring, and scaling.' },
 ];
+
+const prerequisiteEdges = [
+  { from: 1, to: 2 }, { from: 1, to: 8 }, { from: 2, to: 3 }, { from: 2, to: 6 },
+  { from: 2, to: 9 }, { from: 3, to: 4 }, { from: 3, to: 5 }, { from: 3, to: 7 }, { from: 4, to: 7 }
+];
+
+const iconMap = {
+  brain: Brain,
+  cpu: Cpu,
+  network: Network,
+  languages: Languages,
+  eye: Eye,
+  gamepad: Gamepad2,
+  sparkles: Sparkles,
+  scale: Scale,
+  cloud: Cloud,
+};
 
 const categories = ['All', 'AI Fundamentals', 'Machine Learning', 'Deep Learning', 'NLP', 'Computer Vision'];
 
@@ -49,9 +88,10 @@ const cardVariants = {
   exit: { opacity: 0, scale: 0.9, transition: { duration: 0.2 } }
 };
 
-function CourseCard({ course, index }) {
-  const [enrolled, setEnrolled] = useState(course.progress !== null);
-  const Icon = course.icon;
+function CourseCard({ course, index, enrolledCourse, onEnroll }) {
+  const navigate = useNavigate();
+  const [enrolling, setEnrolling] = useState(false);
+  const Icon = iconMap[course.iconName] || Brain;
 
   const renderStars = (rating) => {
     const full = Math.floor(rating);
@@ -62,6 +102,23 @@ function CourseCard({ course, index }) {
     const remaining = 5 - full - (hasHalf ? 1 : 0);
     for (let i = 0; i < remaining; i++) stars.push(<Star key={`e${i}`} className="w-4 h-4 text-gray-400" />);
     return stars;
+  };
+
+  const handleEnrollClick = async () => {
+    if (enrolledCourse) {
+      localStorage.setItem('selected_course_id', enrolledCourse.id);
+      navigate('/graph');
+      return;
+    }
+    
+    setEnrolling(true);
+    try {
+      await onEnroll(course);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setEnrolling(false);
+    }
   };
 
   return (
@@ -106,34 +163,39 @@ function CourseCard({ course, index }) {
           <span className="text-xs text-on-surface-variant">({course.students})</span>
         </div>
 
-        {course.progress !== null ? (
+        {enrolledCourse ? (
           <div className="mt-4">
             <div className="flex items-center justify-between mb-2">
-              <span className={`text-xs font-medium ${course.progress === 100 ? 'text-green-500' : 'text-on-surface-variant'}`}>
-                {course.progress === 100 ? 'Completed' : 'In Progress'}
+              <span className={`text-xs font-medium ${enrolledCourse.progress === 100 ? 'text-green-500' : 'text-on-surface-variant'}`}>
+                {enrolledCourse.progress === 100 ? 'Completed' : 'In Progress'}
               </span>
-              <span className="text-xs font-bold text-on-surface">{course.progress}%</span>
+              <span className="text-xs font-bold text-on-surface">{enrolledCourse.progress || 0}%</span>
             </div>
-            <div className="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+            <div className="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden mb-2">
               <motion.div 
                 initial={{ width: 0 }}
-                animate={{ width: `${course.progress}%` }}
+                animate={{ width: `${enrolledCourse.progress || 0}%` }}
                 transition={{ duration: 1, delay: 0.2 }}
-                className={`h-full rounded-full ${course.progress === 100 ? 'bg-green-500' : 'bg-primary'}`}
+                className={`h-full rounded-full ${enrolledCourse.progress === 100 ? 'bg-green-500' : 'bg-primary'}`}
               />
             </div>
+            <button 
+              onClick={handleEnrollClick}
+              className="w-full py-2 bg-surface-container hover:bg-surface-container-high border border-outline-variant text-xs font-bold rounded-xl transition-colors text-on-surface"
+            >
+              Open Graph
+            </button>
           </div>
         ) : (
           <motion.button 
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => setEnrolled(true)}
-            className={`mt-4 w-full py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors ${
-              enrolled ? 'bg-green-500/10 text-green-500 cursor-default' : 'bg-primary text-on-primary hover:bg-primary/90 shadow-lg shadow-primary/20'
-            }`}
+            onClick={handleEnrollClick}
+            disabled={enrolling}
+            className="mt-4 w-full py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 bg-primary text-on-primary hover:bg-primary/90 shadow-lg shadow-primary/20 disabled:opacity-50"
           >
-            {enrolled ? (
-              <><CheckCircle className="w-5 h-5" /> Enrolled</>
+            {enrolling ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
               'Enroll Now'
             )}
@@ -154,15 +216,99 @@ function CourseCard({ course, index }) {
 }
 
 export default function Courses() {
+  const navigate = useNavigate();
+  const [user, setUser] = useState(auth.currentUser);
+  const [userCourses, setUserCourses] = useState([]);
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  const filteredCourses = coursesData.filter(course => {
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        try {
+          const fetched = await getUserCourses(currentUser.uid);
+          setUserCourses(fetched);
+        } catch (e) {
+          console.error("Error loading user courses:", e);
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setLoading(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleEnroll = async (presetCourse) => {
+    if (!user) return;
+    
+    // Map the preset nodes using the presetCoursesCatalog definition and prerequisiteEdges
+    const nodes = presetCoursesCatalog.map(pc => {
+      const isPrereq = prerequisiteEdges.some(edge => edge.to === pc.id);
+      return {
+        id: pc.id,
+        label: pc.title,
+        desc: pc.desc,
+        level: pc.level,
+        hours: '1.5h',
+        lessons: 3,
+        category: pc.category,
+        status: isPrereq ? 'locked' : 'active'
+      };
+    });
+
+    const clonedCourse = {
+      userId: user.uid,
+      title: presetCourse.title,
+      category: presetCourse.category,
+      level: presetCourse.level,
+      hours: presetCourse.hours,
+      lessonsCount: presetCourse.lessons,
+      gradient: presetCourse.gradient,
+      description: presetCourse.desc,
+      nodes,
+      edges: prerequisiteEdges,
+      progress: 0,
+      createdAt: new Date().toISOString()
+    };
+
+    // Save cloned course to Firestore
+    const coursesCol = collection(db, 'courses');
+    const docRef = await addDoc(coursesCol, clonedCourse);
+    
+    // Update user stats
+    await updateUserStats(user.uid, { activeCoursesCount: increment(1) });
+    
+    // Log activity
+    await logActivity(user.uid, `Enrolled in course: ${presetCourse.title}`, 'school', 'text-blue-500');
+
+    // Update state
+    setUserCourses(prev => [{ id: docRef.id, ...clonedCourse }, ...prev]);
+    
+    // Redirect
+    localStorage.setItem('selected_course_id', docRef.id);
+    navigate('/graph');
+  };
+
+  const filteredPresetCourses = presetCoursesCatalog.filter(course => {
     const matchesCategory = activeCategory === 'All' || course.category === activeCategory;
     const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           course.instructor.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-[#000000] text-white gap-4">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-sm font-medium tracking-wide">Loading Catalog...</p>
+      </div>
+    );
+  }
 
   return (
     <motion.main 
@@ -212,12 +358,21 @@ export default function Courses() {
 
       <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-8">
         <AnimatePresence mode="popLayout">
-          {filteredCourses.map((course, index) => (
-            <CourseCard key={course.id} course={course} index={index} />
-          ))}
+          {filteredPresetCourses.map((course, index) => {
+            const enrolled = userCourses.find(uc => uc.title === course.title);
+            return (
+              <CourseCard 
+                key={course.id} 
+                course={course} 
+                index={index} 
+                enrolledCourse={enrolled}
+                onEnroll={handleEnroll}
+              />
+            );
+          })}
         </AnimatePresence>
         
-        {filteredCourses.length === 0 && (
+        {filteredPresetCourses.length === 0 && (
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="col-span-full py-20 flex flex-col items-center justify-center text-on-surface-variant"

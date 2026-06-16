@@ -32,8 +32,13 @@ export default function Layout() {
   }
 
   if (isPublicRoute && location.pathname !== '/dashboard') {
-    return <Outlet />;
+    return (
+      <div className="w-full h-screen overflow-y-auto">
+        <Outlet />
+      </div>
+    );
   }
+
 
   return (
     <div className="flex w-full h-full">
