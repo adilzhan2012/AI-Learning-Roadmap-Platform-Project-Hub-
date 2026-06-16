@@ -139,10 +139,12 @@ Ensure:
 // 2. Fetch User Courses
 export async function getUserCourses(userId) {
   const coursesCol = collection(db, 'courses');
-  const q = query(coursesCol, where('userId', '==', userId), orderBy('createdAt', 'desc'));
+  const q = query(coursesCol, where('userId', '==', userId));
   const snap = await getDocs(q);
-  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const courses = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  return courses.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
+
 
 // 3. Fetch specific course
 export async function getCourseById(courseId) {
