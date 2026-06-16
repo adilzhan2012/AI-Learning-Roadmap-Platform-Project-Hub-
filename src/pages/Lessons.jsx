@@ -6,9 +6,11 @@ import { getUserCourses, getCourseById, generateLessonContent } from '../service
 import ReactMarkdown from 'react-markdown';
 import { BookOpen, CheckCircle, ChevronRight, Loader2, PlayCircle, Sparkles, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { t, useLocale } from '../i18n.js';
 
 export default function Lessons() {
   const navigate = useNavigate();
+  const locale = useLocale();
   const [user, setUser] = useState(auth.currentUser);
   const [courses, setCourses] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState(null);
@@ -143,7 +145,7 @@ export default function Lessons() {
             className="w-full md:w-72 bg-surface border border-outline-variant rounded-xl px-4 py-3 text-sm font-semibold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary outline-none"
           >
             {courses.map(c => (
-              <option key={c.id} value={c.id}>{c.title}</option>
+              <option key={c.id} value={c.id}>{t(c.title)}</option>
             ))}
           </select>
         </div>
@@ -190,10 +192,10 @@ export default function Lessons() {
                     )}
                   </div>
                   <div className="flex-1">
-                    <p className={`font-semibold text-sm ${isSelected ? 'text-primary' : 'text-on-surface'}`}>
-                      {index + 1}. {node.label}
-                    </p>
-                    <p className="text-xs text-on-surface-variant mt-1 line-clamp-2">{node.desc}</p>
+                      <div className={`font-semibold text-sm leading-tight ${isSelected ? 'text-primary' : 'text-on-surface'}`}>
+                        {index + 1}. {t(node.label)}
+                      </div>
+                    <p className="text-xs text-on-surface-variant mt-1 line-clamp-2">{t(node.desc)}</p>
                   </div>
                 </button>
               );
@@ -215,9 +217,9 @@ export default function Lessons() {
                     <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 border border-primary/20">
                       <Sparkles className="w-10 h-10 text-primary" />
                     </div>
-                    <h2 className="text-2xl font-bold text-on-surface mb-3">{selectedNode.label}</h2>
+                    <h2 className="text-2xl font-bold text-on-surface mb-3">{t(selectedNode.label)}</h2>
                     <p className="text-on-surface-variant mb-8 text-sm leading-relaxed">
-                      {selectedNode.desc}
+                      {t(selectedNode.desc)}
                       <br/><br/>
                       Click below to instantly generate a comprehensive, highly detailed lesson for this topic using the Gemini AI tutor.
                     </p>

@@ -27,6 +27,7 @@ import {
   generateCourseAndSave,
   getGeminiApiKey
 } from '../services/courseService.js';
+import { t, useLocale } from '../i18n.js';
 
 const staggerContainer = {
   hidden: { opacity: 0 },
@@ -87,6 +88,7 @@ function AnimatedNumber({ value }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const locale = useLocale();
   const [user, setUser] = useState(auth.currentUser);
   const [stats, setStats] = useState({
     activeCoursesCount: 0,
@@ -296,7 +298,7 @@ export default function Dashboard() {
                    <div className="absolute inset-0 bg-white/10 mix-blend-overlay"></div>
                 </div>
                 <div className="p-6">
-                  <h3 className="text-lg font-bold text-on-surface mb-1 line-clamp-1">{course.title}</h3>
+                  <h3 className="text-lg font-bold text-on-surface mb-1 line-clamp-1">{t(course.title)}</h3>
                   <p className="text-sm text-on-surface-variant mb-6">{course.category} • {course.level}</p>
                   
                   <div className="flex justify-between text-sm font-medium mb-2">

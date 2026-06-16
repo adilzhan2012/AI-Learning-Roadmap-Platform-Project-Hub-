@@ -23,6 +23,7 @@ import { auth, db } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getUserCourses, updateUserStats, logActivity } from '../services/courseService.js';
 import { addDoc, collection, increment } from 'firebase/firestore';
+import { t, useLocale } from '../i18n.js';
 
 const presetCoursesCatalog = [
   { id: 1, title: 'Introduction to AI', instructor: 'Dr. Sarah Chen', rating: 4.9, students: '2,340', level: 'Beginner', hours: '8h', lessons: 24, iconName: 'brain', category: 'AI Fundamentals', gradient: 'from-blue-500 to-cyan-400', desc: 'Learn the foundational concepts of artificial intelligence, history, and basic terminology.' },
@@ -90,6 +91,7 @@ const cardVariants = {
 
 function CourseCard({ course, index, enrolledCourse, onEnroll }) {
   const navigate = useNavigate();
+  const locale = useLocale();
   const [enrolling, setEnrolling] = useState(false);
   const Icon = iconMap[course.iconName] || Brain;
 
@@ -147,7 +149,7 @@ function CourseCard({ course, index, enrolledCourse, onEnroll }) {
 
       <div className="px-5 py-4">
         <h3 className="text-lg font-bold text-on-surface leading-snug mb-3 group-hover:text-primary transition-colors duration-200">
-          {course.title}
+          {t(`course.${course.id}.title`)}
         </h3>
 
         <div className="flex items-center gap-3 mb-4">
@@ -167,7 +169,7 @@ function CourseCard({ course, index, enrolledCourse, onEnroll }) {
           <div className="mt-4">
             <div className="flex items-center justify-between mb-2">
               <span className={`text-xs font-medium ${enrolledCourse.progress === 100 ? 'text-green-500' : 'text-on-surface-variant'}`}>
-                {enrolledCourse.progress === 100 ? 'Completed' : 'In Progress'}
+                {enrolledCourse.progress === 100 ? t('courses.completed') : 'In Progress'}
               </span>
               <span className="text-xs font-bold text-on-surface">{enrolledCourse.progress || 0}%</span>
             </div>
@@ -197,7 +199,7 @@ function CourseCard({ course, index, enrolledCourse, onEnroll }) {
             {enrolling ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              'Enroll Now'
+              t('courses.enrollNow')
             )}
           </motion.button>
         )}
@@ -208,7 +210,7 @@ function CourseCard({ course, index, enrolledCourse, onEnroll }) {
           <Clock className="w-4 h-4" /> {course.hours}
         </div>
         <div className="flex items-center gap-1.5 text-xs text-on-surface-variant font-medium">
-          <BookOpen className="w-4 h-4" /> {course.lessons} lessons
+          <BookOpen className="w-4 h-4" /> {course.lessons} {t('courses.lessons')}
         </div>
       </div>
     </motion.div>
@@ -217,6 +219,7 @@ function CourseCard({ course, index, enrolledCourse, onEnroll }) {
 
 export default function Courses() {
   const navigate = useNavigate();
+  const locale = useLocale();
   const [user, setUser] = useState(auth.currentUser);
   const [userCourses, setUserCourses] = useState([]);
   const [activeCategory, setActiveCategory] = useState('All');
@@ -318,8 +321,8 @@ export default function Courses() {
       className="p-4 md:p-8 max-w-7xl mx-auto"
     >
       <motion.div variants={cardVariants} className="mb-8">
-        <h1 className="text-4xl font-bold text-on-surface mb-3 tracking-tight">Course Catalog</h1>
-        <p className="text-lg text-on-surface-variant max-w-2xl">Expand your knowledge with our premium curriculum. Track your progress and master new AI capabilities.</p>
+        <h1 className="text-4xl font-bold text-on-surface mb-3 tracking-tight">{t('courses.title')}</h1>
+        <p className="text-lg text-on-surface-variant max-w-2xl">{t('courses.subtitle')}</p>
       </motion.div>
 
       <motion.div variants={cardVariants} className="flex flex-col md:flex-row gap-4 mb-8">
@@ -327,7 +330,7 @@ export default function Courses() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant/60" />
           <input 
             type="text" 
-            placeholder="Search courses or instructors..."
+            placeholder={t('courses.search')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-surface-container border border-outline-variant rounded-xl py-3 pl-10 pr-4 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all duration-200"
@@ -335,7 +338,9 @@ export default function Courses() {
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
-          {categories.map((cat) => (
+          {categories.map((cat) => {
+            const catName = cat === 'All' ? t('courses.filterAll') : cat;
+            return (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
@@ -350,9 +355,9 @@ export default function Courses() {
                   transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 />
               )}
-              <span className="relative z-10">{cat}</span>
+              <span className="relative z-10">{catName}</span>
             </button>
-          ))}
+          )})}
         </div>
       </motion.div>
 

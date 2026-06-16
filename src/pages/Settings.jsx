@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Bell, Shield, Paintbrush, LogOut, CheckCircle2, Loader2, Sparkles, Key, AlertTriangle, X } from 'lucide-react';
+import { User, Bell, Shield, Paintbrush, LogOut, CheckCircle2, Loader2, Sparkles, Key, AlertTriangle, X, Globe } from 'lucide-react';
 import { auth, signOut } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { getUserStats, updateUserProfile } from '../services/courseService.js';
+import { t, useLocale, getAvailableLocales, setLocale } from '../i18n.js';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -18,26 +19,29 @@ const cardVariants = {
 
 export default function Settings() {
   const navigate = useNavigate();
+  const locale = useLocale();
   const [user, setUser] = useState(auth.currentUser);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  const [activeSection, setActiveSection] = useState('account');
-  
-  // Profile settings
+  // Form State
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [geminiKey, setGeminiKey] = useState('');
+  
+  // App State
   const [notifications, setNotifications] = useState(true);
   const [marketing, setMarketing] = useState(false);
+  const [activeSection, setActiveSection] = useState('account');
 
-  const sections = [
-    { id: 'account', label: 'Account Profile', icon: User },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'security', label: 'Security & Privacy', icon: Shield },
-    { id: 'appearance', label: 'Appearance', icon: Paintbrush },
+  const SECTIONS = [
+    { id: 'account', icon: User, label: t('settings.nav.profile') },
+    { id: 'notifications', icon: Bell, label: t('settings.prefs.notifications') },
+    { id: 'security', icon: Shield, label: 'Security & Privacy' },
+    { id: 'appearance', icon: Paintbrush, label: t('settings.prefs.appearance') },
+    { id: 'localization', icon: Globe, label: t('settings.nav.localization') }
   ];
 
   useEffect(() => {
@@ -48,94 +52,77 @@ export default function Settings() {
           const stats = await getUserStats(currentUser.uid);
           setFirstName(stats.firstName || '');
           setLastName(stats.lastName || '');
-          setGeminiKey(localStorage.getItem('user_gemini_api_key') || '');
+          const savedKey = localStorage.getItem('gemini_api_key');
+          if (savedKey) setGeminiKey(savedKey);
         } catch (e) {
-          console.error("Error loading profile settings:", e);
+          console.error("Error loading profile:", e);
         } finally {
           setLoading(false);
         }
       } else {
-        setLoading(false);
+        navigate('/');
       }
     });
-
     return () => unsubscribe();
-  }, []);
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      navigate('/');
-    } catch (error) {
-      console.error(error);
-    }
-  };
+  }, [navigate]);
 
   const handleSaveChanges = async (e) => {
     e.preventDefault();
     if (!user) return;
     setSaving(true);
-    setSuccessMsg('');
     setErrorMsg('');
+    setSuccessMsg('');
 
-    let firestoreSuccess = false;
-    let localKeySuccess = false;
-
-    // 1. Try to save profile fields to Firestore
     try {
-      await updateUserProfile(user.uid, {
-        firstName,
-        lastName
-      });
-      firestoreSuccess = true;
-    } catch (err) {
-      console.error("Failed to save profile to Firestore:", err);
-    }
-
-    // 2. Try to save Gemini key locally
-    try {
-      if (geminiKey.trim() !== '') {
-        localStorage.setItem('user_gemini_api_key', geminiKey.trim());
+      await updateUserProfile(user.uid, { firstName, lastName });
+      if (geminiKey) {
+        localStorage.setItem('gemini_api_key', geminiKey.trim());
       } else {
-        localStorage.removeItem('user_gemini_api_key');
+        localStorage.removeItem('gemini_api_key');
       }
-      localKeySuccess = true;
-    } catch (err) {
-      console.error("Failed to save Gemini key locally:", err);
-    }
-
-    setSaving(false);
-
-    if (firestoreSuccess && localKeySuccess) {
-      setSuccessMsg('All settings saved successfully!');
+      setSuccessMsg(t('settings.profile.saved'));
       setTimeout(() => setSuccessMsg(''), 3000);
-    } else if (localKeySuccess && !firestoreSuccess) {
-      // Local key succeeded, Firestore failed (probably rules issue)
-      setSuccessMsg('API Key saved locally. Profile fields failed to save to Firestore (check your database security rules!).');
-    } else {
-      setErrorMsg('Failed to save settings. Please check your network or database rules.');
+    } catch (err) {
+      console.error(err);
+      setErrorMsg('Failed to save changes. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      navigate('/');
+    } catch (e) {
+      console.error('Logout failed', e);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-[#000000] text-white gap-4">
+      <div className="flex items-center justify-center h-full min-h-screen">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="text-sm font-medium tracking-wide">Loading Settings...</p>
       </div>
     );
   }
 
-  const userInitial = firstName ? firstName.charAt(0).toUpperCase() : (user?.email?.charAt(0).toUpperCase() || '?');
+  const userInitial = firstName ? firstName.charAt(0).toUpperCase() : (user?.email ? user.email.charAt(0).toUpperCase() : '?');
 
   return (
-    <motion.main initial="hidden" animate="show" variants={containerVariants} className="p-4 md:p-8 max-w-7xl mx-auto flex flex-col md:flex-row gap-8">
-      
-      {/* Sidebar Settings Nav */}
-      <motion.div variants={cardVariants} className="w-full md:w-64 flex-shrink-0">
-        <h1 className="text-3xl font-bold text-on-surface mb-8 tracking-tight">Settings</h1>
-        <div className="flex flex-col gap-2">
-          {sections.map(section => (
+    <motion.main 
+      initial="hidden"
+      animate="show"
+      variants={containerVariants}
+      className="p-4 md:p-8 max-w-7xl mx-auto flex flex-col md:flex-row gap-8"
+    >
+      {/* Sidebar Navigation */}
+      <motion.div variants={cardVariants} className="w-full md:w-64 shrink-0">
+        <h1 className="text-3xl font-bold text-on-surface mb-2">{t('settings.title')}</h1>
+        <p className="text-sm text-on-surface-variant mb-6">{t('settings.subtitle')}</p>
+
+        <div className="flex flex-col gap-1">
+          {SECTIONS.map((section) => (
             <button
               key={section.id}
               onClick={() => setActiveSection(section.id)}
@@ -348,6 +335,45 @@ export default function Settings() {
                     </div>
                   </div>
                   <p className="text-xs text-secondary italic">Check sidebar for global toggle</p>
+                </div>
+              </div>
+            </>
+          )}
+
+          {activeSection === 'localization' && (
+            <>
+              <div className="p-6 md:p-8 border-b border-outline-variant">
+                <h2 className="text-2xl font-bold text-on-surface">{t('settings.nav.localization')}</h2>
+                <p className="text-on-surface-variant mt-1">{t('settings.locale.subtitle')}</p>
+              </div>
+              <div className="p-6 md:p-8 space-y-6">
+                <div>
+                  <h3 className="text-sm font-semibold text-on-surface mb-2">{t('settings.locale.interfaceLang')}</h3>
+                  <p className="text-xs text-on-surface-variant mb-4">{t('settings.locale.interfaceLangDesc')}</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {getAvailableLocales().map(lang => (
+                      <button
+                        key={lang.code}
+                        type="button"
+                        onClick={() => setLocale(lang.code)}
+                        className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-colors ${
+                          locale === lang.code 
+                            ? 'border-primary bg-primary/5 shadow-sm' 
+                            : 'border-outline-variant bg-surface hover:bg-surface-container'
+                        }`}
+                      >
+                        <span className="text-2xl">{lang.flag}</span>
+                        <div className="flex-1">
+                          <p className={`text-sm font-semibold ${locale === lang.code ? 'text-primary' : 'text-on-surface'}`}>
+                            {lang.label}
+                          </p>
+                          <p className="text-xs text-on-surface-variant uppercase">{lang.code}</p>
+                        </div>
+                        {locale === lang.code && <CheckCircle2 className="w-5 h-5 text-primary" />}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </>

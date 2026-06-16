@@ -4,22 +4,24 @@ import { motion } from 'framer-motion';
 import { auth, signOut } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getUserStats } from '../services/courseService.js';
-
-const NAV_ITEMS = [
-  { id: 'dashboard',  icon: 'dashboard',     label: 'Dashboard' },
-  { id: 'courses',    icon: 'school',        label: 'Courses' },
-  { id: 'graph',      icon: 'hub',           label: 'Knowledge Graph' },
-  { id: 'lessons',    icon: 'menu_book',     label: 'Lessons' },
-  { id: 'resources',  icon: 'library_books', label: 'Resources' },
-  { id: 'insights',   icon: 'insights',      label: 'Insights' },
-  { id: 'settings',   icon: 'settings',      label: 'Settings' },
-];
+import { t, useLocale } from '../i18n.js';
 
 export default function Sidebar() {
   const location = useLocation();
+  const locale = useLocale();
   const [user, setUser] = useState(auth.currentUser);
   const [profile, setProfile] = useState({ firstName: 'User' });
   const [isDarkMode, setIsDarkMode] = useState(document.documentElement.classList.contains('dark'));
+
+  const NAV_ITEMS = [
+    { id: 'dashboard',  icon: 'dashboard',     label: t('nav.dashboard') },
+    { id: 'courses',    icon: 'school',        label: t('nav.courses') },
+    { id: 'graph',      icon: 'hub',           label: t('nav.graph') },
+    { id: 'lessons',    icon: 'menu_book',     label: 'Lessons' },
+    { id: 'resources',  icon: 'library_books', label: t('nav.resources') },
+    { id: 'insights',   icon: 'insights',      label: t('nav.insights') },
+    { id: 'settings',   icon: 'settings',      label: t('nav.settings') },
+  ];
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {

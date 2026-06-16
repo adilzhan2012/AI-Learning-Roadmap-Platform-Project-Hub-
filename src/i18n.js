@@ -159,6 +159,26 @@ const locales = {
     'settings.connected.notConnected': 'Not connected',
     'settings.connected.disconnect': 'Disconnect',
     'settings.connected.connect': 'Connect',
+
+    // Courses Catalog
+    'course.1.title': 'Introduction to AI',
+    'course.1.desc': 'Learn the foundational concepts of artificial intelligence, history, and basic terminology.',
+    'course.2.title': 'Machine Learning Fundamentals',
+    'course.2.desc': 'Dive into supervised and unsupervised learning, regressions, classification models, and algorithms.',
+    'course.3.title': 'Neural Networks Deep Dive',
+    'course.3.desc': 'Understand artificial neural networks, backpropagation, and training deep learning models.',
+    'course.4.title': 'NLP with Transformers',
+    'course.4.desc': 'Explore natural language processing techniques, tokenization, and state-of-the-art Transformer architectures.',
+    'course.5.title': 'Computer Vision Fundamentals',
+    'course.5.desc': 'Learn to process images, apply convolutions, and build models for object detection and classification.',
+    'course.6.title': 'Reinforcement Learning',
+    'course.6.desc': 'Master Markov decision processes, Q-learning, policy gradients, and decision making under uncertainty.',
+    'course.7.title': 'GANs & Generative AI',
+    'course.7.desc': 'Learn about Generative Adversarial Networks, image generation, autoencoders, and diffusion models.',
+    'course.8.title': 'AI Ethics & Governance',
+    'course.8.desc': 'Analyze bias in AI, ethical frameworks, privacy, regulations, and responsible deployment models.',
+    'course.9.title': 'MLOps & Deployment',
+    'course.9.desc': 'Bridge the gap between model development and deployment. Setup pipelines, monitoring, and scaling.',
   },
 
   kk: {
@@ -241,6 +261,46 @@ const locales = {
     'settings.profile.saved': 'Настройки сохранены',
     'graph.title': 'Граф знаний',
     'graph.subtitle': 'Исследуйте связи между курсами.',
+
+    // Courses Catalog
+    'course.1.title': 'Введение в ИИ',
+    'course.1.desc': 'Изучите основные концепции искусственного интеллекта, его историю и базовую терминологию.',
+    'course.2.title': 'Основы Машинного Обучения',
+    'course.2.desc': 'Погрузитесь в обучение с учителем и без учителя, регрессии, модели классификации и алгоритмы.',
+    'course.3.title': 'Глубокое изучение Нейронных Сетей',
+    'course.3.desc': 'Поймите устройство искусственных нейронных сетей, обратное распространение ошибки и обучение моделей.',
+    'course.4.title': 'NLP с Трансформерами',
+    'course.4.desc': 'Изучите методы обработки естественного языка, токенизацию и современные архитектуры Трансформеров.',
+    'course.5.title': 'Основы Компьютерного Зрения',
+    'course.5.desc': 'Научитесь обрабатывать изображения, применять свертки и создавать модели для обнаружения объектов.',
+    'course.6.title': 'Обучение с Подкреплением',
+    'course.6.desc': 'Освойте марковские процессы принятия решений, Q-обучение и принятие решений в условиях неопределенности.',
+    'course.7.title': 'GAN и Генеративный ИИ',
+    'course.7.desc': 'Узнайте о генеративно-состязательных сетях, генерации изображений, автоэнкодерах и диффузионных моделях.',
+    'course.8.title': 'Этика и Управление ИИ',
+    'course.8.desc': 'Проанализируйте предвзятость в ИИ, этические рамки, конфиденциальность и ответственные модели развертывания.',
+    'course.9.title': 'MLOps и Развертывание',
+    'course.9.desc': 'Преодолейте разрыв между разработкой модели и ее развертыванием. Настройте конвейеры и мониторинг.',
+
+    // Direct string translations for DB matches
+    'Introduction to AI': 'Введение в ИИ',
+    'Learn the foundational concepts of artificial intelligence, history, and basic terminology.': 'Изучите основные концепции искусственного интеллекта, его историю и базовую терминологию.',
+    'Machine Learning Fundamentals': 'Основы Машинного Обучения',
+    'Dive into supervised and unsupervised learning, regressions, classification models, and algorithms.': 'Погрузитесь в обучение с учителем и без учителя, регрессии, модели классификации и алгоритмы.',
+    'Neural Networks Deep Dive': 'Глубокое изучение Нейронных Сетей',
+    'Understand artificial neural networks, backpropagation, and training deep learning models.': 'Поймите устройство искусственных нейронных сетей, обратное распространение ошибки и обучение моделей.',
+    'NLP with Transformers': 'NLP с Трансформерами',
+    'Explore natural language processing techniques, tokenization, and state-of-the-art Transformer architectures.': 'Изучите методы обработки естественного языка, токенизацию и современные архитектуры Трансформеров.',
+    'Computer Vision Fundamentals': 'Основы Компьютерного Зрения',
+    'Learn to process images, apply convolutions, and build models for object detection and classification.': 'Научитесь обрабатывать изображения, применять свертки и создавать модели для обнаружения объектов.',
+    'Reinforcement Learning': 'Обучение с Подкреплением',
+    'Master Markov decision processes, Q-learning, policy gradients, and decision making under uncertainty.': 'Освойте марковские процессы принятия решений, Q-обучение и принятие решений в условиях неопределенности.',
+    'GANs & Generative AI': 'GAN и Генеративный ИИ',
+    'Learn about Generative Adversarial Networks, image generation, autoencoders, and diffusion models.': 'Узнайте о генеративно-состязательных сетях, генерации изображений, автоэнкодерах и диффузионных моделях.',
+    'AI Ethics & Governance': 'Этика и Управление ИИ',
+    'Analyze bias in AI, ethical frameworks, privacy, regulations, and responsible deployment models.': 'Проанализируйте предвзятость в ИИ, этические рамки, конфиденциальность и ответственные модели развертывания.',
+    'MLOps & Deployment': 'MLOps и Развертывание',
+    'Bridge the gap between model development and deployment. Setup pipelines, monitoring, and scaling.': 'Преодолейте разрыв между разработкой модели и ее развертыванием. Настройте конвейеры и мониторинг.',
   },
 
   zh: {
@@ -325,4 +385,16 @@ export function getAvailableLocales() {
     { code: 'ru', label: 'Русский', flag: '🇷🇺' },
     { code: 'zh', label: '中文 (HSK 1)', flag: '🇨🇳' },
   ];
+}
+
+import { useState, useEffect } from 'react';
+
+export function useLocale() {
+  const [locale, setLocaleState] = useState(currentLocale);
+  useEffect(() => {
+    const handler = (e) => setLocaleState(e.detail.locale);
+    window.addEventListener('locale:changed', handler);
+    return () => window.removeEventListener('locale:changed', handler);
+  }, []);
+  return locale;
 }

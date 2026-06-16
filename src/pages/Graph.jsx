@@ -22,6 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getUserCourses, getCourseById, updateNodeStatus } from '../services/courseService.js';
+import { t, useLocale } from '../i18n.js';
 
 const iconMap = {
   brain: Brain,
@@ -71,6 +72,7 @@ const itemVariants = {
 
 export default function Graph() {
   const navigate = useNavigate();
+  const locale = useLocale();
   const containerRef = useRef(null);
   const networkRef = useRef(null);
   
@@ -122,7 +124,7 @@ export default function Graph() {
       const colors = getNodeColors(c.status, c.level);
       return {
         id: c.id,
-        label: c.label,
+        label: t(c.label),
         shape: 'box',
         margin: 16,
         borderWidth: 2,
@@ -197,7 +199,7 @@ export default function Graph() {
     return () => {
       if (networkRef.current) networkRef.current.destroy();
     };
-  }, [selectedCourse]);
+  }, [selectedCourse, locale]);
 
   const handleZoomIn = () => networkRef.current?.moveTo({ scale: networkRef.current.getScale() * 1.25 });
   const handleZoomOut = () => networkRef.current?.moveTo({ scale: networkRef.current.getScale() * 0.8 });
@@ -207,7 +209,7 @@ export default function Graph() {
     if (!selectedCourse) return [];
     return selectedCourse.edges
       .filter(e => e.to === id)
-      .map(e => selectedCourse.nodes.find(c => c.id === e.from)?.label)
+      .map(e => t(selectedCourse.nodes.find(c => c.id === e.from)?.label))
       .filter(Boolean);
   };
 
@@ -215,7 +217,7 @@ export default function Graph() {
     if (!selectedCourse) return [];
     return selectedCourse.edges
       .filter(e => e.from === id)
-      .map(e => selectedCourse.nodes.find(c => c.id === e.to)?.label)
+      .map(e => t(selectedCourse.nodes.find(c => c.id === e.to)?.label))
       .filter(Boolean);
   };
 
@@ -338,11 +340,11 @@ export default function Graph() {
                     <span className={`text-xs font-bold px-2 py-1 rounded-md mb-2 inline-block ${getLevelBadgeClass(selectedNode.level || 'Beginner')}`}>
                       {selectedNode.level || 'Beginner'}
                     </span>
-                    <h3 className="text-xl font-bold text-on-surface leading-snug">{selectedNode.label}</h3>
+                    <h3 className="text-xl font-bold text-on-surface leading-snug">{t(selectedNode.label)}</h3>
                   </div>
                 </div>
 
-                <p className="text-on-surface-variant leading-relaxed mb-6">{selectedNode.desc}</p>
+                <p className="text-on-surface-variant leading-relaxed mb-6">{t(selectedNode.desc)}</p>
 
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="bg-surface-container rounded-xl p-3 border border-outline-variant/50">
