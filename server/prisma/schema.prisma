@@ -1,0 +1,116 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String                 @id // Maps to Firebase UID
+  email         String                 @unique
+  name          String
+  createdAt     DateTime               @default(now())
+  progress      Progress[]
+  learningHours Int                    @default(0)
+  quizAccuracy  Int                    @default(0)
+  streakDays    Int                    @default(0)
+  activities    UserActivity[]
+  bookmarks     UserResourceBookmark[]
+}
+
+model Roadmap {
+  id          String   @id @default(uuid())
+  title       String
+  instructor  String
+  rating      Float    @default(5.0)
+  students    String   @default("0")
+  level       String   // Beginner, Intermediate, Advanced
+  hours       String
+  lessons     Int
+  icon        String   // String representing Lucide icon name (e.g. "Brain")
+  category    String
+  gradient    String
+  description String
+  nodes       Node[]
+}
+
+model Node {
+  id          String       @id @default(uuid())
+  roadmapId   String
+  roadmap     Roadmap      @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+  title       String
+  description String
+  level       String
+  hours       String
+  lessons     Int
+  icon        String
+  category    String
+  instructor  String
+  rating      Float        @default(5.0)
+  students    String       @default("0")
+  gradient    String
+  x           Float?
+  y           Float?
+  progress    Progress[]
+  prereqs     Connection[] @relation("ToNode")
+  leadsTo     Connection[] @relation("FromNode")
+}
+
+model Connection {
+  id         String @id @default(uuid())
+  fromNodeId String
+  toNodeId   String
+  fromNode   Node   @relation("FromNode", fields: [fromNodeId], references: [id], onDelete: Cascade)
+  toNode     Node   @relation("ToNode", fields: [toNodeId], references: [id], onDelete: Cascade)
+
+  @@unique([fromNodeId, toNodeId])
+}
+
+model Progress {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nodeId    String
+  node      Node     @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  progress  Int      @default(0) // 0 to 100
+  completed Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, nodeId])
+}
+
+model Resource {
+  id         String                 @id @default(uuid())
+  type       String                 // article, video, cheatsheet, repository
+  title      String
+  desc       String
+  tags       String                 // comma-separated list
+  author     String
+  meta       String
+  date       String
+  isFeatured Boolean                @default(false)
+  bookmarks  UserResourceBookmark[]
+}
+
+model UserResourceBookmark {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resourceId String
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, resourceId])
+}
+
+model UserActivity {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  time      String   // relative time, e.g. "2 hours ago"
+  icon      String   // Lucide icon name, e.g. "CheckCircle"
+  color     String   // tailwind class color, e.g. "text-green-500"
+  createdAt DateTime @default(now())
+}

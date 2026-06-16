@@ -7,3 +7,4 @@ dist
 dist-ssr
 *.local
 .system_generated
+server/serviceAccountKey.json
