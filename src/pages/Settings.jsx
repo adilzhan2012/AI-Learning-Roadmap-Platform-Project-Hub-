@@ -168,143 +168,193 @@ export default function Settings() {
       <motion.div variants={cardVariants} className="flex-1 max-w-3xl">
         <form onSubmit={handleSaveChanges} className="bg-surface border border-outline-variant rounded-3xl shadow-sm overflow-hidden">
           
-          <div className="p-6 md:p-8 border-b border-outline-variant">
-            <h2 className="text-2xl font-bold text-on-surface">Account Profile</h2>
-            <p className="text-on-surface-variant mt-1">Manage your personal information, API keys, and learning preferences.</p>
-          </div>
-
-          <div className="p-6 md:p-8 space-y-8">
-            <AnimatePresence mode="wait">
-              {successMsg && (
-                <motion.div 
-                  key="success"
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="bg-green-500/10 border border-green-500/20 text-green-500 rounded-xl p-4 text-sm font-semibold flex items-center gap-2 mb-4"
-                >
-                  <CheckCircle2 className="w-5 h-5" /> {successMsg}
-                </motion.div>
-              )}
-              {errorMsg && (
-                <motion.div 
-                  key="error"
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl p-4 text-sm font-semibold flex items-center gap-2 mb-4"
-                >
-                  <AlertTriangle className="w-5 h-5 animate-pulse" /> {errorMsg}
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Avatar Section */}
-            <div className="flex items-center gap-6">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
-                {userInitial}{lastName ? lastName.charAt(0).toUpperCase() : ''}
-              </div>
-              <div>
-                <span className="text-sm font-bold text-on-surface-variant block">Profile Initial Avatar</span>
-                <p className="text-xs text-on-surface-variant mt-1">Generated dynamically from your first and last name.</p>
-              </div>
-            </div>
-
-            {/* Form Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-1.5 relative group">
-                <label className="text-sm font-semibold text-on-surface">First Name</label>
-                <input 
-                  type="text" 
-                  value={firstName} 
-                  onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="First name"
-                  className="w-full bg-surface-container border border-outline-variant rounded-xl px-4 py-3 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all group-hover:border-outline" 
-                />
-              </div>
-              
-              <div className="space-y-1.5 relative group">
-                <label className="text-sm font-semibold text-on-surface">Last Name</label>
-                <input 
-                  type="text" 
-                  value={lastName} 
-                  onChange={(e) => setLastName(e.target.value)}
-                  placeholder="Last name"
-                  className="w-full bg-surface-container border border-outline-variant rounded-xl px-4 py-3 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all group-hover:border-outline" 
-                />
+          {activeSection === 'account' && (
+            <>
+              <div className="p-6 md:p-8 border-b border-outline-variant">
+                <h2 className="text-2xl font-bold text-on-surface">Account Profile</h2>
+                <p className="text-on-surface-variant mt-1">Manage your personal information and API keys.</p>
               </div>
 
-              <div className="space-y-1.5 relative group md:col-span-2">
-                <label className="text-sm font-semibold text-on-surface">Email Address</label>
-                <input 
-                  type="email" 
-                  value={user?.email || 'user@example.com'} 
-                  disabled 
-                  className="w-full bg-surface-container-low border border-outline-variant rounded-xl px-4 py-3 text-on-surface-variant opacity-70 cursor-not-allowed" 
-                />
-                <p className="text-xs text-on-surface-variant mt-1">Logged in via Firebase Email/Password provider.</p>
-              </div>
+              <div className="p-6 md:p-8 space-y-8">
+                <AnimatePresence mode="wait">
+                  {successMsg && (
+                    <motion.div 
+                      key="success"
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="bg-green-500/10 border border-green-500/20 text-green-500 rounded-xl p-4 text-sm font-semibold flex items-center gap-2 mb-4"
+                    >
+                      <CheckCircle2 className="w-5 h-5" /> {successMsg}
+                    </motion.div>
+                  )}
+                  {errorMsg && (
+                    <motion.div 
+                      key="error"
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl p-4 text-sm font-semibold flex items-center gap-2 mb-4"
+                    >
+                      <AlertTriangle className="w-5 h-5 animate-pulse" /> {errorMsg}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
-              {/* Gemini Key Config */}
-              <div className="space-y-1.5 relative group md:col-span-2 border-t border-outline-variant/30 pt-6">
-                <label className="text-sm font-bold text-on-surface flex items-center gap-1.5">
-                  <Key className="w-4 h-4 text-indigo-500" /> Google Gemini API Key
-                </label>
-                <input 
-                  type="password" 
-                  value={geminiKey} 
-                  onChange={(e) => setGeminiKey(e.target.value)} 
-                  placeholder="AIzaSy..."
-                  className="w-full bg-surface-container border border-outline-variant rounded-xl px-4 py-3 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all group-hover:border-outline font-mono" 
-                />
-                <p className="text-xs text-on-surface-variant mt-1">
-                  Enter your personal Google Gemini API key to generate roadmaps. It is stored securely in your browser's local storage and is only used to build course curricula.
-                </p>
-              </div>
-            </div>
-
-            {/* Toggle Section */}
-            <div className="pt-6 border-t border-outline-variant/50 space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-semibold text-on-surface text-sm">Course Updates</h4>
-                  <p className="text-xs text-on-surface-variant">Get notified when enrolled courses add new content.</p>
+                <div className="flex items-center gap-6">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+                    {userInitial}{lastName ? lastName.charAt(0).toUpperCase() : ''}
+                  </div>
+                  <div>
+                    <span className="text-sm font-bold text-on-surface-variant block">Profile Initial Avatar</span>
+                    <p className="text-xs text-on-surface-variant mt-1">Generated dynamically from your first and last name.</p>
+                  </div>
                 </div>
-                <button 
-                  type="button"
-                  onClick={() => setNotifications(!notifications)} 
-                  className={`w-12 h-6 rounded-full p-1 transition-colors duration-300 ease-in-out ${notifications ? 'bg-primary' : 'bg-surface-container-high'}`}
-                >
-                  <motion.div 
-                    layout 
-                    className="w-4 h-4 rounded-full bg-white shadow-sm"
-                    animate={{ x: notifications ? 24 : 0 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  />
-                </button>
-              </div>
 
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-semibold text-on-surface text-sm">Marketing Emails</h4>
-                  <p className="text-xs text-on-surface-variant">Receive weekly newsletters and feature updates.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-1.5 relative group">
+                    <label className="text-sm font-semibold text-on-surface">First Name</label>
+                    <input 
+                      type="text" 
+                      value={firstName} 
+                      onChange={(e) => setFirstName(e.target.value)}
+                      placeholder="First name"
+                      className="w-full bg-surface-container border border-outline-variant rounded-xl px-4 py-3 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all group-hover:border-outline" 
+                    />
+                  </div>
+                  
+                  <div className="space-y-1.5 relative group">
+                    <label className="text-sm font-semibold text-on-surface">Last Name</label>
+                    <input 
+                      type="text" 
+                      value={lastName} 
+                      onChange={(e) => setLastName(e.target.value)}
+                      placeholder="Last name"
+                      className="w-full bg-surface-container border border-outline-variant rounded-xl px-4 py-3 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all group-hover:border-outline" 
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 relative group md:col-span-2">
+                    <label className="text-sm font-semibold text-on-surface">Email Address</label>
+                    <input 
+                      type="email" 
+                      value={user?.email || 'user@example.com'} 
+                      disabled 
+                      className="w-full bg-surface-container-low border border-outline-variant rounded-xl px-4 py-3 text-on-surface-variant opacity-70 cursor-not-allowed" 
+                    />
+                    <p className="text-xs text-on-surface-variant mt-1">Logged in via Firebase Email/Password provider.</p>
+                  </div>
+
+                  <div className="space-y-1.5 relative group md:col-span-2 border-t border-outline-variant/30 pt-6">
+                    <label className="text-sm font-bold text-on-surface flex items-center gap-1.5">
+                      <Key className="w-4 h-4 text-indigo-500" /> Google Gemini API Key
+                    </label>
+                    <input 
+                      type="password" 
+                      value={geminiKey} 
+                      onChange={(e) => setGeminiKey(e.target.value)} 
+                      placeholder="AIzaSy..."
+                      className="w-full bg-surface-container border border-outline-variant rounded-xl px-4 py-3 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all group-hover:border-outline font-mono" 
+                    />
+                    <p className="text-xs text-on-surface-variant mt-1">
+                      Enter your personal Google Gemini API key to generate roadmaps.
+                    </p>
+                  </div>
                 </div>
-                <button 
-                  type="button"
-                  onClick={() => setMarketing(!marketing)} 
-                  className={`w-12 h-6 rounded-full p-1 transition-colors duration-300 ease-in-out ${marketing ? 'bg-primary' : 'bg-surface-container-high'}`}
-                >
-                  <motion.div 
-                    layout 
-                    className="w-4 h-4 rounded-full bg-white shadow-sm"
-                    animate={{ x: marketing ? 24 : 0 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  />
-                </button>
               </div>
-            </div>
+            </>
+          )}
 
-            <div className="pt-6 border-t border-outline-variant/50 flex justify-end">
+          {activeSection === 'notifications' && (
+            <>
+              <div className="p-6 md:p-8 border-b border-outline-variant">
+                <h2 className="text-2xl font-bold text-on-surface">Notifications</h2>
+                <p className="text-on-surface-variant mt-1">Manage how and when you receive updates.</p>
+              </div>
+              <div className="p-6 md:p-8 space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-semibold text-on-surface text-sm">Course Updates</h4>
+                    <p className="text-xs text-on-surface-variant">Get notified when enrolled courses add new content.</p>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => setNotifications(!notifications)} 
+                    className={`w-12 h-6 rounded-full p-1 transition-colors duration-300 ease-in-out ${notifications ? 'bg-primary' : 'bg-surface-container-high'}`}
+                  >
+                    <motion.div layout className="w-4 h-4 rounded-full bg-white shadow-sm" animate={{ x: notifications ? 24 : 0 }} transition={{ type: "spring", stiffness: 500, damping: 30 }} />
+                  </button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-semibold text-on-surface text-sm">Marketing Emails</h4>
+                    <p className="text-xs text-on-surface-variant">Receive weekly newsletters and feature updates.</p>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => setMarketing(!marketing)} 
+                    className={`w-12 h-6 rounded-full p-1 transition-colors duration-300 ease-in-out ${marketing ? 'bg-primary' : 'bg-surface-container-high'}`}
+                  >
+                    <motion.div layout className="w-4 h-4 rounded-full bg-white shadow-sm" animate={{ x: marketing ? 24 : 0 }} transition={{ type: "spring", stiffness: 500, damping: 30 }} />
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {activeSection === 'security' && (
+            <>
+              <div className="p-6 md:p-8 border-b border-outline-variant">
+                <h2 className="text-2xl font-bold text-on-surface">Security & Privacy</h2>
+                <p className="text-on-surface-variant mt-1">Manage your password and review the privacy policy.</p>
+              </div>
+              <div className="p-6 md:p-8 space-y-8">
+                <div>
+                  <h3 className="text-sm font-semibold text-on-surface mb-2">Change Password</h3>
+                  <p className="text-xs text-on-surface-variant mb-4">You will receive an email to reset your password.</p>
+                  <button type="button" className="bg-surface-container border border-outline-variant text-on-surface px-4 py-2 rounded-lg text-sm font-semibold hover:bg-surface-container-high transition-colors">
+                    Send Reset Email
+                  </button>
+                </div>
+                <div className="border-t border-outline-variant/30 pt-6">
+                  <h3 className="text-lg font-bold text-on-surface mb-4">Privacy Policy</h3>
+                  <div className="bg-surface-container p-6 rounded-xl border border-outline-variant/50 max-h-64 overflow-y-auto text-sm text-on-surface-variant space-y-4">
+                    <p><strong>Last Updated: June 16, 2026</strong></p>
+                    <p>Welcome to the AI Learning Roadmap Platform. Your privacy is important to us. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our application.</p>
+                    <p><strong>1. Information We Collect</strong><br/>We collect personal information that you voluntarily provide to us when you register on the application, express an interest in obtaining information about us or our products and services, when you participate in activities on the application or otherwise when you contact us. This includes your email address, name, and your provided API keys.</p>
+                    <p><strong>2. How We Use Your Information</strong><br/>We use personal information collected via our application for a variety of business purposes described below. We process your personal information for these purposes in reliance on our legitimate business interests, in order to enter into or perform a contract with you, with your consent, and/or for compliance with our legal obligations.</p>
+                    <p><strong>3. API Keys</strong><br/>Your Gemini API keys are stored locally in your browser's local storage and are never transmitted to our servers. They are sent directly to Google's Generative AI servers for the sole purpose of generating your personal learning roadmaps.</p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {activeSection === 'appearance' && (
+            <>
+              <div className="p-6 md:p-8 border-b border-outline-variant">
+                <h2 className="text-2xl font-bold text-on-surface">Appearance</h2>
+                <p className="text-on-surface-variant mt-1">Customize the look and feel of your workspace.</p>
+              </div>
+              <div className="p-6 md:p-8">
+                <div className="flex items-center justify-between bg-surface-container p-4 rounded-xl border border-outline-variant/50">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Paintbrush className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-on-surface text-sm">Dark Mode</h4>
+                      <p className="text-xs text-on-surface-variant">Switch between light and dark themes using the sidebar toggle.</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-secondary italic">Check sidebar for global toggle</p>
+                </div>
+              </div>
+            </>
+          )}
+
+          {(activeSection === 'account' || activeSection === 'notifications') && (
+            <div className="p-6 md:p-8 pt-6 border-t border-outline-variant/50 flex justify-end">
               <motion.button 
                 whileHover={{ scale: 1.02 }} 
                 whileTap={{ scale: 0.98 }} 
@@ -319,6 +369,7 @@ export default function Settings() {
                 )}
               </motion.button>
             </div>
+          )}
 
           </div>
         </form>
