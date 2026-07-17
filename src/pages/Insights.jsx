@@ -4,6 +4,7 @@ import { TrendingUp, Target, Clock, Zap, Activity, Loader2 } from 'lucide-react'
 import { auth } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getUserStats, getUserCourses } from '../services/courseService.js';
+import { t, useLocale } from '../i18n.js';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -47,6 +48,7 @@ function AnimatedNumber({ value }) {
 }
 
 export default function Insights() {
+  const locale = useLocale();
   const [user, setUser] = useState(auth.currentUser);
   const [stats, setStats] = useState(null);
   const [courses, setCourses] = useState([]);
@@ -77,9 +79,9 @@ export default function Insights() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-[#000000] text-white gap-4">
+      <div className="flex flex-col items-center justify-center h-screen bg-background text-on-surface gap-4">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="text-sm font-medium tracking-wide">Loading Insights...</p>
+        <p className="text-sm font-medium tracking-wide">{t('insights.loading')}</p>
       </div>
     );
   }
@@ -122,19 +124,19 @@ export default function Insights() {
     <motion.main initial="hidden" animate="show" variants={containerVariants} className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
       
       <motion.div variants={itemVariants} className="mb-4">
-        <h1 className="text-4xl font-bold text-on-surface mb-2 tracking-tight">Learning Insights</h1>
-        <p className="text-lg text-on-surface-variant max-w-2xl">Track your momentum, mastery progression, and consistency over time.</p>
+        <h1 className="text-4xl font-bold text-on-surface mb-2 tracking-tight">{t('insights.title')}</h1>
+        <p className="text-lg text-on-surface-variant max-w-2xl">{t('insights.subtitle')}</p>
       </motion.div>
 
       {/* Main Chart */}
       <motion.div variants={itemVariants} className="bg-surface border border-outline-variant rounded-3xl p-6 md:p-8 shadow-sm">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h2 className="text-xl font-bold text-on-surface">Knowledge Growth Trajectory</h2>
-            <p className="text-sm text-on-surface-variant mt-1">Based on course completions and roadmap progress.</p>
+            <h2 className="text-xl font-bold text-on-surface">{t('insights.trajectory')}</h2>
+            <p className="text-sm text-on-surface-variant mt-1">{t('insights.trajectoryDesc')}</p>
           </div>
           <select className="bg-surface-container text-on-surface border border-outline-variant rounded-lg px-4 py-2 text-sm font-semibold outline-none focus:ring-2 focus:ring-primary">
-            <option>All-Time Roadmaps</option>
+            <option>{t('insights.allTimeRoadmaps')}</option>
           </select>
         </div>
 
@@ -183,25 +185,25 @@ export default function Insights() {
         <motion.div variants={itemVariants} whileHover={{ y: -5, scale: 1.02 }} className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-3xl p-8 text-white shadow-lg relative overflow-hidden group">
           <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-colors"></div>
           <Clock className="w-8 h-8 text-white/80 mb-6" />
-          <h3 className="text-sm font-semibold text-white/80 uppercase tracking-wider mb-2">Total Learning Hours</h3>
+          <h3 className="text-sm font-semibold text-white/80 uppercase tracking-wider mb-2">{t('insights.hoursTitle')}</h3>
           <div className="text-5xl font-bold tracking-tight mb-2"><AnimatedNumber value={totalHours} /><span className="text-2xl text-white/60 ml-1">h</span></div>
-          <p className="text-sm text-green-300 font-medium flex items-center gap-1"><TrendingUp className="w-4 h-4" /> Live study tracker active</p>
+          <p className="text-sm text-green-300 font-medium flex items-center gap-1"><TrendingUp className="w-4 h-4" /> {t('insights.trackerActive')}</p>
         </motion.div>
 
         <motion.div variants={itemVariants} whileHover={{ y: -5, scale: 1.02 }} className="bg-surface border border-outline-variant rounded-3xl p-8 shadow-sm relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors"></div>
           <Target className="w-8 h-8 text-primary mb-6" />
-          <h3 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-2">Avg Course Progress</h3>
+          <h3 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-2">{t('insights.avgProgress')}</h3>
           <div className="text-5xl font-bold text-on-surface mb-2"><AnimatedNumber value={avgCompletion} /><span className="text-2xl text-on-surface-variant ml-1">%</span></div>
-          <p className="text-sm text-green-500 font-medium flex items-center gap-1"><TrendingUp className="w-4 h-4" /> Across {courses.length} roadmaps</p>
+          <p className="text-sm text-green-500 font-medium flex items-center gap-1"><TrendingUp className="w-4 h-4" /> {t('insights.acrossRoadmaps', { count: courses.length })}</p>
         </motion.div>
 
         <motion.div variants={itemVariants} whileHover={{ y: -5, scale: 1.02 }} className="bg-surface border border-outline-variant rounded-3xl p-8 shadow-sm relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full blur-3xl group-hover:bg-orange-500/10 transition-colors"></div>
           <Zap className="w-8 h-8 text-orange-500 mb-6" />
-          <h3 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-2">Current Streak</h3>
-          <div className="text-5xl font-bold text-on-surface mb-2"><AnimatedNumber value={streakDays} /><span className="text-2xl text-on-surface-variant ml-1">days</span></div>
-          <p className="text-sm text-on-surface-variant font-medium flex items-center gap-1">Daily consistency streak</p>
+          <h3 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-2">{t('insights.currentStreak')}</h3>
+          <div className="text-5xl font-bold text-on-surface mb-2"><AnimatedNumber value={streakDays} /><span className="text-2xl text-on-surface-variant ml-1"> {t('insights.days')}</span></div>
+          <p className="text-sm text-on-surface-variant font-medium flex items-center gap-1">{t('insights.streakDesc')}</p>
         </motion.div>
 
       </div>

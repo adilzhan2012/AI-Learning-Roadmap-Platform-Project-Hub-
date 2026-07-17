@@ -2,7 +2,7 @@
 // Theme — Dark / Light Mode Controller
 // ============================================
 
-const STORAGE_KEY = 'ai-academy-theme';
+const STORAGE_KEY = 'yourway-theme';
 
 export function initTheme() {
   const saved = localStorage.getItem(STORAGE_KEY);

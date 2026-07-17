@@ -3,58 +3,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, 
   Brain, 
-  Cpu, 
-  Network, 
-  Languages, 
-  Eye, 
-  Gamepad2, 
-  Sparkles, 
-  Scale, 
-  Cloud, 
-  Star, 
-  StarHalf, 
   Clock, 
   BookOpen, 
-  CheckCircle,
-  Loader2
+  Loader2,
+  Sparkles,
+  Network,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { auth, db } from '../firebase.js';
+import { auth } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
-import { getUserCourses, updateUserStats, logActivity } from '../services/courseService.js';
-import { addDoc, collection, increment } from 'firebase/firestore';
-import { t, useLocale } from '../i18n.js';
-
-const presetCoursesCatalog = [
-  { id: 1, title: 'Introduction to AI', instructor: 'Dr. Sarah Chen', rating: 4.9, students: '2,340', level: 'Beginner', hours: '8h', lessons: 24, iconName: 'brain', category: 'AI Fundamentals', gradient: 'from-blue-500 to-cyan-400', desc: 'Learn the foundational concepts of artificial intelligence, history, and basic terminology.' },
-  { id: 2, title: 'Machine Learning Fundamentals', instructor: 'Prof. James Liu', rating: 4.8, students: '1,890', level: 'Beginner', hours: '12h', lessons: 36, iconName: 'cpu', category: 'Machine Learning', gradient: 'from-emerald-500 to-teal-400', desc: 'Dive into supervised and unsupervised learning, regressions, classification models, and algorithms.' },
-  { id: 3, title: 'Neural Networks Deep Dive', instructor: 'Dr. Emily Watson', rating: 4.7, students: '1,200', level: 'Intermediate', hours: '15h', lessons: 42, iconName: 'network', category: 'Deep Learning', gradient: 'from-violet-500 to-purple-400', desc: 'Understand artificial neural networks, backpropagation, and training deep learning models.' },
-  { id: 4, title: 'NLP with Transformers', instructor: 'Dr. Alex Kumar', rating: 4.9, students: '980', level: 'Intermediate', hours: '10h', lessons: 28, iconName: 'languages', category: 'NLP', gradient: 'from-orange-500 to-amber-400', desc: 'Explore natural language processing techniques, tokenization, and state-of-the-art Transformer architectures.' },
-  { id: 5, title: 'Computer Vision Fundamentals', instructor: 'Prof. Lisa Park', rating: 4.6, students: '1,500', level: 'Intermediate', hours: '14h', lessons: 38, iconName: 'eye', category: 'Computer Vision', gradient: 'from-pink-500 to-rose-400', desc: 'Learn to process images, apply convolutions, and build models for object detection and classification.' },
-  { id: 6, title: 'Reinforcement Learning', instructor: 'Dr. Michael Torres', rating: 4.8, students: '750', level: 'Advanced', hours: '18h', lessons: 48, iconName: 'gamepad', category: 'Machine Learning', gradient: 'from-indigo-500 to-blue-400', desc: 'Master Markov decision processes, Q-learning, policy gradients, and decision making under uncertainty.' },
-  { id: 7, title: 'GANs & Generative AI', instructor: 'Dr. Nina Patel', rating: 4.9, students: '2,100', level: 'Advanced', hours: '16h', lessons: 44, iconName: 'sparkles', category: 'Deep Learning', gradient: 'from-fuchsia-500 to-pink-400', desc: 'Learn about Generative Adversarial Networks, image generation, autoencoders, and diffusion models.' },
-  { id: 8, title: 'AI Ethics & Governance', instructor: 'Prof. David Kim', rating: 4.5, students: '3,200', level: 'Beginner', hours: '6h', lessons: 18, iconName: 'scale', category: 'AI Fundamentals', gradient: 'from-teal-500 to-green-400', desc: 'Analyze bias in AI, ethical frameworks, privacy, regulations, and responsible deployment models.' },
-  { id: 9, title: 'MLOps & Deployment', instructor: 'Dr. Rachel Green', rating: 4.7, students: '890', level: 'Advanced', hours: '20h', lessons: 52, iconName: 'cloud', category: 'Machine Learning', gradient: 'from-sky-500 to-indigo-400', desc: 'Bridge the gap between model development and deployment. Setup pipelines, monitoring, and scaling.' },
-];
-
-const prerequisiteEdges = [
-  { from: 1, to: 2 }, { from: 1, to: 8 }, { from: 2, to: 3 }, { from: 2, to: 6 },
-  { from: 2, to: 9 }, { from: 3, to: 4 }, { from: 3, to: 5 }, { from: 3, to: 7 }, { from: 4, to: 7 }
-];
-
-const iconMap = {
-  brain: Brain,
-  cpu: Cpu,
-  network: Network,
-  languages: Languages,
-  eye: Eye,
-  gamepad: Gamepad2,
-  sparkles: Sparkles,
-  scale: Scale,
-  cloud: Cloud,
-};
-
-const categories = ['All', 'AI Fundamentals', 'Machine Learning', 'Deep Learning', 'NLP', 'Computer Vision'];
+import { getUserCourses, deleteCourse } from '../services/courseService.js';
+import { t } from '../i18n.js';
+import CourseGeneratorModal from '../components/CourseGeneratorModal.jsx';
 
 function getLevelColor(level) {
   switch (level) {
@@ -63,19 +25,6 @@ function getLevelColor(level) {
     case 'Advanced': return 'bg-purple-500/90 text-white';
     default: return 'bg-gray-500/90 text-white';
   }
-}
-
-function getInitials(name) {
-  return name.replace(/^(Dr\.|Prof\.)\s*/, '').trim().split(' ').map(n => n[0]).join('');
-}
-
-function getAvatarGradient(index) {
-  const gradients = [
-    'from-blue-400 to-indigo-500', 'from-emerald-400 to-teal-500', 'from-violet-400 to-purple-500',
-    'from-orange-400 to-red-500', 'from-pink-400 to-rose-500', 'from-cyan-400 to-blue-500',
-    'from-fuchsia-400 to-pink-500', 'from-teal-400 to-emerald-500', 'from-sky-400 to-indigo-500',
-  ];
-  return gradients[index % gradients.length];
 }
 
 const containerVariants = {
@@ -89,38 +38,52 @@ const cardVariants = {
   exit: { opacity: 0, scale: 0.9, transition: { duration: 0.2 } }
 };
 
-function CourseCard({ course, index, enrolledCourse, onEnroll }) {
-  const navigate = useNavigate();
-  const locale = useLocale();
-  const [enrolling, setEnrolling] = useState(false);
-  const Icon = iconMap[course.iconName] || Brain;
+function DeleteConfirmModal({ isOpen, onClose, onConfirm, isDeleting }) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={!isDeleting ? onClose : undefined}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          />
+          <motion.div 
+            initial={{ scale: 0.95, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 20, opacity: 0 }}
+            className="w-full max-w-sm bg-surface border border-outline-variant rounded-3xl p-6 shadow-2xl relative z-10 overflow-hidden text-center"
+          >
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
+              <Trash2 className="w-8 h-8 text-red-500" />
+            </div>
+            <h3 className="text-xl font-bold text-on-surface mb-2">{t('courses.confirmDeleteTitle') || 'Delete Roadmap?'}</h3>
+            <p className="text-sm text-on-surface-variant mb-6">{t('courses.confirmDeleteSubtitle') || 'Are you sure you want to delete this roadmap? This action cannot be undone.'}</p>
+            <div className="flex gap-3">
+              <button disabled={isDeleting} onClick={onClose} className="flex-1 py-3 bg-surface-container rounded-xl text-sm font-bold text-on-surface hover:bg-surface-container-high transition-colors">
+                {t('courses.cancel') || 'Cancel'}
+              </button>
+              <button disabled={isDeleting} onClick={onConfirm} className="flex-1 py-3 bg-red-500 text-white rounded-xl text-sm font-bold hover:bg-red-600 transition-colors flex justify-center items-center">
+                {isDeleting ? <Loader2 className="w-5 h-5 animate-spin" /> : (t('courses.delete') || 'Delete')}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+}
 
-  const renderStars = (rating) => {
-    const full = Math.floor(rating);
-    const hasHalf = rating % 1 >= 0.5;
-    const stars = [];
-    for (let i = 0; i < full; i++) stars.push(<Star key={`f${i}`} className="w-4 h-4 fill-orange-400 text-orange-400" />);
-    if (hasHalf) stars.push(<StarHalf key="h" className="w-4 h-4 fill-orange-400 text-orange-400" />);
-    const remaining = 5 - full - (hasHalf ? 1 : 0);
-    for (let i = 0; i < remaining; i++) stars.push(<Star key={`e${i}`} className="w-4 h-4 text-gray-400" />);
-    return stars;
+function CourseCard({ course, onDelete }) {
+  const navigate = useNavigate();
+  const Icon = Brain;
+
+  const handleOpenClick = () => {
+    localStorage.setItem('selected_course_id', course.id);
+    navigate('/graph');
   };
 
-  const handleEnrollClick = async () => {
-    if (enrolledCourse) {
-      localStorage.setItem('selected_course_id', enrolledCourse.id);
-      navigate('/graph');
-      return;
-    }
-    
-    setEnrolling(true);
-    try {
-      await onEnroll(course);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setEnrolling(false);
-    }
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    onDelete(course.id);
   };
 
   return (
@@ -131,9 +94,10 @@ function CourseCard({ course, index, enrolledCourse, onEnroll }) {
       animate="show"
       exit="exit"
       whileHover={{ y: -5, scale: 1.02 }}
-      className="bg-surface rounded-2xl border border-outline-variant overflow-hidden shadow-sm hover:shadow-xl hover:border-primary/30 transition-all duration-300 group"
+      onClick={handleOpenClick}
+      className="bg-surface rounded-2xl border border-outline-variant overflow-hidden shadow-sm hover:shadow-xl hover:border-primary/30 transition-all duration-300 group cursor-pointer flex flex-col h-full"
     >
-      <div className={`relative h-40 bg-gradient-to-br ${course.gradient} flex items-center justify-center overflow-hidden`}>
+      <div className={`relative h-40 bg-gradient-to-br ${course.gradient || 'from-indigo-500 to-purple-500'} flex items-center justify-center overflow-hidden shrink-0`}>
         <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10" />
         <div className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full bg-white/10" />
         <motion.div 
@@ -142,75 +106,48 @@ function CourseCard({ course, index, enrolledCourse, onEnroll }) {
         >
           <Icon size={72} strokeWidth={1.5} />
         </motion.div>
-        <span className={`absolute top-3 right-3 ${getLevelColor(course.level)} text-xs font-semibold px-2.5 py-1 rounded-full shadow-md backdrop-blur-sm`}>
-          {course.level}
+        <span className={`absolute top-3 right-3 ${getLevelColor(course.level || 'Beginner')} text-xs font-semibold px-2.5 py-1 rounded-full shadow-md backdrop-blur-sm`}>
+          {t('level.' + (course.level || 'Beginner'))}
         </span>
+        <button 
+          onClick={handleDelete}
+          className="absolute top-3 left-3 bg-red-500/80 hover:bg-red-600 text-white p-1.5 rounded-full shadow-md backdrop-blur-sm transition-colors opacity-0 group-hover:opacity-100"
+          title="Delete roadmap"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
       </div>
 
-      <div className="px-5 py-4">
-        <h3 className="text-lg font-bold text-on-surface leading-snug mb-3 group-hover:text-primary transition-colors duration-200">
-          {t(`course.${course.id}.title`)}
+      <div className="px-5 py-4 flex-1 flex flex-col">
+        <h3 className="text-lg font-bold text-on-surface leading-snug mb-2 group-hover:text-primary transition-colors duration-200 line-clamp-2">
+          {t(course.title)}
         </h3>
+        <p className="text-sm text-on-surface-variant mb-4 line-clamp-2">{course.description || ''}</p>
 
-        <div className="flex items-center gap-3 mb-4">
-          <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${getAvatarGradient(index)} flex items-center justify-center shrink-0 shadow-sm`}>
-            <span className="text-xs font-bold text-white">{getInitials(course.instructor)}</span>
+        <div className="mt-auto">
+          <div className="flex items-center justify-between mb-2">
+            <span className={`text-xs font-medium ${course.progress === 100 ? 'text-green-500' : 'text-on-surface-variant'}`}>
+              {course.progress === 100 ? t('courses.completed') : t('courses.inProgress')}
+            </span>
+            <span className="text-xs font-bold text-on-surface">{course.progress || 0}%</span>
           </div>
-          <span className="text-sm font-medium text-on-surface-variant">{course.instructor}</span>
-        </div>
-
-        <div className="flex items-center gap-2 mb-4">
-          <div className="flex items-center gap-0.5">{renderStars(course.rating)}</div>
-          <span className="text-sm font-bold text-on-surface">{course.rating}</span>
-          <span className="text-xs text-on-surface-variant">({course.students})</span>
-        </div>
-
-        {enrolledCourse ? (
-          <div className="mt-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className={`text-xs font-medium ${enrolledCourse.progress === 100 ? 'text-green-500' : 'text-on-surface-variant'}`}>
-                {enrolledCourse.progress === 100 ? t('courses.completed') : 'In Progress'}
-              </span>
-              <span className="text-xs font-bold text-on-surface">{enrolledCourse.progress || 0}%</span>
-            </div>
-            <div className="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden mb-2">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${enrolledCourse.progress || 0}%` }}
-                transition={{ duration: 1, delay: 0.2 }}
-                className={`h-full rounded-full ${enrolledCourse.progress === 100 ? 'bg-green-500' : 'bg-primary'}`}
-              />
-            </div>
-            <button 
-              onClick={handleEnrollClick}
-              className="w-full py-2 bg-surface-container hover:bg-surface-container-high border border-outline-variant text-xs font-bold rounded-xl transition-colors text-on-surface"
-            >
-              Open Graph
-            </button>
+          <div className="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden mb-2">
+            <motion.div 
+              initial={{ width: 0 }}
+              animate={{ width: `${course.progress || 0}%` }}
+              transition={{ duration: 1, delay: 0.2 }}
+              className={`h-full rounded-full ${course.progress === 100 ? 'bg-green-500' : 'bg-primary'}`}
+            />
           </div>
-        ) : (
-          <motion.button 
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleEnrollClick}
-            disabled={enrolling}
-            className="mt-4 w-full py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 bg-primary text-on-primary hover:bg-primary/90 shadow-lg shadow-primary/20 disabled:opacity-50"
-          >
-            {enrolling ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              t('courses.enrollNow')
-            )}
-          </motion.button>
-        )}
+        </div>
       </div>
 
-      <div className="flex items-center justify-between px-5 py-3 border-t border-outline-variant/50 bg-surface-container-low/40">
+      <div className="flex items-center justify-between px-5 py-3 border-t border-outline-variant/50 bg-surface-container-low/40 shrink-0">
         <div className="flex items-center gap-1.5 text-xs text-on-surface-variant font-medium">
-          <Clock className="w-4 h-4" /> {course.hours}
+          <Clock className="w-4 h-4" /> {course.hours || '0h'}
         </div>
         <div className="flex items-center gap-1.5 text-xs text-on-surface-variant font-medium">
-          <BookOpen className="w-4 h-4" /> {course.lessons} {t('courses.lessons')}
+          <BookOpen className="w-4 h-4" /> {course.nodes?.length || 0} {t('courses.lessons')}
         </div>
       </div>
     </motion.div>
@@ -218,13 +155,13 @@ function CourseCard({ course, index, enrolledCourse, onEnroll }) {
 }
 
 export default function Courses() {
-  const navigate = useNavigate();
-  const locale = useLocale();
   const [user, setUser] = useState(auth.currentUser);
   const [userCourses, setUserCourses] = useState([]);
-  const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showGenModal, setShowGenModal] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -246,69 +183,45 @@ export default function Courses() {
     return () => unsubscribe();
   }, []);
 
-  const handleEnroll = async (presetCourse) => {
+  const refreshCourses = async () => {
     if (!user) return;
-    
-    // Map the preset nodes using the presetCoursesCatalog definition and prerequisiteEdges
-    const nodes = presetCoursesCatalog.map(pc => {
-      const isPrereq = prerequisiteEdges.some(edge => edge.to === pc.id);
-      return {
-        id: pc.id,
-        label: pc.title,
-        desc: pc.desc,
-        level: pc.level,
-        hours: '1.5h',
-        lessons: 3,
-        category: pc.category,
-        status: isPrereq ? 'locked' : 'active'
-      };
-    });
-
-    const clonedCourse = {
-      userId: user.uid,
-      title: presetCourse.title,
-      category: presetCourse.category,
-      level: presetCourse.level,
-      hours: presetCourse.hours,
-      lessonsCount: presetCourse.lessons,
-      gradient: presetCourse.gradient,
-      description: presetCourse.desc,
-      nodes,
-      edges: prerequisiteEdges,
-      progress: 0,
-      createdAt: new Date().toISOString()
-    };
-
-    // Save cloned course to Firestore
-    const coursesCol = collection(db, 'courses');
-    const docRef = await addDoc(coursesCol, clonedCourse);
-    
-    // Update user stats
-    await updateUserStats(user.uid, { activeCoursesCount: increment(1) });
-    
-    // Log activity
-    await logActivity(user.uid, `Enrolled in course: ${presetCourse.title}`, 'school', 'text-blue-500');
-
-    // Update state
-    setUserCourses(prev => [{ id: docRef.id, ...clonedCourse }, ...prev]);
-    
-    // Redirect
-    localStorage.setItem('selected_course_id', docRef.id);
-    navigate('/graph');
+    try {
+      const fetched = await getUserCourses(user.uid);
+      setUserCourses(fetched);
+    } catch (e) {
+      console.error("Error refreshing courses:", e);
+    }
   };
 
-  const filteredPresetCourses = presetCoursesCatalog.filter(course => {
-    const matchesCategory = activeCategory === 'All' || course.category === activeCategory;
-    const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          course.instructor.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+  const confirmDelete = async () => {
+    if (!user || !courseToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteCourse(courseToDelete, user.uid);
+      setUserCourses(prev => prev.filter(c => c.id !== courseToDelete));
+      setCourseToDelete(null);
+    } catch (e) {
+      console.error("Failed to delete course:", e);
+      // Fallback alert if something really breaks
+      alert("Failed to delete course.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const requestDelete = (courseId) => {
+    setCourseToDelete(courseId);
+  };
+
+  const filteredCourses = userCourses.filter(course => {
+    return course.title.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-[#000000] text-white gap-4">
+      <div className="flex flex-col items-center justify-center h-screen bg-background text-on-surface gap-4">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="text-sm font-medium tracking-wide">Loading Catalog...</p>
+        <p className="text-sm font-medium tracking-wide">{t('courses.loadingCatalog')}</p>
       </div>
     );
   }
@@ -320,73 +233,92 @@ export default function Courses() {
       variants={containerVariants}
       className="p-4 md:p-8 max-w-7xl mx-auto"
     >
-      <motion.div variants={cardVariants} className="mb-8">
-        <h1 className="text-4xl font-bold text-on-surface mb-3 tracking-tight">{t('courses.title')}</h1>
-        <p className="text-lg text-on-surface-variant max-w-2xl">{t('courses.subtitle')}</p>
+      <motion.div variants={cardVariants} className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-bold text-on-surface mb-3 tracking-tight">{t('dashboard.yourRoadmaps') || t('courses.title')}</h1>
+          <p className="text-lg text-on-surface-variant max-w-2xl">{t('courses.subtitle')}</p>
+        </div>
+        <button
+          onClick={() => setShowGenModal(true)}
+          className="bg-primary text-on-primary px-6 py-3 rounded-xl font-bold shadow-lg shadow-primary/20 hover:bg-primary/95 transition-colors whitespace-nowrap flex items-center gap-2"
+        >
+          <Sparkles className="w-5 h-5 fill-white" />
+          {t('dashboard.generateCourse')}
+        </button>
       </motion.div>
 
-      <motion.div variants={cardVariants} className="flex flex-col md:flex-row gap-4 mb-8">
-        <div className="relative w-full max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant/60" />
-          <input 
-            type="text" 
-            placeholder={t('courses.search')}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-surface-container border border-outline-variant rounded-xl py-3 pl-10 pr-4 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all duration-200"
-          />
-        </div>
-
-        <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
-          {categories.map((cat) => {
-            const catName = cat === 'All' ? t('courses.filterAll') : cat;
-            return (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`relative px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-colors ${
-                activeCategory === cat ? 'text-on-primary' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
-              }`}
-            >
-              {activeCategory === cat && (
-                <motion.div 
-                  layoutId="course-category-pill"
-                  className="absolute inset-0 bg-primary rounded-xl z-0 shadow-lg shadow-primary/20"
-                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                />
-              )}
-              <span className="relative z-10">{catName}</span>
-            </button>
-          )})}
-        </div>
-      </motion.div>
+      {userCourses.length > 0 && (
+        <motion.div variants={cardVariants} className="flex flex-col md:flex-row gap-4 mb-8">
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant/60" />
+            <input 
+              type="text" 
+              placeholder={t('courses.search')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-surface-container border border-outline-variant rounded-xl py-3 pl-10 pr-4 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all duration-200"
+            />
+          </div>
+        </motion.div>
+      )}
 
       <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-8">
         <AnimatePresence mode="popLayout">
-          {filteredPresetCourses.map((course, index) => {
-            const enrolled = userCourses.find(uc => uc.title === course.title);
-            return (
-              <CourseCard 
-                key={course.id} 
-                course={course} 
-                index={index} 
-                enrolledCourse={enrolled}
-                onEnroll={handleEnroll}
-              />
-            );
-          })}
+          {filteredCourses.map((course) => (
+            <CourseCard 
+              key={course.id} 
+              course={course} 
+              onDelete={requestDelete}
+            />
+          ))}
         </AnimatePresence>
         
-        {filteredPresetCourses.length === 0 && (
+        {userCourses.length > 0 && filteredCourses.length === 0 && (
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="col-span-full py-20 flex flex-col items-center justify-center text-on-surface-variant"
           >
             <Search className="w-12 h-12 mb-4 opacity-20" />
-            <p className="text-lg">No courses found matching your criteria.</p>
+            <p className="text-lg">{t('courses.noMatching')}</p>
           </motion.div>
         )}
       </motion.div>
+
+      {userCourses.length === 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          className="col-span-full py-24 flex flex-col items-center justify-center text-center bg-surface border border-dashed border-outline-variant rounded-3xl"
+        >
+          <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-6 border border-primary/20">
+            <Network className="w-12 h-12 text-primary" />
+          </div>
+          <h2 className="text-2xl font-bold text-on-surface mb-3">{t('dashboard.noCourses')}</h2>
+          <p className="text-on-surface-variant mb-8 max-w-md">
+            {t('dashboard.generateCustomDesc')}
+          </p>
+          <button
+            onClick={() => setShowGenModal(true)}
+            className="bg-primary text-on-primary px-8 py-4 rounded-xl font-bold shadow-xl shadow-primary/20 hover:bg-primary/95 transition-all flex items-center gap-2 text-lg"
+          >
+            <Sparkles className="w-6 h-6 fill-white" />
+            {t('dashboard.generateFirst')}
+          </button>
+        </motion.div>
+      )}
+
+      <CourseGeneratorModal 
+        isOpen={showGenModal} 
+        onClose={() => setShowGenModal(false)} 
+        userUid={user?.uid} 
+        onCourseGenerated={refreshCourses}
+      />
+
+      <DeleteConfirmModal 
+        isOpen={!!courseToDelete}
+        onClose={() => setCourseToDelete(null)}
+        onConfirm={confirmDelete}
+        isDeleting={isDeleting}
+      />
     </motion.main>
   );
 }
