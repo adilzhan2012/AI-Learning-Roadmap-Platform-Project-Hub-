@@ -5,8 +5,9 @@ import { auth, signOut } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getUserStats } from '../services/courseService.js';
 import { t, useLocale } from '../i18n.js';
+import { toggleTheme } from '../theme.js';
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }) {
   const location = useLocation();
   const locale = useLocale();
   const [user, setUser] = useState(auth.currentUser);
@@ -17,7 +18,7 @@ export default function Sidebar() {
     { id: 'dashboard',  icon: 'dashboard',     label: t('nav.dashboard') },
     { id: 'courses',    icon: 'school',        label: t('nav.courses') },
     { id: 'graph',      icon: 'hub',           label: t('nav.graph') },
-    { id: 'lessons',    icon: 'menu_book',     label: 'Lessons' },
+    { id: 'achievements',icon: 'emoji_events', label: 'Достижения' },
     { id: 'resources',  icon: 'library_books', label: t('nav.resources') },
     { id: 'insights',   icon: 'insights',      label: t('nav.insights') },
     { id: 'settings',   icon: 'settings',      label: t('nav.settings') },
@@ -38,17 +39,15 @@ export default function Sidebar() {
     return () => unsubscribe();
   }, []);
 
+  // Sync isDarkMode state with the centralized theme system
+  useEffect(() => {
+    const handler = (e) => setIsDarkMode(e.detail.theme === 'dark');
+    window.addEventListener('theme:changed', handler);
+    return () => window.removeEventListener('theme:changed', handler);
+  }, []);
+
   const handleToggleTheme = () => {
-    const html = document.documentElement;
-    if (html.classList.contains('dark')) {
-      html.classList.remove('dark');
-      html.classList.add('light');
-      setIsDarkMode(false);
-    } else {
-      html.classList.remove('light');
-      html.classList.add('dark');
-      setIsDarkMode(true);
-    }
+    toggleTheme();
   };
 
   const handleSignOut = async () => {
@@ -65,13 +64,20 @@ export default function Sidebar() {
 
   return (
     <>
-      <nav id="sidebar" className="bg-surface h-screen w-64 fixed left-0 top-0 flex flex-col border-r border-outline-variant z-50 transition-transform duration-300 md:translate-x-0">
+      {/* Dark overlay on mobile when sidebar is open */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={onClose}
+        />
+      )}
+      <nav id="sidebar" className={`bg-surface h-screen w-64 fixed left-0 top-0 flex flex-col border-r border-outline-variant z-50 transition-transform duration-300 md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex items-center gap-3 px-5 py-6 mb-2">
           <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/20">
             <span className="material-symbols-outlined text-white icon-filled text-xl">psychology</span>
           </div>
           <div className="flex flex-col overflow-hidden">
-            <span className="text-title-md font-semibold text-on-surface truncate tracking-tight">AI Learning Roadmap</span>
+            <span className="text-title-md font-semibold text-on-surface truncate tracking-tight">yourway.co</span>
             <span className="text-caption text-secondary truncate">Platform — Project Hub</span>
           </div>
         </div>
@@ -83,6 +89,7 @@ export default function Sidebar() {
               <NavLink
                 key={item.id}
                 to={`/${item.id}`}
+                onClick={() => { if (onClose) onClose(); }}
                 className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-200 group ${isActive ? 'text-on-primary-fixed' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/50'}`}
               >
                 {isActive && (
@@ -102,7 +109,7 @@ export default function Sidebar() {
         <div className="mt-auto px-3 pb-4">
           <button onClick={handleToggleTheme} className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors mb-2">
             <span className="material-symbols-outlined text-[20px]">{isDarkMode ? 'light_mode' : 'dark_mode'}</span>
-            <span className="text-body-md">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+            <span className="text-body-md">{isDarkMode ? t('nav.lightMode') : t('nav.darkMode')}</span>
           </button>
 
           <div className="border-t border-separator my-2"></div>

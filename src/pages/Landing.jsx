@@ -66,7 +66,7 @@ export default function Landing() {
           <div className="flex items-center gap-2 font-semibold text-lg tracking-tight">
             <Sparkles className="w-5 h-5 text-white" />
             <span className="bg-gradient-to-r from-white via-neutral-200 to-neutral-400 bg-clip-text text-transparent">
-              AI Learning Roadmap Platform — Project Hub
+              yourway.co
             </span>
           </div>
           <div>
@@ -111,7 +111,7 @@ export default function Landing() {
           {/* Header */}
           <motion.h1 variants={fadeUpVariants} className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-tight max-w-4xl mx-auto">
             <span className="bg-gradient-to-r from-white via-neutral-200 to-neutral-400 bg-clip-text text-transparent">
-              AI Learning Roadmap Platform — Project Hub
+              yourway.co
             </span>
           </motion.h1>
           <motion.p variants={fadeUpVariants} className="text-xl md:text-2xl text-neutral-400 max-w-2xl mx-auto mb-10 font-light">
@@ -197,11 +197,11 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-2 font-semibold text-lg tracking-tight text-white/80">
             <Sparkles className="w-5 h-5 text-white/80" />
-            AI Learning Roadmap Platform — Project Hub
+            yourway.co
           </div>
-          <p className="text-sm text-neutral-500">
-            &copy; 2026 AI Learning Roadmap Platform. All rights reserved.
-          </p>
+          <div className="text-sm text-neutral-500 font-medium">
+            &copy; 2026 yourway.co. All rights reserved.
+          </div>
         </div>
       </footer>
     </div>

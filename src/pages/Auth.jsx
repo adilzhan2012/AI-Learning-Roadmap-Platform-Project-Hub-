@@ -4,25 +4,26 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, ArrowLeft, Loader2 } from 'lucide-react';
 import { auth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from '../firebase.js';
 import { getUserStats } from '../services/courseService.js';
+import { t, useLocale } from '../i18n.js';
 
 function getFriendlyErrorMessage(code) {
   switch (code) {
     case 'auth/email-already-in-use':
-      return 'This email is already registered. Please log in.';
+      return t('auth.error.emailInUse');
     case 'auth/invalid-credential':
     case 'auth/user-not-found':
     case 'auth/wrong-password':
-      return 'Invalid email or password.';
+      return t('auth.error.invalidCredential');
     case 'auth/weak-password':
-      return 'Password should be at least 6 characters.';
+      return t('auth.error.weakPassword');
     case 'auth/invalid-email':
-      return 'Please enter a valid email address.';
+      return t('auth.error.invalidEmail');
     case 'auth/invalid-api-key':
-      return 'Firebase API Key is missing or invalid. Check your .env file.';
+      return t('auth.error.invalidApiKey');
     case 'auth/operation-not-allowed':
-      return 'Email/Password sign-in is disabled. Please enable it in the Firebase Console.';
+      return t('auth.error.operationNotAllowed');
     default:
-      return 'An unexpected error occurred. Please try again.';
+      return t('auth.error.default');
   }
 }
 
@@ -34,6 +35,7 @@ const floatVariants = {
 };
 
 export default function Auth({ type }) {
+  const locale = useLocale();
   const isLogin = type === 'login';
   const navigate = useNavigate();
   
@@ -42,12 +44,12 @@ export default function Auth({ type }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const title = isLogin ? 'Welcome back' : 'Create an account';
-  const subtitle = isLogin ? 'Enter your details to access your dashboard.' : 'Sign up to start building your AI academy.';
-  const submitText = isLogin ? 'Sign In' : 'Sign Up';
-  const altText = isLogin ? "Don't have an account?" : "Already have an account?";
+  const title = isLogin ? t('auth.welcomeBack') : t('auth.createAccount');
+  const subtitle = isLogin ? t('auth.loginSubtitle') : t('auth.registerSubtitle');
+  const submitText = isLogin ? t('auth.signIn') : t('auth.signUp');
+  const altText = isLogin ? t('auth.noAccount') : t('auth.haveAccount');
   const altLink = isLogin ? '/register' : '/login';
-  const altLinkText = isLogin ? 'Sign up' : 'Log in';
+  const altLinkText = isLogin ? t('auth.signUp') : t('auth.signIn');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -99,7 +101,7 @@ export default function Auth({ type }) {
         
         <div className="flex items-center gap-2 mb-8 justify-center font-semibold text-xl tracking-tight text-gray-900 dark:text-white">
           <Sparkles className="w-5 h-5 text-blue-500" />
-          AI Learning Roadmap Platform — Project Hub
+          yourway.co
         </div>
         
         <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-2">{title}</h2>
@@ -120,7 +122,7 @@ export default function Auth({ type }) {
           </AnimatePresence>
           
           <div>
-            <label test-id="email-label" htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email address</label>
+            <label test-id="email-label" htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('auth.emailLabel')}</label>
             <input type="email" id="email" required 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -129,7 +131,7 @@ export default function Auth({ type }) {
           </div>
           
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('auth.passwordLabel')}</label>
             <input type="password" id="password" required minLength="6"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -154,7 +156,7 @@ export default function Auth({ type }) {
         </p>
         <p className="mt-4 flex justify-center">
           <Link to="/" className="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors flex items-center gap-1">
-            <ArrowLeft className="w-4 h-4" /> Back to Home
+            <ArrowLeft className="w-4 h-4" /> {t('auth.backHome')}
           </Link>
         </p>
       </motion.div>

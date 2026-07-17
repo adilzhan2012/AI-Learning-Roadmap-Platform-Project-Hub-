@@ -8,6 +8,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 export default function Layout() {
   const [user, setUser] = useState(auth.currentUser);
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
@@ -42,9 +43,9 @@ export default function Layout() {
 
   return (
     <div className="flex w-full h-full">
-      <div id="sidebar-container"><Sidebar /></div>
+      <div id="sidebar-container"><Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} /></div>
       <div className="flex-1 flex flex-col ml-0 md:ml-64 w-full h-screen overflow-hidden">
-        <div id="topbar-container"><Topbar /></div>
+        <div id="topbar-container"><Topbar onMenuClick={() => setSidebarOpen(true)} /></div>
         <main id="page-content" className="flex-1 overflow-y-auto bg-background transition-all duration-150 relative">
           <Outlet />
         </main>

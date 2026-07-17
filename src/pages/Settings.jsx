@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Bell, Shield, Paintbrush, LogOut, CheckCircle2, Loader2, Sparkles, Key, AlertTriangle, X, Globe } from 'lucide-react';
 import { auth, signOut } from '../firebase.js';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, sendPasswordResetEmail } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { getUserStats, updateUserProfile } from '../services/courseService.js';
 import { t, useLocale, getAvailableLocales, setLocale } from '../i18n.js';
@@ -29,17 +29,25 @@ export default function Settings() {
   // Form State
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [geminiKey, setGeminiKey] = useState('');
+  const [groqKey, setGroqKey] = useState('');
   
   // App State
-  const [notifications, setNotifications] = useState(true);
-  const [marketing, setMarketing] = useState(false);
+  const [notifications, setNotifications] = useState(() => localStorage.getItem('prefs_notifications') !== 'false');
+  const [marketing, setMarketing] = useState(() => localStorage.getItem('prefs_marketing') === 'true');
   const [activeSection, setActiveSection] = useState('account');
+
+  useEffect(() => {
+    localStorage.setItem('prefs_notifications', notifications);
+  }, [notifications]);
+
+  useEffect(() => {
+    localStorage.setItem('prefs_marketing', marketing);
+  }, [marketing]);
 
   const SECTIONS = [
     { id: 'account', icon: User, label: t('settings.nav.profile') },
     { id: 'notifications', icon: Bell, label: t('settings.prefs.notifications') },
-    { id: 'security', icon: Shield, label: 'Security & Privacy' },
+    { id: 'security', icon: Shield, label: t('settings.nav.security') || 'Security & Privacy' },
     { id: 'appearance', icon: Paintbrush, label: t('settings.prefs.appearance') },
     { id: 'localization', icon: Globe, label: t('settings.nav.localization') }
   ];
@@ -52,8 +60,8 @@ export default function Settings() {
           const stats = await getUserStats(currentUser.uid);
           setFirstName(stats.firstName || '');
           setLastName(stats.lastName || '');
-          const savedKey = localStorage.getItem('gemini_api_key');
-          if (savedKey) setGeminiKey(savedKey);
+          const savedKey = localStorage.getItem('groq_api_key');
+          if (savedKey) setGroqKey(savedKey);
         } catch (e) {
           console.error("Error loading profile:", e);
         } finally {
@@ -75,16 +83,11 @@ export default function Settings() {
 
     try {
       await updateUserProfile(user.uid, { firstName, lastName });
-      if (geminiKey) {
-        localStorage.setItem('gemini_api_key', geminiKey.trim());
-      } else {
-        localStorage.removeItem('gemini_api_key');
-      }
       setSuccessMsg(t('settings.profile.saved'));
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err) {
       console.error(err);
-      setErrorMsg('Failed to save changes. Please try again.');
+      setErrorMsg(t('settings.profile.saveError') || 'Failed to save changes. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -96,6 +99,18 @@ export default function Settings() {
       navigate('/');
     } catch (e) {
       console.error('Logout failed', e);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    if (!user || !user.email) return;
+    try {
+      await sendPasswordResetEmail(auth, user.email);
+      setSuccessMsg((t('settings.security.resetSent') || "Password reset email sent to ") + user.email);
+      setTimeout(() => setSuccessMsg(''), 5000);
+    } catch (e) {
+      console.error(e);
+      setErrorMsg(t('settings.security.resetError') || "Failed to send password reset email.");
     }
   };
 
@@ -146,7 +161,7 @@ export default function Settings() {
           
           <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm text-error hover:bg-error/10 transition-colors text-left group">
             <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-            Log Out
+            {t('settings.nav.logout') || 'Log Out'}
           </button>
         </div>
       </motion.div>
@@ -158,8 +173,8 @@ export default function Settings() {
           {activeSection === 'account' && (
             <>
               <div className="p-6 md:p-8 border-b border-outline-variant">
-                <h2 className="text-2xl font-bold text-on-surface">Account Profile</h2>
-                <p className="text-on-surface-variant mt-1">Manage your personal information and API keys.</p>
+                <h2 className="text-2xl font-bold text-on-surface">{t('settings.profile.title') || 'Account Profile'}</h2>
+                <p className="text-on-surface-variant mt-1">{t('settings.profile.subtitle') || 'Manage your personal information.'}</p>
               </div>
 
               <div className="p-6 md:p-8 space-y-8">
@@ -193,59 +208,43 @@ export default function Settings() {
                     {userInitial}{lastName ? lastName.charAt(0).toUpperCase() : ''}
                   </div>
                   <div>
-                    <span className="text-sm font-bold text-on-surface-variant block">Profile Initial Avatar</span>
-                    <p className="text-xs text-on-surface-variant mt-1">Generated dynamically from your first and last name.</p>
+                    <span className="text-sm font-bold text-on-surface-variant block">{t('settings.profile.avatarTitle') || 'Profile Initial Avatar'}</span>
+                    <p className="text-xs text-on-surface-variant mt-1">{t('settings.profile.avatarDesc') || 'Generated dynamically from your first and last name.'}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-1.5 relative group">
-                    <label className="text-sm font-semibold text-on-surface">First Name</label>
+                    <label className="text-sm font-semibold text-on-surface">{t('settings.profile.firstName') || 'First Name'}</label>
                     <input 
                       type="text" 
                       value={firstName} 
                       onChange={(e) => setFirstName(e.target.value)}
-                      placeholder="First name"
+                      placeholder={t('settings.profile.firstName') || 'First name'}
                       className="w-full bg-surface-container border border-outline-variant rounded-xl px-4 py-3 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all group-hover:border-outline" 
                     />
                   </div>
                   
                   <div className="space-y-1.5 relative group">
-                    <label className="text-sm font-semibold text-on-surface">Last Name</label>
+                    <label className="text-sm font-semibold text-on-surface">{t('settings.profile.lastName') || 'Last Name'}</label>
                     <input 
                       type="text" 
                       value={lastName} 
                       onChange={(e) => setLastName(e.target.value)}
-                      placeholder="Last name"
+                      placeholder={t('settings.profile.lastName') || 'Last name'}
                       className="w-full bg-surface-container border border-outline-variant rounded-xl px-4 py-3 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all group-hover:border-outline" 
                     />
                   </div>
 
                   <div className="space-y-1.5 relative group md:col-span-2">
-                    <label className="text-sm font-semibold text-on-surface">Email Address</label>
+                    <label className="text-sm font-semibold text-on-surface">{t('settings.profile.email') || 'Email Address'}</label>
                     <input 
                       type="email" 
                       value={user?.email || 'user@example.com'} 
                       disabled 
                       className="w-full bg-surface-container-low border border-outline-variant rounded-xl px-4 py-3 text-on-surface-variant opacity-70 cursor-not-allowed" 
                     />
-                    <p className="text-xs text-on-surface-variant mt-1">Logged in via Firebase Email/Password provider.</p>
-                  </div>
-
-                  <div className="space-y-1.5 relative group md:col-span-2 border-t border-outline-variant/30 pt-6">
-                    <label className="text-sm font-bold text-on-surface flex items-center gap-1.5">
-                      <Key className="w-4 h-4 text-indigo-500" /> Google Gemini API Key
-                    </label>
-                    <input 
-                      type="password" 
-                      value={geminiKey} 
-                      onChange={(e) => setGeminiKey(e.target.value)} 
-                      placeholder="AIzaSy..."
-                      className="w-full bg-surface-container border border-outline-variant rounded-xl px-4 py-3 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all group-hover:border-outline font-mono" 
-                    />
-                    <p className="text-xs text-on-surface-variant mt-1">
-                      Enter your personal Google Gemini API key to generate roadmaps.
-                    </p>
+                    <p className="text-xs text-on-surface-variant mt-1">{t('settings.profile.emailDesc') || 'Logged in via Firebase Email/Password provider.'}</p>
                   </div>
                 </div>
               </div>
@@ -255,14 +254,14 @@ export default function Settings() {
           {activeSection === 'notifications' && (
             <>
               <div className="p-6 md:p-8 border-b border-outline-variant">
-                <h2 className="text-2xl font-bold text-on-surface">Notifications</h2>
-                <p className="text-on-surface-variant mt-1">Manage how and when you receive updates.</p>
+                <h2 className="text-2xl font-bold text-on-surface">{t('settings.nav.notifications') || 'Notifications'}</h2>
+                <p className="text-on-surface-variant mt-1">{t('settings.notifications.subtitle') || 'Manage how and when you receive updates.'}</p>
               </div>
               <div className="p-6 md:p-8 space-y-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="font-semibold text-on-surface text-sm">Course Updates</h4>
-                    <p className="text-xs text-on-surface-variant">Get notified when enrolled courses add new content.</p>
+                    <h4 className="font-semibold text-on-surface text-sm">{t('settings.notifications.course') || 'Course Updates'}</h4>
+                    <p className="text-xs text-on-surface-variant">{t('settings.notifications.courseDesc') || 'Get notified when enrolled courses add new content.'}</p>
                   </div>
                   <button 
                     type="button"
@@ -274,8 +273,8 @@ export default function Settings() {
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="font-semibold text-on-surface text-sm">Marketing Emails</h4>
-                    <p className="text-xs text-on-surface-variant">Receive weekly newsletters and feature updates.</p>
+                    <h4 className="font-semibold text-on-surface text-sm">{t('settings.notifications.marketing') || 'Marketing Emails'}</h4>
+                    <p className="text-xs text-on-surface-variant">{t('settings.notifications.marketingDesc') || 'Receive weekly newsletters and feature updates.'}</p>
                   </div>
                   <button 
                     type="button"
@@ -292,25 +291,25 @@ export default function Settings() {
           {activeSection === 'security' && (
             <>
               <div className="p-6 md:p-8 border-b border-outline-variant">
-                <h2 className="text-2xl font-bold text-on-surface">Security & Privacy</h2>
-                <p className="text-on-surface-variant mt-1">Manage your password and review the privacy policy.</p>
+                <h2 className="text-2xl font-bold text-on-surface">{t('settings.nav.security') || 'Security & Privacy'}</h2>
+                <p className="text-on-surface-variant mt-1">{t('settings.security.subtitle') || 'Manage your password and review the privacy policy.'}</p>
               </div>
               <div className="p-6 md:p-8 space-y-8">
                 <div>
-                  <h3 className="text-sm font-semibold text-on-surface mb-2">Change Password</h3>
-                  <p className="text-xs text-on-surface-variant mb-4">You will receive an email to reset your password.</p>
-                  <button type="button" className="bg-surface-container border border-outline-variant text-on-surface px-4 py-2 rounded-lg text-sm font-semibold hover:bg-surface-container-high transition-colors">
-                    Send Reset Email
+                  <h3 className="text-sm font-semibold text-on-surface mb-2">{t('settings.security.changePass') || 'Change Password'}</h3>
+                  <p className="text-xs text-on-surface-variant mb-4">{t('settings.security.changePassDesc') || 'You will receive an email to reset your password.'}</p>
+                  <button type="button" onClick={handlePasswordReset} className="bg-surface-container border border-outline-variant text-on-surface px-4 py-2 rounded-lg text-sm font-semibold hover:bg-surface-container-high transition-colors">
+                    {t('settings.security.sendReset') || 'Send Reset Email'}
                   </button>
                 </div>
                 <div className="border-t border-outline-variant/30 pt-6">
-                  <h3 className="text-lg font-bold text-on-surface mb-4">Privacy Policy</h3>
+                  <h3 className="text-lg font-bold text-on-surface mb-4">{t('settings.security.privacyTitle') || 'Privacy Policy'}</h3>
                   <div className="bg-surface-container p-6 rounded-xl border border-outline-variant/50 max-h-64 overflow-y-auto text-sm text-on-surface-variant space-y-4">
                     <p><strong>Last Updated: June 16, 2026</strong></p>
-                    <p>Welcome to the AI Learning Roadmap Platform. Your privacy is important to us. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our application.</p>
+                    <p>Welcome to yourway.co. Your privacy is important to us. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our application.</p>
                     <p><strong>1. Information We Collect</strong><br/>We collect personal information that you voluntarily provide to us when you register on the application, express an interest in obtaining information about us or our products and services, when you participate in activities on the application or otherwise when you contact us. This includes your email address, name, and your provided API keys.</p>
                     <p><strong>2. How We Use Your Information</strong><br/>We use personal information collected via our application for a variety of business purposes described below. We process your personal information for these purposes in reliance on our legitimate business interests, in order to enter into or perform a contract with you, with your consent, and/or for compliance with our legal obligations.</p>
-                    <p><strong>3. API Keys</strong><br/>Your Gemini API keys are stored locally in your browser's local storage and are never transmitted to our servers. They are sent directly to Google's Generative AI servers for the sole purpose of generating your personal learning roadmaps.</p>
+                    <p><strong>3. API Keys</strong><br/>Your Groq API keys are stored locally in your browser's local storage and are never transmitted to our servers. They are sent directly to Groq's servers for the sole purpose of generating your personal learning roadmaps.</p>
                   </div>
                 </div>
               </div>
@@ -320,8 +319,8 @@ export default function Settings() {
           {activeSection === 'appearance' && (
             <>
               <div className="p-6 md:p-8 border-b border-outline-variant">
-                <h2 className="text-2xl font-bold text-on-surface">Appearance</h2>
-                <p className="text-on-surface-variant mt-1">Customize the look and feel of your workspace.</p>
+                <h2 className="text-2xl font-bold text-on-surface">{t('settings.appearance.title') || 'Appearance'}</h2>
+                <p className="text-on-surface-variant mt-1">{t('settings.appearance.subtitle') || 'Customize the look and feel of your workspace.'}</p>
               </div>
               <div className="p-6 md:p-8">
                 <div className="flex items-center justify-between bg-surface-container p-4 rounded-xl border border-outline-variant/50">
@@ -330,11 +329,11 @@ export default function Settings() {
                       <Paintbrush className="w-5 h-5 text-primary" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-on-surface text-sm">Dark Mode</h4>
-                      <p className="text-xs text-on-surface-variant">Switch between light and dark themes using the sidebar toggle.</p>
+                      <h4 className="font-semibold text-on-surface text-sm">{t('settings.appearance.darkMode') || 'Dark Mode'}</h4>
+                      <p className="text-xs text-on-surface-variant">{t('settings.appearance.darkModeDesc') || 'Switch between light and dark themes using the sidebar toggle.'}</p>
                     </div>
                   </div>
-                  <p className="text-xs text-secondary italic">Check sidebar for global toggle</p>
+                  <p className="text-xs text-secondary italic">{t('settings.appearance.checkSidebar') || 'Check sidebar for global toggle'}</p>
                 </div>
               </div>
             </>
@@ -391,7 +390,7 @@ export default function Settings() {
                 {saving ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
-                  <><CheckCircle2 className="w-5 h-5" /> Save Changes</>
+                  <><CheckCircle2 className="w-5 h-5" /> {t('settings.profile.saveChanges') || 'Save Changes'}</>
                 )}
               </motion.button>
             </div>

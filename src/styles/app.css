@@ -1,5 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ============================================
-   AI Academy — App Styles
+   yourway.co — App Styles
    ============================================ */
 
 /* ---- MD3 Color Tokens (Light) ---- */
