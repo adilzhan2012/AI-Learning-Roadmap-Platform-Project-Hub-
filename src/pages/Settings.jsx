@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Bell, Shield, Paintbrush, LogOut, CheckCircle2, Loader2, Sparkles, Key, AlertTriangle, X, Globe } from 'lucide-react';
+import { User, Bell, Shield, Paintbrush, LogOut, CheckCircle2, Loader2, Sparkles, Key, AlertTriangle, X, Globe, FileText, ChevronRight } from 'lucide-react';
 import { auth, signOut } from '../firebase.js';
 import { onAuthStateChanged, sendPasswordResetEmail } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { getUserStats, updateUserProfile } from '../services/courseService.js';
 import { t, useLocale, getAvailableLocales, setLocale } from '../i18n.js';
+import LegalDocModal from '../components/shared/LegalDocModal.jsx';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -35,6 +36,7 @@ export default function Settings() {
   const [notifications, setNotifications] = useState(() => localStorage.getItem('prefs_notifications') !== 'false');
   const [marketing, setMarketing] = useState(() => localStorage.getItem('prefs_marketing') === 'true');
   const [activeSection, setActiveSection] = useState('account');
+  const [activeModal, setActiveModal] = useState(null); // 'terms' | 'privacy' | 'cookie' | null
 
   useEffect(() => {
     localStorage.setItem('prefs_notifications', notifications);
@@ -313,12 +315,35 @@ export default function Settings() {
                   </button>
                 </div>
                 <div className="border-t border-outline-variant/30 pt-6">
-                  <h3 className="text-lg font-bold text-on-surface mb-4">{t('settings.security.privacyTitle') || 'Privacy Policy'}</h3>
-                  <div className="bg-surface-container p-6 rounded-xl border border-outline-variant/50 max-h-64 overflow-y-auto text-sm text-on-surface-variant space-y-4">
-                    <p><strong>Last Updated: June 16, 2026</strong></p>
-                    <p>Welcome to yourway.co. Your privacy is important to us. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our application.</p>
-                    <p><strong>1. Information We Collect</strong><br/>We collect personal information that you voluntarily provide to us when you register on the application, express an interest in obtaining information about us or our products and services, when you participate in activities on the application or otherwise when you contact us. This includes your email address and name.</p>
-                    <p><strong>2. How We Use Your Information</strong><br/>We use personal information collected via our application for a variety of business purposes described below. We process your personal information for these purposes in reliance on our legitimate business interests, in order to enter into or perform a contract with you, with your consent, and/or for compliance with our legal obligations.</p>
+                  <h3 className="text-lg font-bold text-on-surface mb-4">
+                    {locale === 'ru' ? 'Правовые документы и приватность' : 'Legal Documents & Privacy'}
+                  </h3>
+                  <p className="text-xs text-on-surface-variant mb-4">
+                    {locale === 'ru' 
+                      ? 'Ознакомьтесь с официальными документами платформы YourWay.co.' 
+                      : 'Review the official documents of the YourWay.co platform.'}
+                  </p>
+                  <div className="flex flex-col gap-3">
+                    {[
+                      { key: 'terms', ru: 'Пользовательское соглашение', en: 'Terms of Service' },
+                      { key: 'privacy', ru: 'Политика конфиденциальности', en: 'Privacy Policy' },
+                      { key: 'cookie', ru: 'Политика файлов Cookie', en: 'Cookie Policy' }
+                    ].map(doc => (
+                      <button
+                        key={doc.key}
+                        type="button"
+                        onClick={() => setActiveModal(doc.key)}
+                        className="flex items-center justify-between bg-surface-container p-4 rounded-xl border border-outline-variant/50 hover:bg-surface-container-high transition-colors text-left"
+                      >
+                        <div className="flex items-center gap-3">
+                          <FileText className="w-5 h-5 text-primary" />
+                          <span className="text-sm font-semibold text-on-surface">
+                            {locale === 'ru' ? doc.ru : doc.en}
+                          </span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-on-surface-variant" />
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -406,6 +431,16 @@ export default function Settings() {
           )}
         </form>
       </motion.div>
+
+      <AnimatePresence>
+        {activeModal && (
+          <LegalDocModal 
+            isOpen={!!activeModal} 
+            onClose={() => setActiveModal(null)} 
+            docKey={activeModal} 
+          />
+        )}
+      </AnimatePresence>
 
     </motion.main>
   );

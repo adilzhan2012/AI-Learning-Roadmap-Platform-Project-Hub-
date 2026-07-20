@@ -5,6 +5,7 @@ import { Sparkles, ArrowLeft, Loader2 } from 'lucide-react';
 import { auth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from '../firebase.js';
 import { getUserStats } from '../services/courseService.js';
 import { t, useLocale } from '../i18n.js';
+import LegalDocModal from '../components/shared/LegalDocModal.jsx';
 
 function getFriendlyErrorMessage(code) {
   switch (code) {
@@ -46,6 +47,8 @@ export default function Auth({ type }) {
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [agreed, setAgreed] = useState(false);
+  const [activeModal, setActiveModal] = useState(null); // 'terms' | 'privacy' | 'cookie' | null
 
   const title = isLogin ? t('auth.welcomeBack') : t('auth.createAccount');
   const subtitle = isLogin ? t('auth.loginSubtitle') : t('auth.registerSubtitle');
@@ -57,6 +60,12 @@ export default function Auth({ type }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    
+    if (!isLogin && !agreed) {
+      setError(locale === 'ru' ? 'Вы должны согласиться с политиками для продолжения.' : 'You must agree to the policies to continue.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -174,10 +183,58 @@ export default function Auth({ type }) {
               placeholder="••••••••" />
           </div>
           
+          {!isLogin && (
+            <div className="flex items-start gap-2.5 mt-2">
+              <input 
+                type="checkbox" 
+                id="agreePolicies" 
+                required 
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-gray-300 dark:border-gray-700 text-blue-600 focus:ring-blue-500 bg-white dark:bg-black cursor-pointer"
+              />
+              <label htmlFor="agreePolicies" className="text-xs text-gray-500 dark:text-gray-400 leading-normal select-none">
+                {locale === 'ru' ? (
+                  <>
+                    Я соглашаюсь с{' '}
+                    <button type="button" onClick={() => setActiveModal('terms')} className="text-blue-600 hover:text-blue-500 underline font-medium">
+                      Условиями использования
+                    </button>
+                    ,{' '}
+                    <button type="button" onClick={() => setActiveModal('privacy')} className="text-blue-600 hover:text-blue-500 underline font-medium">
+                      Политикой конфиденциальности
+                    </button>{' '}
+                    и{' '}
+                    <button type="button" onClick={() => setActiveModal('cookie')} className="text-blue-600 hover:text-blue-500 underline font-medium">
+                      Политикой Cookie
+                    </button>
+                    .
+                  </>
+                ) : (
+                  <>
+                    I agree to the{' '}
+                    <button type="button" onClick={() => setActiveModal('terms')} className="text-blue-600 hover:text-blue-500 underline font-medium">
+                      Terms of Service
+                    </button>
+                    ,{' '}
+                    <button type="button" onClick={() => setActiveModal('privacy')} className="text-blue-600 hover:text-blue-500 underline font-medium">
+                      Privacy Policy
+                    </button>{' '}
+                    and{' '}
+                    <button type="button" onClick={() => setActiveModal('cookie')} className="text-blue-600 hover:text-blue-500 underline font-medium">
+                      Cookie Policy
+                    </button>
+                    .
+                  </>
+                )}
+              </label>
+            </div>
+          )}
+          
           <motion.button 
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            type="submit" disabled={loading}
+            type="submit" disabled={loading || (!isLogin && !agreed)}
             className="w-full py-3 rounded-xl bg-black dark:bg-white text-white dark:text-black font-medium text-lg shadow-lg flex justify-center items-center gap-2 disabled:opacity-70"
           >
             {loading ? (
@@ -195,6 +252,16 @@ export default function Auth({ type }) {
           </Link>
         </p>
       </motion.div>
+
+      <AnimatePresence>
+        {activeModal && (
+          <LegalDocModal 
+            isOpen={!!activeModal} 
+            onClose={() => setActiveModal(null)} 
+            docKey={activeModal} 
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

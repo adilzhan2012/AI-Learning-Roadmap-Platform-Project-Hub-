@@ -3,6 +3,7 @@ import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import Topbar from './Topbar.jsx';
 import { auth } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
+import CookieBanner from './shared/CookieBanner.jsx';
 
 export default function Layout() {
   const [user, setUser] = useState(auth.currentUser);
@@ -34,6 +35,7 @@ export default function Layout() {
     return (
       <div className="w-full h-screen overflow-y-auto">
         <Outlet />
+        <CookieBanner />
       </div>
     );
   }
@@ -44,6 +46,7 @@ export default function Layout() {
       <main id="page-content" className="flex-1 pt-14 overflow-y-auto bg-[#000000] transition-all duration-150 relative w-full max-w-[2000px] mx-auto px-12 md:px-16 pb-12">
         <Outlet />
       </main>
+      <CookieBanner />
     </div>
   );
 }

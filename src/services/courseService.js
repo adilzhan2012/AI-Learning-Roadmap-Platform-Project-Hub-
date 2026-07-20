@@ -423,16 +423,20 @@ export async function getUserStats(userId, additionalData = {}) {
   if (!snap.exists()) {
     // Create default profile if not exists
     const defaultProfile = {
-      firstName: additionalData.firstName || 'Learner',
-      lastName: additionalData.lastName || '',
-      username: additionalData.username || '',
       activeCoursesCount: 0,
       hoursLearned: 0,
       certificatesCount: 0,
       streakDays: 1,
       lastActiveDate: new Date().toISOString()
     };
-    await setDoc(userRef, defaultProfile);
+    
+    // Only write profile fields if they are explicitly provided in additionalData
+    if (additionalData.firstName) defaultProfile.firstName = additionalData.firstName;
+    if (additionalData.lastName) defaultProfile.lastName = additionalData.lastName;
+    if (additionalData.username) defaultProfile.username = additionalData.username;
+    
+    // Use merge to prevent overwriting concurrently created profiles
+    await setDoc(userRef, defaultProfile, { merge: true });
     data = defaultProfile;
   } else {
     data = snap.data();
@@ -459,8 +463,11 @@ export async function getUserStats(userId, additionalData = {}) {
     }
   }
   
-  if (data && !('username' in data)) {
-    data.username = '';
+  // Ensure default values are populated in the returned object for UI stability
+  if (data) {
+    if (!data.firstName) data.firstName = 'Learner';
+    if (!data.lastName) data.lastName = '';
+    if (!data.username) data.username = '';
   }
   // Simple streak calculator logic
   const now = new Date();
