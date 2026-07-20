@@ -8,14 +8,15 @@ import { getUserStats, updateUserProfile } from '../services/courseService.js';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import { useGamification } from '../context/GamificationContext.jsx';
 import { useNavigate } from 'react-router-dom';
+import { useLocale } from '../i18n.js';
 
 const LEAGUES_DATA = [
-  { id: 'silicon', name: 'Кремний', isPro: false, xpRequired: 0, desc: 'Стартовая лига. Понижение невозможно.' },
-  { id: 'graphite', name: 'Графит', isPro: false, xpRequired: 500, desc: 'Лига для активных студентов. Требуется стабильность.' },
-  { id: 'quartz', name: 'Кварц', isPro: true, xpRequired: 1500, desc: 'Первый элитный уровень. Доступна с подпиской Pro.' },
-  { id: 'obsidian', name: 'Обсидиан', isPro: true, xpRequired: 3000, desc: 'Лига для глубокого погружения. Доступна с подпиской Pro.' },
-  { id: 'platinum', name: 'Платина', isPro: true, xpRequired: 5000, desc: 'Лига экспертов. Доступна с подпиской Pro.' },
-  { id: 'titan', name: 'Титан', isPro: true, xpRequired: 10000, desc: 'Легендарная вершина. Высший соревновательный уровень.' }
+  { id: 'silicon', nameRu: 'Кремний', nameEn: 'Silicon', isPro: false, xpRequired: 0, descRu: 'Стартовая лига. Понижение невозможно.', descEn: 'Starting league. Demotion is not possible.' },
+  { id: 'graphite', nameRu: 'Графит', nameEn: 'Graphite', isPro: false, xpRequired: 500, descRu: 'Лига для активных студентов. Требуется стабильность.', descEn: 'League for active students. Stability is required.' },
+  { id: 'quartz', nameRu: 'Кварц', nameEn: 'Quartz', isPro: true, xpRequired: 1500, descRu: 'Первый элитный уровень. Доступна с подпиской Pro.', descEn: 'First elite level. Available with Pro subscription.' },
+  { id: 'obsidian', nameRu: 'Обсидиан', nameEn: 'Obsidian', isPro: true, xpRequired: 3000, descRu: 'Лига для глубокого погружения. Доступна с подпиской Pro.', descEn: 'Deep immersion league. Available with Pro subscription.' },
+  { id: 'platinum', nameRu: 'Платина', nameEn: 'Platinum', isPro: true, xpRequired: 5000, descRu: 'Лига экспертов. Доступна с подпиской Pro.', descEn: 'Experts league. Available with Pro subscription.' },
+  { id: 'titan', nameRu: 'Титан', nameEn: 'Titan', isPro: true, xpRequired: 10000, descRu: 'Легендарная вершина. Высший соревновательный уровень.', descEn: 'Legendary peak. Ultimate competitive level.' }
 ];
 
 export function LeagueIcon({ leagueId, className = "w-5 h-5" }) {
@@ -73,6 +74,7 @@ export function LeagueIcon({ leagueId, className = "w-5 h-5" }) {
 
 export default function Leagues() {
   const navigate = useNavigate();
+  const locale = useLocale();
   const { plan } = usePlanLimits();
   const { showLeagueToast } = useGamification();
   const [user, setUser] = useState(auth.currentUser);
@@ -113,6 +115,7 @@ export default function Leagues() {
                 name: data.username || data.firstName || 'Learner',
                 avatar: (data.username || data.firstName || 'L').charAt(0).toUpperCase(),
                 weeklyXP: data.weeklyXP || 0,
+                currentLeague: data.currentLeague || 'silicon',
                 isCurrentUser: false
               });
             }
@@ -141,7 +144,7 @@ export default function Leagues() {
       
       const diff = endOfWeek - now;
       if (diff <= 0) {
-        setTimeLeft('Лига завершена');
+        setTimeLeft(locale === 'ru' ? 'Лига завершена' : 'League ended');
         return;
       }
       
@@ -150,7 +153,10 @@ export default function Leagues() {
       const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const secs = Math.floor((diff % (1000 * 60)) / 1000);
       
-      setTimeLeft(`${days}д ${hours}ч ${mins}м ${secs}с`);
+      setTimeLeft(locale === 'ru' 
+        ? `${days}д ${hours}ч ${mins}м ${secs}с` 
+        : `${days}d ${hours}h ${mins}m ${secs}s`
+      );
     };
 
     updateTimer();
@@ -161,10 +167,15 @@ export default function Leagues() {
   // 3. Trigger motivation toast on mount as requested in specifications
   useEffect(() => {
     if (!loading && stats) {
-      const lgName = LEAGUES_DATA.find(l => l.id === stats.currentLeague)?.name || 'Кварц';
+      const lg = LEAGUES_DATA.find(l => l.id === stats.currentLeague);
+      const lgName = locale === 'ru' ? (lg?.nameRu || 'Кварц') : (lg?.nameEn || 'Quartz');
       setTimeout(() => {
         if (showLeagueToast) {
-          showLeagueToast(`Ещё 40 очков, чтобы остаться в лиге ${lgName}`);
+          showLeagueToast(
+            locale === 'ru'
+              ? `Ещё 40 очков, чтобы остаться в лиге ${lgName}`
+              : `40 more XP to stay in the ${lgName} league`
+          );
         }
       }, 1500);
     }
@@ -172,9 +183,9 @@ export default function Leagues() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-[#000000] text-[#F5F5F7] gap-4 font-sans">
-        <Loader2 className="w-8 h-8 animate-spin text-[#FFFFFF]" />
-        <p className="text-sm font-medium">Загрузка лиг...</p>
+      <div className="flex flex-col items-center justify-center h-screen bg-background text-on-background gap-4 font-sans">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-sm font-medium">{locale === 'ru' ? 'Загрузка лиг...' : 'Loading leagues...'}</p>
       </div>
     );
   }
@@ -183,44 +194,10 @@ export default function Leagues() {
   const activeUserLeague = stats?.currentLeague || 'quartz';
   const selectedLeague = LEAGUES_DATA.find(l => l.id === selectedLeagueId) || LEAGUES_DATA[2];
 
-  // Helper to generate seed-based mock leaderboard of 29 participants
-  const generateMockLeaderboard = (leagueId) => {
-    const list = [...dbUsers];
-    const names = [
-      'Alexander', 'Elena', 'Dmitry', 'Maria', 'Ivan', 'Olga', 'Maxim', 'Anna', 
-      'Sergey', 'Tatiana', 'Andrey', 'Natalia', 'Alexey', 'Svetlana', 'Roman', 
-      'Irina', 'Vladislav', 'Yulia', 'Artem', 'Marina', 'Pavel', 'Ekaterina', 
-      'Denis', 'Galina', 'Egor', 'Vera', 'Kirill', 'Nadezhda', 'Anton'
-    ];
-    
-    // Seed generator
-    let seed = leagueId.charCodeAt(0) + leagueId.charCodeAt(1) || 42;
-    const random = () => {
-      const x = Math.sin(seed++) * 10000;
-      return x - Math.floor(x);
-    };
-
-    // Base XP bounds per league
-    let minXP = 20;
-    let maxXP = 200;
-    if (leagueId === 'graphite') { minXP = 60; maxXP = 380; }
-    if (leagueId === 'quartz') { minXP = 120; maxXP = 550; }
-    if (leagueId === 'obsidian') { minXP = 250; maxXP = 800; }
-    if (leagueId === 'platinum') { minXP = 400; maxXP = 1200; }
-    if (leagueId === 'titan') { minXP = 600; maxXP = 2000; }
-
-    // Pad with mock users up to 29
-    while (list.length < 29) {
-      const name = names[list.length % names.length];
-      const xp = Math.round(minXP + random() * (maxXP - minXP));
-      list.push({
-        id: `mock-user-${list.length}`,
-        name,
-        avatar: name.charAt(0).toUpperCase(),
-        weeklyXP: xp,
-        isCurrentUser: false
-      });
-    }
+  // Helper to generate real leaderboard of participants in the selected league
+  const generateLeaderboard = (leagueId) => {
+    // Filter dbUsers by currentLeague === leagueId
+    const list = dbUsers.filter(u => (u.currentLeague || 'silicon') === leagueId);
 
     // Insert current user in their active league
     if (leagueId === activeUserLeague) {
@@ -229,6 +206,7 @@ export default function Leagues() {
         name: stats?.username || stats?.firstName || 'Learner',
         avatar: (stats?.username || stats?.firstName || 'L').charAt(0).toUpperCase(),
         weeklyXP: stats?.weeklyXP || 0,
+        currentLeague: activeUserLeague,
         isCurrentUser: true
       });
     }
@@ -237,7 +215,7 @@ export default function Leagues() {
     return list.sort((a, b) => b.weeklyXP - a.weeklyXP);
   };
 
-  const leaderboard = generateMockLeaderboard(selectedLeagueId);
+  const leaderboard = generateLeaderboard(selectedLeagueId);
   const currentUserIndex = leaderboard.findIndex(u => u.isCurrentUser);
   const currentUserRank = currentUserIndex !== -1 ? currentUserIndex + 1 : null;
 
@@ -245,27 +223,36 @@ export default function Leagues() {
   const isUserInPromotionZone = currentUserRank && currentUserRank <= 6;
   const isFreePlanBlocked = plan === 'FREE' && selectedLeagueId === 'graphite' && isUserInPromotionZone;
 
+  const isRu = locale === 'ru';
+  const selectedLeagueName = isRu ? selectedLeague.nameRu : selectedLeague.nameEn;
+
   return (
-    <div className="max-w-[2000px] mx-auto min-h-[calc(100vh-4.5rem)] text-[#F5F5F7] font-sans p-4 md:p-6 space-y-8">
+    <div className="max-w-[2000px] mx-auto min-h-[calc(100vh-4.5rem)] text-on-surface font-sans p-4 md:p-6 space-y-8">
       {/* Header section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[rgba(255,255,255,0.06)] pb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-outline-variant pb-6">
         <div>
-          <h1 className="text-4xl font-bold font-clash text-white flex items-center gap-3">
-            Лиги
+          <h1 className="text-4xl font-bold font-clash text-on-background flex items-center gap-3">
+            {isRu ? 'Лиги' : 'Leagues'}
           </h1>
           <div className="flex items-center gap-2 mt-2">
-            <div className="p-1 rounded bg-[#2C2C2E]/40 border border-[rgba(255,255,255,0.06)] text-white">
+            <div className="p-1 rounded bg-surface-container-high/40 border border-outline-variant text-on-surface">
               <LeagueIcon leagueId={activeUserLeague} className="w-4 h-4" />
             </div>
-            <span className="text-sm font-semibold text-white">Ваша лига: {LEAGUES_DATA.find(l => l.id === activeUserLeague)?.name}</span>
+            <span className="text-sm font-semibold text-on-surface">
+              {isRu ? 'Ваша лига' : 'Your league'}: {isRu ? LEAGUES_DATA.find(l => l.id === activeUserLeague)?.nameRu : LEAGUES_DATA.find(l => l.id === activeUserLeague)?.nameEn}
+            </span>
           </div>
           {stats?.demotionProtected && activeUserLeague === selectedLeagueId && (
-            <p className="text-[11px] text-[#8E8E93] mt-1">Защита от понижения активна на этой неделе</p>
+            <p className="text-[11px] text-on-surface-variant mt-1">
+              {isRu ? 'Защита от понижения активна на этой неделе' : 'Demotion protection is active this week'}
+            </p>
           )}
         </div>
-        <div className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.06)] rounded-xl px-4 py-2 text-right">
-          <p className="text-[10px] text-[#8E8E93] uppercase tracking-wider">До конца недели</p>
-          <p className="text-sm font-mono font-semibold tabular-nums text-white mt-0.5">{timeLeft}</p>
+        <div className="bg-surface-container border border-outline-variant rounded-xl px-4 py-2 text-right">
+          <p className="text-[10px] text-on-surface-variant uppercase tracking-wider">
+            {isRu ? 'До конца недели' : 'Until end of week'}
+          </p>
+          <p className="text-sm font-mono font-semibold tabular-nums text-on-surface mt-0.5">{timeLeft}</p>
         </div>
       </div>
 
@@ -274,22 +261,24 @@ export default function Leagues() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] border-l-[4px] border-l-[#FFFFFF] rounded-2xl p-6 flex flex-col md:flex-row gap-6 items-center justify-between shadow-lg"
+          className="bg-surface-container border border-outline border-l-[4px] border-l-primary rounded-2xl p-6 flex flex-col md:flex-row gap-6 items-center justify-between shadow-lg"
         >
           <div className="flex-1 text-left">
-            <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-              <ShieldAlert className="w-4 h-4 text-white" strokeWidth={1.5} />
-              Достигнута граница бесплатного плана
+            <h3 className="text-sm font-bold text-on-surface flex items-center gap-1.5">
+              <ShieldAlert className="w-4 h-4 text-on-surface" strokeWidth={1.5} />
+              {isRu ? 'Достигнута граница бесплатного плана' : 'Free plan limit reached'}
             </h3>
-            <p className="text-xs text-[#98989D] mt-1.5 leading-relaxed max-w-xl">
-              Вы находитесь в зоне продвижения лиги Графит. Чтобы продолжить соревнование и перейти в лигу Кварц на следующей неделе, разблокируйте тариф PRO.
+            <p className="text-xs text-on-surface-variant mt-1.5 leading-relaxed max-w-xl">
+              {isRu 
+                ? 'Вы находитесь в зоне продвижения лиги Графит. Чтобы продолжить соревнование и перейти в лигу Кварц на следующей неделе, разблокируйте тариф PRO.' 
+                : 'You are in the promotion zone of the Graphite league. To continue competing and advance to the Quartz league next week, unlock PRO.'}
             </p>
           </div>
           <button
             onClick={() => navigate('/pricing')}
-            className="bg-white hover:bg-[#E8E8ED] text-black rounded-xl px-5 py-2.5 text-xs font-bold transition-all font-sans whitespace-nowrap self-start md:self-auto"
+            className="bg-primary hover:bg-primary/95 text-on-primary rounded-xl px-5 py-2.5 text-xs font-bold transition-all font-sans whitespace-nowrap self-start md:self-auto"
           >
-            Перейти на Pro
+            {isRu ? 'Перейти на Pro' : 'Upgrade to Pro'}
           </button>
         </motion.div>
       )}
@@ -298,93 +287,113 @@ export default function Leagues() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         {/* Leaderboard Table (2/3 width) */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[20px] overflow-hidden">
-            <div className="p-4 bg-[#2C2C2E]/20 border-b border-[rgba(255,255,255,0.06)] flex items-center justify-between">
-              <span className="text-xs font-semibold text-[#8E8E93]">Лига: {selectedLeague.name}</span>
+          <div className="bg-surface-container border border-outline rounded-[20px] overflow-hidden">
+            <div className="p-4 bg-surface-container-high/20 border-b border-outline-variant flex items-center justify-between">
+              <span className="text-xs font-semibold text-on-surface-variant">
+                {isRu ? 'Лига' : 'League'}: {selectedLeagueName}
+              </span>
               {selectedLeagueId !== activeUserLeague && (
-                <span className="text-[10px] bg-[#2C2C2E]/40 border border-[rgba(255,255,255,0.06)] px-2 py-0.5 rounded text-[#8E8E93]">Режим просмотра</span>
+                <span className="text-[10px] bg-surface-container-high/40 border border-outline-variant px-2 py-0.5 rounded text-on-surface-variant">
+                  {isRu ? 'Режим просмотра' : 'Preview Mode'}
+                </span>
               )}
             </div>
 
-            <div className="divide-y divide-[rgba(255,255,255,0.03)] bg-[#121214] p-2">
-              {leaderboard.map((item, idx) => {
-                const rank = idx + 1;
-                const isPromotionZoneBorder = rank === 6;
-                const isDemotionZoneBorder = rank === 24;
-                
-                return (
-                  <React.Fragment key={item.id}>
-                    <div
-                      className={`flex items-center justify-between p-3.5 rounded-[12px] transition-all ${
-                        item.isCurrentUser
-                          ? 'bg-[#1C1C1E] border-[1.5px] border-[#FFFFFF] font-bold shadow-md z-10 relative'
-                          : 'hover:bg-white/[0.02]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-4">
-                        {/* Position (Tabular numbers) */}
-                        <span className={`w-6 text-center font-mono tabular-nums text-xs ${
-                          rank <= 3 ? 'text-sm font-bold text-white' : 'text-[#8E8E93]'
-                        }`}>
-                          {rank}
-                        </span>
-
-                        {/* Avatar */}
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border ${
+            <div className="divide-y divide-outline-variant/30 bg-surface-container-low p-2">
+              {leaderboard.length === 0 ? (
+                <div className="p-8 text-center text-on-surface-variant text-sm">
+                  {isRu 
+                    ? 'В этой лиге пока нет участников. Проходите тесты, чтобы занять первое место!' 
+                    : 'No participants in this league yet. Take quizzes to claim the top spot!'}
+                </div>
+              ) : (
+                leaderboard.map((item, idx) => {
+                  const rank = idx + 1;
+                  const isPromotionZoneBorder = rank === 6;
+                  const isDemotionZoneBorder = rank === 24;
+                  
+                  return (
+                    <React.Fragment key={item.id}>
+                      <div
+                        className={`flex items-center justify-between p-3.5 rounded-[12px] transition-all ${
                           item.isCurrentUser
-                            ? 'bg-white text-black border-white'
-                            : 'bg-[#2C2C2E] text-white border-[rgba(255,255,255,0.08)]'
-                        }`}>
-                          {item.avatar}
+                            ? 'bg-surface-container-highest border-[1.5px] border-primary font-bold shadow-md z-10 relative'
+                            : 'hover:bg-on-surface/[0.02]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-4">
+                          {/* Position (Tabular numbers) */}
+                          <span className={`w-6 text-center font-mono tabular-nums text-xs ${
+                            rank <= 3 ? 'text-sm font-bold text-on-surface' : 'text-on-surface-variant'
+                          }`}>
+                            {rank}
+                          </span>
+
+                          {/* Avatar */}
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border ${
+                            item.isCurrentUser
+                              ? 'bg-primary text-on-primary border-primary'
+                              : 'bg-surface-container-high text-on-surface border-outline'
+                          }`}>
+                            {item.avatar}
+                          </div>
+
+                          {/* Name */}
+                          <span className={`text-xs ${
+                            item.isCurrentUser ? 'text-on-surface font-bold' : 'text-on-surface'
+                          }`}>
+                            {item.name} {item.isCurrentUser && (isRu ? ' (Вы)' : ' (You)')}
+                          </span>
                         </div>
 
-                        {/* Name */}
-                        <span className={`text-xs ${
-                          item.isCurrentUser ? 'text-white font-bold' : 'text-[#F5F5F7]'
-                        }`}>
-                          {item.name} {item.isCurrentUser && ' (Вы)'}
+                        {/* XP (Tabular numbers) */}
+                        <span className="font-mono tabular-nums text-xs font-semibold text-on-surface">
+                          {item.weeklyXP} XP
                         </span>
                       </div>
 
-                      {/* XP (Tabular numbers) */}
-                      <span className="font-mono tabular-nums text-xs font-semibold text-white">
-                        {item.weeklyXP} XP
-                      </span>
-                    </div>
+                      {/* Zone markers */}
+                      {isPromotionZoneBorder && (
+                        <div className="py-2.5 px-4 flex items-center gap-4 select-none">
+                          <div className="flex-1 h-[1px] bg-outline/50" />
+                          <span className="text-[10px] font-sans font-medium text-on-surface-variant whitespace-nowrap uppercase tracking-wider">
+                            {isRu ? 'Зона повышения' : 'Promotion zone'}
+                          </span>
+                          <div className="flex-1 h-[1px] bg-outline/50" />
+                        </div>
+                      )}
 
-                    {/* Zone markers */}
-                    {isPromotionZoneBorder && (
-                      <div className="py-2.5 px-4 flex items-center gap-4 select-none">
-                        <div className="flex-1 h-[1px] bg-white/20" />
-                        <span className="text-[10px] font-sans font-medium text-[#8E8E93] whitespace-nowrap uppercase tracking-wider">Зона повышения</span>
-                        <div className="flex-1 h-[1px] bg-white/20" />
-                      </div>
-                    )}
-
-                    {isDemotionZoneBorder && (
-                      <div className="py-2.5 px-4 flex items-center gap-4 select-none">
-                        <div className="flex-1 h-[1px] bg-white/10" />
-                        <span className="text-[10px] font-sans font-medium text-[#8E8E93] whitespace-nowrap uppercase tracking-wider">Зона понижения</span>
-                        <div className="flex-1 h-[1px] bg-white/10" />
-                      </div>
-                    )}
-                  </React.Fragment>
-                );
-              })}
+                      {isDemotionZoneBorder && (
+                        <div className="py-2.5 px-4 flex items-center gap-4 select-none">
+                          <div className="flex-1 h-[1px] bg-outline/30" />
+                          <span className="text-[10px] font-sans font-medium text-on-surface-variant whitespace-nowrap uppercase tracking-wider">
+                            {isRu ? 'Зона понижения' : 'Demotion zone'}
+                          </span>
+                          <div className="flex-1 h-[1px] bg-outline/30" />
+                        </div>
+                      )}
+                    </React.Fragment>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
 
         {/* League Hierarchy Progress Bar (1/3 width) */}
         <div className="space-y-6">
-          <div className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[20px] p-6 space-y-6">
-            <h2 className="text-sm font-bold text-white font-clash uppercase tracking-wider">Иерархия лиг</h2>
+          <div className="bg-surface-container border border-outline rounded-[20px] p-6 space-y-6">
+            <h2 className="text-sm font-bold text-on-surface font-clash uppercase tracking-wider">
+              {isRu ? 'Иерархия лиг' : 'League Hierarchy'}
+            </h2>
             
             <div className="flex flex-col gap-3">
               {LEAGUES_DATA.map((lg) => {
                 const isSelected = selectedLeagueId === lg.id;
                 const isUserActiveLeague = activeUserLeague === lg.id;
                 const isLocked = lg.isPro && plan === 'FREE';
+                const lgName = isRu ? lg.nameRu : lg.nameEn;
+                const lgDesc = isRu ? lg.descRu : lg.descEn;
 
                 return (
                   <div
@@ -398,37 +407,39 @@ export default function Leagues() {
                     }}
                     className={`p-4 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-[#2C2C2E]/60 border-white'
+                        ? 'bg-surface-container-highest border-primary'
                         : isLocked
                         ? 'border-transparent opacity-40 hover:opacity-50'
-                        : 'bg-[#2C2C2E]/20 border-[rgba(255,255,255,0.06)] hover:border-[rgba(255,255,255,0.15)]'
+                        : 'bg-surface-container-low border-outline hover:border-outline-variant/80'
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <div className={`p-1.5 rounded-lg border ${
-                        isSelected ? 'bg-white text-black border-white' : 'bg-[#1C1C1E] text-white border-[rgba(255,255,255,0.08)]'
+                        isSelected ? 'bg-primary text-on-primary border-primary' : 'bg-surface-container text-on-surface border-outline'
                       }`}>
                         <LeagueIcon leagueId={lg.id} className="w-4 h-4" />
                       </div>
                       <div className="text-left">
                         <div className="flex items-center gap-2">
-                          <p className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-[#F5F5F7]'}`}>{lg.name}</p>
+                          <p className={`text-xs font-bold ${isSelected ? 'text-on-surface' : 'text-on-surface'}`}>{lgName}</p>
                           {isUserActiveLeague && (
-                            <span className="text-[9px] font-sans font-bold bg-white text-black px-1.5 py-0.5 rounded uppercase">Вы здесь</span>
+                            <span className="text-[9px] font-sans font-bold bg-primary text-on-primary px-1.5 py-0.5 rounded uppercase">
+                              {isRu ? 'Вы здесь' : 'You are here'}
+                            </span>
                           )}
                         </div>
-                        <p className="text-[10px] text-[#8E8E93] mt-0.5">{lg.desc}</p>
+                        <p className="text-[10px] text-on-surface-variant mt-0.5">{lgDesc}</p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2">
                       {lg.isPro && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#2C2C2E] border border-[rgba(255,255,255,0.08)] text-white uppercase">
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-surface-container-high border border-outline text-on-surface uppercase">
                           Pro
                         </span>
                       )}
                       {isLocked && (
-                        <Lock className="w-3.5 h-3.5 text-[#8E8E93]" strokeWidth={1.5} />
+                        <Lock className="w-3.5 h-3.5 text-on-surface-variant" strokeWidth={1.5} />
                       )}
                     </div>
                   </div>
