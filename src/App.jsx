@@ -16,6 +16,9 @@ import InsightsComponent from './pages/Insights.jsx';
 import SettingsComponent from './pages/Settings.jsx';
 import NotFound from './pages/NotFound.jsx';
 import AchievementsPage from './components/gamification/AchievementsPage.jsx';
+import MentorComponent from './pages/Mentor.jsx';
+import PricingComponent from './pages/Pricing.jsx';
+import LeaguesComponent from './pages/Leagues.jsx';
 
 import { auth } from './firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -40,6 +43,9 @@ function AnimatedRoutes() {
           <Route path="/insights" element={<PageTransition><InsightsComponent /></PageTransition>} />
           <Route path="/settings" element={<PageTransition><SettingsComponent /></PageTransition>} />
           <Route path="/achievements" element={<PageTransition><AchievementsPage /></PageTransition>} />
+          <Route path="/mentor" element={<PageTransition><MentorComponent /></PageTransition>} />
+          <Route path="/pricing" element={<PageTransition><PricingComponent /></PageTransition>} />
+          <Route path="/leagues" element={<PageTransition><LeaguesComponent /></PageTransition>} />
           
           {/* Catch-all 404 */}
           <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />

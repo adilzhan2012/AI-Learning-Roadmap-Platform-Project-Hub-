@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, XCircle, RotateCcw, ArrowRight } from 'lucide-react';
+import { Trophy, XCircle, RotateCcw, ArrowRight, Sparkles } from 'lucide-react';
 
-export default function QuizResults({ score, total, passed, explanations, onRetry, onContinue }) {
+export default function QuizResults({ score, total, passed, explanations, onRetry, onContinue, onAskMentor }) {
   const percentage = Math.round((score / total) * 100);
 
   return (
@@ -42,7 +42,15 @@ export default function QuizResults({ score, total, passed, explanations, onRetr
         {explanations.map((exp, i) => (
           <div key={i} className={`p-4 rounded-xl border ${exp.isCorrect ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
             <p className="font-bold text-sm text-on-surface mb-1">Вопрос {i + 1}: {exp.isCorrect ? 'Верно' : 'Ошибка'}</p>
-            <p className="text-xs text-on-surface-variant">{exp.text}</p>
+            <p className="text-xs text-on-surface-variant mb-2">{exp.text}</p>
+            {!exp.isCorrect && onAskMentor && (
+              <button 
+                onClick={() => onAskMentor(exp.questionText, exp.userAnswer, exp.correctAnswer, exp.text)}
+                className="text-xs text-indigo-500 font-bold hover:underline flex items-center gap-1.5 pt-1"
+              >
+                <Sparkles className="w-3.5 h-3.5 animate-pulse" /> Спросить ментора, почему ошибка
+              </button>
+            )}
           </div>
         ))}
       </div>

@@ -1,32 +1,8 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // User profile rules: Users can only read and write their own profile
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      
-      // Activity log rules: Users can only read and write their own activities
-      match /activities/{activityId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-      
-      // Subscription rules: Users can read, but only admin/backend can write
-      match /subscription/{subDocId} {
-        allow read: if request.auth != null && request.auth.uid == userId;
-        allow write: if false; // Only a secure backend should modify this
-      }
-    }
-
-    // Courses rules: Users can only read, update, or delete courses they own
-    match /courses/{courseId} {
-      allow read, update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-    }
-
-    // Quiz Results rules
-    match /quizResults/{resultId} {
-      allow read, write: if request.auth != null && request.auth.uid == resultId.split('_')[0];
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }

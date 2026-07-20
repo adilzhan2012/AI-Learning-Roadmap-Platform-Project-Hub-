@@ -29,7 +29,7 @@ export default function Settings() {
   // Form State
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [groqKey, setGroqKey] = useState('');
+  const [username, setUsername] = useState('');
   
   // App State
   const [notifications, setNotifications] = useState(() => localStorage.getItem('prefs_notifications') !== 'false');
@@ -60,8 +60,7 @@ export default function Settings() {
           const stats = await getUserStats(currentUser.uid);
           setFirstName(stats.firstName || '');
           setLastName(stats.lastName || '');
-          const savedKey = localStorage.getItem('groq_api_key');
-          if (savedKey) setGroqKey(savedKey);
+          setUsername(stats.username || '');
         } catch (e) {
           console.error("Error loading profile:", e);
         } finally {
@@ -82,7 +81,7 @@ export default function Settings() {
     setSuccessMsg('');
 
     try {
-      await updateUserProfile(user.uid, { firstName, lastName });
+      await updateUserProfile(user.uid, { firstName, lastName, username });
       setSuccessMsg(t('settings.profile.saved'));
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err) {
@@ -237,6 +236,17 @@ export default function Settings() {
                   </div>
 
                   <div className="space-y-1.5 relative group md:col-span-2">
+                    <label className="text-sm font-semibold text-on-surface">{t('settings.profile.username') || 'Nickname / Username'}</label>
+                    <input 
+                      type="text" 
+                      value={username} 
+                      onChange={(e) => setUsername(e.target.value)}
+                      placeholder={t('settings.profile.usernamePlaceholder') || 'Enter your nickname'}
+                      className="w-full bg-surface-container border border-outline-variant rounded-xl px-4 py-3 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all group-hover:border-outline" 
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 relative group md:col-span-2">
                     <label className="text-sm font-semibold text-on-surface">{t('settings.profile.email') || 'Email Address'}</label>
                     <input 
                       type="email" 
@@ -307,9 +317,8 @@ export default function Settings() {
                   <div className="bg-surface-container p-6 rounded-xl border border-outline-variant/50 max-h-64 overflow-y-auto text-sm text-on-surface-variant space-y-4">
                     <p><strong>Last Updated: June 16, 2026</strong></p>
                     <p>Welcome to yourway.co. Your privacy is important to us. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our application.</p>
-                    <p><strong>1. Information We Collect</strong><br/>We collect personal information that you voluntarily provide to us when you register on the application, express an interest in obtaining information about us or our products and services, when you participate in activities on the application or otherwise when you contact us. This includes your email address, name, and your provided API keys.</p>
+                    <p><strong>1. Information We Collect</strong><br/>We collect personal information that you voluntarily provide to us when you register on the application, express an interest in obtaining information about us or our products and services, when you participate in activities on the application or otherwise when you contact us. This includes your email address and name.</p>
                     <p><strong>2. How We Use Your Information</strong><br/>We use personal information collected via our application for a variety of business purposes described below. We process your personal information for these purposes in reliance on our legitimate business interests, in order to enter into or perform a contract with you, with your consent, and/or for compliance with our legal obligations.</p>
-                    <p><strong>3. API Keys</strong><br/>Your Groq API keys are stored locally in your browser's local storage and are never transmitted to our servers. They are sent directly to Groq's servers for the sole purpose of generating your personal learning roadmaps.</p>
                   </div>
                 </div>
               </div>

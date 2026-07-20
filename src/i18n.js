@@ -60,6 +60,8 @@ export function t(key, params = {}) {
     return key;
   }
 
+  const isRawContent = /[\s\u0400-\u04FF]/.test(key) || key.length > 30;
+
   let str = dictionary[key];
   
   if (!str) {
@@ -67,7 +69,9 @@ export function t(key, params = {}) {
     if (currentLocale !== 'en' && localesCache['en'] && localesCache['en'][key]) {
       str = localesCache['en'][key];
     } else {
-      console.warn(`[i18n] Missing translation key: "${key}" for locale: "${currentLocale}"`);
+      if (!isRawContent) {
+        console.warn(`[i18n] Missing translation key: "${key}" for locale: "${currentLocale}"`);
+      }
       return key;
     }
   }

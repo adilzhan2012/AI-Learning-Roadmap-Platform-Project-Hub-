@@ -8,11 +8,24 @@ export const useQuiz = () => {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
 
-  const generateQuiz = useCallback(async (lessonContent) => {
+  const generateQuiz = useCallback(async (roadmapId, nodeId, lessonContent) => {
     setGenerating(true);
     setError('');
     
     try {
+      const userId = auth.currentUser?.uid;
+      if (userId && nodeId) {
+        const quizRef = doc(db, 'users', userId, 'quizResults', nodeId);
+        const quizSnap = await getDoc(quizRef);
+        if (quizSnap.exists()) {
+          const data = quizSnap.data();
+          if (data.questions && data.questions.length > 0) {
+            setGenerating(false);
+            return data.questions;
+          }
+        }
+      }
+
       const apiKey = getGroqApiKey();
       if (!apiKey) throw new Error('MISSING_API_KEY');
 
@@ -72,6 +85,17 @@ IMPORTANT: Return ONLY a valid JSON object without markdown tags or explanations
         throw new Error('Invalid quiz format');
       }
 
+      if (userId && nodeId) {
+        const quizRef = doc(db, 'users', userId, 'quizResults', nodeId);
+        await setDoc(quizRef, {
+          userId,
+          roadmapId,
+          nodeId,
+          questions: parsed.questions,
+          lastGeneratedAt: serverTimestamp()
+        }, { merge: true });
+      }
+
       return parsed.questions;
 
     } catch (err) {
@@ -86,13 +110,30 @@ IMPORTANT: Return ONLY a valid JSON object without markdown tags or explanations
   const saveQuizResult = useCallback(async (roadmapId, nodeId, scorePercent, passed) => {
     if (!auth.currentUser) return;
     try {
+      const userId = auth.currentUser.uid;
+      const docRef = doc(db, 'users', userId, 'quizResults', nodeId);
+      
+      // Get existing attempts to accumulate history
+      const snap = await getDoc(docRef);
+      let attempts = [];
+      if (snap.exists()) {
+        attempts = snap.data().attempts || [];
+      }
+
+      // Add new attempt
+      attempts.push({
+        score: scorePercent,
+        date: new Date().toISOString()
+      });
+
       const COOLDOWN_MINUTES = 10;
       const dataToSave = {
-        userId: auth.currentUser.uid,
+        userId,
         roadmapId,
         nodeId,
         score: scorePercent,
-        attempts: increment(1),
+        attempts, // Array of [{score, date}]
+        attemptsCount: attempts.length,
         lastAttemptAt: serverTimestamp(),
         passed
       };
@@ -103,7 +144,7 @@ IMPORTANT: Return ONLY a valid JSON object without markdown tags or explanations
         dataToSave.cooldownUntil = null;
       }
 
-      await setDoc(doc(db, 'quizResults', `${auth.currentUser.uid}_${nodeId}`), dataToSave, { merge: true });
+      await setDoc(docRef, dataToSave, { merge: true });
     } catch (e) {
       console.error('Failed to save quiz result:', e);
     }
@@ -112,7 +153,7 @@ IMPORTANT: Return ONLY a valid JSON object without markdown tags or explanations
   const checkCooldown = useCallback(async (nodeId) => {
     if (!auth.currentUser) return { allowed: true };
     try {
-      const docRef = doc(db, 'quizResults', `${auth.currentUser.uid}_${nodeId}`);
+      const docRef = doc(db, 'users', auth.currentUser.uid, 'quizResults', nodeId);
       const snap = await getDoc(docRef);
       if (snap.exists()) {
         const data = snap.data();

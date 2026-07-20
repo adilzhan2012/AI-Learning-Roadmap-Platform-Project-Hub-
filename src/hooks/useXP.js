@@ -50,6 +50,7 @@ export const useXP = () => {
 
       const updates = {
         xp: increment(amount),
+        weeklyXP: increment(amount),
         totalXPEarned: increment(amount),
         xpHistory: arrayUnion({
           amount,

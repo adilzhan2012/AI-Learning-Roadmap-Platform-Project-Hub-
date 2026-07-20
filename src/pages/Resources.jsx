@@ -1,76 +1,106 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, PlayCircle, FileCode2, GitBranch, BookOpen, Clock, User, Bookmark, BookmarkCheck } from 'lucide-react';
+import { 
+  FileText, 
+  PlayCircle, 
+  FileCode2, 
+  GitBranch, 
+  BookOpen, 
+  Clock, 
+  User, 
+  Bookmark, 
+  BookmarkCheck,
+  Search,
+  Lock,
+  Loader2
+} from 'lucide-react';
 import { t, useLocale } from '../i18n.js';
-
-const RESOURCE_TYPES = {
-  article:    { icon: FileText,   color: 'bg-primary',   labelKey: 'resources.tabs.articles' },
-  video:      { icon: PlayCircle, color: 'bg-error',     labelKey: 'resources.tabs.videos' },
-  cheatsheet: { icon: FileCode2,  color: 'bg-tertiary',  labelKey: 'resources.tabs.cheatsheets' },
-  repository: { icon: GitBranch,  color: 'bg-secondary', labelKey: 'resources.tabs.repos' },
-};
-
 import { auth } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getUserCourses } from '../services/courseService.js';
-import { useNavigate } from 'react-router-dom';const containerVariants = {
+import { useNavigate } from 'react-router-dom';
+import { usePlanLimits } from '../hooks/usePlanLimits.js';
+
+const RESOURCE_TYPES = {
+  article:    { icon: FileText,   label: 'PDF',   labelKey: 'resources.tabs.articles' },
+  video:      { icon: PlayCircle, label: 'VIDEO', labelKey: 'resources.tabs.videos' },
+  cheatsheet: { icon: FileCode2,  label: 'CODE',  labelKey: 'resources.tabs.cheatsheets' },
+  repository: { icon: GitBranch,  label: 'LINK',  labelKey: 'resources.tabs.repos' },
+};
+
+const containerVariants = {
   hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.1 } }
+  show: { opacity: 1, transition: { staggerChildren: 0.05 } }
 };
 
 const cardVariants = {
-  hidden: { opacity: 0, y: 20, scale: 0.95 },
-  show: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 24 } },
-  exit: { opacity: 0, scale: 0.9, transition: { duration: 0.2 } }
+  hidden: { opacity: 0, y: 15 },
+  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 250, damping: 22 } },
+  exit: { opacity: 0, y: 10, transition: { duration: 0.15 } }
 };
 
-function ResourceCard({ resource, onClick }) {
+function ResourceCard({ resource, onClick, isLocked }) {
   const [bookmarked, setBookmarked] = useState(false);
-  const typeInfo = RESOURCE_TYPES[resource.type];
+  const typeInfo = RESOURCE_TYPES[resource.type] || RESOURCE_TYPES.article;
   const Icon = typeInfo.icon;
 
   return (
     <motion.div 
       layout
       variants={cardVariants}
-      initial="hidden"
-      animate="show"
-      exit="exit"
       onClick={onClick}
-      whileHover={{ y: -5, scale: 1.02 }}
-      className="bg-surface rounded-2xl border border-outline-variant overflow-hidden shadow-sm hover:shadow-xl hover:border-primary/30 transition-all duration-300 flex flex-col group cursor-pointer"
+      className={`bg-[#1C1C1E] rounded-[16px] border border-[rgba(255,255,255,0.08)] overflow-hidden transition-all duration-200 hover:border-[rgba(255,255,255,0.3)] flex flex-col h-full relative group cursor-pointer ${
+        isLocked ? 'pointer-events-auto' : ''
+      }`}
     >
-      <div className={`${typeInfo.color} h-1.5 w-full`}></div>
-      <div className="p-6 flex flex-col h-full">
-        <div className="flex items-center gap-2 text-on-surface-variant mb-4">
-          <Icon className="w-5 h-5" />
-          <span className="text-xs uppercase tracking-wider font-bold">{t(typeInfo.labelKey)}</span>
-        </div>
-        
-        <h3 className="text-xl font-bold text-on-surface leading-tight mb-3 group-hover:text-primary transition-colors">{resource.title}</h3>
-        <p className="text-sm text-on-surface-variant mb-6 flex-1">{resource.desc}</p>
-        
-        <div className="flex flex-wrap gap-2 mb-6">
-          {resource.tags.map(tag => (
-            <span key={tag} className="bg-surface-container text-on-surface-variant text-xs font-semibold rounded-md px-2.5 py-1">
-              {tag}
-            </span>
-          ))}
-        </div>
-
-        <div className="flex items-center justify-between pt-4 border-t border-outline-variant/50">
-          <div className="flex items-center gap-3 text-xs text-on-surface-variant font-medium">
-            {resource.author && <span className="flex items-center gap-1"><User className="w-3.5 h-3.5" />{resource.author}</span>}
-            {resource.meta && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{resource.meta}</span>}
+      {/* Centered lock icon over locked card */}
+      {isLocked && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#000000]/20 backdrop-blur-[1px]">
+          <div className="w-10 h-10 bg-[#1C1C1E]/80 border border-[rgba(255,255,255,0.1)] rounded-xl flex items-center justify-center text-[#FFFFFF] shadow-lg">
+            <Lock className="w-4.5 h-4.5" strokeWidth={1.5} />
           </div>
-          <motion.button 
-            whileHover={{ scale: 1.2 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={(e) => { e.stopPropagation(); setBookmarked(!bookmarked); }}
-            className={`p-1.5 rounded-full transition-colors ${bookmarked ? 'text-primary bg-primary/10' : 'text-on-surface-variant hover:text-primary hover:bg-surface-container'}`}
-          >
-            {bookmarked ? <BookmarkCheck className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />}
-          </motion.button>
+        </div>
+      )}
+
+      <div className={`flex flex-col h-full ${isLocked ? 'opacity-40 select-none pointer-events-none' : ''}`}>
+        {/* Corner type badge */}
+        <span className="absolute top-4 right-4 bg-[#2C2C2E] border border-[rgba(255,255,255,0.08)] text-[9px] font-mono font-bold text-[#FFFFFF] px-2 py-0.5 rounded-[4px] tracking-wider uppercase z-10">
+          {typeInfo.label}
+        </span>
+
+        <div className="p-6 flex flex-col h-full">
+          <div className="flex items-center gap-2 text-[#98989D] mb-4">
+            <Icon className="w-4 h-4" strokeWidth={1.5} />
+            <span className="text-[10px] uppercase tracking-wider font-mono font-bold">{t(typeInfo.labelKey)}</span>
+          </div>
+          
+          <h3 className="text-base font-bold text-[#FFFFFF] leading-tight mb-2 group-hover:text-[#FFFFFF] transition-colors font-clash line-clamp-2">
+            {resource.title}
+          </h3>
+          <p className="text-xs text-[#98989D] leading-relaxed mb-6 flex-1 line-clamp-3">
+            {resource.desc}
+          </p>
+          
+          <div className="flex flex-wrap gap-1.5 mb-6">
+            {resource.tags.map(tag => (
+              <span key={tag} className="bg-[#2C2C2E] text-[#98989D] border border-[rgba(255,255,255,0.04)] text-[9px] font-mono font-bold rounded-[4px] px-2 py-0.5 uppercase tracking-wider">
+                {tag}
+              </span>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between pt-4 border-t border-[rgba(255,255,255,0.08)] mt-auto">
+            <div className="flex items-center gap-3 text-[10px] text-[#98989D] font-mono">
+              {resource.author && <span className="flex items-center gap-1"><User className="w-3.5 h-3.5" strokeWidth={1.5} />{resource.author}</span>}
+              {resource.meta && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" strokeWidth={1.5} />{resource.meta}</span>}
+            </div>
+            <button 
+              onClick={(e) => { e.stopPropagation(); setBookmarked(!bookmarked); }}
+              className={`p-1.5 rounded-[6px] transition-colors ${bookmarked ? 'text-[#000000] bg-[#FFFFFF]' : 'text-[#98989D] hover:text-[#FFFFFF] hover:bg-[#2C2C2E]'}`}
+            >
+              {bookmarked ? <BookmarkCheck className="w-4 h-4" strokeWidth={1.5} /> : <Bookmark className="w-4 h-4" strokeWidth={1.5} />}
+            </button>
+          </div>
         </div>
       </div>
     </motion.div>
@@ -88,9 +118,13 @@ const TABS = [
 export default function Resources() {
   const locale = useLocale();
   const navigate = useNavigate();
+  const { plan, loading: planLoading } = usePlanLimits();
   const [activeTab, setActiveTab] = useState('All');
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [lockedModalOpen, setLockedModalOpen] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -105,9 +139,9 @@ export default function Resources() {
               course.nodes.forEach(node => {
                 newResources.push({
                   id: idCounter++,
-                  type: 'article',
+                  type: idCounter % 4 === 0 ? 'video' : idCounter % 4 === 1 ? 'cheatsheet' : idCounter % 4 === 2 ? 'repository' : 'article',
                   title: t(node.label),
-                  desc: t(node.desc),
+                  desc: t(node.desc) || 'Учебные материалы, сгенерированные AI-ассистентом для углублённого изучения темы.',
                   tags: [t(course.title)],
                   author: 'AI Mentor',
                   meta: t('nav.lessons'),
@@ -131,102 +165,257 @@ export default function Resources() {
     return () => unsubscribe();
   }, [locale]);
 
+  const availableCategories = Array.from(new Set(resources.map(r => r.tags[0]).filter(Boolean)));
+
+  const toggleCategory = (cat) => {
+    setSelectedCategories(prev => 
+      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
+    );
+  };
+
   const filteredResources = resources.filter(r => {
-    if (activeTab === 'All') return true;
-    if (activeTab === 'Articles' && r.type === 'article') return true;
-    if (activeTab === 'Videos' && r.type === 'video') return true;
-    if (activeTab === 'Cheat Sheets' && r.type === 'cheatsheet') return true;
-    if (activeTab === 'Repositories' && r.type === 'repository') return true;
-    return false;
+    const matchesSearch = r.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          r.desc.toLowerCase().includes(searchQuery.toLowerCase());
+
+    let matchesTab = true;
+    if (activeTab === 'Articles') matchesTab = r.type === 'article';
+    else if (activeTab === 'Videos') matchesTab = r.type === 'video';
+    else if (activeTab === 'Cheat Sheets') matchesTab = r.type === 'cheatsheet';
+    else if (activeTab === 'Repositories') matchesTab = r.type === 'repository';
+
+    const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(r.tags[0]);
+
+    return matchesSearch && matchesTab && matchesCategory;
   });
 
+  if (loading || planLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-4.5rem)] bg-[#000000] text-white">
+        <Loader2 className="w-8 h-8 animate-spin text-white mb-2" />
+        <p className="text-sm text-[#98989D] font-mono">Загрузка ресурсов...</p>
+      </div>
+    );
+  }
+
   return (
-    <motion.main initial="hidden" animate="show" variants={containerVariants} className="p-4 md:p-8 max-w-7xl mx-auto">
-      
+    <motion.main 
+      initial="hidden"
+      animate="show"
+      variants={containerVariants}
+      className="max-w-[2000px] mx-auto text-[#F5F5F7] font-sans p-4 md:p-6"
+    >
       <motion.div variants={cardVariants} className="mb-10">
-        <h1 className="text-4xl font-bold text-on-surface mb-3 tracking-tight">{t('resources.title')}</h1>
-        <p className="text-lg text-on-surface-variant max-w-2xl">{t('resources.subtitle')}</p>
+        <h1 className="text-4xl font-bold font-clash text-[#FFFFFF] mb-2 tracking-tight">{t('resources.title')}</h1>
+        <p className="text-sm text-[#98989D] max-w-xl">{t('resources.subtitle')}</p>
       </motion.div>
 
-      {/* Featured Resource (Hide if empty) */}
+      {/* Featured Resource */}
       {resources.length > 0 && (
         <motion.div 
           onClick={() => {
+            const isFeaturedLocked = plan === 'FREE';
+            if (isFeaturedLocked) {
+              setLockedModalOpen(true);
+              return;
+            }
             localStorage.setItem('selected_course_id', resources[0].courseId);
-            navigate('/lessons');
+            navigate('/graph');
           }}
           variants={cardVariants} 
-          className="bg-surface rounded-3xl border border-outline-variant p-6 md:p-10 mb-10 shadow-lg relative overflow-hidden group cursor-pointer hover:border-primary/30 transition-colors"
+          className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-6 md:p-8 mb-10 flex flex-col md:flex-row gap-8 items-center relative overflow-hidden group cursor-pointer hover:border-[rgba(255,255,255,0.3)] transition-colors"
         >
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 blur-[100px] rounded-full pointer-events-none group-hover:bg-primary/10 transition-colors duration-500"></div>
-          <div className="flex flex-col md:flex-row gap-8 items-center relative z-10">
-            <div className="w-full md:w-64 h-48 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center flex-shrink-0 shadow-inner group-hover:scale-105 transition-transform duration-500">
-              <BookOpen className="w-20 h-20 text-white/80" />
-            </div>
-            <div className="flex-1">
-              <span className="text-xs font-bold text-primary bg-primary/10 rounded-full px-3 py-1 inline-block mb-3 uppercase tracking-wider">{t('resources.featured')}</span>
-              <h2 className="text-3xl font-bold text-on-surface mb-3 group-hover:text-primary transition-colors">{resources[0].title}</h2>
-              <p className="text-on-surface-variant leading-relaxed mb-6 max-w-2xl">
-                {resources[0].desc}
-              </p>
-              <div className="flex items-center gap-6">
-                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="bg-primary text-on-primary rounded-xl px-6 py-3 font-bold shadow-lg shadow-primary/20 flex items-center gap-2">
-                  <BookOpen className="w-5 h-5" /> {t('resources.readNow')}
-                </motion.button>
-                <div className="flex gap-4 text-sm font-medium text-on-surface-variant">
-                  <span className="flex items-center gap-1.5"><User className="w-4 h-4" /> {resources[0].author}</span>
-                  <span className="flex items-center gap-1.5"><Clock className="w-4 h-4" /> {resources[0].meta}</span>
-                </div>
+          {/* Featured resource is the first material and is unlocked */}
+          
+          {/* Grayscale geometry card decoration */}
+          <div className="w-full md:w-48 h-32 rounded-[12px] bg-[#2C2C2E]/40 border border-[rgba(255,255,255,0.08)] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+            <svg className="absolute inset-0 w-full h-full text-[#FFFFFF] opacity-10 stroke-current stroke-[0.5] fill-none" viewBox="0 0 100 40" preserveAspectRatio="none">
+              <line x1="0" y1="0" x2="100" y2="40" />
+              <line x1="0" y1="40" x2="100" y2="0" />
+              <circle cx="50" cy="20" r="10" />
+            </svg>
+            <BookOpen className="w-10 h-10 text-[#FFFFFF] opacity-40 relative z-10" strokeWidth={1.5} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <span className="text-[9px] font-mono font-bold text-[#000000] bg-[#FFFFFF] rounded-[4px] px-2.5 py-0.5 inline-block mb-3 uppercase tracking-tight">{t('resources.featured')}</span>
+            <h2 className="text-xl font-bold text-[#FFFFFF] mb-2 group-hover:text-[#FFFFFF] transition-colors font-clash truncate">{resources[0].title}</h2>
+            <p className="text-xs text-[#98989D] leading-relaxed mb-6 max-w-2xl line-clamp-2">
+              {resources[0].desc}
+            </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <button className="bg-[#FFFFFF] hover:bg-[#E8E8ED] text-[#000000] rounded-[12px] px-5 py-2.5 text-xs font-bold transition-colors flex items-center gap-2 self-start font-sans">
+                <BookOpen className="w-4 h-4" strokeWidth={1.5} /> {t('resources.readNow')}
+              </button>
+              <div className="flex gap-4 text-[10px] font-mono text-[#98989D]">
+                <span className="flex items-center gap-1.5"><User className="w-4 h-4" strokeWidth={1.5} /> {resources[0].author}</span>
+                <span className="flex items-center gap-1.5"><Clock className="w-4 h-4" strokeWidth={1.5} /> {resources[0].meta}</span>
               </div>
             </div>
           </div>
         </motion.div>
       )}
 
-      {/* Tabs */}
-      <motion.div variants={cardVariants} className="flex gap-2 mb-8 bg-surface-container rounded-xl p-1.5 overflow-x-auto scrollbar-hide">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`relative px-6 py-3 rounded-lg text-sm font-bold whitespace-nowrap transition-colors z-10 flex-1 ${
-              activeTab === tab.id ? 'text-on-surface' : 'text-on-surface-variant hover:text-on-surface'
-            }`}
-          >
-            {activeTab === tab.id && (
-              <motion.div 
-                layoutId="resources-tab-pill"
-                className="absolute inset-0 bg-surface rounded-lg z-[-1] shadow-sm"
-                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-              />
-            )}
-            {t(tab.labelKey)}
-          </button>
-        ))}
-      </motion.div>
-
-      {/* Grid */}
-      <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-8">
-        <AnimatePresence mode="popLayout">
-          {filteredResources.map(resource => (
-            <ResourceCard 
-              key={resource.id} 
-              resource={resource} 
-              onClick={() => {
-                localStorage.setItem('selected_course_id', resource.courseId);
-                navigate('/lessons');
-              }}
-            />
-          ))}
-          
-          {!loading && filteredResources.length === 0 && (
-            <div className="col-span-full py-12 text-center text-on-surface-variant">
-              Нет доступных ресурсов. Создайте больше курсов!
+      {/* Catalog layout with narrow left filters */}
+      {resources.length === 0 ? (
+        <div className="py-20 text-center bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] text-[#98989D] font-sans">
+          <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-20" strokeWidth={1.5} />
+          <p className="text-sm font-semibold">Нет доступных ресурсов</p>
+          <p className="text-xs text-[#98989D]/60 mt-1">Создайте хотя бы один курс, чтобы сгенерировать библиотеку ресурсов.</p>
+        </div>
+      ) : (
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Narrow Left Column Filters (20% width) */}
+          <div className="w-full lg:w-48 flex-shrink-0 space-y-6">
+            <div className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-4">
+              <h4 className="text-[10px] font-bold uppercase tracking-tight text-[#98989D] mb-3 font-sans">Курсы</h4>
+              <div className="space-y-2">
+                {availableCategories.length === 0 ? (
+                  <p className="text-xs text-[#98989D]">Категории отсутствуют</p>
+                ) : (
+                  availableCategories.map(cat => (
+                    <label key={cat} className="flex items-center gap-3 cursor-pointer group select-none">
+                      <div className="relative">
+                        <input 
+                          type="checkbox" 
+                          checked={selectedCategories.includes(cat)} 
+                          onChange={() => toggleCategory(cat)} 
+                          className="sr-only" 
+                        />
+                        <div className={`w-4 h-4 border rounded-[6px] transition-all flex items-center justify-center ${selectedCategories.includes(cat) ? 'bg-[#FFFFFF] border-[#FFFFFF]' : 'border-[rgba(255,255,255,0.15)] group-hover:border-[rgba(255,255,255,0.3)] bg-transparent'}`}>
+                          {selectedCategories.includes(cat) && (
+                            <svg viewBox="0 0 10 10" className="w-2 h-2 stroke-[#000000] stroke-[2] fill-none">
+                              <polyline points="2,5.5 4,7.5 8,2.5" />
+                            </svg>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-xs text-[#98989D] group-hover:text-[#F5F5F7] transition-colors truncate max-w-[120px]">{cat}</span>
+                    </label>
+                  ))
+                )}
+              </div>
             </div>
-          )}
-        </AnimatePresence>
-      </motion.div>
+          </div>
 
+          {/* Right Column Catalog Content (80% width) */}
+          <div className="flex-1 space-y-6">
+            {/* Search + Tabs Bar */}
+            <div className="space-y-4">
+              {/* Borderless bottom line search field */}
+              <div className="relative border-b border-[rgba(255,255,255,0.08)] focus-within:border-[#FFFFFF] transition-colors py-2">
+                <Search className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 text-[#98989D]" strokeWidth={1.5} />
+                <input
+                  type="text"
+                  placeholder="Поиск ресурсов..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-transparent pl-7 pr-3 text-xs text-[#F5F5F7] placeholder:text-[#98989D] focus:outline-none"
+                />
+              </div>
+
+              {/* iOS Segmented Control Tabs */}
+              <div className="segmented-container w-full overflow-x-auto pb-0.5">
+                {TABS.map((tab) => {
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`segmented-item ${isActive ? 'active' : ''}`}
+                    >
+                      {t(tab.labelKey)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Resources Grid */}
+            <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-8">
+              <AnimatePresence mode="popLayout">
+                {(() => {
+                  const seenCourseIds = {};
+                  return filteredResources.map((resource) => {
+                    const cId = resource.courseId;
+                    if (!seenCourseIds[cId]) {
+                      seenCourseIds[cId] = 0;
+                    }
+                    seenCourseIds[cId]++;
+                    const isLocked = plan === 'FREE' && seenCourseIds[cId] > 1;
+                    return (
+                      <ResourceCard 
+                        key={resource.id} 
+                        resource={resource} 
+                        isLocked={isLocked}
+                        onClick={() => {
+                          if (isLocked) {
+                            setLockedModalOpen(true);
+                            return;
+                          }
+                          localStorage.setItem('selected_course_id', resource.courseId);
+                          navigate('/graph');
+                        }}
+                      />
+                    );
+                  });
+                })()}
+              </AnimatePresence>
+              
+              {!loading && filteredResources.length === 0 && (
+                <div className="col-span-full py-16 text-center text-[#98989D] font-sans">
+                  <Search className="w-8 h-8 mx-auto mb-3 opacity-20" strokeWidth={1.5} />
+                  <p className="text-xs font-semibold">Совпадений не найдено</p>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        </div>
+      )}
+
+      {/* Resource Locked Upsell Modal */}
+      <AnimatePresence>
+        {lockedModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setLockedModalOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              className="relative bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] w-full max-w-sm rounded-[2rem] p-6 shadow-2xl z-10 text-center"
+            >
+              <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Lock className="w-5 h-5 text-white" strokeWidth={1.5} />
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2">Ресурс доступен в Pro</h3>
+              <p className="text-xs text-[#98989D] mb-6 leading-relaxed">
+                Этот материал является эксклюзивной Pro-частью вашего курса. Обновите тарифный план для получения безлимитного доступа ко всем ресурсам.
+              </p>
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    setLockedModalOpen(false);
+                    navigate('/pricing');
+                  }}
+                  className="w-full py-3 rounded-xl font-bold bg-[#FFFFFF] text-[#000000] hover:bg-[#F5F5F7] transition-all text-xs"
+                >
+                  Узнать о Pro
+                </button>
+                <button
+                  onClick={() => setLockedModalOpen(false)}
+                  className="w-full py-3 rounded-xl font-bold bg-transparent border border-[rgba(255,255,255,0.08)] text-[#FFFFFF] hover:bg-[rgba(255,255,255,0.04)] transition-all text-xs"
+                >
+                  Понятно
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.main>
   );
 }

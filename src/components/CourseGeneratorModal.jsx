@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Sparkles, Loader2, X, ChevronDown, ChevronUp, Settings } from 'lucide-react';
+import { Brain, Sparkles, Loader2, X, ChevronDown, ChevronUp, Settings, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { generateCourseAndSave, getGroqApiKey } from '../services/courseService.js';
 import { t } from '../i18n.js';
@@ -64,7 +64,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
     } catch (err) {
       console.error(err);
       if (err.message === 'MISSING_API_KEY') {
-        setGenError('Groq API Key is missing. Please set it in Settings.');
+        setGenError(t('settings.profile.apiKeyMissing'));
       } else if (err.message === 'API_OVERLOADED') {
         setGenError('The Groq API is currently experiencing extremely high demand. Please try again in a few minutes.');
       } else {
@@ -266,11 +266,51 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
       )}
     </AnimatePresence>
     
-    <UpgradeModal 
-      isOpen={isUpgradeModalOpen} 
-      onClose={() => setUpgradeModalOpen(false)} 
-      onUpgrade={() => alert("Backend payment integration is pending.")} 
-    />
+    <AnimatePresence>
+      {isUpgradeModalOpen && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setUpgradeModalOpen(false)}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            className="relative bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] w-full max-w-sm rounded-[2rem] p-6 shadow-2xl z-10 text-center"
+          >
+            <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-5 h-5 text-white" strokeWidth={1.5} />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2">Достигнут лимит генераций</h3>
+            <p className="text-xs text-[#98989D] mb-6 leading-relaxed">
+              Вы исчерпали лимит генерации дорожных карт (максимум 2 курса на бесплатном тарифе). Перейдите на тариф Pro для безлимитной генерации.
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  setUpgradeModalOpen(false);
+                  onClose();
+                  navigate('/pricing');
+                }}
+                className="w-full py-3 rounded-xl font-bold bg-[#FFFFFF] text-[#000000] hover:bg-[#F5F5F7] transition-all text-xs"
+              >
+                Перейти на Pro
+              </button>
+              <button
+                onClick={() => setUpgradeModalOpen(false)}
+                className="w-full py-3 rounded-xl font-bold bg-transparent border border-[rgba(255,255,255,0.08)] text-[#FFFFFF] hover:bg-[rgba(255,255,255,0.04)] transition-all text-xs"
+              >
+                Понятно
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
     </>
   );
 }

@@ -13,12 +13,13 @@ import {
   Lightbulb
 } from 'lucide-react';
 import { t } from '../../i18n.js';
+import { useNavigate } from 'react-router-dom';
 import { useXP } from '../../hooks/useXP.js';
 import { useQuiz } from '../../hooks/useQuiz.js';
 import { usePlanLimits } from '../../hooks/usePlanLimits.js';
 import QuizModal from '../quiz/QuizModal.jsx';
 import UpgradeModal from '../shared/UpgradeModal.jsx';
-import { generateLessonContent, updateNodeStatus, generateELI5Content, generateRealWorldExample } from '../../services/courseService.js';
+import { generateLessonContent, updateNodeStatus, generateELI5Content, generateRealWorldExample, updateNodeFields } from '../../services/courseService.js';
 import ReactMarkdown from 'react-markdown';
 import Flashcard from './Flashcard.jsx';
 
@@ -28,8 +29,10 @@ export default function LessonPanel({
   onClose,
   onNodeUpdated, // Callback when node content is generated or status changes to completed
   isZenMode,
-  toggleZenMode
+  toggleZenMode,
+  onQuizComplete
 }) {
+  const navigate = useNavigate();
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState('');
   const { addXP } = useXP();
@@ -83,7 +86,7 @@ export default function LessonPanel({
     } catch (err) {
       console.error(err);
       if (err.message === 'MISSING_API_KEY') {
-        setGenError('Gemini API Key is missing. Please set it in Settings.');
+        setGenError(t('settings.profile.apiKeyMissing'));
       } else {
         setGenError(err.message || 'Failed to generate lesson content. Please try again.');
       }
@@ -106,7 +109,7 @@ export default function LessonPanel({
       return;
     }
 
-    const questions = await generateQuiz(selectedNode.content);
+    const questions = await generateQuiz(selectedCourse.id, selectedNode.id, selectedNode.content);
     if (questions) {
       await incrementUsage('ai_question');
       setQuizData(questions);
@@ -118,6 +121,10 @@ export default function LessonPanel({
     setQuizOpen(false);
     
     await saveQuizResult(selectedCourse.id, selectedNode.id, score, passed);
+    
+    if (onQuizComplete) {
+      onQuizComplete();
+    }
     
     if (passed) {
       addXP(25, 'Пройден квиз');
@@ -153,6 +160,7 @@ export default function LessonPanel({
       const updatedNode = { ...selectedNode, eli5Content: simplified };
       onNodeUpdated(updatedNode);
       setIsELI5(true);
+      await updateNodeFields(selectedCourse.id, selectedNode.id, { eli5Content: simplified });
     } catch (e) {
       console.error(e);
       setGenError('Не удалось упростить текст.');
@@ -173,6 +181,7 @@ export default function LessonPanel({
       const updatedNode = { ...selectedNode, insight: generatedInsight };
       onNodeUpdated(updatedNode);
       setInsight(generatedInsight);
+      await updateNodeFields(selectedCourse.id, selectedNode.id, { insight: generatedInsight });
     } catch (e) {
       console.error(e);
       setGenError('Не удалось сгенерировать пример.');
@@ -353,6 +362,12 @@ export default function LessonPanel({
         onClose={() => setQuizOpen(false)} 
         questions={quizData} 
         onComplete={handleQuizComplete} 
+        onAskMentor={(questionText, userAnswer, correctAnswer, explanation) => {
+          setQuizOpen(false);
+          onClose(); // Close lesson panel
+          sessionStorage.setItem('mentor_initial_prompt', `Я прохожу тест по теме "${selectedNode.label}". Я ошибся в вопросе:\n"${questionText}"\nМой ответ: "${userAnswer}"\nПравильный ответ: "${correctAnswer}"\nПояснение: "${explanation}"\n\nОбъясни мне, пожалуйста, простыми словами, почему мой ответ неверный и как правильно рассуждать в этом случае.`);
+          navigate('/mentor');
+        }}
       />
 
       <UpgradeModal 

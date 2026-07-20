@@ -79,7 +79,9 @@ export default {
         "container-max": "1200px"
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"]
+        sans: ["General Sans", "Inter", "system-ui", "-apple-system", "sans-serif"],
+        clash: ["Clash Display", "sans-serif"],
+        mono: ["JetBrains Mono", "monospace"]
       },
       fontSize: {
         "display-lg": ["48px", { lineHeight: "1.1", letterSpacing: "-0.02em", fontWeight: "700" }],

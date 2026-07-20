@@ -1,83 +1,330 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Trophy, Lock } from 'lucide-react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Lock, ChevronDown, ChevronUp, Trophy } from 'lucide-react';
 import { ACHIEVEMENTS } from '../../constants/achievements.js';
 import { useAchievements } from '../../hooks/useAchievements.js';
+import { usePlanLimits } from '../../hooks/usePlanLimits.js';
+import { useNavigate } from 'react-router-dom';
+
+const CATEGORIES = [
+  { id: 'all', label: 'Все' },
+  { id: 'start', label: 'Начало пути' },
+  { id: 'learning', label: 'Обучение' },
+  { id: 'quiz', label: 'Тесты' },
+  { id: 'roadmaps', label: 'Roadmaps' },
+  { id: 'ai', label: 'AI' },
+  { id: 'streaks', label: 'Стрики' },
+  { id: 'xp', label: 'XP' },
+];
+
+const getCategoryIcon = (category, isUnlocked) => {
+  const colorClass = isUnlocked ? 'text-[#FFFFFF]' : 'text-[#636366]';
+  switch (category) {
+    case 'start':
+    case 'learning':
+      return (
+        <svg className={`w-8 h-8 ${colorClass}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+        </svg>
+      );
+    case 'quiz':
+      return (
+        <svg className={`w-8 h-8 ${colorClass}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+          <circle cx="12" cy="12" r="10" />
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01" />
+        </svg>
+      );
+    case 'streaks':
+      return (
+        <svg className={`w-8 h-8 ${colorClass}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+          <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5Z" />
+        </svg>
+      );
+    case 'roadmaps':
+      return (
+        <svg className={`w-8 h-8 ${colorClass}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+          <path d="M9 18l6-6-6-6" />
+          <circle cx="12" cy="12" r="10" />
+        </svg>
+      );
+    default:
+      return (
+        <svg className={`w-8 h-8 ${colorClass}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+          <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.45 1-1 1H4v2h16v-2h-5c-.55 0-1-.45-1-1v-2.34M12 2a4 4 0 0 0-4 4v5c0 2.2 1.8 4 4 4s4-1.8 4-4V6a4 4 0 0 0-4-4Z" />
+        </svg>
+      );
+  }
+};
 
 export default function AchievementsPage() {
+  const navigate = useNavigate();
+  const { plan } = usePlanLimits();
   const { unlockedAchievements } = useAchievements();
+  const [showAll, setShowAll] = useState(false);
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [activeMainTab, setActiveMainTab] = useState('achievements'); // 'achievements' | 'leagues'
 
   const unlockedCount = Object.keys(unlockedAchievements).length;
   const totalCount = ACHIEVEMENTS.length;
   const progress = Math.round((unlockedCount / totalCount) * 100) || 0;
 
+  // Filter only unlocked achievements for the summary view
+  const unlockedList = ACHIEVEMENTS.filter(ach => !!unlockedAchievements[ach.id]);
+
+  // Filter full list by active category
+  const filteredAchievements = activeCategory === 'all'
+    ? ACHIEVEMENTS
+    : ACHIEVEMENTS.filter(ach => ach.category === activeCategory);
+
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto min-h-[calc(100vh-4rem)]">
+    <div className="max-w-[2000px] mx-auto min-h-[calc(100vh-4.5rem)] text-[#F5F5F7] font-sans p-4 md:p-6">
+      {/* Header */}
       <div className="mb-8">
-        <h1 className="text-4xl font-black text-on-surface mb-2 flex items-center gap-3">
-          <Trophy className="w-10 h-10 text-amber-500" />
-          Мои достижения
+        <h1 className="text-4xl font-bold font-clash text-[#FFFFFF] mb-2 flex items-center">
+          Достижения и Лиги
         </h1>
-        <p className="text-on-surface-variant text-lg">Выполняйте задания и получайте ценные награды (XP) за свои успехи!</p>
+        <p className="text-[#98989D] text-sm">Выполняйте задания, набирайте XP и продвигайтесь в элитные лиги обучения!</p>
       </div>
 
-      <div className="bg-surface border border-outline-variant rounded-2xl p-6 mb-10 shadow-lg flex items-center gap-6">
-        <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center flex-shrink-0">
-          <span className="text-3xl font-black text-amber-500">{progress}%</span>
-        </div>
-        <div className="flex-1">
-          <h2 className="text-xl font-bold text-on-surface mb-2">Общий прогресс</h2>
-          <div className="w-full h-3 bg-surface-container-high rounded-full overflow-hidden">
-            <motion.div 
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 1, type: 'spring' }}
-              className="h-full bg-gradient-to-r from-amber-400 to-amber-500"
-            />
-          </div>
-          <p className="text-sm font-bold text-on-surface-variant mt-2 text-right">
-            Разблокировано: {unlockedCount} из {totalCount}
-          </p>
+      {/* Segmented Period Toggle (iOS Style) */}
+      <div className="flex mb-8">
+        <div className="relative bg-[#1C1C1E] p-1 rounded-full flex items-center border border-[rgba(255,255,255,0.06)] shadow-inner">
+          <button
+            onClick={() => setActiveMainTab('achievements')}
+            className={`px-5 py-2 text-xs font-semibold rounded-full transition-all leading-none ${
+              activeMainTab === 'achievements' ? 'text-[#000000] bg-[#FFFFFF] shadow-sm' : 'text-[#98989D] hover:text-[#FFFFFF]'
+            }`}
+          >
+            Достижения ({unlockedCount}/{totalCount})
+          </button>
+          <button
+            onClick={() => setActiveMainTab('leagues')}
+            className={`px-5 py-2 text-xs font-semibold rounded-full transition-all leading-none ${
+              activeMainTab === 'leagues' ? 'text-[#000000] bg-[#FFFFFF] shadow-sm' : 'text-[#98989D] hover:text-[#FFFFFF]'
+            }`}
+          >
+            Лиги обучения
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {ACHIEVEMENTS.map(ach => {
-          const isUnlocked = !!unlockedAchievements[ach.id];
-          return (
-            <motion.div 
-              key={ach.id}
-              whileHover={isUnlocked ? { scale: 1.02, y: -2 } : {}}
-              className={`p-6 rounded-2xl border transition-all relative overflow-hidden ${
-                isUnlocked 
-                  ? 'bg-surface border-amber-500/30 shadow-lg' 
-                  : 'bg-surface-container border-outline-variant/50 opacity-60 grayscale'
-              }`}
-            >
-              {isUnlocked && (
-                <div className="absolute -right-4 -top-4 w-20 h-20 bg-amber-500/10 rounded-full blur-xl" />
-              )}
-              <div className="flex items-start justify-between mb-4 relative z-10">
-                <div className={`text-5xl filter ${isUnlocked ? 'drop-shadow-md' : 'opacity-50'}`}>
-                  {ach.icon}
-                </div>
-                {!isUnlocked && <Lock className="w-6 h-6 text-on-surface-variant" />}
+      {activeMainTab === 'achievements' && (
+        <>
+          {/* Progress Card */}
+          <div className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-6 mb-8 flex flex-col sm:flex-row items-center gap-6">
+            <div className="w-20 h-20 bg-[#2C2C2E]/50 border border-[rgba(255,255,255,0.08)] rounded-[12px] flex items-center justify-center flex-shrink-0">
+              <span className="text-2xl font-bold font-mono text-[#FFFFFF]">{progress}%</span>
+            </div>
+            <div className="flex-1 w-full">
+              <h2 className="text-sm font-bold text-[#F5F5F7] mb-2 font-clash">Общий прогресс разблокировки</h2>
+              <div className="w-full h-[3px] bg-[#2C2C2E] border border-[rgba(255,255,255,0.04)] rounded-sm overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ duration: 1 }}
+                  className="h-full bg-[#FFFFFF]"
+                />
               </div>
-              <h3 className={`text-lg font-black mb-1 ${isUnlocked ? 'text-on-surface' : 'text-on-surface-variant'}`}>
-                {ach.title}
-              </h3>
-              <p className="text-sm text-on-surface-variant mb-4 min-h-[40px] leading-snug">
-                {ach.description}
+              <p className="text-[10px] font-bold text-[#98989D] mt-2 text-right">
+                Разблокировано: <span className="font-mono">{unlockedCount}</span> из <span className="font-mono">{totalCount}</span>
               </p>
-              <div className={`inline-block px-3 py-1 rounded-lg text-xs font-bold ${
-                isUnlocked ? 'bg-amber-500/10 text-amber-500' : 'bg-on-surface/5 text-on-surface-variant'
-              }`}>
-                +{ach.xpReward} XP
+            </div>
+          </div>
+
+          {/* Unlocked Achievements Highlight Grid (Summary Section) */}
+          <div className="mb-10">
+            <h2 className="text-xs font-bold uppercase tracking-tight text-[#636366] mb-6 font-sans">
+              Разблокированные достижения
+            </h2>
+            
+            {unlockedList.length === 0 ? (
+              <div className="p-8 text-center bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px]">
+                <p className="text-sm font-semibold text-[#98989D]">Вы пока не разблокировали ни одного достижения</p>
+                <p className="text-xs text-[#98989D]/60 mt-1">Начните проходить уроки, создавать курсы и выполнять тесты, чтобы открыть их!</p>
               </div>
-            </motion.div>
-          );
-        })}
-      </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {unlockedList.slice(0, 6).map(ach => (
+                  <motion.div 
+                    key={ach.id}
+                    whileHover={{ y: -2 }}
+                    className="p-6 rounded-[16px] border bg-[#1C1C1E] border-[#FFFFFF] relative overflow-hidden flex flex-col justify-between"
+                  >
+                    <div className="flex items-start justify-between mb-4 relative z-10">
+                      <div className="text-3xl">
+                        {getCategoryIcon(ach.category, true)}
+                      </div>
+                      <span className="text-[9px] font-mono font-bold bg-[#2C2C2E] border border-[rgba(255,255,255,0.08)] text-[#FFFFFF] px-2 py-0.5 rounded-[4px] uppercase tracking-tight">Открыто</span>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold mb-1 text-[#FFFFFF] font-clash">
+                        {ach.title}
+                      </h3>
+                      <p className="text-xs text-[#98989D] mb-4 min-h-[32px] leading-snug">
+                        {ach.description}
+                      </p>
+                    </div>
+                    <div className="inline-block self-start px-2 py-0.5 rounded-[4px] text-[10px] font-bold font-mono bg-[#2C2C2E] text-[#FFFFFF] border border-[rgba(255,255,255,0.08)]">
+                      +{ach.xpReward} XP
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+
+            {unlockedList.length > 6 && (
+              <p className="text-xs text-[#98989D] mt-4 text-center font-sans">
+                И еще <span className="font-mono">{unlockedList.length - 6}</span> разблокированных достижений в полном списке.
+              </p>
+            )}
+          </div>
+
+          {/* Button to Open All Achievements */}
+          <div className="flex justify-center mb-10 border-t border-[rgba(255,255,255,0.08)] pt-8">
+            <button
+              onClick={() => setShowAll(!showAll)}
+              className="flex items-center gap-2 bg-[#FFFFFF] hover:bg-[#E8E8ED] text-[#000000] font-bold px-8 py-3.5 rounded-[12px] text-xs transition-colors font-sans"
+            >
+              {showAll ? 'Скрыть список всех достижений' : 'Открыть полный список достижений'}
+              {showAll ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
+            </button>
+          </div>
+
+          {/* Grouped Category View (Show All) */}
+          <AnimatePresence>
+            {showAll && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                transition={{ duration: 0.15 }}
+                className="space-y-6"
+              >
+                {/* Category Tabs */}
+                <div className="flex overflow-x-auto pb-3 gap-2 scrollbar-thin">
+                  {CATEGORIES.map(cat => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setActiveCategory(cat.id)}
+                      className={`px-4 py-2 rounded-[8px] font-bold text-xs whitespace-nowrap border transition-all ${
+                        activeCategory === cat.id
+                          ? 'bg-[#FFFFFF] border-[#FFFFFF] text-[#000000]'
+                          : 'bg-[#1C1C1E] border-[rgba(255,255,255,0.08)] text-[#98989D] hover:text-[#F5F5F7] hover:bg-[#2C2C2E]'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Achievements Grid */}
+                <motion.div 
+                  layout
+                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                >
+                  {filteredAchievements.map(ach => {
+                    const isUnlocked = !!unlockedAchievements[ach.id];
+                    return (
+                      <motion.div 
+                        layout
+                        key={ach.id}
+                        className={`p-6 rounded-[16px] border transition-all flex flex-col justify-between ${
+                          isUnlocked 
+                            ? 'bg-[#1C1C1E] border-[#FFFFFF] opacity-100' 
+                            : 'bg-[#1C1C1E]/30 border-[rgba(255,255,255,0.04)] opacity-25'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="text-3xl">
+                            {getCategoryIcon(ach.category, isUnlocked)}
+                          </div>
+                          {!isUnlocked && (
+                            <div className="p-1.5 bg-[#2C2C2E] border border-[rgba(255,255,255,0.08)] rounded-[6px]">
+                              <Lock className="w-3.5 h-3.5 text-[#98989D]" strokeWidth={1.5} />
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <h3 className={`text-sm font-bold mb-1 font-clash ${isUnlocked ? 'text-[#FFFFFF]' : 'text-[#636366]'}`}>
+                            {ach.title}
+                          </h3>
+                          <p className="text-xs text-[#98989D] mb-4 min-h-[32px] leading-snug">
+                            {ach.description}
+                          </p>
+                        </div>
+                        <div className={`inline-block self-start px-2 py-0.5 rounded-[4px] text-[10px] font-bold font-mono border ${
+                          isUnlocked 
+                            ? 'bg-[#2C2C2E] text-[#FFFFFF] border-[rgba(255,255,255,0.08)]' 
+                            : 'bg-transparent text-[#98989D] border-transparent'
+                        }`}>
+                          +{ach.xpReward} XP
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </>
+      )}
+
+      {activeMainTab === 'leagues' && (
+        <div className="space-y-6 max-w-2xl mx-auto">
+          <div className="text-center mb-8">
+            <h2 className="text-xl font-bold font-clash text-[#FFFFFF]">Лиги обучения</h2>
+            <p className="text-[#98989D] text-xs mt-1">Проходите уроки, зарабатывайте XP и продвигайтесь по лигам.</p>
+          </div>
+
+          <div className="space-y-4">
+            {[
+              { id: 'bronze', name: 'Бронзовая лига', desc: 'Начальная лига для всех участников. Стартовая площадка для вашего обучения.', xp: '0 XP', isPro: false },
+              { id: 'silver', name: 'Серебряная лига', desc: 'Лига для активных студентов. Требует регулярного закрепления знаний.', xp: '500 XP', isPro: false },
+              { id: 'gold', name: 'Золотая лига', desc: 'Высшая лига бесплатного плана. Требует глубокого погружения в темы.', xp: '1500 XP', isPro: false },
+              { id: 'diamond', name: 'Алмазная лига', desc: 'Элитная лига для профессионалов. Доступна только с Pro-подпиской.', xp: '5000 XP', isPro: true },
+              { id: 'master', name: 'Лига Магистров', desc: 'Легендарный уровень. Для настоящих мастеров своего дела с Pro-подпиской.', xp: '10000 XP', isPro: true },
+            ].map((lg) => {
+              const isLgLocked = lg.isPro && plan === 'FREE';
+              return (
+                <div
+                  key={lg.id}
+                  onClick={() => {
+                    if (isLgLocked) {
+                      navigate('/pricing');
+                    }
+                  }}
+                  className={`bg-[#1C1C1E] rounded-2xl p-6 flex items-center justify-between border ${
+                    isLgLocked 
+                      ? 'border-transparent opacity-40 hover:opacity-50 transition-opacity cursor-pointer' 
+                      : 'border-[rgba(255,255,255,0.06)] hover:border-[rgba(255,255,255,0.15)] transition-colors'
+                  }`}
+                >
+                  <div className="flex-1 min-w-0 pr-4">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <h4 className="font-bold text-base text-white">{lg.name}</h4>
+                      {lg.isPro && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#2C2C2E] border border-[rgba(255,255,255,0.08)] text-white uppercase tracking-wider">
+                          Pro
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-[#98989D] leading-relaxed max-w-md">{lg.desc}</p>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-mono font-bold text-[#8E8E93] bg-[#2C2C2E]/40 border border-[rgba(255,255,255,0.04)] px-2.5 py-1 rounded-[6px]">
+                      {lg.xp}
+                    </span>
+                    {isLgLocked && (
+                      <Lock className="w-4 h-4 text-[#8E8E93]" strokeWidth={1.5} />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

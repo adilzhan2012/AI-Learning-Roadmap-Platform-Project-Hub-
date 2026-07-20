@@ -17,19 +17,16 @@ import {
 } from 'firebase/firestore';
 import { getLocale } from '../i18n.js';
 
-// Helper to get Groq API Key (tries localStorage first, then env)
+// Helper to get Groq API Key (uses env variable directly for monetization billing model)
 export function getGroqApiKey() {
-  const localKey = localStorage.getItem('groq_api_key');
-  if (localKey && localKey.trim() !== '') {
-    return localKey.trim();
-  }
   return import.meta.env.VITE_GROQ_API_KEY || '';
 }
 
 // Retry helper with exponential backoff and model fallback for 503/429/404 errors
-export async function callGroqWithRetry(apiKey, prompt, maxRetries = 5) {
+export async function callGroqWithRetry(apiKey, prompt, modelNameOverride = null, maxRetries = 5) {
   let lastError;
-  const modelsToTry = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"];
+  const defaultModels = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"];
+  const modelsToTry = modelNameOverride ? [modelNameOverride, ...defaultModels.filter(m => m !== modelNameOverride)] : defaultModels;
   
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     for (const modelName of modelsToTry) {
@@ -99,7 +96,7 @@ export async function callGroqWithRetry(apiKey, prompt, maxRetries = 5) {
   throw new Error(`Groq API error: ${finalErrMsg}`);
 }
 
-// 1. Generate Course using Gemini API (or Groq)
+// 1. Generate Course using Groq API
 export async function generateCourseAndSave(userId, topic, level, preferences = {}) {
   const apiKey = getGroqApiKey();
   if (!apiKey) {
@@ -345,7 +342,7 @@ export async function updateNodeStatus(courseId, nodeId, newStatus) {
   const userId = course.userId;
 
   if (newStatus === 'completed') {
-    const quizResultSnap = await getDoc(doc(db, 'quizResults', `${userId}_${nodeId}`));
+    const quizResultSnap = await getDoc(doc(db, 'users', userId, 'quizResults', nodeId));
     if (!quizResultSnap.exists() || !quizResultSnap.data().passed) {
       throw new Error('Quiz must be passed before marking lesson complete');
     }
@@ -418,14 +415,17 @@ export async function updateNodeStatus(courseId, nodeId, newStatus) {
 }
 
 // 5. User statistics and profile management
-export async function getUserStats(userId) {
+export async function getUserStats(userId, additionalData = {}) {
   const userRef = doc(db, 'users', userId);
   const snap = await getDoc(userRef);
+  let data;
+  
   if (!snap.exists()) {
     // Create default profile if not exists
     const defaultProfile = {
-      firstName: 'Learner',
-      lastName: '',
+      firstName: additionalData.firstName || 'Learner',
+      lastName: additionalData.lastName || '',
+      username: additionalData.username || '',
       activeCoursesCount: 0,
       hoursLearned: 0,
       certificatesCount: 0,
@@ -433,10 +433,35 @@ export async function getUserStats(userId) {
       lastActiveDate: new Date().toISOString()
     };
     await setDoc(userRef, defaultProfile);
-    return defaultProfile;
+    data = defaultProfile;
+  } else {
+    data = snap.data();
+    
+    // If the document already exists but additionalData was provided (e.g. from a concurrent registration call),
+    // update the document to ensure the student's registration details are saved.
+    if (Object.keys(additionalData).length > 0) {
+      const updates = {};
+      if (additionalData.firstName && (!data.firstName || data.firstName === 'Learner')) {
+        updates.firstName = additionalData.firstName;
+        data.firstName = additionalData.firstName;
+      }
+      if (additionalData.lastName && !data.lastName) {
+        updates.lastName = additionalData.lastName;
+        data.lastName = additionalData.lastName;
+      }
+      if (additionalData.username && !data.username) {
+        updates.username = additionalData.username;
+        data.username = additionalData.username;
+      }
+      if (Object.keys(updates).length > 0) {
+        await updateDoc(userRef, updates);
+      }
+    }
   }
   
-  const data = snap.data();
+  if (data && !('username' in data)) {
+    data.username = '';
+  }
   // Simple streak calculator logic
   const now = new Date();
   const lastActive = data.lastActiveDate ? new Date(data.lastActiveDate) : null;
@@ -499,12 +524,9 @@ export async function logActivity(userId, title, iconName, colorClass) {
 // 7. Get Recent Activities
 export async function getRecentActivities(userId, maxLimit = 5) {
   const activitiesCol = collection(db, 'users', userId, 'activities');
-  const snap = await getDocs(activitiesCol); // Since SDK query constraints are simple, sort in JS
-  const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  
-  return docs
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-    .slice(0, maxLimit);
+  const q = query(activitiesCol, orderBy('timestamp', 'desc'), limit(maxLimit));
+  const snap = await getDocs(q);
+  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
 
 export async function generateELI5Content(originalContent) {
@@ -547,4 +569,21 @@ CRITICAL INSTRUCTION: Respond entirely in ${languageName}.`;
   const textResponse = await callGroqWithRetry(apiKey, prompt);
   if (!textResponse) throw new Error('Empty response from Groq API');
   return textResponse.trim();
+}
+
+export async function updateNodeFields(courseId, nodeId, fields) {
+  const docRef = doc(db, 'courses', courseId);
+  const snap = await getDoc(docRef);
+  if (!snap.exists()) throw new Error('Course not found');
+  
+  const courseData = snap.data();
+  const updatedNodes = courseData.nodes.map(node => {
+    if (String(node.id) === String(nodeId)) {
+      return { ...node, ...fields };
+    }
+    return node;
+  });
+  
+  await updateDoc(docRef, { nodes: updatedNodes });
+  return { ...courseData, id: courseId, nodes: updatedNodes };
 }

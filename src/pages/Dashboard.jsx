@@ -14,7 +14,8 @@ import {
   Activity, 
   Brain, 
   Sparkles, 
-  Loader2
+  Loader2,
+  Lock
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase.js';
@@ -27,20 +28,22 @@ import {
 import CourseGeneratorModal from '../components/CourseGeneratorModal.jsx';
 import RepeatReminder from '../components/shared/RepeatReminder.jsx';
 import { t, useLocale } from '../i18n.js';
+import { usePlanLimits } from '../hooks/usePlanLimits.js';
+import { LeagueIcon } from './Leagues.jsx';
 
 const staggerContainer = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1
+      staggerChildren: 0.05
     }
   }
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
+  hidden: { opacity: 0, y: 15 },
+  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 250, damping: 22 } }
 };
 
 const iconMap = {
@@ -66,7 +69,7 @@ function AnimatedNumber({ value }) {
     }
     if (start === end) return;
 
-    const totalDuration = 1000;
+    const totalDuration = 800;
     let incrementTime = (totalDuration / end) * 2;
     if (incrementTime < 10) incrementTime = 10;
 
@@ -82,21 +85,25 @@ function AnimatedNumber({ value }) {
     return () => clearInterval(timer);
   }, [value]);
 
-  return <span>{count}</span>;
+  return <span className="font-mono">{count}</span>;
 }
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const locale = useLocale();
+  const { plan, loading: planLoading } = usePlanLimits();
   const [user, setUser] = useState(auth.currentUser);
   const [stats, setStats] = useState({
     activeCoursesCount: 0,
     hoursLearned: 0,
     certificatesCount: 0,
     streakDays: 1,
-    firstName: 'Premium',
-    lastName: 'Learner'
+    firstName: '',
+    lastName: '',
+    currentLeague: 'quartz',
+    weeklyXP: 0
   });
+  const [timeLeft, setTimeLeft] = useState('');
   const [courses, setCourses] = useState([]);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -130,241 +137,435 @@ export default function Dashboard() {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    const updateTimer = () => {
+      const now = new Date();
+      const endOfWeek = new Date();
+      endOfWeek.setDate(now.getDate() + (7 - now.getDay() || 7) % 7);
+      endOfWeek.setHours(23, 59, 59, 999);
+      
+      const diff = endOfWeek - now;
+      if (diff <= 0) {
+        setTimeLeft('Лига завершена');
+        return;
+      }
+      
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const secs = Math.floor((diff % (1000 * 60)) / 1000);
+      
+      setTimeLeft(`${days}д ${hours}ч ${mins}м ${secs}с`);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-background text-on-surface gap-4">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="text-sm font-medium tracking-wide">{t('insights.loading')}</p>
+      <div className="flex flex-col items-center justify-center h-screen bg-[#000000] text-[#F5F5F7] gap-4 font-sans">
+        <Loader2 className="w-8 h-8 animate-spin text-[#FFFFFF]" />
+        <p className="text-sm font-medium">{t('insights.loading')}</p>
       </div>
     );
   }
-
-  const statCards = [
-    { icon: BookOpen, label: t('dashboard.stats.courses'), value: stats.activeCoursesCount || 0, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-    { icon: Clock, label: t('dashboard.stats.hours'), value: stats.hoursLearned || 0, color: 'text-purple-500', bg: 'bg-purple-500/10' },
-    { icon: Award, label: t('dashboard.stats.certs'), value: stats.certificatesCount || 0, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-    { icon: Flame, label: t('dashboard.stats.streak'), value: stats.streakDays || 1, color: 'text-orange-500', bg: 'bg-orange-500/10' },
-  ];
 
   return (
     <motion.div 
       initial="hidden"
       animate="show"
       variants={staggerContainer}
-      className="p-4 md:p-8 max-w-7xl mx-auto space-y-8"
+      className="max-w-[2000px] mx-auto space-y-8 text-[#F5F5F7] font-sans"
     >
       <RepeatReminder />
-      {/* Hero Banner */}
+
+      {/* Hero Banner with large abstract Apple Visual */}
       <motion.div 
         variants={itemVariants}
-        className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-indigo-900 via-purple-900 to-black p-8 md:p-12 shadow-2xl border border-white/10"
+        className="relative overflow-hidden rounded-[16px] bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] p-8 md:p-12"
       >
-        <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] bg-blue-500/20 blur-[100px] rounded-full pointer-events-none"></div>
-        
-        <div className="relative z-10 max-w-2xl">
-          <motion.h1 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight"
-          >
-            {t('dashboard.welcome', { name: stats.firstName || 'Learner' })} <motion.span animate={{ rotate: [0, 14, -8, 14, -4, 10, 0] }} transition={{ repeat: Infinity, duration: 2.5, repeatDelay: 1 }} className="inline-block origin-bottom-right">👋</motion.span>
-          </motion.h1>
-          <p className="text-lg text-white/70 mb-8 font-light">
-            {t('dashboard.streakDesc', { streak: stats.streakDays || 1 })}
-          </p>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowGenModal(true)}
-            className="bg-white text-black px-6 py-3 rounded-full font-semibold flex items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:bg-neutral-100 transition-colors"
-          >
-            <Sparkles className="w-5 h-5 text-indigo-600 fill-indigo-600" /> {t('dashboard.generateCourse')}
-          </motion.button>
+        <div className="flex flex-col md:flex-row justify-between items-center gap-8 relative z-10">
+          <div className="flex-1 max-w-2xl">
+            <motion.h1 
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 }}
+              className="text-4xl md:text-[56px] font-bold text-[#FFFFFF] mb-4 tracking-tight leading-none font-clash"
+            >
+              {t('dashboard.welcome', { name: stats.firstName || 'Learner' })}
+            </motion.h1>
+            <p className="text-sm text-[#98989D] mb-8 leading-relaxed">
+              {t('dashboard.streakDesc', { streak: stats.streakDays || 1 })}
+            </p>
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowGenModal(true)}
+              className="bg-[#FFFFFF] hover:bg-[#E8E8ED] text-[#000000] px-6 py-3 rounded-[12px] font-bold text-xs transition-colors"
+            >
+              {t('dashboard.generateCourse')}
+            </motion.button>
+          </div>
+          {/* Detailed abstract geometric mesh (35-40% width) */}
+          <div className="w-[35%] max-w-[280px] aspect-square flex-shrink-0 hidden md:block select-none">
+            <svg viewBox="0 0 200 200" className="w-full h-full text-[#FFFFFF] opacity-30 stroke-current stroke-[0.5] fill-none overflow-visible">
+              <defs>
+                <linearGradient id="appleHeroGrad" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.6" />
+                  <stop offset="50%" stopColor="#8E8E93" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="#1C1C1E" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <circle cx="100" cy="100" r="90" stroke="url(#appleHeroGrad)" />
+              <circle cx="100" cy="100" r="70" stroke="url(#appleHeroGrad)" />
+              <circle cx="100" cy="100" r="50" stroke="url(#appleHeroGrad)" />
+              <circle cx="100" cy="100" r="30" stroke="url(#appleHeroGrad)" />
+              <circle cx="100" cy="100" r="10" stroke="url(#appleHeroGrad)" />
+              
+              {Array.from({ length: 12 }).map((_, i) => {
+                const angle = (i * 30 * Math.PI) / 180;
+                const x2 = 100 + 90 * Math.cos(angle);
+                const y2 = 100 + 90 * Math.sin(angle);
+                return (
+                  <line key={i} x1="100" y1="100" x2={x2} y2={y2} stroke="url(#appleHeroGrad)" />
+                );
+              })}
+              
+              <path d="M 10 100 Q 50 20 100 100 T 190 100" stroke="url(#appleHeroGrad)" strokeWidth="1" />
+              <path d="M 10 100 Q 50 180 100 100 T 190 100" stroke="url(#appleHeroGrad)" strokeWidth="1" />
+              <path d="M 100 10 Q 180 50 100 100 T 100 190" stroke="url(#appleHeroGrad)" strokeWidth="1" />
+              <path d="M 100 10 Q 20 50 100 100 T 100 190" stroke="url(#appleHeroGrad)" strokeWidth="1" />
+            </svg>
+          </div>
         </div>
       </motion.div>
 
-      {/* Stats Row */}
-      <motion.div variants={staggerContainer} className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        {statCards.map((stat, idx) => (
-          <motion.div 
-            key={idx}
-            variants={itemVariants}
-            whileHover={{ y: -5, scale: 1.02 }}
-            className="bg-surface border border-outline-variant rounded-2xl p-6 shadow-sm hover:shadow-xl hover:border-primary/30 transition-all duration-300 group"
-          >
-            <div className="flex justify-between items-start mb-4">
-              <div className={`p-3 rounded-xl ${stat.bg} ${stat.color} group-hover:scale-110 transition-transform duration-300`}>
-                <stat.icon className="w-6 h-6" />
-              </div>
-              <Activity className="w-5 h-5 text-on-surface-variant/30" />
-            </div>
-            <h3 className="text-3xl font-bold text-on-surface mb-1">
-              <AnimatedNumber value={stat.value} />
+      {/* Free tier upsell banner */}
+      {plan === 'FREE' && (
+        <motion.div
+          variants={itemVariants}
+          className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] border-l-[4px] border-l-[#FFFFFF] rounded-[16px] p-6 flex flex-col md:flex-row gap-6 items-center justify-between shadow-sm"
+        >
+          <div className="flex-1 text-left">
+            <h3 className="text-sm font-bold text-white flex items-center gap-1.5 font-clash">
+              Разблокируйте полную силу обучения с PRO подпиской
             </h3>
-            <p className="text-sm font-medium text-on-surface-variant">{stat.label}</p>
-          </motion.div>
-        ))}
+            <p className="text-xs text-[#98989D] mt-1 leading-relaxed max-w-xl">
+              Получите безлимитную генерацию курсов, AI-ментора с памятью о сессиях, полную аналитику прогресса и доступ к Diamond & Master лигам.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/pricing')}
+            className="bg-[#FFFFFF] hover:bg-[#E8E8ED] text-[#000000] rounded-[12px] px-5 py-2.5 text-xs font-bold transition-all font-sans whitespace-nowrap self-start md:self-auto"
+          >
+            Узнать больше
+          </button>
+        </motion.div>
+      )}
+
+      {/* Asymmetric Metrics Grid (Stretched to 12 columns full width) */}
+      <motion.div variants={staggerContainer} className="grid grid-cols-12 gap-6">
+        {/* Large Active Courses Card (col-span-6) */}
+        <div className="col-span-12 lg:col-span-6 bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-6 flex flex-col justify-between h-44 relative overflow-hidden group">
+          <div>
+            <p className="text-xs text-[#98989D] mb-2 font-sans">Активные курсы</p>
+            <h3 className="text-4xl font-bold text-[#FFFFFF] font-mono">
+              <AnimatedNumber value={stats.activeCoursesCount || 0} />
+            </h3>
+          </div>
+          
+          <div className="h-8 w-full mt-4 opacity-40 group-hover:opacity-75 transition-opacity duration-300">
+            <svg className="w-full h-full stroke-[#FFFFFF] stroke-[1] fill-none overflow-visible" viewBox="0 0 100 20" preserveAspectRatio="none">
+              <path d="M0,15 L15,10 L30,17 L45,5 L60,12 L75,3 L90,15 L100,8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Hours Learned (col-span-2) */}
+        <div className="col-span-12 sm:col-span-4 lg:col-span-2 bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-6 flex flex-col justify-between h-44">
+          <div>
+            <p className="text-xs text-[#98989D] mb-2 font-sans">{t('dashboard.stats.hours')}</p>
+            <h3 className="text-4xl font-bold text-[#FFFFFF] font-mono">
+              <AnimatedNumber value={stats.hoursLearned || 0} />
+            </h3>
+          </div>
+          <p className="text-xs text-[#98989D] font-sans">Часы обучения</p>
+        </div>
+
+        {/* Certificates (col-span-2) */}
+        <div className="col-span-12 sm:col-span-4 lg:col-span-2 bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-6 flex flex-col justify-between h-44">
+          <div>
+            <p className="text-xs text-[#98989D] mb-2 font-sans">{t('dashboard.stats.certs')}</p>
+            <h3 className="text-4xl font-bold text-[#FFFFFF] font-mono">
+              <AnimatedNumber value={stats.certificatesCount || 0} />
+            </h3>
+          </div>
+          <p className="text-xs text-[#98989D] font-sans">Сертификаты</p>
+        </div>
+
+        {/* Streaks (col-span-2) */}
+        <div className="col-span-12 sm:col-span-4 lg:col-span-2 bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-6 flex flex-col justify-between h-44">
+          <div>
+            <p className="text-xs text-[#98989D] mb-2 font-sans">{t('dashboard.stats.streak')}</p>
+            <h3 className="text-4xl font-bold text-[#FFFFFF] font-mono">
+              {stats.streakDays || 1}
+            </h3>
+          </div>
+          
+          <div className="flex gap-1.5 mt-2">
+            {Array.from({ length: 7 }).map((_, i) => {
+              const isActive = i < (stats.streakDays || 1);
+              return (
+                <div 
+                  key={i} 
+                  className={`w-2 h-2 rounded-full ${isActive ? 'bg-[#FFFFFF] border border-[#FFFFFF]' : 'bg-transparent border border-[rgba(255,255,255,0.15)]'}`}
+                  title={`День ${i + 1}`}
+                />
+              );
+            })}
+          </div>
+        </div>
       </motion.div>
 
-      {/* AI Course Builder Entrypoint Card */}
+      {/* Horizontal Custom Course CTA Card */}
       <motion.div 
         variants={itemVariants} 
-        className="bg-surface border border-outline-variant rounded-3xl p-6 md:p-8 shadow-sm flex flex-col md:flex-row gap-6 items-center relative overflow-hidden group cursor-pointer"
-        onClick={() => setShowGenModal(true)}
+        className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-6 flex flex-col md:flex-row gap-6 items-center justify-between"
       >
-        <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-primary/5 blur-[80px] rounded-full pointer-events-none group-hover:bg-primary/10 transition-colors duration-500"></div>
-        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
-          <Brain className="w-6 h-6 text-primary" />
-        </div>
         <div className="flex-1">
-          <h2 className="text-xl font-bold text-on-surface">{t('dashboard.generateCustom')}</h2>
-          <p className="text-sm text-on-surface-variant mt-1">{t('dashboard.generateCustomDesc')}</p>
+          <h2 className="text-base font-bold text-[#F5F5F7] font-clash">{t('dashboard.generateCustom')}</h2>
+          <p className="text-xs text-[#98989D] mt-1">{t('dashboard.generateCustomDesc')}</p>
         </div>
-        <motion.button 
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="bg-primary text-on-primary px-6 py-3 rounded-xl font-bold shadow-lg shadow-primary/20 hover:bg-primary/95 transition-colors whitespace-nowrap flex items-center gap-1.5"
+        <button 
+          onClick={() => setShowGenModal(true)}
+          className="border border-[#FFFFFF] hover:bg-[#FFFFFF] text-[#FFFFFF] hover:text-[#000000] px-6 py-3 rounded-[12px] font-bold text-xs transition-all whitespace-nowrap font-sans"
         >
-          {t('dashboard.buildRoadmap')} <Sparkles className="w-4 h-4 text-white fill-white" />
-        </motion.button>
+          {t('dashboard.buildRoadmap')}
+        </button>
       </motion.div>
 
       {/* Courses Row */}
-      <motion.div variants={itemVariants}>
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-on-surface">{t('dashboard.yourRoadmaps')}</h2>
-          <button onClick={() => navigate('/courses')} className="text-sm font-semibold text-primary hover:text-primary/80 flex items-center gap-1 group">
+      <motion.div variants={itemVariants} className="space-y-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold font-clash text-[#FFFFFF]">Ваши курсы дорожных карт</h2>
+          <button onClick={() => navigate('/courses')} className="text-xs font-bold text-[#FFFFFF] hover:text-[#FFFFFF]/80 flex items-center gap-1 group font-sans">
             {t('dashboard.viewAllCatalog')} <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
         
         {courses.length === 0 ? (
-          <div className="bg-surface border border-dashed border-outline-variant rounded-2xl p-10 text-center flex flex-col items-center justify-center">
-            <BookOpen className="w-12 h-12 text-on-surface-variant/40 mb-4" />
-            <p className="text-on-surface-variant font-medium mb-4">{t('dashboard.noCourses')}</p>
+          <div className="bg-[#1C1C1E] border border-dashed border-[rgba(255,255,255,0.08)] rounded-[16px] p-10 text-center flex flex-col items-center justify-center">
+            <BookOpen className="w-12 h-12 text-[#98989D] mb-4 opacity-50" strokeWidth={1} />
+            <p className="text-[#98989D] font-medium mb-4">{t('dashboard.noCourses')}</p>
             <button 
               onClick={() => setShowGenModal(true)}
-              className="bg-primary text-on-primary px-5 py-2.5 rounded-xl text-sm font-bold shadow-md hover:bg-primary/90 transition-all"
+              className="bg-[#FFFFFF] hover:bg-[#E8E8ED] text-[#000000] px-5 py-2.5 rounded-[12px] text-xs font-bold transition-colors"
             >
               {t('dashboard.generateFirst')}
             </button>
           </div>
         ) : (
-          <div className="flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory scrollbar-hide">
+          <div className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-thin">
             {courses.map((course, idx) => (
               <motion.div 
                 key={course.id}
-                whileHover={{ y: -5, scale: 1.02 }}
+                whileHover={{ y: -3 }}
                 onClick={() => {
+                  if (plan === 'FREE' && idx > 0) {
+                    navigate('/pricing');
+                    return;
+                  }
                   localStorage.setItem('selected_course_id', course.id);
                   navigate('/graph');
                 }}
-                className="min-w-[300px] flex-shrink-0 bg-surface border border-outline-variant rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:border-primary/30 transition-all duration-300 cursor-pointer snap-start"
+                className="min-w-[300px] max-w-[300px] flex-shrink-0 bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] overflow-hidden transition-all duration-200 cursor-pointer snap-start relative"
               >
-                <div className={`h-24 bg-gradient-to-r ${course.gradient || 'from-indigo-500 to-purple-600'} relative overflow-hidden`}>
-                   <div className="absolute inset-0 bg-white/10 mix-blend-overlay"></div>
+                {/* Lock overlay for archived courses on Free plan */}
+                {plan === 'FREE' && idx > 0 && (
+                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#000000]/75 backdrop-blur-[2px] p-6 text-center select-none">
+                    <Lock className="w-6 h-6 text-white mb-2" strokeWidth={1.5} />
+                    <span className="text-[11px] font-bold text-white uppercase tracking-wider mb-1">Архивировано (FREE)</span>
+                    <p className="text-[10px] text-[#98989D] leading-tight">Перейдите на PRO, чтобы разблокировать этот курс</p>
+                  </div>
+                )}
+                <div className="h-24 bg-[#2C2C2E]/50 border-b border-[rgba(255,255,255,0.08)] relative overflow-hidden flex items-center justify-center">
+                  <svg className="absolute inset-0 w-full h-full text-[#FFFFFF] opacity-10 stroke-current stroke-[0.5] fill-none" viewBox="0 0 100 40" preserveAspectRatio="none">
+                    <line x1="0" y1="0" x2="100" y2="40" />
+                    <line x1="0" y1="40" x2="100" y2="0" />
+                    <line x1="50" y1="0" x2="50" y2="40" />
+                    <circle cx="50" cy="20" r="8" />
+                  </svg>
+                  <Brain className="w-8 h-8 text-[#FFFFFF] opacity-40 relative z-10" strokeWidth={1.5} />
                 </div>
                 <div className="p-6">
-                  <h3 className="text-lg font-bold text-on-surface mb-1 line-clamp-1">{t(course.title)}</h3>
-                  <p className="text-sm text-on-surface-variant mb-6">{course.category} • {course.level}</p>
+                  {/* Category tag: allowed uppercase, small tracking */}
+                  <span className="text-[9px] font-mono font-bold text-[#98989D] tracking-tight uppercase">
+                    {course.category}
+                  </span>
+                  <h3 className="text-base font-bold text-[#FFFFFF] mt-1 mb-1 line-clamp-1 font-clash">{t(course.title)}</h3>
+                  <p className="text-xs text-[#98989D] mb-6 font-sans">{course.level}</p>
                   
-                  <div className="flex justify-between text-sm font-medium mb-2">
-                    <span className="text-on-surface-variant">{t('dashboard.progress')}</span>
-                    <span className="text-on-surface">{course.progress || 0}%</span>
+                  <div className="flex justify-between text-[11px] font-mono mb-2">
+                    <span className="text-[#98989D] font-sans">Прогресс</span>
+                    <span className="text-[#FFFFFF] font-bold font-mono">{course.progress || 0}%</span>
                   </div>
-                  <div className="w-full h-2 bg-surface-container rounded-full overflow-hidden">
+                  <div className="w-full h-[2px] bg-[#2C2C2E] border border-[rgba(255,255,255,0.04)] rounded-sm overflow-hidden">
                     <motion.div 
                       initial={{ width: 0 }}
                       animate={{ width: `${course.progress || 0}%` }}
-                      transition={{ duration: 1, delay: 0.5 + (idx * 0.1) }}
-                      className="h-full bg-primary rounded-full"
+                      transition={{ duration: 1, delay: 0.2 + (idx * 0.05) }}
+                      className="h-full bg-[#FFFFFF]"
                     />
                   </div>
                 </div>
               </motion.div>
             ))}
+
+            {/* Dash placeholder to complete visual layout on wide screens if courses <= 2 */}
+            {courses.length > 0 && courses.length <= 2 && (
+              <div 
+                onClick={() => setShowGenModal(true)}
+                className="min-w-[300px] max-w-[300px] flex-shrink-0 bg-transparent border-2 border-dashed border-[rgba(255,255,255,0.15)] hover:border-[rgba(255,255,255,0.3)] rounded-[16px] flex flex-col items-center justify-center h-[208px] transition-colors cursor-pointer group"
+              >
+                <span className="text-3xl text-[#98989D] group-hover:text-[#FFFFFF] transition-colors font-sans mb-1 font-light">+</span>
+                <span className="text-xs text-[#98989D] group-hover:text-[#FFFFFF] transition-colors font-sans">Создать новый курс</span>
+              </div>
+            )}
           </div>
         )}
       </motion.div>
 
-      {/* Activity & Goal */}
+      {/* Activity, Goal & Leagues Teaser Grid (Stretched across full width) */}
       <motion.div variants={staggerContainer} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Recent Activity */}
-        <motion.div variants={itemVariants} className="lg:col-span-2 bg-surface border border-outline-variant rounded-2xl p-6 md:p-8 shadow-sm">
-          <h2 className="text-xl font-bold text-on-surface mb-6">{t('dashboard.recentActivity')}</h2>
-          {activities.length === 0 ? (
-            <p className="text-on-surface-variant text-sm py-4">{t('dashboard.noActivity')}</p>
-          ) : (
-            <div className="space-y-4">
-              {activities.map((activity, idx) => {
-                const IconComponent = iconMap[activity.icon] || Activity;
-                return (
-                  <motion.div 
-                    key={activity.id || idx}
-                    whileHover={{ x: 5, backgroundColor: 'rgba(255,255,255,0.03)' }}
-                    className="flex items-center gap-4 p-3 rounded-xl transition-colors cursor-default"
-                  >
-                    <div className={`p-2 rounded-full bg-primary/10 ${activity.color || 'text-primary'}`}>
-                      <IconComponent className="w-5 h-5" />
+        {/* Recent Activity (1/3 width) */}
+        <motion.div variants={itemVariants} className="lg:col-span-1 bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-6 flex flex-col justify-between min-h-[360px]">
+          <div>
+            <h2 className="text-base font-bold text-[#FFFFFF] mb-6 font-sans">Недавняя активность</h2>
+            {activities.length === 0 ? (
+              <p className="text-[#98989D] text-xs py-4">Активность отсутствует</p>
+            ) : (
+              <div className="space-y-3">
+                {activities.slice(0, 4).map((activity, idx) => {
+                  const IconComponent = iconMap[activity.icon] || Activity;
+                  return (
+                    <div 
+                      key={activity.id || idx}
+                      className="flex items-center gap-4 p-2.5 rounded-[12px] border border-transparent hover:bg-[#2C2C2E]/40 transition-all cursor-default"
+                    >
+                      <div className="p-2 rounded-[8px] bg-[#2C2C2E] border border-[rgba(255,255,255,0.08)] text-[#FFFFFF]">
+                        <IconComponent className="w-4 h-4" strokeWidth={1.5} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-medium text-[#F5F5F7] truncate">{activity.title}</h4>
+                      </div>
+                      <span className="text-[10px] text-[#98989D] font-mono whitespace-nowrap">
+                        {new Date(activity.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </span>
                     </div>
-                    <div className="flex-1">
-                      <h4 className="text-sm font-medium text-on-surface">{activity.title}</h4>
-                    </div>
-                    <span className="text-xs text-on-surface-variant">
-                      {new Date(activity.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </motion.div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </motion.div>
 
-        {/* Weekly Goal */}
-        <motion.div variants={itemVariants} className="bg-surface border border-outline-variant rounded-2xl p-6 md:p-8 shadow-sm flex flex-col items-center justify-center text-center">
-          <h2 className="text-xl font-bold text-on-surface w-full text-left mb-8">{t('dashboard.weeklyGoal')}</h2>
+        {/* Weekly Goal (1/3 width) */}
+        <motion.div variants={itemVariants} className="lg:col-span-1 bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-6 flex flex-col items-center justify-between text-center min-h-[360px]">
+          <h2 className="text-base font-bold text-[#FFFFFF] w-full text-left mb-4 font-sans">{t('dashboard.weeklyGoal')}</h2>
           
-          <div className="relative w-40 h-40 mb-6">
-            <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90 drop-shadow-lg">
-              <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" className="text-surface-container stroke-[8px]" />
+          <div className="relative w-28 h-28 my-auto">
+            <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+              <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.04)" className="stroke-[3px]" />
               <motion.circle 
                 cx="50" cy="50" r="45" 
                 fill="none" 
-                stroke="currentColor" 
-                className="text-primary stroke-[8px]"
-                strokeLinecap="round"
+                stroke="#FFFFFF" 
+                className="stroke-[3px]"
+                strokeLinecap="square"
                 initial={{ pathLength: 0 }}
                 animate={{ pathLength: Math.min((stats.activeCoursesCount || 1) / 3, 1) }}
-                transition={{ duration: 1.5, ease: "easeOut" }}
+                transition={{ duration: 1.2, ease: "easeOut" }}
               />
             </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-3xl font-bold text-on-surface">{stats.activeCoursesCount || 0}<span className="text-xl text-on-surface-variant">/3</span></span>
-              <span className="text-xs font-medium text-on-surface-variant mt-1 uppercase tracking-wider">{t('insights.coursesActive')}</span>
+            <div className="absolute inset-0 flex flex-col items-center justify-center font-sans">
+              <span className="text-2xl font-bold text-[#FFFFFF] font-mono">{stats.activeCoursesCount || 0}<span className="text-sm text-[#98989D] font-sans">/3</span></span>
+              <span className="text-[8px] font-bold text-[#98989D] mt-0.5 uppercase tracking-widest">{t('insights.coursesActive')}</span>
             </div>
           </div>
 
-          <p className="text-sm font-medium text-on-surface-variant mb-6">
+          <p className="text-[11px] text-[#98989D] my-3 font-sans">
             {stats.activeCoursesCount >= 3 ? t('dashboard.weeklyGoalSuccess') : t('dashboard.weeklyGoalPending')}
           </p>
 
-          <div className="flex gap-2 w-full justify-center">
-            {['M','T','W','T','F','S','S'].map((day, idx) => {
+          <div className="flex gap-1.5 w-full justify-center">
+            {['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map((day, idx) => {
               const active = idx < (stats.streakDays || 1);
               return (
                 <div 
                   key={idx} 
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                    active ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'bg-surface-container text-on-surface-variant'
+                  className={`w-6 h-6 rounded-[6px] border flex items-center justify-center text-[9px] font-bold font-sans ${
+                    active ? 'bg-[#FFFFFF] border-[#FFFFFF] text-[#000000]' : 'bg-[#2C2C2E]/40 border border-[rgba(255,255,255,0.08)] text-[#98989D]'
                   }`}
                 >
                   {day}
                 </div>
               );
             })}
+          </div>
+        </motion.div>
+
+        {/* Leagues Teaser (1/3 width) */}
+        <motion.div 
+          variants={itemVariants} 
+          onClick={() => navigate('/leagues')}
+          className="lg:col-span-1 bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] hover:border-white/20 transition-all rounded-[16px] p-6 flex flex-col justify-between cursor-pointer group min-h-[360px]"
+        >
+          <div className="w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold text-[#FFFFFF] font-sans flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-[#8E8E93]" strokeWidth={1.5} />
+                Лига соревнований
+              </h2>
+              <span className="text-[10px] font-mono font-bold text-[#8E8E93] tabular-nums">{timeLeft}</span>
+            </div>
+            
+            <div className="bg-[#2C2C2E]/20 border border-[rgba(255,255,255,0.06)] rounded-lg p-2 flex items-center gap-2 mb-4">
+              <div className="p-1 rounded bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] text-white">
+                <LeagueIcon leagueId={stats.currentLeague || (plan === 'FREE' ? 'graphite' : 'quartz')} className="w-4 h-4" />
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-bold text-white">
+                  {stats.currentLeague === 'silicon' ? 'Кремний' : stats.currentLeague === 'graphite' ? 'Графит' : stats.currentLeague === 'quartz' ? 'Кварц' : stats.currentLeague === 'obsidian' ? 'Обсидиан' : stats.currentLeague === 'platinum' ? 'Платина' : 'Титан'}
+                </p>
+                <p className="text-[9px] text-[#8E8E93]">Нажмите, чтобы открыть таблицу</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {[
+                { name: 'Alexander', weeklyXP: 380 },
+                { name: 'Elena', weeklyXP: 290 },
+                { name: 'Dmitry', weeklyXP: 240 }
+              ].map((player, idx) => (
+                <div 
+                  key={idx} 
+                  className="flex items-center justify-between p-2 rounded-lg text-xs bg-transparent border border-transparent"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[#8E8E93] w-4">{idx + 1}</span>
+                    <span className="text-[#F5F5F7] truncate max-w-[100px]">{player.name}</span>
+                  </div>
+                  <span className="font-mono tabular-nums text-[#8E8E93]">{player.weeklyXP} XP</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between text-[10px] font-bold text-white mt-4 border-t border-[rgba(255,255,255,0.06)] pt-3 group-hover:text-white/80 transition-colors">
+            <span>Смотреть всю группу</span>
+            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
           </div>
         </motion.div>
 
@@ -379,4 +580,3 @@ export default function Dashboard() {
     </motion.div>
   );
 }
-

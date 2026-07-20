@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 import QuizQuestion from './QuizQuestion.jsx';
 import QuizResults from './QuizResults.jsx';
 
-export default function QuizModal({ questions, isOpen, onClose, onComplete }) {
+export default function QuizModal({ questions, isOpen, onClose, onComplete, onAskMentor }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState({});
   const [showResults, setShowResults] = useState(false);
@@ -39,7 +39,13 @@ export default function QuizModal({ questions, isOpen, onClose, onComplete }) {
     const explanations = questions.map((q, i) => {
       const isCorrect = answers[i] === q.correctIndex;
       if (isCorrect) score++;
-      return { isCorrect, text: q.explanation };
+      return { 
+        isCorrect, 
+        text: q.explanation,
+        questionText: q.question,
+        userAnswer: q.options[answers[i]] || 'нет ответа',
+        correctAnswer: q.options[q.correctIndex]
+      };
     });
     return { score, total: questions.length, explanations, passed: (score / questions.length) >= 0.6 };
   };
@@ -88,6 +94,7 @@ export default function QuizModal({ questions, isOpen, onClose, onComplete }) {
                 explanations={results.explanations}
                 onRetry={handleRetry}
                 onContinue={() => onComplete(results.score, results.total, results.passed)}
+                onAskMentor={onAskMentor}
               />
             )}
           </AnimatePresence>
