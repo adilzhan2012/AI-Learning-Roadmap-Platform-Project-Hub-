@@ -15,7 +15,7 @@ export const useQuiz = () => {
     try {
       const userId = auth.currentUser?.uid;
       if (userId && nodeId) {
-        const quizRef = doc(db, 'users', userId, 'quizResults', nodeId);
+        const quizRef = doc(db, 'users', userId, 'quizResults', String(nodeId));
         const quizSnap = await getDoc(quizRef);
         if (quizSnap.exists()) {
           const data = quizSnap.data();
@@ -64,7 +64,7 @@ IMPORTANT: Return ONLY a valid JSON object without markdown tags or explanations
 }
 `;
 
-      const textResponse = await callGroqWithRetry(apiKey, quizPrompt);
+      const textResponse = await callGroqWithRetry(apiKey, quizPrompt, 'ai_question');
       if (!textResponse) throw new Error('Empty response');
 
       let cleanText = textResponse.trim();
@@ -85,11 +85,11 @@ IMPORTANT: Return ONLY a valid JSON object without markdown tags or explanations
       }
 
       if (userId && nodeId) {
-        const quizRef = doc(db, 'users', userId, 'quizResults', nodeId);
+        const quizRef = doc(db, 'users', userId, 'quizResults', String(nodeId));
         await setDoc(quizRef, {
           userId,
           roadmapId,
-          nodeId,
+          nodeId: String(nodeId),
           questions: parsed.questions,
           lastGeneratedAt: serverTimestamp()
         }, { merge: true });
@@ -110,7 +110,7 @@ IMPORTANT: Return ONLY a valid JSON object without markdown tags or explanations
     if (!auth.currentUser) return;
     try {
       const userId = auth.currentUser.uid;
-      const docRef = doc(db, 'users', userId, 'quizResults', nodeId);
+      const docRef = doc(db, 'users', userId, 'quizResults', String(nodeId));
       
       // Get existing attempts to accumulate history
       const snap = await getDoc(docRef);
@@ -129,7 +129,7 @@ IMPORTANT: Return ONLY a valid JSON object without markdown tags or explanations
       const dataToSave = {
         userId,
         roadmapId,
-        nodeId,
+        nodeId: String(nodeId),
         score: scorePercent,
         attempts, // Array of [{score, date}]
         attemptsCount: attempts.length,
@@ -152,7 +152,7 @@ IMPORTANT: Return ONLY a valid JSON object without markdown tags or explanations
   const checkCooldown = useCallback(async (nodeId) => {
     if (!auth.currentUser) return { allowed: true };
     try {
-      const docRef = doc(db, 'users', auth.currentUser.uid, 'quizResults', nodeId);
+      const docRef = doc(db, 'users', auth.currentUser.uid, 'quizResults', String(nodeId));
       const snap = await getDoc(docRef);
       if (snap.exists()) {
         const data = snap.data();
