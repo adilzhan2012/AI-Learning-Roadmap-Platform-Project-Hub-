@@ -3,12 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Brain, Sparkles, Loader2, X, ChevronDown, ChevronUp, Settings, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { generateCourseAndSave } from '../services/courseService.js';
-import { t } from '../i18n.js';
+import { t, useLocale } from '../i18n.js';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import UpgradeModal from './shared/UpgradeModal.jsx';
 
 export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
   const navigate = useNavigate();
+  const locale = useLocale();
   const [topic, setTopic] = useState('');
   const [level, setLevel] = useState('Beginner');
   const [generating, setGenerating] = useState(false);
@@ -22,6 +23,11 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
   const [tone, setTone] = useState('Academic'); // Academic, Friendly, Gamified
   const [prerequisites, setPrerequisites] = useState('');
   const [stack, setStack] = useState('');
+
+  // Simple settings state (for Beginner/Intermediate)
+  const [dailyTime, setDailyTime] = useState('30m'); // '15m' | '30m' | '60m'
+  const [flashcardCount, setFlashcardCount] = useState('5'); // '3' | '5' | '8'
+  const [courseStyle, setCourseStyle] = useState('Friendly'); // 'Simple' | 'Friendly' | 'Gamified'
 
   const hasApiKey = true;
   const { plan, usage, checkLimit, incrementUsage, isUpgradeModalOpen, setUpgradeModalOpen } = usePlanLimits();
@@ -52,7 +58,9 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
     setGenerating(true);
 
     try {
-      const preferences = { duration, focus, goal, tone, prerequisites, stack };
+      const preferences = level === 'Advanced'
+        ? { duration, focus, goal, tone, prerequisites, stack }
+        : { dailyTime, flashcardCount, courseStyle };
       const generated = await generateCourseAndSave(userUid, topic, level, preferences);
       await incrementUsage('roadmap');
       onClose();
@@ -172,76 +180,181 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
                 </div>
               </div>
 
-              {/* Advanced Settings Accordion */}
-              <div className="border border-outline-variant rounded-xl overflow-hidden bg-surface-container-lowest">
-                <button
-                  type="button"
-                  onClick={() => setShowAdvanced(!showAdvanced)}
-                  className="w-full flex items-center justify-between p-4 bg-surface-container-lowest hover:bg-surface-container transition-colors"
-                >
-                  <span className="flex items-center gap-2 text-sm font-bold text-on-surface">
-                    <Settings className="w-4 h-4 text-primary" /> Продвинутые настройки
-                  </span>
-                  {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
-                
-                <AnimatePresence>
-                  {showAdvanced && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="border-t border-outline-variant"
-                    >
-                      <div className="p-4 space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-xs font-bold text-on-surface-variant mb-1">Длительность</label>
-                            <select value={duration} onChange={e => setDuration(e.target.value)} disabled={generating} className="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary">
-                              <option value="Express">Экспресс (3-5 тем)</option>
-                              <option value="Standard">Стандарт (6-10 тем)</option>
-                              <option value="Deep Dive">Мастер-класс (12-15 тем)</option>
-                            </select>
+              {level === 'Advanced' ? (
+                <div className="border border-outline-variant rounded-xl overflow-hidden bg-surface-container-lowest">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    className="w-full flex items-center justify-between p-4 bg-surface-container-lowest hover:bg-surface-container transition-colors"
+                  >
+                    <span className="flex items-center gap-2 text-sm font-bold text-on-surface">
+                      <Settings className="w-4 h-4 text-primary" /> {locale === 'ru' ? 'Продвинутые настройки' : 'Advanced Settings'}
+                    </span>
+                    {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </button>
+                  
+                  <AnimatePresence>
+                    {showAdvanced && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="border-t border-outline-variant"
+                      >
+                        <div className="p-4 space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs font-bold text-on-surface-variant mb-1">
+                                {locale === 'ru' ? 'Длительность' : 'Duration'}
+                              </label>
+                              <select value={duration} onChange={e => setDuration(e.target.value)} disabled={generating} className="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary">
+                                <option value="Express">{locale === 'ru' ? 'Экспресс (3-5 тем)' : 'Express (3-5 topics)'}</option>
+                                <option value="Standard">{locale === 'ru' ? 'Стандарт (6-10 тем)' : 'Standard (6-10 topics)'}</option>
+                                <option value="Deep Dive">{locale === 'ru' ? 'Мастер-класс (12-15 тем)' : 'Deep Dive (12-15 topics)'}</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-on-surface-variant mb-1">
+                                {locale === 'ru' ? 'Стиль обучения' : 'Focus'}
+                              </label>
+                              <select value={focus} onChange={e => setFocus(e.target.value)} disabled={generating} className="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary">
+                                <option value="Theory">{locale === 'ru' ? 'Академический (Теория)' : 'Academic (Theory)'}</option>
+                                <option value="Practice">{locale === 'ru' ? 'Практический (Проекты)' : 'Practical (Projects)'}</option>
+                                <option value="Code">{locale === 'ru' ? 'Программирование (Код)' : 'Coding (Code)'}</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-on-surface-variant mb-1">
+                                {locale === 'ru' ? 'Цель курса' : 'Goal'}
+                              </label>
+                              <select value={goal} onChange={e => setGoal(e.target.value)} disabled={generating} className="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary">
+                                <option value="General">{locale === 'ru' ? 'Общее развитие' : 'General'}</option>
+                                <option value="Interview">{locale === 'ru' ? 'Подготовка к собеседованию' : 'Interview prep'}</option>
+                                <option value="Project">{locale === 'ru' ? 'Создание пет-проекта' : 'Create pet-project'}</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-on-surface-variant mb-1">
+                                {locale === 'ru' ? 'Тон ментора' : 'Mentor tone'}
+                              </label>
+                              <select value={tone} onChange={e => setTone(e.target.value)} disabled={generating} className="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary">
+                                <option value="Academic">{locale === 'ru' ? 'Строгий и научный' : 'Academic & strict'}</option>
+                                <option value="Friendly">{locale === 'ru' ? 'Дружелюбный с юмором' : 'Friendly with humor'}</option>
+                                <option value="Gamified">{locale === 'ru' ? 'Игровой / Фэнтези' : 'Gamified / Fantasy'}</option>
+                              </select>
+                            </div>
                           </div>
-                          <div>
-                            <label className="block text-xs font-bold text-on-surface-variant mb-1">Стиль обучения</label>
-                            <select value={focus} onChange={e => setFocus(e.target.value)} disabled={generating} className="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary">
-                              <option value="Theory">Академический (Теория)</option>
-                              <option value="Practice">Практический (Проекты)</option>
-                              <option value="Code">Программирование (Код)</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-on-surface-variant mb-1">Цель курса</label>
-                            <select value={goal} onChange={e => setGoal(e.target.value)} disabled={generating} className="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary">
-                              <option value="General">Общее развитие</option>
-                              <option value="Interview">Подготовка к собеседованию</option>
-                              <option value="Project">Создание пет-проекта</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-on-surface-variant mb-1">Тон ментора</label>
-                            <select value={tone} onChange={e => setTone(e.target.value)} disabled={generating} className="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary">
-                              <option value="Academic">Строгий и научный</option>
-                              <option value="Friendly">Дружелюбный с юмором</option>
-                              <option value="Gamified">Игровой / Фэнтези</option>
-                            </select>
-                          </div>
-                        </div>
 
-                        <div>
-                          <label className="block text-xs font-bold text-on-surface-variant mb-1">Что вы уже знаете? (чтобы ИИ это пропустил)</label>
-                          <input type="text" value={prerequisites} onChange={e => setPrerequisites(e.target.value)} disabled={generating} placeholder="Например: HTML, CSS, базовый JS" className="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary" />
+                          <div>
+                            <label className="block text-xs font-bold text-on-surface-variant mb-1">
+                              {locale === 'ru' ? 'Что вы уже знаете? (чтобы ИИ это пропустил)' : 'What do you already know? (AI will skip this)'}
+                            </label>
+                            <input type="text" value={prerequisites} onChange={e => setPrerequisites(e.target.value)} disabled={generating} placeholder={locale === 'ru' ? 'Например: HTML, CSS, базовый JS' : 'e.g. HTML, CSS, basic JS'} className="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-on-surface-variant mb-1">
+                              {locale === 'ru' ? 'Стек технологий (опционально)' : 'Tech stack (optional)'}
+                            </label>
+                            <input type="text" value={stack} onChange={e => setStack(e.target.value)} disabled={generating} placeholder={locale === 'ru' ? 'Например: React, Node.js' : 'e.g. React, Node.js'} className="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary" />
+                          </div>
                         </div>
-                        <div>
-                          <label className="block text-xs font-bold text-on-surface-variant mb-1">Стек технологий (опционально)</label>
-                          <input type="text" value={stack} onChange={e => setStack(e.target.value)} disabled={generating} placeholder="Например: React, Node.js" className="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary" />
-                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ) : (
+                <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 space-y-4">
+                  <span className="flex items-center gap-2 text-sm font-bold text-on-surface mb-2">
+                    <Settings className="w-4 h-4 text-primary" /> {locale === 'ru' ? 'Настройки обучения' : 'Learning Settings'}
+                  </span>
+
+                  <div className="space-y-4">
+                    {/* Time allocation */}
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface-variant mb-2">
+                        {locale === 'ru' ? 'Сколько времени готовы уделять?' : 'How much time can you spend?'}
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { key: '15m', ru: '15 мин/день', en: '15 min/day' },
+                          { key: '30m', ru: '30 мин/день', en: '30 min/day' },
+                          { key: '60m', ru: '1 час/день', en: '1 hour/day' }
+                        ].map(item => (
+                          <button
+                            key={item.key}
+                            type="button"
+                            disabled={generating}
+                            onClick={() => setDailyTime(item.key)}
+                            className={`py-2 rounded-lg text-xs font-semibold border transition-all ${
+                              dailyTime === item.key
+                                ? 'bg-primary/10 border-primary text-primary font-bold shadow-sm'
+                                : 'bg-surface-container border-outline-variant text-on-surface-variant hover:text-on-surface'
+                            }`}
+                          >
+                            {locale === 'ru' ? item.ru : item.en}
+                          </button>
+                        ))}
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                    </div>
+
+                    {/* Flashcards */}
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface-variant mb-2">
+                        {locale === 'ru' ? 'Сколько карточек для запоминания?' : 'How many flashcards per lesson?'}
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { key: '3', ru: '3 карточки', en: '3 cards' },
+                          { key: '5', ru: '5 карточек', en: '5 cards' },
+                          { key: '8', ru: '8 карточек', en: '8 cards' }
+                        ].map(item => (
+                          <button
+                            key={item.key}
+                            type="button"
+                            disabled={generating}
+                            onClick={() => setFlashcardCount(item.key)}
+                            className={`py-2 rounded-lg text-xs font-semibold border transition-all ${
+                              flashcardCount === item.key
+                                ? 'bg-primary/10 border-primary text-primary font-bold shadow-sm'
+                                : 'bg-surface-container border-outline-variant text-on-surface-variant hover:text-on-surface'
+                            }`}
+                          >
+                            {locale === 'ru' ? item.ru : item.en}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Course style */}
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface-variant mb-2">
+                        {locale === 'ru' ? 'Стиль курса' : 'Course style'}
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { key: 'Simple', ru: 'Простой', en: 'Simple (ELI5)' },
+                          { key: 'Friendly', ru: 'Дружелюбный', en: 'Friendly' },
+                          { key: 'Gamified', ru: 'Игровой', en: 'Gamified' }
+                        ].map(item => (
+                          <button
+                            key={item.key}
+                            type="button"
+                            disabled={generating}
+                            onClick={() => setCourseStyle(item.key)}
+                            className={`py-2 rounded-lg text-xs font-semibold border transition-all ${
+                              courseStyle === item.key
+                                ? 'bg-primary/10 border-primary text-primary font-bold shadow-sm'
+                                : 'bg-surface-container border-outline-variant text-on-surface-variant hover:text-on-surface'
+                            }`}
+                          >
+                            {locale === 'ru' ? item.ru : item.en}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="pt-4 border-t border-outline-variant flex justify-end gap-3">
                 <button 

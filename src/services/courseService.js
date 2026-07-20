@@ -50,26 +50,39 @@ export async function generateCourseAndSave(userId, topic, level, preferences = 
   const normalizedTopic = topic.toLowerCase().trim();
   const coursesCol = collection(db, 'courses');
 
-  // Check for existing similar course
-  const q = query(coursesCol, where('normalizedTopic', '==', normalizedTopic), where('level', '==', level));
-  const existingSnap = await getDocs(q);
-  
-  if (!existingSnap.empty) {
-    const existingCourse = existingSnap.docs[0].data();
+  const isCustomized = Object.keys(preferences).length > 0 && Object.values(preferences).some(val => {
+    return val && 
+           val !== 'Standard' && 
+           val !== 'Theory' && 
+           val !== 'General' && 
+           val !== 'Academic' && 
+           val !== '30m' && 
+           val !== '5' && 
+           val !== 'Friendly';
+  });
+
+  if (!isCustomized) {
+    // Check for existing similar course
+    const q = query(coursesCol, where('normalizedTopic', '==', normalizedTopic), where('level', '==', level));
+    const existingSnap = await getDocs(q);
     
-    // Clone the course for the new user
-    const clonedCourse = {
-      ...existingCourse,
-      userId,
-      progress: 0,
-      createdAt: new Date().toISOString()
-    };
-    
-    const docRef = await addDoc(coursesCol, clonedCourse);
-    await updateUserStats(userId, { activeCoursesCount: increment(1) });
-    await logActivity(userId, `Created course: ${clonedCourse.title} (Cloned)`, 'school', 'text-blue-500');
-    
-    return { id: docRef.id, ...clonedCourse };
+    if (!existingSnap.empty) {
+      const existingCourse = existingSnap.docs[0].data();
+      
+      // Clone the course for the new user
+      const clonedCourse = {
+        ...existingCourse,
+        userId,
+        progress: 0,
+        createdAt: new Date().toISOString()
+      };
+      
+      const docRef = await addDoc(coursesCol, clonedCourse);
+      await updateUserStats(userId, { activeCoursesCount: increment(1) });
+      await logActivity(userId, `Created course: ${clonedCourse.title} (Cloned)`, 'school', 'text-blue-500');
+      
+      return { id: docRef.id, ...clonedCourse };
+    }
   }
 
   const currentLocale = getLocale();
@@ -78,7 +91,9 @@ export async function generateCourseAndSave(userId, topic, level, preferences = 
   if (currentLocale === 'kk') languageName = 'Kazakh';
   if (currentLocale === 'zh') languageName = 'Chinese (Simplified)';
 
-  const prefString = `
+  let prefString = '';
+  if (level === 'Advanced') {
+    prefString = `
 Advanced Preferences:
 - Duration (Nodes count): ${preferences.duration || 'Standard (6-10 nodes)'}
 - Focus: ${preferences.focus || 'Theory'}
@@ -86,7 +101,17 @@ Advanced Preferences:
 - Tone: ${preferences.tone || 'Academic'}
 - Prerequisites to skip: ${preferences.prerequisites || 'None'}
 - Tech Stack: ${preferences.stack || 'Agnostic'}
-  `.trim();
+    `.trim();
+  } else {
+    const timeStr = preferences.dailyTime === '15m' ? '15 minutes per day' : preferences.dailyTime === '60m' ? '1 hour per day' : '30 minutes per day';
+    const styleStr = preferences.courseStyle === 'Simple' ? 'Simple and explain-like-I-am-5 style' : preferences.courseStyle === 'Gamified' ? 'Gamified / Fantasy style' : 'Friendly and conversational style';
+    prefString = `
+Learning Preferences:
+- Study pace limit: Designed for about ${timeStr}
+- Tone and style: ${styleStr}
+- Target number of flashcards per lesson: ${preferences.flashcardCount || '5'}
+    `.trim();
+  }
 
   const prompt = `You are an expert AI curriculum designer. Build a complete, highly structured learning roadmap for the topic: "${topic}" at difficulty level: "${level}".
 ${prefString}
@@ -213,13 +238,30 @@ export async function generateLessonContent(courseId, nodeId, courseTitle, topic
   if (currentLocale === 'kk') languageName = 'Kazakh';
   if (currentLocale === 'zh') languageName = 'Chinese (Simplified)';
 
-  const prefString = `
+  let prefString = '';
+  let flashcardInstruction = 'include 3-5 flashcards';
+  
+  if (preferences.dailyTime || preferences.flashcardCount || preferences.courseStyle) {
+    const timeStr = preferences.dailyTime === '15m' ? '15 minutes per day' : preferences.dailyTime === '60m' ? '1 hour per day' : '30 minutes per day';
+    const styleStr = preferences.courseStyle === 'Simple' ? 'Simple and explain-like-I-am-5 style' : preferences.courseStyle === 'Gamified' ? 'Gamified / Fantasy style' : 'Friendly and conversational style';
+    prefString = `
+Learning Preferences:
+- Study pace: Designed for a study speed of ${timeStr}
+- Style and Tone: Use a ${styleStr} to write the content
+    `.trim();
+    
+    if (preferences.flashcardCount) {
+      flashcardInstruction = `include EXACTLY ${preferences.flashcardCount} flashcards`;
+    }
+  } else {
+    prefString = `
 Advanced Preferences:
 - Focus: ${preferences.focus || 'Theory'}
 - Goal: ${preferences.goal || 'General'}
 - Tone: ${preferences.tone || 'Academic'}
 - Tech Stack: ${preferences.stack || 'Agnostic'}
-  `.trim();
+    `.trim();
+  }
 
   const prompt = `You are an expert tutor. Write a comprehensive, highly detailed lesson in Markdown format for the topic: "${topicLabel}".
 This lesson is part of a larger course called "${courseTitle}".
@@ -234,7 +276,7 @@ Requirements:
 4. Use formatting (bolding, lists, blockquotes) to make it highly readable.
 5. End with a short summary.
 6. The output should be pure markdown, suitable for rendering in a React-Markdown component.
-7. CRITICAL: At the very end of the lesson, include 3-5 flashcards for the most important key terms using EXACTLY this text format:
+7. CRITICAL: At the very end of the lesson, ${flashcardInstruction} for the most important key terms using EXACTLY this text format:
 ---FLASHCARD---
 Term: [Concept Name]
 Def: [A concise, 1-2 sentence definition]
