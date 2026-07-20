@@ -310,6 +310,30 @@ export default function Graph() {
       }
     });
 
+    network.on('doubleClick', (params) => {
+      if (params.nodes.length > 0) {
+        const nodeId = params.nodes[0];
+        if (network.isCluster(nodeId)) {
+          network.openCluster(nodeId);
+        } else {
+          network.cluster({
+            joinCondition: (nodeOptions) => {
+              const edges = data.edges.filter(e => String(e.from) === String(nodeId));
+              const childIds = edges.map(e => e.to);
+              return childIds.includes(nodeOptions.id);
+            },
+            clusterNodeProperties: {
+              id: 'cluster_' + nodeId,
+              label: 'Свернутая ветка',
+              shape: 'box',
+              color: '#3B82F6',
+              font: { color: 'white', size: 14 }
+            }
+          });
+        }
+      }
+    });
+
     return () => {
       if (networkRef.current) {
         networkRef.current.destroy();

@@ -17,7 +17,7 @@ import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { getGroqApiKey, callGroqWithRetry, getUserCourses, getUserStats } from '../services/courseService.js';
+import { callGroqWithRetry, getUserCourses, getUserStats } from '../services/courseService.js';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import { PLAN_LIMITS } from '../constants/planLimits.js';
 import ReactMarkdown from 'react-markdown';
@@ -60,7 +60,7 @@ export default function Mentor() {
           const userCourses = await getUserCourses(currentUser.uid);
           setCourses(userCourses);
           
-          const key = getGroqApiKey();
+          const key = true;
           if (!key) {
             setApiKeyError(true);
           }
@@ -144,8 +144,8 @@ export default function Mentor() {
     setGenerating(true);
 
     try {
-      const apiKey = getGroqApiKey();
-      if (!apiKey) {
+      const apiKey = null;
+      if (false) {
         setApiKeyError(true);
         throw new Error('MISSING_API_KEY');
       }

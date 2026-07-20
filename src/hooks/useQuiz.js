@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { getGroqApiKey, callGroqWithRetry } from '../services/courseService.js';
+import { callGroqWithRetry } from '../services/courseService.js';
 import { getLocale } from '../i18n.js';
 import { db, auth } from '../firebase.js';
 import { doc, setDoc, getDoc, serverTimestamp, increment } from 'firebase/firestore';
@@ -26,9 +26,8 @@ export const useQuiz = () => {
         }
       }
 
-      const apiKey = getGroqApiKey();
-      if (!apiKey) throw new Error('MISSING_API_KEY');
-
+      const apiKey = null;
+      
       const currentLocale = getLocale();
       let languageName = 'English';
       if (currentLocale === 'ru') languageName = 'Russian';

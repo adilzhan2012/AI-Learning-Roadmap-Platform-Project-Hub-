@@ -22,6 +22,11 @@ import UpgradeModal from '../shared/UpgradeModal.jsx';
 import { generateLessonContent, updateNodeStatus, generateELI5Content, generateRealWorldExample, updateNodeFields } from '../../services/courseService.js';
 import ReactMarkdown from 'react-markdown';
 import Flashcard from './Flashcard.jsx';
+import { markdownToSlides } from '../../services/courseService.js';
+import SlideViewer from './SlideViewer.jsx';
+import SelectionPopover from '../shared/SelectionPopover.jsx';
+import { useTextSelection } from '../../hooks/useTextSelection.js';
+import { PlayCircle } from 'lucide-react';
 
 export default function LessonPanel({ 
   selectedCourse, 
@@ -50,6 +55,10 @@ export default function LessonPanel({
   const [eli5Generating, setEli5Generating] = useState(false);
   const [insight, setInsight] = useState('');
   const [insightGenerating, setInsightGenerating] = useState(false);
+
+  const [showSlides, setShowSlides] = useState(false);
+  const contentRef = React.useRef(null);
+  const { selection, clear } = useTextSelection(contentRef);
 
   // Auto-generate content when a new empty node is selected
   useEffect(() => {
@@ -190,6 +199,24 @@ export default function LessonPanel({
     }
   };
 
+  const handleOpenSlides = async () => {
+    if (!selectedNode?.content) return;
+    if (selectedNode.slides && selectedNode.slides.length > 0) {
+      setShowSlides(true);
+      return;
+    }
+    const generatedSlides = markdownToSlides(selectedNode.content);
+    if (generatedSlides.length === 0) return;
+    try {
+      const updatedNode = { ...selectedNode, slides: generatedSlides };
+      onNodeUpdated(updatedNode);
+      await updateNodeFields(selectedCourse.id, selectedNode.id, { slides: generatedSlides });
+    } catch (e) {
+      console.error("Error saving slides", e);
+    }
+    setShowSlides(true);
+  };
+
   if (!selectedNode) return null;
 
   // Parse Flashcards
@@ -234,6 +261,15 @@ export default function LessonPanel({
                 {eli5Generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Baby className="w-4 h-4" />}
                 <span className="hidden md:inline">Просто о сложном</span>
               </button>
+
+              <button 
+                onClick={handleOpenSlides}
+                className="flex items-center gap-2 px-3 py-1.5 hover:bg-surface-container rounded-full transition-colors font-medium text-sm border border-outline-variant text-on-surface-variant"
+                title="Слайды"
+              >
+                <PlayCircle className="w-4 h-4" />
+                <span className="hidden md:inline">Слайды</span>
+              </button>
             </>
           )}
 
@@ -276,7 +312,22 @@ export default function LessonPanel({
             )}
 
             <div className={`p-6 md:p-10 flex-1 w-full mx-auto prose dark:prose-invert prose-primary lg:prose-lg font-sans ${isZenMode ? 'max-w-3xl' : 'max-w-4xl'}`}>
-              <ReactMarkdown>{displayContent}</ReactMarkdown>
+              <div ref={contentRef} className="relative">
+                <ReactMarkdown>{displayContent}</ReactMarkdown>
+                {selection && (
+                  <SelectionPopover
+                    selection={selection}
+                    context={{ topic: selectedCourse.title, nodeDesc: selectedNode.desc }}
+                    onClose={clear}
+                    onAskMentor={(sel, q, ans) => {
+                      clear();
+                      onClose();
+                      sessionStorage.setItem('mentor_initial_prompt', `У меня вопрос по теме "${selectedCourse.title}" -> "${selectedNode.label}".\nЯ выделил текст: "${sel}"\nМой вопрос: "${q}"\nОтвет ИИ: "${ans}"\n\nДавай обсудим это подробнее.`);
+                      navigate('/mentor');
+                    }}
+                  />
+                )}
+              </div>
               
               {flashcards.length > 0 && (
                 <div className="mt-12 mb-8 not-prose">
@@ -375,6 +426,14 @@ export default function LessonPanel({
         onClose={() => setUpgradeModalOpen(false)} 
         onUpgrade={() => alert("Backend payment integration is pending.")} 
       />
+
+      {/* Slide Viewer Overlay */}
+      {showSlides && (
+        <SlideViewer
+          slides={selectedNode.slides || markdownToSlides(selectedNode.content || '')}
+          onClose={() => setShowSlides(false)}
+        />
+      )}
     </div>
   );
 }

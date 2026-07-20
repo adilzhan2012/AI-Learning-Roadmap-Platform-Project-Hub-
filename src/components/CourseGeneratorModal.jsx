@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Brain, Sparkles, Loader2, X, ChevronDown, ChevronUp, Settings, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { generateCourseAndSave, getGroqApiKey } from '../services/courseService.js';
+import { generateCourseAndSave } from '../services/courseService.js';
 import { t } from '../i18n.js';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import UpgradeModal from './shared/UpgradeModal.jsx';
@@ -23,7 +23,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
   const [prerequisites, setPrerequisites] = useState('');
   const [stack, setStack] = useState('');
 
-  const hasApiKey = !!getGroqApiKey();
+  const hasApiKey = true;
   const { plan, usage, checkLimit, incrementUsage, isUpgradeModalOpen, setUpgradeModalOpen } = usePlanLimits();
 
   const handleCreateCourse = async (e) => {

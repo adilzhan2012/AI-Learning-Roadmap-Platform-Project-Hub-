@@ -1,4 +1,5 @@
-import { db } from '../firebase.js';
+import { db, functions } from '../firebase.js';
+import { httpsCallable } from 'firebase/functions';
 import { 
   collection, 
   doc, 
@@ -17,90 +18,58 @@ import {
 } from 'firebase/firestore';
 import { getLocale } from '../i18n.js';
 
-// Helper to get Groq API Key (uses env variable directly for monetization billing model)
-export function getGroqApiKey() {
-  return import.meta.env.VITE_GROQ_API_KEY || '';
-}
+// Helper to get Groq API Key is removed as it's now handled by Cloud Functions
 
 // Retry helper with exponential backoff and model fallback for 503/429/404 errors
-export async function callGroqWithRetry(apiKey, prompt, modelNameOverride = null, maxRetries = 5) {
-  let lastError;
-  const defaultModels = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"];
-  const modelsToTry = modelNameOverride ? [modelNameOverride, ...defaultModels.filter(m => m !== modelNameOverride)] : defaultModels;
-  
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    for (const modelName of modelsToTry) {
-      try {
-        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            model: modelName,
-            messages: [{ role: "user", content: prompt }],
-            temperature: 0.7
-          })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error?.message || `HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
-        return data.choices[0].message.content;
-      } catch (err) {
-        lastError = err;
-        const errMsg = err.message || '';
-        
-        // If it's a 404 (model not found), try the next model immediately
-        if (errMsg.includes('404') || errMsg.includes('not found') || errMsg.includes('NOT_FOUND')) {
-          console.warn(`Model ${modelName} not found, trying next model...`);
-          continue;
-        }
-
-        const isRetryable = errMsg.includes('503') || errMsg.includes('429') 
-          || errMsg.includes('UNAVAILABLE') || errMsg.includes('RESOURCE_EXHAUSTED')
-          || errMsg.includes('high demand') || errMsg.includes('overloaded') || errMsg.includes('rate limit');
-        
-        if (isRetryable) {
-           console.warn(`Model ${modelName} overloaded, trying next model...`);
-           continue; // Try next model
-        }
-        
-        // If it's another error (like auth failure), throw immediately
-        if (errMsg.includes('Invalid API Key') || errMsg.includes('401')) {
-           throw new Error('MISSING_API_KEY');
-        }
-        break; // break inner loop, will hit the delay if we haven't thrown
-      }
+// Call our secure Cloud Function proxy
+export async function callGroqWithRetry(apiKey, prompt, usageType) {
+  try {
+    const aiProxy = httpsCallable(functions, 'aiProxy');
+    const response = await aiProxy({ prompt, usageType });
+    if (!response || !response.data || !response.data.result) {
+      throw new Error('Empty response from AI Proxy');
     }
-    
-    // If we've exhausted all models and it was a retryable error, wait and try again
-    if (attempt < maxRetries - 1) {
-      const delay = Math.pow(1.5, attempt) * 3000 + Math.random() * 2000;
-      console.warn(`All models failed/overloaded. Retry ${attempt + 1}/${maxRetries} after ${Math.round(delay)}ms...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
+    return response.data.result;
+  } catch (error) {
+    console.error("AI Proxy Error:", error);
+    if (error.code === 'resource-exhausted') {
+      throw new Error('API_OVERLOADED');
     }
+    if (error.code === 'unauthenticated') {
+      throw new Error('You must be logged in to use AI features.');
+    }
+    if (error.code === 'permission-denied') {
+      throw new Error('Server API key configuration is missing or invalid.');
+    }
+    throw new Error(`AI generation failed: ${error.message}`);
   }
-  
-  console.error("Groq API Error after all retries and fallbacks:", lastError);
-  const finalErrMsg = lastError?.message || "Unknown error";
-  
-  if (finalErrMsg.includes('503') || finalErrMsg.includes('high demand') || finalErrMsg.includes('UNAVAILABLE') || finalErrMsg.includes('RESOURCE_EXHAUSTED') || finalErrMsg.includes('429')) {
-    throw new Error('API_OVERLOADED');
-  }
-  
-  throw new Error(`Groq API error: ${finalErrMsg}`);
 }
 
-// 1. Generate Course using Groq API
+// 1. Generate Course using Gemini API (or Groq)
 export async function generateCourseAndSave(userId, topic, level, preferences = {}) {
-  const apiKey = getGroqApiKey();
-  if (!apiKey) {
-    throw new Error('MISSING_API_KEY');
+  const normalizedTopic = topic.toLowerCase().trim();
+  const coursesCol = collection(db, 'courses');
+
+  // Check for existing similar course
+  const q = query(coursesCol, where('normalizedTopic', '==', normalizedTopic), where('level', '==', level));
+  const existingSnap = await getDocs(q);
+  
+  if (!existingSnap.empty) {
+    const existingCourse = existingSnap.docs[0].data();
+    
+    // Clone the course for the new user
+    const clonedCourse = {
+      ...existingCourse,
+      userId,
+      progress: 0,
+      createdAt: new Date().toISOString()
+    };
+    
+    const docRef = await addDoc(coursesCol, clonedCourse);
+    await updateUserStats(userId, { activeCoursesCount: increment(1) });
+    await logActivity(userId, `Created course: ${clonedCourse.title} (Cloned)`, 'school', 'text-blue-500');
+    
+    return { id: docRef.id, ...clonedCourse };
   }
 
   const currentLocale = getLocale();
@@ -155,7 +124,7 @@ Ensure:
 4. Set the status of the first node (with no prerequisites) to "active" and all other nodes to "locked".
 5. Return ONLY the JSON object, with no markdown formatting tags. Do NOT wrap it in \`\`\`json \`\`\`. Do not include any explanations.`;
 
-  const textResponse = await callGroqWithRetry(apiKey, prompt);
+  const textResponse = await callGroqWithRetry(null, prompt, 'roadmap');
 
   if (!textResponse) {
     throw new Error('Empty response from Groq API');
@@ -207,6 +176,8 @@ Ensure:
   // Create course object for Firestore
   const newCourse = {
     userId,
+    topic: topic,
+    normalizedTopic: normalizedTopic,
     title: courseData.title || topic,
     category: courseData.category || 'General',
     level: courseData.level || level,
@@ -222,7 +193,6 @@ Ensure:
   };
 
   // Save to Firestore
-  const coursesCol = collection(db, 'courses');
   const docRef = await addDoc(coursesCol, newCourse);
   
   // Update user stats (increment active courses)
@@ -236,10 +206,6 @@ Ensure:
 
 // 1.5 Generate Lesson Content
 export async function generateLessonContent(courseId, nodeId, courseTitle, topicLabel, topicDesc, preferences = {}) {
-  const apiKey = getGroqApiKey();
-  if (!apiKey) {
-    throw new Error('MISSING_API_KEY');
-  }
 
   const currentLocale = getLocale();
   let languageName = 'English';
@@ -275,7 +241,7 @@ Def: [A concise, 1-2 sentence definition]
 ---
 Make it highly educational, long, and detailed so the user can genuinely learn from it.`;
 
-  const textResponse = await callGroqWithRetry(apiKey, prompt);
+  const textResponse = await callGroqWithRetry(null, prompt, 'ai_question');
 
   if (!textResponse) throw new Error('Empty response from Groq API');
 
@@ -327,6 +293,32 @@ export async function deleteCourse(courseId, userId) {
 
 
 // 3. Fetch specific course
+export async function getQuizResult(courseId, nodeId) {
+  const userId = auth.currentUser?.uid;
+  if (!userId) return null;
+  const docRef = doc(db, 'users', userId, 'quizResults', nodeId);
+  const snap = await getDoc(docRef);
+  if (!snap.exists()) return null;
+  return snap.data();
+}
+
+export async function updateNodeFields(courseId, nodeId, fields) {
+  const docRef = doc(db, 'courses', courseId);
+  const snap = await getDoc(docRef);
+  if (!snap.exists()) throw new Error('Course not found');
+  
+  const courseData = snap.data();
+  const updatedNodes = courseData.nodes.map(node => {
+    if (String(node.id) === String(nodeId)) {
+      return { ...node, ...fields };
+    }
+    return node;
+  });
+  
+  await updateDoc(docRef, { nodes: updatedNodes });
+  return { ...courseData, id: courseId, nodes: updatedNodes };
+}
+
 export async function getCourseById(courseId) {
   const docRef = doc(db, 'courses', courseId);
   const snap = await getDoc(docRef);
@@ -342,7 +334,7 @@ export async function updateNodeStatus(courseId, nodeId, newStatus) {
   const userId = course.userId;
 
   if (newStatus === 'completed') {
-    const quizResultSnap = await getDoc(doc(db, 'users', userId, 'quizResults', nodeId));
+    const quizResultSnap = await getDoc(doc(db, 'quizResults', `${userId}_${nodeId}`));
     if (!quizResultSnap.exists() || !quizResultSnap.data().passed) {
       throw new Error('Quiz must be passed before marking lesson complete');
     }
@@ -469,25 +461,49 @@ export async function getUserStats(userId, additionalData = {}) {
     if (!data.lastName) data.lastName = '';
     if (!data.username) data.username = '';
   }
-  // Simple streak calculator logic
+  
+  // Backfill missing fields for old users
+  let needsUpdate = false;
+  const updates = {};
+  if (data.xp === undefined) { updates.xp = 0; needsUpdate = true; data.xp = 0; }
+  if (data.level === undefined) { updates.level = 1; needsUpdate = true; data.level = 1; }
+  if (data.totalXPEarned === undefined) { updates.totalXPEarned = 0; needsUpdate = true; data.totalXPEarned = 0; }
+  
+  if (needsUpdate) {
+    await updateDoc(userRef, updates);
+  }
+
+  // Timezone-aware streak calculator logic
   const now = new Date();
   const lastActive = data.lastActiveDate ? new Date(data.lastActiveDate) : null;
   
   if (lastActive) {
-    const diffTime = Math.abs(now - lastActive);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const getLocalDateOnly = (date) => {
+      const d = new Date(date);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    };
+
+    const today = getLocalDateOnly(now);
+    const lastActiveDay = getLocalDateOnly(lastActive);
+    const diffTime = today - lastActiveDay;
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
     
     if (diffDays > 1) {
-      // Streak broken
+      // Streak broken (user skipped a day or more)
       await updateDoc(userRef, { streakDays: 1, lastActiveDate: now.toISOString() });
       data.streakDays = 1;
-    } else if (diffDays === 1 && now.getDate() !== lastActive.getDate()) {
-      // Incremented streak
+    } else if (diffDays === 1) {
+      // Incremented streak (consecutive local days)
       await updateDoc(userRef, { streakDays: increment(1), lastActiveDate: now.toISOString() });
       data.streakDays += 1;
+    } else {
+      // Active again on the same calendar day; update timestamp but keep streak
+      await updateDoc(userRef, { lastActiveDate: now.toISOString() });
     }
   } else {
-    await updateDoc(userRef, { lastActiveDate: now.toISOString() });
+    await updateDoc(userRef, { lastActiveDate: now.toISOString(), streakDays: 1 });
+    data.streakDays = 1;
   }
 
   return data;
@@ -531,14 +547,15 @@ export async function logActivity(userId, title, iconName, colorClass) {
 // 7. Get Recent Activities
 export async function getRecentActivities(userId, maxLimit = 5) {
   const activitiesCol = collection(db, 'users', userId, 'activities');
-  const q = query(activitiesCol, orderBy('timestamp', 'desc'), limit(maxLimit));
-  const snap = await getDocs(q);
-  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const snap = await getDocs(activitiesCol); // Since SDK query constraints are simple, sort in JS
+  const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  
+  return docs
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+    .slice(0, maxLimit);
 }
 
 export async function generateELI5Content(originalContent) {
-  const apiKey = getGroqApiKey();
-  if (!apiKey) throw new Error('MISSING_API_KEY');
 
   const currentLocale = getLocale();
   let languageName = 'English';
@@ -554,14 +571,12 @@ Original Lesson:
 ${originalContent}
 `;
 
-  const textResponse = await callGroqWithRetry(apiKey, prompt);
+  const textResponse = await callGroqWithRetry(null, prompt, 'ai_question');
   if (!textResponse) throw new Error('Empty response from Groq API');
   return textResponse.trim();
 }
 
 export async function generateRealWorldExample(topicLabel, topicDesc) {
-  const apiKey = getGroqApiKey();
-  if (!apiKey) throw new Error('MISSING_API_KEY');
 
   const currentLocale = localStorage.getItem('yourway-locale') || 'en';
   let languageName = 'English';
@@ -573,24 +588,18 @@ Provide exactly ONE highly engaging, mind-blowing, and realistic real-world exam
 Keep it to 2-3 sentences max. Do NOT use markdown headings.
 CRITICAL INSTRUCTION: Respond entirely in ${languageName}.`;
 
-  const textResponse = await callGroqWithRetry(apiKey, prompt);
+  const textResponse = await callGroqWithRetry(null, prompt, 'ai_question');
   if (!textResponse) throw new Error('Empty response from Groq API');
   return textResponse.trim();
 }
 
-export async function updateNodeFields(courseId, nodeId, fields) {
-  const docRef = doc(db, 'courses', courseId);
-  const snap = await getDoc(docRef);
-  if (!snap.exists()) throw new Error('Course not found');
-  
-  const courseData = snap.data();
-  const updatedNodes = courseData.nodes.map(node => {
-    if (String(node.id) === String(nodeId)) {
-      return { ...node, ...fields };
-    }
-    return node;
+export function markdownToSlides(markdown) {
+  if (!markdown) return [];
+  const sections = markdown.split(/^## /m).filter(Boolean);
+  return sections.map(section => {
+    const lines = section.trim().split('\n');
+    const title = lines[0].replace(/^#+ /, '').trim();
+    const body = lines.slice(1).join('\n').trim();
+    return { title, body };
   });
-  
-  await updateDoc(docRef, { nodes: updatedNodes });
-  return { ...courseData, id: courseId, nodes: updatedNodes };
 }

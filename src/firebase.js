@@ -7,6 +7,7 @@ import {
   onAuthStateChanged 
 } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getFunctions } from 'firebase/functions';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -20,11 +21,13 @@ const firebaseConfig = {
 let app;
 let auth;
 let db;
+let functions;
 
 try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
+  functions = getFunctions(app);
 } catch (error) {
   console.error("Firebase initialization error", error);
 }
@@ -33,6 +36,7 @@ export {
   app, 
   auth, 
   db,
+  functions,
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   signOut, 
