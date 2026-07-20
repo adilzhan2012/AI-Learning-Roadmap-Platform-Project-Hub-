@@ -28,6 +28,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
   const [dailyTime, setDailyTime] = useState('30m'); // '15m' | '30m' | '60m'
   const [flashcardCount, setFlashcardCount] = useState('5'); // '3' | '5' | '8'
   const [courseStyle, setCourseStyle] = useState('Friendly'); // 'Simple' | 'Friendly' | 'Gamified'
+  const [upgradeReason, setUpgradeReason] = useState(null); // 'limit' | 'level' | 'cards' | null
 
   const hasApiKey = true;
   const { plan, usage, checkLimit, incrementUsage, isUpgradeModalOpen, setUpgradeModalOpen } = usePlanLimits();
@@ -51,6 +52,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
     }
     
     if (!checkLimit('roadmap')) {
+      setUpgradeReason('limit');
       return; // stops generation, opens modal
     }
 
@@ -162,21 +164,32 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
               <div>
                 <label className="block text-sm font-bold text-on-surface mb-2">{t('dashboard.modal.levelLabel')}</label>
                 <div className="grid grid-cols-3 gap-2">
-                  {['Beginner', 'Intermediate', 'Advanced'].map(lvl => (
-                    <button
-                      key={lvl}
-                      type="button"
-                      disabled={generating}
-                      onClick={() => setLevel(lvl)}
-                      className={`py-3.5 rounded-xl text-sm font-bold transition-all ${
-                        level === lvl 
-                          ? 'bg-primary text-on-primary shadow-lg shadow-primary/20' 
-                          : 'bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
-                      }`}
-                    >
-                      {t('level.' + lvl)}
-                    </button>
-                  ))}
+                  {['Beginner', 'Intermediate', 'Advanced'].map(lvl => {
+                    const isLocked = plan === 'FREE' && lvl !== 'Beginner';
+                    return (
+                      <button
+                        key={lvl}
+                        type="button"
+                        disabled={generating}
+                        onClick={() => {
+                          if (isLocked) {
+                            setUpgradeReason('level');
+                            setUpgradeModalOpen(true);
+                          } else {
+                            setLevel(lvl);
+                          }
+                        }}
+                        className={`py-3.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1 ${
+                          level === lvl 
+                            ? 'bg-primary text-on-primary shadow-lg shadow-primary/20' 
+                            : 'bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
+                        }`}
+                      >
+                        {t('level.' + lvl)}
+                        {isLocked && <Lock className="w-3.5 h-3.5 text-on-surface-variant/60" strokeWidth={1.8} />}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -307,21 +320,32 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
                           { key: '3', ru: '3 карточки', en: '3 cards' },
                           { key: '5', ru: '5 карточек', en: '5 cards' },
                           { key: '8', ru: '8 карточек', en: '8 cards' }
-                        ].map(item => (
-                          <button
-                            key={item.key}
-                            type="button"
-                            disabled={generating}
-                            onClick={() => setFlashcardCount(item.key)}
-                            className={`py-2 rounded-lg text-xs font-semibold border transition-all ${
-                              flashcardCount === item.key
-                                ? 'bg-primary/10 border-primary text-primary font-bold shadow-sm'
-                                : 'bg-surface-container border-outline-variant text-on-surface-variant hover:text-on-surface'
-                            }`}
-                          >
-                            {locale === 'ru' ? item.ru : item.en}
-                          </button>
-                        ))}
+                        ].map(item => {
+                          const isLocked = plan === 'FREE' && item.key === '8';
+                          return (
+                            <button
+                              key={item.key}
+                              type="button"
+                              disabled={generating}
+                              onClick={() => {
+                                if (isLocked) {
+                                  setUpgradeReason('cards');
+                                  setUpgradeModalOpen(true);
+                                } else {
+                                  setFlashcardCount(item.key);
+                                }
+                              }}
+                              className={`py-2 rounded-lg text-xs font-semibold border transition-all flex items-center justify-center gap-1 ${
+                                flashcardCount === item.key
+                                  ? 'bg-primary/10 border-primary text-primary font-bold shadow-sm'
+                                  : 'bg-surface-container border-outline-variant text-on-surface-variant hover:text-on-surface'
+                              }`}
+                            >
+                              {locale === 'ru' ? item.ru : item.en}
+                              {isLocked && <Lock className="w-3 h-3 text-on-surface-variant/60" strokeWidth={1.8} />}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -393,15 +417,46 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
-            className="relative bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] w-full max-w-sm rounded-[2rem] p-6 shadow-2xl z-10 text-center"
+            className="relative bg-surface-container border border-outline w-full max-w-sm rounded-[2rem] p-6 shadow-2xl z-10 text-center"
           >
             <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Lock className="w-5 h-5 text-white" strokeWidth={1.5} />
+              <Lock className="w-5 h-5 text-on-surface" strokeWidth={1.5} />
             </div>
-            <h3 className="text-lg font-bold text-white mb-2">Достигнут лимит генераций</h3>
-            <p className="text-xs text-[#98989D] mb-6 leading-relaxed">
-              Вы исчерпали лимит генерации дорожных карт (максимум 2 курса на бесплатном тарифе). Перейдите на тариф Pro для безлимитной генерации.
-            </p>
+            
+            {upgradeReason === 'level' ? (
+              <>
+                <h3 className="text-lg font-bold text-on-surface mb-2">
+                  {locale === 'ru' ? 'Доступно на тарифе PRO' : 'Available on PRO'}
+                </h3>
+                <p className="text-xs text-on-surface-variant mb-6 leading-relaxed">
+                  {locale === 'ru' 
+                    ? 'Уровни сложности Средний и Продвинутый доступны только на тарифе PRO. Обновите тариф для доступа к углубленному обучению.' 
+                    : 'Intermediate and Advanced difficulty levels are only available on the PRO plan. Upgrade to unlock deep learning.'}
+                </p>
+              </>
+            ) : upgradeReason === 'cards' ? (
+              <>
+                <h3 className="text-lg font-bold text-on-surface mb-2">
+                  {locale === 'ru' ? 'Доступно на тарифе PRO' : 'Available on PRO'}
+                </h3>
+                <p className="text-xs text-on-surface-variant mb-6 leading-relaxed">
+                  {locale === 'ru' 
+                    ? 'Настройка "8 карточек" для запоминания доступна только на тарифе PRO. Обновите тариф, чтобы запоминать больше понятий в каждом уроке.' 
+                    : 'The "8 flashcards" preference is only available on the PRO plan. Upgrade to remember more concepts in each lesson.'}
+                </p>
+              </>
+            ) : (
+              <>
+                <h3 className="text-lg font-bold text-on-surface mb-2">
+                  {locale === 'ru' ? 'Достигнут лимит генераций' : 'Roadmap limit reached'}
+                </h3>
+                <p className="text-xs text-[#98989D] mb-6 leading-relaxed">
+                  {locale === 'ru'
+                    ? 'Вы исчерпали лимит генерации дорожных карт (максимум 2 курса на бесплатном тарифе). Перейдите на тариф Pro для безлимитной генерации.'
+                    : 'You have reached your roadmap generation limit (maximum 2 courses on the free plan). Upgrade to Pro for unlimited roadmap creations.'}
+                </p>
+              </>
+            )}
             <div className="space-y-3">
               <button
                 onClick={() => {
@@ -409,15 +464,15 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
                   onClose();
                   navigate('/pricing');
                 }}
-                className="w-full py-3 rounded-xl font-bold bg-[#FFFFFF] text-[#000000] hover:bg-[#F5F5F7] transition-all text-xs"
+                className="w-full py-3 rounded-xl font-bold bg-primary text-on-primary hover:bg-primary/90 transition-all text-xs"
               >
-                Перейти на Pro
+                {locale === 'ru' ? 'Перейти на Pro' : 'Upgrade to Pro'}
               </button>
               <button
                 onClick={() => setUpgradeModalOpen(false)}
-                className="w-full py-3 rounded-xl font-bold bg-transparent border border-[rgba(255,255,255,0.08)] text-[#FFFFFF] hover:bg-[rgba(255,255,255,0.04)] transition-all text-xs"
+                className="w-full py-3 rounded-xl font-bold bg-transparent border border-outline text-on-surface hover:bg-surface-container-high transition-all text-xs"
               >
-                Понятно
+                {locale === 'ru' ? 'Понятно' : 'Got it'}
               </button>
             </div>
           </motion.div>
