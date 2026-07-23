@@ -1063,29 +1063,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                 </div>
                 <p className="text-sm font-semibold">{t('graph.details.placeholder') || 'Выберите тему на карте, чтобы увидеть детали'}</p>
                 
-                {/* Empty state AI Mentor CTA */}
-                <div className="mt-8 w-full relative overflow-hidden p-4 rounded-[16px] bg-gradient-to-br from-indigo-950/40 to-purple-950/40 border border-indigo-500/20 flex flex-col gap-2.5 text-left shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1 text-[10px] font-bold text-indigo-300">
-                      <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                      Твой plan обучения
-                    </span>
-                    <span className="text-[8px] font-black tracking-widest uppercase bg-indigo-500 text-on-surface px-1.5 py-0.5 rounded-[4px]">PRO</span>
-                  </div>
-                  <p className="text-[10px] text-zinc-300 leading-normal">Спланируй свой путь обучения. Получи советы по сложным темам у AI Mentor.</p>
-                  <button
-                    onClick={() => {
-                      window.dispatchEvent(new CustomEvent('mentor:open', { 
-                        detail: { 
-                          prompt: `Привет! Помоги мне составить план обучения на основе моего графа знаний по курсу "${selectedCourse?.title || 'мои предметы'}".` 
-                        } 
-                      }));
-                    }}
-                    className="w-full py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-on-surface text-[10px] font-bold rounded-[8px] transition-all flex items-center justify-center gap-1 shadow-[0_4px_12px_rgba(99,102,241,0.2)]"
-                  >
-                    Составить план с AI
-                  </button>
-                </div>
+
 
                 {/* AI Mock Interview (ULTRA feature) */}
                 {plan === 'ULTRA' && (

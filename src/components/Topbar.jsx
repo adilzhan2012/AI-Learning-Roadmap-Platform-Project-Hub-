@@ -310,19 +310,6 @@ export default function Topbar() {
                     <ChevronRight className="w-3.5 h-3.5 text-[#636366]" strokeWidth={1.5} />
                   </button>
 
-                  <div className="py-2 border-b border-outline">
-                    <button 
-                      onClick={() => {
-                        navigate('/achievements');
-                        setShowProfileMenu(false);
-                      }}
-                      className="w-full text-left px-4 py-2 text-xs font-semibold text-on-surface hover:bg-surface-container-high/50 transition-colors flex items-center gap-2"
-                    >
-                      <Trophy className="w-3.5 h-3.5 text-on-surface-variant" strokeWidth={1.5} />
-                      Достижения
-                    </button>
-                  </div>
-
                   <div className="border-t border-outline my-1"></div>
 
                   {/* Logout/Sign Out Option */}
