@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, ArrowLeft, Loader2 } from 'lucide-react';
+import Logo from '../components/shared/Logo.jsx';
 import { auth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from '../firebase.js';
 import { getUserStats } from '../services/courseService.js';
 import { t, useLocale } from '../i18n.js';
@@ -88,7 +89,7 @@ export default function Auth({ type }) {
 
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 dark:bg-[#000000] p-6 relative overflow-hidden">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 dark:bg-background p-6 relative overflow-hidden">
       {/* Background elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
         <motion.div 
@@ -108,15 +109,16 @@ export default function Auth({ type }) {
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: 'spring', damping: 25, stiffness: 100 }}
-        className="w-full max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-8 shadow-2xl glass-card z-10"
+        className="w-full max-w-md bg-on-surface dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-8 shadow-2xl glass-card z-10"
       >
         
-        <div className="flex items-center gap-2 mb-8 justify-center font-semibold text-xl tracking-tight text-gray-900 dark:text-white">
-          <Sparkles className="w-5 h-5 text-blue-500" />
-          yourway.co
+        <div className="flex items-center justify-center mb-8">
+          <Link to="/">
+            <Logo variant="full" className="h-8" />
+          </Link>
         </div>
         
-        <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-2">{title}</h2>
+        <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-on-surface mb-2">{title}</h2>
         <p className="text-center text-gray-500 dark:text-gray-400 mb-8">{subtitle}</p>
         
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -140,7 +142,7 @@ export default function Auth({ type }) {
                 <input type="text" id="firstName" required={!isLogin}
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                   placeholder="Иван" />
               </div>
               <div>
@@ -148,7 +150,7 @@ export default function Auth({ type }) {
                 <input type="text" id="lastName" required={!isLogin}
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                   placeholder="Иванов" />
               </div>
             </div>
@@ -160,7 +162,7 @@ export default function Auth({ type }) {
               <input type="text" id="username" required={!isLogin}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                 placeholder="ivan_cool" />
             </div>
           )}
@@ -170,7 +172,7 @@ export default function Auth({ type }) {
             <input type="email" id="email" required 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
               placeholder="you@example.com" />
           </div>
           
@@ -179,7 +181,7 @@ export default function Auth({ type }) {
             <input type="password" id="password" required minLength="6"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
               placeholder="••••••••" />
           </div>
           
@@ -191,7 +193,7 @@ export default function Auth({ type }) {
                 required 
                 checked={agreed}
                 onChange={(e) => setAgreed(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-gray-300 dark:border-gray-700 text-blue-600 focus:ring-blue-500 bg-white dark:bg-black cursor-pointer"
+                className="mt-1 h-4 w-4 rounded border-gray-300 dark:border-gray-700 text-blue-600 focus:ring-blue-500 bg-on-surface dark:bg-black cursor-pointer"
               />
               <label htmlFor="agreePolicies" className="text-xs text-gray-500 dark:text-gray-400 leading-normal select-none">
                 {locale === 'ru' ? (
@@ -235,7 +237,7 @@ export default function Auth({ type }) {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             type="submit" disabled={loading || (!isLogin && !agreed)}
-            className="w-full py-3 rounded-xl bg-black dark:bg-white text-white dark:text-black font-medium text-lg shadow-lg flex justify-center items-center gap-2 disabled:opacity-70"
+            className="w-full py-3 rounded-xl bg-black dark:bg-on-surface text-on-surface dark:text-black font-medium text-lg shadow-lg flex justify-center items-center gap-2 disabled:opacity-70"
           >
             {loading ? (
               <Loader2 className="w-6 h-6 animate-spin" />
@@ -247,7 +249,7 @@ export default function Auth({ type }) {
           {altText} <Link to={altLink} className="text-blue-600 hover:text-blue-500 font-medium ml-1">{altLinkText}</Link>
         </p>
         <p className="mt-4 flex justify-center">
-          <Link to="/" className="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors flex items-center gap-1">
+          <Link to="/" className="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-on-surface transition-colors flex items-center gap-1">
             <ArrowLeft className="w-4 h-4" /> {t('auth.backHome')}
           </Link>
         </p>

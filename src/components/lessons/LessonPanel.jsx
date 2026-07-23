@@ -346,10 +346,10 @@ Provide a code boilerplate template at the end.`;
   );
 
   return (
-    <div className="flex w-full h-full bg-[#09090b]">
+    <div className="flex w-full h-full bg-background">
       <div className="flex-1 border-l border-white/10 shadow-2xl flex flex-col relative h-full text-zinc-300 min-w-0">
         {/* Header */}
-      <div className="flex items-center justify-between p-4 md:p-6 border-b border-white/10 bg-[#09090b] flex-shrink-0">
+      <div className="flex items-center justify-between p-4 md:p-6 border-b border-white/10 bg-background flex-shrink-0">
         <div>
           <span className="text-xs font-bold px-2 py-1 bg-primary/10 text-primary rounded-md mb-2 inline-block">
             {t(selectedCourse.title)}
@@ -368,17 +368,17 @@ Provide a code boilerplate template at the end.`;
                   >
                     <span>📥 Экспорт</span>
                   </button>
-                  <div className="absolute right-0 mt-2 w-48 bg-[#1C1C1E] border border-white/10 rounded-xl py-1.5 shadow-xl hidden group-hover:block z-50 text-left">
+                  <div className="absolute right-0 mt-2 w-48 bg-surface border border-white/10 rounded-xl py-1.5 shadow-xl hidden group-hover:block z-50 text-left">
                     <button 
                       onClick={handleExportNotion}
-                      className="w-full text-left px-4 py-2 hover:bg-white/5 text-xs text-zinc-200 transition-colors"
+                      className="w-full text-left px-4 py-2 hover:bg-on-surface/5 text-xs text-zinc-200 transition-colors"
                     >
                       📓 Экспорт в Notion (.md)
                     </button>
                     {flashcards.length > 0 && (
                       <button 
                         onClick={handleExportAnki}
-                        className="w-full text-left px-4 py-2 hover:bg-white/5 text-xs text-zinc-200 transition-colors"
+                        className="w-full text-left px-4 py-2 hover:bg-on-surface/5 text-xs text-zinc-200 transition-colors"
                       >
                         📇 Карточки в Anki (.csv)
                       </button>
@@ -437,13 +437,13 @@ Provide a code boilerplate template at the end.`;
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto relative custom-scrollbar bg-[#09090b] text-left">
+      <div className="flex-1 overflow-y-auto relative custom-scrollbar bg-background text-left">
         {selectedNode.content ? (
           <div className="flex flex-col min-h-full">
             {adaptationBanner && (
               <div className="mx-6 md:mx-10 mt-6 p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex gap-3 items-center text-xs text-indigo-300">
                 <span>🧬 <strong>AI-Наставник:</strong> Обнаружены пробелы по теме. Граф знаний перестроен, добавлен микро-модуль для закрытия пробелов.</span>
-                <button onClick={() => setAdaptationBanner(false)} className="ml-auto text-indigo-400 hover:text-white">✕</button>
+                <button onClick={() => setAdaptationBanner(false)} className="ml-auto text-indigo-400 hover:text-on-surface">✕</button>
               </div>
             )}
 
@@ -504,7 +504,7 @@ Provide a code boilerplate template at the end.`;
                 <div className="flex items-center justify-between mb-4 border-b border-indigo-500/10 pb-3">
                   <div className="flex items-center gap-2">
                     <span className="text-xl">💻</span>
-                    <h3 className="text-sm font-bold text-white m-0">Практическая зона: AI Code Review</h3>
+                    <h3 className="text-sm font-bold text-on-surface m-0">Практическая зона: AI Code Review</h3>
                   </div>
                   <button
                     type="button"
@@ -539,7 +539,7 @@ Provide a code boilerplate template at the end.`;
                         rows={12}
                         value={practiceCode}
                         onChange={(e) => setPracticeCode(e.target.value)}
-                        className="w-full bg-[#0c0c0e] border border-white/10 rounded-xl p-4 text-xs font-mono text-emerald-400 focus:outline-none focus:border-indigo-500 transition-colors leading-relaxed"
+                        className="w-full bg-surface border border-white/10 rounded-xl p-4 text-xs font-mono text-emerald-400 focus:outline-none focus:border-indigo-500 transition-colors leading-relaxed"
                         style={{ tabSize: 4 }}
                       />
                     </div>
@@ -549,7 +549,7 @@ Provide a code boilerplate template at the end.`;
                         type="button"
                         disabled={reviewingCode || generatingAssignment}
                         onClick={handleRunCodeReview}
-                        className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5"
+                        className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-on-surface font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5"
                       >
                         {reviewingCode ? (
                           <>
@@ -559,7 +559,7 @@ Provide a code boilerplate template at the end.`;
                         ) : (
                           <>
                             <span>Отправить на AI Code Review</span>
-                            <Sparkles className="w-3.5 h-3.5 text-white" />
+                            <Sparkles className="w-3.5 h-3.5 text-on-surface" />
                           </>
                         )}
                       </button>
@@ -583,7 +583,7 @@ Provide a code boilerplate template at the end.`;
             )}
             
             {/* Footer actions */}
-            <div className="p-6 md:p-8 mt-auto border-t border-white/10 bg-[#09090b] flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="p-6 md:p-8 mt-auto border-t border-white/10 bg-background flex flex-col md:flex-row justify-between items-center gap-6">
               <div>
                 <p className="text-base font-bold text-on-surface mb-1">Завершили изучение материала?</p>
                 <p className="text-sm text-on-surface-variant">Пройдите тест, чтобы закрепить знания и разблокировать следующие уроки.</p>
@@ -594,7 +594,7 @@ Provide a code boilerplate template at the end.`;
                 <button
                   onClick={handleOpenQuiz}
                   disabled={quizGenerating || selectedNode.status === 'completed'}
-                  className="bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/25 whitespace-nowrap"
+                  className="bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-on-surface px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/25 whitespace-nowrap"
                 >
                   {quizGenerating ? (
                     <Loader2 className="w-5 h-5 animate-spin" />

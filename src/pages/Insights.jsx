@@ -78,7 +78,7 @@ function MiniHistogram() {
         <div 
           key={i} 
           style={{ height: `${h}%` }} 
-          className={`flex-1 rounded-sm ${h === 90 ? 'bg-[#FFFFFF]' : 'bg-[#FFFFFF]/25'}`}
+          className={`flex-1 rounded-sm ${h === 90 ? 'bg-on-surface' : 'bg-on-surface/25'}`}
         />
       ))}
     </div>
@@ -92,7 +92,7 @@ function CourseDonutChart({ courses }) {
   
   let accumulatedPercent = 0;
   const shades = [
-    'stroke-[#FFFFFF]',
+    'stroke-on-surface',
     'stroke-[#8E8E93]',
     'stroke-[#3A3A3C]',
     'stroke-[#48484A]'
@@ -124,8 +124,8 @@ function CourseDonutChart({ courses }) {
         })}
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center font-sans">
-        <span className="text-[10px] text-[#98989D]">Курсы</span>
-        <span className="text-sm font-mono font-bold text-[#FFFFFF] mt-0.5">{courses.length}</span>
+        <span className="text-[10px] text-on-surface-variant">Курсы</span>
+        <span className="text-sm font-mono font-bold text-on-surface mt-0.5">{courses.length}</span>
       </div>
     </div>
   );
@@ -191,8 +191,8 @@ export default function Insights() {
 
   if (loading || planLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-[#000000] text-[#F5F5F7] gap-4">
-        <Loader2 className="w-8 h-8 animate-spin text-[#FFFFFF]" />
+      <div className="flex flex-col items-center justify-center h-screen bg-background text-on-background gap-4">
+        <Loader2 className="w-8 h-8 animate-spin text-on-surface" />
         <p className="text-sm font-medium tracking-wide font-clash">{t('insights.loading')}</p>
       </div>
     );
@@ -243,20 +243,20 @@ export default function Insights() {
   };
 
   return (
-    <div className="relative min-h-[calc(100vh-4.5rem)] bg-[#000000]">
+    <div className="relative min-h-[calc(100vh-4.5rem)] bg-background">
       {plan === 'FREE' && (
-        <div className="absolute inset-0 z-[40] flex items-center justify-center p-4 bg-[#000000]/65">
-          <div className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[2rem] p-8 max-w-sm w-full text-center shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-[rgba(255,255,255,0.08)]">
-            <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Lock className="w-5 h-5 text-white" strokeWidth={1.5} />
+        <div className="absolute inset-0 z-[40] flex items-center justify-center p-4 bg-background/65">
+          <div className="bg-surface border border-outline rounded-[2rem] p-8 max-w-sm w-full text-center shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-outline">
+            <div className="w-12 h-12 bg-on-surface/5 border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-5 h-5 text-on-surface" strokeWidth={1.5} />
             </div>
-            <h3 className="text-lg font-bold text-white mb-2">Аналитика доступна в Pro</h3>
-            <p className="text-xs text-[#98989D] mb-6 leading-relaxed">
+            <h3 className="text-lg font-bold text-on-surface mb-2">Аналитика доступна в Pro</h3>
+            <p className="text-xs text-on-surface-variant mb-6 leading-relaxed">
               Отслеживайте свои часы обучения, среднее время сессии, прогнозы достижения целей и активность по дням в Pro подписке.
             </p>
             <button
               onClick={() => navigate('/pricing')}
-              className="w-full py-3.5 rounded-xl font-bold bg-[#FFFFFF] text-[#000000] hover:bg-[#F5F5F7] transition-all text-xs"
+              className="w-full py-3.5 rounded-xl font-bold bg-on-surface text-inverse-on-surface hover:bg-[#F5F5F7] transition-all text-xs"
             >
               Открыть Pro
             </button>
@@ -268,19 +268,19 @@ export default function Insights() {
         initial="hidden"
         animate="show"
         variants={containerVariants}
-        className={`max-w-[2000px] mx-auto space-y-8 text-[#F5F5F7] font-sans bg-[#000000] p-4 md:p-6 ${
+        className={`max-w-[2000px] mx-auto space-y-8 text-on-background font-sans bg-background p-4 md:p-6 ${
           plan === 'FREE' ? 'filter blur-[10px] pointer-events-none select-none' : ''
         }`}
       >
       {/* Top Header */}
       <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-4">
         <div>
-          <h1 className="text-4xl font-bold font-clash text-[#FFFFFF] mb-2 tracking-tight">Аналитика обучения</h1>
-          <p className="text-sm text-[#98989D] max-w-xl">{t('insights.subtitle')}</p>
+          <h1 className="text-4xl font-bold font-clash text-on-surface mb-2 tracking-tight">Аналитика обучения</h1>
+          <p className="text-sm text-on-surface-variant max-w-xl">{t('insights.subtitle')}</p>
         </div>
 
         {/* Text tab switcher (Underline only, no pill background) */}
-        <div className="flex gap-6 border-b border-[rgba(255,255,255,0.08)] self-start sm:self-auto">
+        <div className="flex gap-6 border-b border-outline self-start sm:self-auto">
           {['Week', 'Month', 'Year'].map((tab) => {
             const isActive = rangeTab === tab;
             const RussianLabels = { Week: 'Неделя', Month: 'Месяц', Year: 'Год' };
@@ -289,14 +289,14 @@ export default function Insights() {
                 key={tab}
                 onClick={() => setRangeTab(tab)}
                 className={`relative pb-2.5 text-xs font-semibold transition-colors ${
-                  isActive ? 'text-[#FFFFFF]' : 'text-[#98989D] hover:text-[#FFFFFF]'
+                  isActive ? 'text-on-surface' : 'text-on-surface-variant hover:text-on-surface'
                 }`}
               >
                 {RussianLabels[tab]}
                 {isActive && (
                   <motion.div 
                     layoutId="activeTabUnderline"
-                    className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#FFFFFF]"
+                    className="absolute bottom-0 left-0 right-0 h-[2px] bg-on-surface"
                   />
                 )}
               </button>
@@ -306,19 +306,19 @@ export default function Insights() {
       </motion.div>
 
       {/* Main Chart Card */}
-      <motion.div variants={itemVariants} className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-4 md:p-6 w-full overflow-hidden">
+      <motion.div variants={itemVariants} className="bg-surface border border-outline rounded-[16px] p-4 md:p-6 w-full overflow-hidden">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            <h2 className="text-base font-bold text-[#FFFFFF] font-clash">{t('insights.trajectory')}</h2>
-            <span className="text-xs text-[#98989D] font-normal font-sans">
+            <h2 className="text-base font-bold text-on-surface font-clash">{t('insights.trajectory')}</h2>
+            <span className="text-xs text-on-surface-variant font-normal font-sans">
               ↑ +24% к прошлому периоду
             </span>
           </div>
-          <p className="text-xs text-[#98989D] hidden sm:block">{t('insights.trajectoryDesc')}</p>
+          <p className="text-xs text-on-surface-variant hidden sm:block">{t('insights.trajectoryDesc')}</p>
         </div>
 
         {/* SVG Area Chart with hover guides and tooltip */}
-        <div className="relative w-full h-56 md:h-72 bg-[#000000]/30 border border-[rgba(255,255,255,0.04)] rounded-[12px] p-4 flex flex-col justify-between">
+        <div className="relative w-full h-56 md:h-72 bg-background/30 border border-outline-variant rounded-[12px] p-4 flex flex-col justify-between">
           <div 
             className="flex-1 w-full relative min-h-0 cursor-crosshair"
             onMouseMove={handleMouseMove}
@@ -357,7 +357,7 @@ export default function Insights() {
             {/* Hover Active Dot (HTML Overlay - Undistorted) */}
             {hoveredIdx !== null && (
               <div 
-                className="absolute w-3 h-3 bg-[#FFFFFF] rounded-full border border-[#1C1C1E] -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none shadow-lg"
+                className="absolute w-3 h-3 bg-on-surface rounded-full border border-[#1C1C1E] -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none shadow-lg"
                 style={{
                   left: `${(hoveredIdx / (displayPoints.length - 1)) * 100}%`,
                   top: `${100 - (displayPoints[hoveredIdx] / 100) * 80 - 10}%`
@@ -369,7 +369,7 @@ export default function Insights() {
             {hoveredIdx !== (displayPoints.length - 1) && (
               <>
                 <div 
-                  className="absolute w-2.5 h-2.5 bg-[#FFFFFF] rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none"
+                  className="absolute w-2.5 h-2.5 bg-on-surface rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none"
                   style={{
                     left: '100%',
                     top: `${100 - (displayPoints[displayPoints.length - 1] / 100) * 80 - 10}%`
@@ -383,7 +383,7 @@ export default function Insights() {
                   }}
                 />
                 <div 
-                  className="absolute text-[10px] font-mono font-bold text-[#FFFFFF] -translate-x-full -translate-y-1/2 pr-2.5 pointer-events-none select-none"
+                  className="absolute text-[10px] font-mono font-bold text-on-surface -translate-x-full -translate-y-1/2 pr-2.5 pointer-events-none select-none"
                   style={{
                     left: '100%',
                     top: `${100 - (displayPoints[displayPoints.length - 1] / 100) * 80 - 10}%`
@@ -397,20 +397,20 @@ export default function Insights() {
             {/* Custom Tooltip Card */}
             {hoveredIdx !== null && (
               <div 
-                className="absolute bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] px-3 py-2 rounded-[8px] text-[11px] pointer-events-none shadow-xl flex flex-col font-sans z-20"
+                className="absolute bg-surface border border-outline px-3 py-2 rounded-[8px] text-[11px] pointer-events-none shadow-xl flex flex-col font-sans z-20"
                 style={{ 
                   left: `${mouseCoords.x > containerWidth / 2 ? mouseCoords.x - 110 : mouseCoords.x + 12}px`, 
                   top: `${Math.max(0, mouseCoords.y - 55)}px` 
                 }}
               >
-                <span className="text-[#98989D] font-sans">{labels[hoveredIdx]}</span>
-                <span className="text-[#FFFFFF] font-bold font-mono text-xs mt-0.5">{displayPoints[hoveredIdx]}%</span>
+                <span className="text-on-surface-variant font-sans">{labels[hoveredIdx]}</span>
+                <span className="text-on-surface font-bold font-mono text-xs mt-0.5">{displayPoints[hoveredIdx]}%</span>
               </div>
             )}
           </div>
 
           {/* X Axis Labels */}
-          <div className="flex justify-between mt-3 text-[9px] font-mono text-[#98989D] px-1 select-none">
+          <div className="flex justify-between mt-3 text-[9px] font-mono text-on-surface-variant px-1 select-none">
             {labels.map((label, i) => (
               <span key={i}>{label}</span>
             ))}
@@ -418,16 +418,16 @@ export default function Insights() {
         </div>
 
         {/* GitHub Contributions Graph Heatmap */}
-        <div className="border-t border-[rgba(255,255,255,0.08)] pt-6 mt-8">
-          <h3 className="text-xs font-bold text-[#FFFFFF] mb-4 font-sans">Активность по дням</h3>
+        <div className="border-t border-outline pt-6 mt-8">
+          <h3 className="text-xs font-bold text-on-surface mb-4 font-sans">Активность по дням</h3>
           <div className="flex overflow-x-auto pb-2 scrollbar-thin">
             <div className="grid grid-flow-col grid-rows-7 gap-1.5 min-w-[650px] mx-auto lg:mx-0">
               {heatmapDays.map((val, idx) => {
-                let colorClass = 'bg-transparent border border-[rgba(255,255,255,0.04)]';
-                if (val === 1) colorClass = 'bg-[#FFFFFF]/10';
-                if (val === 2) colorClass = 'bg-[#FFFFFF]/25';
-                if (val === 3) colorClass = 'bg-[#FFFFFF]/55';
-                if (val === 4) colorClass = 'bg-[#FFFFFF]';
+                let colorClass = 'bg-transparent border border-outline-variant';
+                if (val === 1) colorClass = 'bg-on-surface/10';
+                if (val === 2) colorClass = 'bg-on-surface/25';
+                if (val === 3) colorClass = 'bg-on-surface/55';
+                if (val === 4) colorClass = 'bg-on-surface';
                 return (
                   <div 
                     key={idx} 
@@ -440,13 +440,13 @@ export default function Insights() {
           </div>
           
           {/* Heatmap Legend */}
-          <div className="flex items-center gap-1.5 text-[9px] text-[#98989D] mt-3 font-sans justify-end select-none">
+          <div className="flex items-center gap-1.5 text-[9px] text-on-surface-variant mt-3 font-sans justify-end select-none">
             <span>Меньше</span>
-            <div className="w-2.5 h-2.5 rounded-[2px] bg-transparent border border-[rgba(255,255,255,0.04)]" />
-            <div className="w-2.5 h-2.5 rounded-[2px] bg-[#FFFFFF]/10" />
-            <div className="w-2.5 h-2.5 rounded-[2px] bg-[#FFFFFF]/25" />
-            <div className="w-2.5 h-2.5 rounded-[2px] bg-[#FFFFFF]/55" />
-            <div className="w-2.5 h-2.5 rounded-[2px] bg-[#FFFFFF]" />
+            <div className="w-2.5 h-2.5 rounded-[2px] bg-transparent border border-outline-variant" />
+            <div className="w-2.5 h-2.5 rounded-[2px] bg-on-surface/10" />
+            <div className="w-2.5 h-2.5 rounded-[2px] bg-on-surface/25" />
+            <div className="w-2.5 h-2.5 rounded-[2px] bg-on-surface/55" />
+            <div className="w-2.5 h-2.5 rounded-[2px] bg-on-surface" />
             <span>Больше</span>
           </div>
         </div>
@@ -456,34 +456,34 @@ export default function Insights() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         
         {/* Card 1: Total hours with Sparkline */}
-        <motion.div variants={itemVariants} className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-6 flex flex-col justify-between h-40">
+        <motion.div variants={itemVariants} className="bg-surface border border-outline rounded-[16px] p-6 flex flex-col justify-between h-40">
           <div>
-            <h3 className="text-xs text-[#98989D] mb-1.5 font-sans">{t('insights.hoursTitle')}</h3>
-            <div className="text-3xl font-bold tracking-tight text-[#FFFFFF] font-clash">
+            <h3 className="text-xs text-on-surface-variant mb-1.5 font-sans">{t('insights.hoursTitle')}</h3>
+            <div className="text-3xl font-bold tracking-tight text-on-surface font-clash">
               <AnimatedNumber value={totalHours} />
-              <span className="text-xs text-[#98989D] font-sans ml-1.5">час</span>
+              <span className="text-xs text-on-surface-variant font-sans ml-1.5">час</span>
             </div>
           </div>
           <MiniSparkline data={hoursSparkline} />
         </motion.div>
 
         {/* Card 2: Average session with Sparkline */}
-        <motion.div variants={itemVariants} className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-6 flex flex-col justify-between h-40">
+        <motion.div variants={itemVariants} className="bg-surface border border-outline rounded-[16px] p-6 flex flex-col justify-between h-40">
           <div>
-            <h3 className="text-xs text-[#98989D] mb-1.5 font-sans">Среднее время сессии</h3>
-            <div className="text-3xl font-bold tracking-tight text-[#FFFFFF] font-mono">
+            <h3 className="text-xs text-on-surface-variant mb-1.5 font-sans">Среднее время сессии</h3>
+            <div className="text-3xl font-bold tracking-tight text-on-surface font-mono">
               <span>{avgSession}</span>
-              <span className="text-xs text-[#98989D] font-sans ml-1.5">час</span>
+              <span className="text-xs text-on-surface-variant font-sans ml-1.5">час</span>
             </div>
           </div>
           <MiniSparkline data={sessionSparkline} />
         </motion.div>
 
         {/* Card 3: Best Day with Mini Histogram */}
-        <motion.div variants={itemVariants} className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-6 flex flex-col justify-between h-40">
+        <motion.div variants={itemVariants} className="bg-surface border border-outline rounded-[16px] p-6 flex flex-col justify-between h-40">
           <div>
-            <h3 className="text-xs text-[#98989D] mb-1.5 font-sans">Лучший день</h3>
-            <div className="text-3xl font-bold tracking-tight text-[#FFFFFF] font-sans">
+            <h3 className="text-xs text-on-surface-variant mb-1.5 font-sans">Лучший день</h3>
+            <div className="text-3xl font-bold tracking-tight text-on-surface font-sans">
               {bestDay}
             </div>
           </div>
@@ -491,10 +491,10 @@ export default function Insights() {
         </motion.div>
 
         {/* Card 4: Forecast with Progression Sparkline */}
-        <motion.div variants={itemVariants} className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-6 flex flex-col justify-between h-40">
+        <motion.div variants={itemVariants} className="bg-surface border border-outline rounded-[16px] p-6 flex flex-col justify-between h-40">
           <div>
-            <h3 className="text-xs text-[#98989D] mb-1.5 font-sans">Прогноз до цели</h3>
-            <div className="text-3xl font-bold tracking-tight text-[#FFFFFF] font-mono">
+            <h3 className="text-xs text-on-surface-variant mb-1.5 font-sans">Прогноз до цели</h3>
+            <div className="text-3xl font-bold tracking-tight text-on-surface font-mono">
               12 дней
             </div>
           </div>
@@ -505,23 +505,23 @@ export default function Insights() {
       {/* Courses Progress List */}
       <motion.div 
         variants={itemVariants} 
-        className={`bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-4 md:p-6 overflow-hidden ${
+        className={`bg-surface border border-outline rounded-[16px] p-4 md:p-6 overflow-hidden ${
           courses.length === 1 ? 'max-w-2xl' : 'w-full'
         }`}
       >
-        <h3 className="text-xs font-bold uppercase tracking-tight text-[#98989D] mb-6 font-sans">Прогресс обучения по курсам</h3>
+        <h3 className="text-xs font-bold uppercase tracking-tight text-on-surface-variant mb-6 font-sans">Прогресс обучения по курсам</h3>
         
         {courses.length === 0 ? (
-          <p className="text-xs text-[#98989D] font-sans">Нет активных курсов для отображения.</p>
+          <p className="text-xs text-on-surface-variant font-sans">Нет активных курсов для отображения.</p>
         ) : courses.length === 1 ? (
           /* Single course: compact container size */
           <div className="flex flex-col gap-2 max-w-xl">
             <div className="flex justify-between items-center text-xs">
-              <span className="font-bold text-[#F5F5F7] truncate font-clash">{t(courses[0].title)}</span>
-              <span className="font-mono text-[#FFFFFF] font-bold">{courses[0].progress || 0}%</span>
+              <span className="font-bold text-on-background truncate font-clash">{t(courses[0].title)}</span>
+              <span className="font-mono text-on-surface font-bold">{courses[0].progress || 0}%</span>
             </div>
-            <div className="w-full h-[2px] bg-[#2C2C2E] border border-[rgba(255,255,255,0.04)] rounded-sm overflow-hidden">
-              <div className="h-full bg-[#FFFFFF]" style={{ width: `${courses[0].progress || 0}%` }} />
+            <div className="w-full h-[2px] bg-surface-container border border-outline-variant rounded-sm overflow-hidden">
+              <div className="h-full bg-on-surface" style={{ width: `${courses[0].progress || 0}%` }} />
             </div>
           </div>
         ) : (
@@ -532,11 +532,11 @@ export default function Insights() {
               {courses.map(c => (
                 <div key={c.id} className="flex flex-col gap-2">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="font-bold text-[#F5F5F7] truncate max-w-md font-clash">{t(c.title)}</span>
-                    <span className="font-mono text-[#FFFFFF] font-bold">{c.progress || 0}%</span>
+                    <span className="font-bold text-on-background truncate max-w-md font-clash">{t(c.title)}</span>
+                    <span className="font-mono text-on-surface font-bold">{c.progress || 0}%</span>
                   </div>
-                  <div className="w-full h-[2px] bg-[#2C2C2E] border border-[rgba(255,255,255,0.04)] rounded-sm overflow-hidden">
-                    <div className="h-full bg-[#FFFFFF]" style={{ width: `${c.progress || 0}%` }} />
+                  <div className="w-full h-[2px] bg-surface-container border border-outline-variant rounded-sm overflow-hidden">
+                    <div className="h-full bg-on-surface" style={{ width: `${c.progress || 0}%` }} />
                   </div>
                 </div>
               ))}

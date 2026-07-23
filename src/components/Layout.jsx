@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import Topbar from './Topbar.jsx';
 import { auth } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -19,8 +20,15 @@ export default function Layout() {
     return () => unsubscribe();
   }, []);
 
+  // Reset scroll to top on page navigation
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    const pageEl = document.getElementById('page-content');
+    if (pageEl) pageEl.scrollTop = 0;
+  }, [location.pathname]);
+
   if (loading) {
-    return <div className="flex items-center justify-center h-screen bg-[#000000] text-[#F5F5F7]">Loading...</div>;
+    return <div className="flex items-center justify-center h-screen bg-background text-on-background">Loading...</div>;
   }
 
   // Route protection
@@ -34,8 +42,18 @@ export default function Layout() {
 
   if (isPublicRoute && location.pathname !== '/dashboard') {
     return (
-      <div className="w-full h-screen overflow-y-auto">
-        <Outlet />
+      <div className="w-full h-full overflow-y-auto">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12, ease: 'easeInOut' }}
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
         <CookieBanner />
       </div>
     );
@@ -44,17 +62,28 @@ export default function Layout() {
   const isGraphPage = location.pathname === '/graph';
 
   return (
-    <div className="flex flex-col w-full min-h-screen bg-[#000000] text-[#F5F5F7] font-sans">
+    <div className="flex flex-col w-full h-full bg-background text-on-background font-sans transition-colors duration-200">
       <div id="topbar-container"><Topbar /></div>
       <main 
         id="page-content" 
-        className={`flex-1 pt-14 transition-all duration-150 relative w-full max-w-[2000px] mx-auto ${
+        className={`flex-1 pt-14 relative w-full max-w-[2000px] mx-auto ${
           isGraphPage 
             ? 'h-[calc(100vh-3.5rem)] overflow-hidden px-4 pb-4 flex flex-col' 
-            : 'overflow-y-auto px-12 md:px-16 pb-12'
+            : 'overflow-y-auto px-6 sm:px-12 md:px-16 pt-6 md:pt-8 pb-12'
         }`}
       >
-        <Outlet />
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.12, ease: 'easeInOut' }}
+            className="w-full flex flex-col flex-1"
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </main>
       <MentorWidget />
       <CookieBanner />

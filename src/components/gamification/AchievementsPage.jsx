@@ -19,7 +19,7 @@ const CATEGORIES = [
 ];
 
 const getCategoryIcon = (category, isUnlocked) => {
-  const colorClass = isUnlocked ? 'text-[#FFFFFF]' : 'text-[#636366]';
+  const colorClass = isUnlocked ? 'text-on-surface' : 'text-[#636366]';
   switch (category) {
     case 'start':
     case 'learning':
@@ -78,22 +78,22 @@ export default function AchievementsPage() {
     : ACHIEVEMENTS.filter(ach => ach.category === activeCategory);
 
   return (
-    <div className="max-w-[2000px] mx-auto min-h-[calc(100vh-4.5rem)] text-[#F5F5F7] font-sans p-4 md:p-6">
+    <div className="max-w-[2000px] mx-auto min-h-[calc(100vh-4.5rem)] text-on-background font-sans p-4 md:p-6">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-4xl font-bold font-clash text-[#FFFFFF] mb-2 flex items-center">
+        <h1 className="text-4xl font-bold font-clash text-on-surface mb-2 flex items-center">
           Достижения и Лиги
         </h1>
-        <p className="text-[#98989D] text-sm">Выполняйте задания, набирайте XP и продвигайтесь в элитные лиги обучения!</p>
+        <p className="text-on-surface-variant text-sm">Выполняйте задания, набирайте XP и продвигайтесь в элитные лиги обучения!</p>
       </div>
 
       {/* Segmented Period Toggle (iOS Style) */}
       <div className="flex mb-8">
-        <div className="relative bg-[#1C1C1E] p-1 rounded-full flex items-center border border-[rgba(255,255,255,0.06)] shadow-inner">
+        <div className="relative bg-surface p-1 rounded-full flex items-center border border-outline shadow-inner">
           <button
             onClick={() => setActiveMainTab('achievements')}
             className={`px-5 py-2 text-xs font-semibold rounded-full transition-all leading-none ${
-              activeMainTab === 'achievements' ? 'text-[#000000] bg-[#FFFFFF] shadow-sm' : 'text-[#98989D] hover:text-[#FFFFFF]'
+              activeMainTab === 'achievements' ? 'text-inverse-on-surface bg-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
             Достижения ({unlockedCount}/{totalCount})
@@ -101,7 +101,7 @@ export default function AchievementsPage() {
           <button
             onClick={() => setActiveMainTab('leagues')}
             className={`px-5 py-2 text-xs font-semibold rounded-full transition-all leading-none ${
-              activeMainTab === 'leagues' ? 'text-[#000000] bg-[#FFFFFF] shadow-sm' : 'text-[#98989D] hover:text-[#FFFFFF]'
+              activeMainTab === 'leagues' ? 'text-inverse-on-surface bg-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
             Лиги обучения
@@ -112,21 +112,21 @@ export default function AchievementsPage() {
       {activeMainTab === 'achievements' && (
         <>
           {/* Progress Card */}
-          <div className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-6 mb-8 flex flex-col sm:flex-row items-center gap-6">
-            <div className="w-20 h-20 bg-[#2C2C2E]/50 border border-[rgba(255,255,255,0.08)] rounded-[12px] flex items-center justify-center flex-shrink-0">
-              <span className="text-2xl font-bold font-mono text-[#FFFFFF]">{progress}%</span>
+          <div className="bg-surface border border-outline rounded-[16px] p-6 mb-8 flex flex-col sm:flex-row items-center gap-6">
+            <div className="w-20 h-20 bg-surface-container/50 border border-outline rounded-[12px] flex items-center justify-center flex-shrink-0">
+              <span className="text-2xl font-bold font-mono text-on-surface">{progress}%</span>
             </div>
             <div className="flex-1 w-full">
-              <h2 className="text-sm font-bold text-[#F5F5F7] mb-2 font-clash">Общий прогресс разблокировки</h2>
-              <div className="w-full h-[3px] bg-[#2C2C2E] border border-[rgba(255,255,255,0.04)] rounded-sm overflow-hidden">
+              <h2 className="text-sm font-bold text-on-background mb-2 font-clash">Общий прогресс разблокировки</h2>
+              <div className="w-full h-[3px] bg-surface-container border border-outline-variant rounded-sm overflow-hidden">
                 <motion.div 
                   initial={{ width: 0 }}
                   animate={{ width: `${progress}%` }}
                   transition={{ duration: 1 }}
-                  className="h-full bg-[#FFFFFF]"
+                  className="h-full bg-on-surface"
                 />
               </div>
-              <p className="text-[10px] font-bold text-[#98989D] mt-2 text-right">
+              <p className="text-[10px] font-bold text-on-surface-variant mt-2 text-right">
                 Разблокировано: <span className="font-mono">{unlockedCount}</span> из <span className="font-mono">{totalCount}</span>
               </p>
             </div>
@@ -139,9 +139,9 @@ export default function AchievementsPage() {
             </h2>
             
             {unlockedList.length === 0 ? (
-              <div className="p-8 text-center bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px]">
-                <p className="text-sm font-semibold text-[#98989D]">Вы пока не разблокировали ни одного достижения</p>
-                <p className="text-xs text-[#98989D]/60 mt-1">Начните проходить уроки, создавать курсы и выполнять тесты, чтобы открыть их!</p>
+              <div className="p-8 text-center bg-surface border border-outline rounded-[16px]">
+                <p className="text-sm font-semibold text-on-surface-variant">Вы пока не разблокировали ни одного достижения</p>
+                <p className="text-xs text-on-surface-variant/60 mt-1">Начните проходить уроки, создавать курсы и выполнять тесты, чтобы открыть их!</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -149,23 +149,23 @@ export default function AchievementsPage() {
                   <motion.div 
                     key={ach.id}
                     whileHover={{ y: -2 }}
-                    className="p-6 rounded-[16px] border bg-[#1C1C1E] border-[#FFFFFF] relative overflow-hidden flex flex-col justify-between"
+                    className="p-6 rounded-[16px] border bg-surface border-[#FFFFFF] relative overflow-hidden flex flex-col justify-between"
                   >
                     <div className="flex items-start justify-between mb-4 relative z-10">
                       <div className="text-3xl">
                         {getCategoryIcon(ach.category, true)}
                       </div>
-                      <span className="text-[9px] font-mono font-bold bg-[#2C2C2E] border border-[rgba(255,255,255,0.08)] text-[#FFFFFF] px-2 py-0.5 rounded-[4px] uppercase tracking-tight">Открыто</span>
+                      <span className="text-[9px] font-mono font-bold bg-surface-container border border-outline text-on-surface px-2 py-0.5 rounded-[4px] uppercase tracking-tight">Открыто</span>
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold mb-1 text-[#FFFFFF] font-clash">
+                      <h3 className="text-sm font-bold mb-1 text-on-surface font-clash">
                         {ach.title}
                       </h3>
-                      <p className="text-xs text-[#98989D] mb-4 min-h-[32px] leading-snug">
+                      <p className="text-xs text-on-surface-variant mb-4 min-h-[32px] leading-snug">
                         {ach.description}
                       </p>
                     </div>
-                    <div className="inline-block self-start px-2 py-0.5 rounded-[4px] text-[10px] font-bold font-mono bg-[#2C2C2E] text-[#FFFFFF] border border-[rgba(255,255,255,0.08)]">
+                    <div className="inline-block self-start px-2 py-0.5 rounded-[4px] text-[10px] font-bold font-mono bg-surface-container text-on-surface border border-outline">
                       +{ach.xpReward} XP
                     </div>
                   </motion.div>
@@ -174,17 +174,17 @@ export default function AchievementsPage() {
             )}
 
             {unlockedList.length > 6 && (
-              <p className="text-xs text-[#98989D] mt-4 text-center font-sans">
+              <p className="text-xs text-on-surface-variant mt-4 text-center font-sans">
                 И еще <span className="font-mono">{unlockedList.length - 6}</span> разблокированных достижений в полном списке.
               </p>
             )}
           </div>
 
           {/* Button to Open All Achievements */}
-          <div className="flex justify-center mb-10 border-t border-[rgba(255,255,255,0.08)] pt-8">
+          <div className="flex justify-center mb-10 border-t border-outline pt-8">
             <button
               onClick={() => setShowAll(!showAll)}
-              className="flex items-center gap-2 bg-[#FFFFFF] hover:bg-[#E8E8ED] text-[#000000] font-bold px-8 py-3.5 rounded-[12px] text-xs transition-colors font-sans"
+              className="flex items-center gap-2 bg-on-surface hover:bg-surface-container text-inverse-on-surface font-bold px-8 py-3.5 rounded-[12px] text-xs transition-colors font-sans"
             >
               {showAll ? 'Скрыть список всех достижений' : 'Открыть полный список достижений'}
               {showAll ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
@@ -209,8 +209,8 @@ export default function AchievementsPage() {
                       onClick={() => setActiveCategory(cat.id)}
                       className={`px-4 py-2 rounded-[8px] font-bold text-xs whitespace-nowrap border transition-all ${
                         activeCategory === cat.id
-                          ? 'bg-[#FFFFFF] border-[#FFFFFF] text-[#000000]'
-                          : 'bg-[#1C1C1E] border-[rgba(255,255,255,0.08)] text-[#98989D] hover:text-[#F5F5F7] hover:bg-[#2C2C2E]'
+                          ? 'bg-on-surface border-[#FFFFFF] text-inverse-on-surface'
+                          : 'bg-surface border-outline text-on-surface-variant hover:text-on-background hover:bg-surface-container'
                       }`}
                     >
                       {cat.label}
@@ -231,8 +231,8 @@ export default function AchievementsPage() {
                         key={ach.id}
                         className={`p-6 rounded-[16px] border transition-all flex flex-col justify-between ${
                           isUnlocked 
-                            ? 'bg-[#1C1C1E] border-[#FFFFFF] opacity-100' 
-                            : 'bg-[#1C1C1E]/30 border-[rgba(255,255,255,0.04)] opacity-25'
+                            ? 'bg-surface border-[#FFFFFF] opacity-100' 
+                            : 'bg-surface/30 border-outline-variant opacity-25'
                         }`}
                       >
                         <div className="flex items-start justify-between mb-4">
@@ -240,23 +240,23 @@ export default function AchievementsPage() {
                             {getCategoryIcon(ach.category, isUnlocked)}
                           </div>
                           {!isUnlocked && (
-                            <div className="p-1.5 bg-[#2C2C2E] border border-[rgba(255,255,255,0.08)] rounded-[6px]">
-                              <Lock className="w-3.5 h-3.5 text-[#98989D]" strokeWidth={1.5} />
+                            <div className="p-1.5 bg-surface-container border border-outline rounded-[6px]">
+                              <Lock className="w-3.5 h-3.5 text-on-surface-variant" strokeWidth={1.5} />
                             </div>
                           )}
                         </div>
                         <div>
-                          <h3 className={`text-sm font-bold mb-1 font-clash ${isUnlocked ? 'text-[#FFFFFF]' : 'text-[#636366]'}`}>
+                          <h3 className={`text-sm font-bold mb-1 font-clash ${isUnlocked ? 'text-on-surface' : 'text-[#636366]'}`}>
                             {ach.title}
                           </h3>
-                          <p className="text-xs text-[#98989D] mb-4 min-h-[32px] leading-snug">
+                          <p className="text-xs text-on-surface-variant mb-4 min-h-[32px] leading-snug">
                             {ach.description}
                           </p>
                         </div>
                         <div className={`inline-block self-start px-2 py-0.5 rounded-[4px] text-[10px] font-bold font-mono border ${
                           isUnlocked 
-                            ? 'bg-[#2C2C2E] text-[#FFFFFF] border-[rgba(255,255,255,0.08)]' 
-                            : 'bg-transparent text-[#98989D] border-transparent'
+                            ? 'bg-surface-container text-on-surface border-outline' 
+                            : 'bg-transparent text-on-surface-variant border-transparent'
                         }`}>
                           +{ach.xpReward} XP
                         </div>

@@ -23,10 +23,7 @@ export default function SpeechPlayer({ text, onEnd }) {
     if (isPaused) {
       resume();
     } else if (!isSpeaking) {
-      let lang = 'en-US';
-      if (locale === 'ru') lang = 'ru-RU';
-      else if (locale === 'kk') lang = 'kk-KZ';
-      else if (locale === 'zh') lang = 'zh-CN';
+      let lang = locale === 'ru' ? 'ru-RU' : 'en-US';
       
       speak(text, lang, speed);
       

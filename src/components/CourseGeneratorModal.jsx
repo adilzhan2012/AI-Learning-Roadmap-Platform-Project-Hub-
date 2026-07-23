@@ -150,7 +150,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.95, y: 20, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 250 }}
-            className="w-full max-w-lg bg-surface border border-outline-variant rounded-3xl p-6 md:p-8 shadow-2xl relative z-10 overflow-hidden flex flex-col max-h-[90vh] text-white"
+            className="w-full max-w-lg bg-surface border border-outline-variant rounded-3xl p-6 md:p-8 shadow-2xl relative z-10 overflow-hidden flex flex-col max-h-[90vh] text-on-surface"
           >
             {generating && (
               <div className="absolute inset-0 bg-surface/90 backdrop-blur-md z-20 flex flex-col items-center justify-center p-6 text-center">
@@ -208,7 +208,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
                     type="button"
                     onClick={() => setGenerationMode('rag')}
                     className={`flex-1 py-2 font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                      generationMode === 'rag' ? 'bg-indigo-600 text-white shadow-sm' : 'text-on-surface-variant hover:text-on-surface animate-pulse'
+                      generationMode === 'rag' ? 'bg-indigo-600 text-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface animate-pulse'
                     }`}
                   >
                     <Sparkles className="w-3 h-3 text-indigo-300" /> RAG: Из материалов
@@ -226,7 +226,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
                       type="button"
                       onClick={() => setRagType('pdf')}
                       className={`px-3 py-1.5 rounded-lg border font-bold flex items-center gap-1 transition-all ${
-                        ragType === 'pdf' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-surface-container border-outline-variant text-zinc-400'
+                        ragType === 'pdf' ? 'bg-indigo-600 border-indigo-500 text-on-surface' : 'bg-surface-container border-outline-variant text-zinc-400'
                       }`}
                     >
                       <FileText className="w-3.5 h-3.5" /> PDF / Документ
@@ -235,7 +235,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
                       type="button"
                       onClick={() => setRagType('url')}
                       className={`px-3 py-1.5 rounded-lg border font-bold flex items-center gap-1 transition-all ${
-                        ragType === 'url' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-surface-container border-outline-variant text-zinc-400'
+                        ragType === 'url' ? 'bg-indigo-600 border-indigo-500 text-on-surface' : 'bg-surface-container border-outline-variant text-zinc-400'
                       }`}
                     >
                       <Video className="w-3.5 h-3.5" /> YouTube / Ссылка
@@ -277,7 +277,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
                           value={youtubeUrl}
                           onChange={(e) => setYoutubeUrl(e.target.value)}
                           placeholder="https://www.youtube.com/watch?v=... или https://docs.go.dev/..."
-                          className="flex-1 bg-surface-container border border-outline-variant rounded-xl px-3 py-2 text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-indigo-500"
+                          className="flex-1 bg-surface-container border border-outline-variant rounded-xl px-3 py-2 text-xs text-on-surface placeholder:text-zinc-500 focus:outline-none focus:border-indigo-500"
                         />
                       </div>
                     </div>
@@ -558,7 +558,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
             exit={{ opacity: 0, scale: 0.98 }}
             className="relative bg-surface-container border border-outline w-full max-w-sm rounded-[2rem] p-6 shadow-2xl z-10 text-center"
           >
-            <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <div className="w-12 h-12 bg-on-surface/5 border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Lock className="w-5 h-5 text-on-surface" strokeWidth={1.5} />
             </div>
             
@@ -600,7 +600,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
                 <h3 className="text-lg font-bold text-on-surface mb-2">
                   {locale === 'ru' ? 'Достигнут лимит генераций' : 'Roadmap limit reached'}
                 </h3>
-                <p className="text-xs text-[#98989D] mb-6 leading-relaxed">
+                <p className="text-xs text-on-surface-variant mb-6 leading-relaxed">
                   {locale === 'ru'
                     ? 'Вы исчерпали лимит генерации дорожных карт (максимум 2 курса на бесплатном тарифе). Перейдите на тариф Pro для безлимитной генерации.'
                     : 'You have reached your roadmap generation limit (maximum 2 courses on the free plan). Upgrade to Pro for unlimited roadmap creations.'}

@@ -42,18 +42,18 @@ function DeleteConfirmModal({ isOpen, onClose, onConfirm, isDeleting }) {
           />
           <motion.div 
             initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-            className="w-full max-w-sm bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-6 relative z-10 text-center font-sans shadow-[0_20px_60px_rgba(0,0,0,0.4)]"
+            className="w-full max-w-sm bg-surface border border-outline rounded-[16px] p-6 relative z-10 text-center font-sans shadow-[0_20px_60px_rgba(0,0,0,0.4)]"
           >
             <div className="w-12 h-12 bg-[#2C0D0E]/50 border border-[#FF453A]/20 rounded-[12px] flex items-center justify-center mx-auto mb-4">
               <Trash2 className="w-6 h-6 text-[#FF453A]" strokeWidth={1.5} />
             </div>
-            <h3 className="text-lg font-bold text-[#F5F5F7] mb-2">{t('courses.confirmDeleteTitle') || 'Удалить курс?'}</h3>
-            <p className="text-xs text-[#98989D] mb-6">{t('courses.confirmDeleteSubtitle') || 'Вы уверены, что хотите удалить этот курс? Это действие необратимо.'}</p>
+            <h3 className="text-lg font-bold text-on-background mb-2">{t('courses.confirmDeleteTitle') || 'Удалить курс?'}</h3>
+            <p className="text-xs text-on-surface-variant mb-6">{t('courses.confirmDeleteSubtitle') || 'Вы уверены, что хотите удалить этот курс? Это действие необратимо.'}</p>
             <div className="flex gap-3">
-              <button disabled={isDeleting} onClick={onClose} className="flex-1 py-2.5 bg-[#2C2C2E] border border-[rgba(255,255,255,0.08)] rounded-[12px] text-xs font-bold text-[#F5F5F7] hover:bg-[#3A3A3C] transition-colors">
+              <button disabled={isDeleting} onClick={onClose} className="flex-1 py-2.5 bg-surface-container border border-outline rounded-[12px] text-xs font-bold text-on-background hover:bg-[#3A3A3C] transition-colors">
                 {t('courses.cancel') || 'Отмена'}
               </button>
-              <button disabled={isDeleting} onClick={onConfirm} className="flex-1 py-2.5 bg-[#FF453A] text-white rounded-[12px] text-xs font-bold hover:bg-[#FF453A]/90 transition-colors flex justify-center items-center">
+              <button disabled={isDeleting} onClick={onConfirm} className="flex-1 py-2.5 bg-[#FF453A] text-on-surface rounded-[12px] text-xs font-bold hover:bg-[#FF453A]/90 transition-colors flex justify-center items-center">
                 {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : (t('courses.delete') || 'Удалить')}
               </button>
             </div>
@@ -312,8 +312,8 @@ export default function Courses() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-[#000000] text-[#F5F5F7] gap-4">
-        <Loader2 className="w-8 h-8 animate-spin text-[#FFFFFF]" />
+      <div className="flex flex-col items-center justify-center h-screen bg-background text-on-background gap-4">
+        <Loader2 className="w-8 h-8 animate-spin text-on-surface" />
         <p className="text-sm font-medium tracking-wide font-clash">{t('courses.loadingCatalog')}</p>
       </div>
     );
@@ -324,19 +324,19 @@ export default function Courses() {
       initial="hidden"
       animate="show"
       variants={containerVariants}
-      className="max-w-[2000px] mx-auto text-[#F5F5F7] font-sans"
+      className="max-w-[2000px] mx-auto text-on-background font-sans"
     >
       {/* Top Header */}
       <motion.div variants={cardVariants} className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-bold font-clash text-[#FFFFFF] mb-2 tracking-tight">Курсы</h1>
-          <p className="text-[#98989D] text-sm max-w-xl">{t('courses.subtitle')}</p>
+          <h1 className="text-4xl font-bold font-clash text-on-surface mb-2 tracking-tight">Курсы</h1>
+          <p className="text-on-surface-variant text-sm max-w-xl">{t('courses.subtitle')}</p>
         </div>
         <button
           onClick={() => setShowGenModal(true)}
-          className="bg-[#FFFFFF] hover:bg-[#E8E8ED] text-[#000000] px-6 py-3 rounded-[12px] font-bold text-xs transition-colors whitespace-nowrap flex items-center gap-2 font-sans"
+          className="bg-on-surface hover:bg-surface-container text-inverse-on-surface px-6 py-3 rounded-[12px] font-bold text-xs transition-colors whitespace-nowrap flex items-center gap-2 font-sans"
         >
-          <Sparkles className="w-4 h-4 fill-current text-[#000000]" />
+          <Sparkles className="w-4 h-4 fill-current text-inverse-on-surface" />
           {t('dashboard.generateCourse')}
         </button>
       </motion.div>
@@ -345,16 +345,16 @@ export default function Courses() {
         /* Empty State */
         <motion.div 
           initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}
-          className="py-24 flex flex-col items-center justify-center text-center bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] shadow-[0_20px_60px_rgba(0,0,0,0.4)]"
+          className="py-24 flex flex-col items-center justify-center text-center bg-surface border border-outline rounded-[16px] shadow-[0_20px_60px_rgba(0,0,0,0.4)]"
         >
-          <div className="text-8xl font-bold font-mono text-[#FFFFFF] mb-4">0</div>
-          <h2 className="text-xl font-bold text-[#FFFFFF] mb-2 font-clash">{t('dashboard.noCourses')}</h2>
-          <p className="text-xs text-[#98989D] mb-8 max-w-md">
+          <div className="text-8xl font-bold font-mono text-on-surface mb-4">0</div>
+          <h2 className="text-xl font-bold text-on-surface mb-2 font-clash">{t('dashboard.noCourses')}</h2>
+          <p className="text-xs text-on-surface-variant mb-8 max-w-md">
             {t('dashboard.generateCustomDesc')}
           </p>
           <button
             onClick={() => setShowGenModal(true)}
-            className="bg-[#FFFFFF] hover:bg-[#E8E8ED] text-[#000000] px-8 py-3.5 rounded-[12px] font-bold text-xs transition-all flex items-center gap-2 font-sans"
+            className="bg-on-surface hover:bg-surface-container text-inverse-on-surface px-8 py-3.5 rounded-[12px] font-bold text-xs transition-all flex items-center gap-2 font-sans"
           >
             <Sparkles className="w-4 h-4 fill-current" />
             {t('dashboard.generateFirst')}
@@ -365,13 +365,13 @@ export default function Courses() {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Narrow Left Column Filters (20% width) */}
           <div className="w-full lg:w-48 flex-shrink-0 space-y-6">
-            <div className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-4 space-y-6">
+            <div className="bg-surface border border-outline rounded-[16px] p-4 space-y-6">
               {/* Category Filter */}
               <div>
-                <h4 className="text-[10px] font-bold uppercase tracking-tight text-[#98989D] mb-3 font-sans">Категории</h4>
+                <h4 className="text-[10px] font-bold uppercase tracking-tight text-on-surface-variant mb-3 font-sans">Категории</h4>
                 <div className="space-y-2">
                   {availableCategories.length === 0 ? (
-                    <p className="text-xs text-[#98989D]">Категории отсутствуют</p>
+                    <p className="text-xs text-on-surface-variant">Категории отсутствуют</p>
                   ) : (
                     availableCategories.map(cat => (
                       <label key={cat} className="flex items-center gap-3 cursor-pointer group select-none">
@@ -383,7 +383,7 @@ export default function Courses() {
                             className="sr-only" 
                           />
                           {/* iOS-style Checkbox checkbox (6px rounding) */}
-                          <div className={`w-4 h-4 border rounded-[6px] transition-all flex items-center justify-center ${selectedCategories.includes(cat) ? 'bg-[#FFFFFF] border-[#FFFFFF]' : 'border-[rgba(255,255,255,0.15)] group-hover:border-[rgba(255,255,255,0.3)] bg-transparent'}`}>
+                          <div className={`w-4 h-4 border rounded-[6px] transition-all flex items-center justify-center ${selectedCategories.includes(cat) ? 'bg-on-surface border-[#FFFFFF]' : 'border-outline group-hover:border-[rgba(255,255,255,0.3)] bg-transparent'}`}>
                             {selectedCategories.includes(cat) && (
                               <svg viewBox="0 0 10 10" className="w-2 h-2 stroke-[#000000] stroke-[2] fill-none">
                                 <polyline points="2,5.5 4,7.5 8,2.5" />
@@ -399,8 +399,8 @@ export default function Courses() {
               </div>
 
               {/* Difficulty Level Filter */}
-              <div className="border-t border-[rgba(255,255,255,0.08)] pt-4">
-                <h4 className="text-[10px] font-bold uppercase tracking-tight text-[#98989D] mb-3 font-sans">Сложность</h4>
+              <div className="border-t border-outline pt-4">
+                <h4 className="text-[10px] font-bold uppercase tracking-tight text-on-surface-variant mb-3 font-sans">Сложность</h4>
                 <div className="space-y-2">
                   {availableLevels.map(lvl => (
                     <label key={lvl} className="flex items-center gap-3 cursor-pointer group select-none">
@@ -412,7 +412,7 @@ export default function Courses() {
                           className="sr-only" 
                         />
                         {/* iOS-style Checkbox checkbox (6px rounding) */}
-                        <div className={`w-4 h-4 border rounded-[6px] transition-all flex items-center justify-center ${selectedLevels.includes(lvl) ? 'bg-[#FFFFFF] border-[#FFFFFF]' : 'border-[rgba(255,255,255,0.15)] group-hover:border-[rgba(255,255,255,0.3)] bg-transparent'}`}>
+                        <div className={`w-4 h-4 border rounded-[6px] transition-all flex items-center justify-center ${selectedLevels.includes(lvl) ? 'bg-on-surface border-[#FFFFFF]' : 'border-outline group-hover:border-[rgba(255,255,255,0.3)] bg-transparent'}`}>
                           {selectedLevels.includes(lvl) && (
                             <svg viewBox="0 0 10 10" className="w-2 h-2 stroke-[#000000] stroke-[2] fill-none">
                               <polyline points="2,5.5 4,7.5 8,2.5" />
@@ -420,7 +420,7 @@ export default function Courses() {
                           )}
                         </div>
                       </div>
-                      <span className="text-xs text-[#98989D] group-hover:text-[#F5F5F7] transition-colors">{t('level.' + lvl)}</span>
+                      <span className="text-xs text-on-surface-variant group-hover:text-on-background transition-colors">{t('level.' + lvl)}</span>
                     </label>
                   ))}
                 </div>
@@ -431,7 +431,7 @@ export default function Courses() {
           {/* Right Column Catalog Content (80% width) */}
           <div className="flex-1 space-y-6">
             {/* Filter Bar: Tabs & View Swapper */}
-            <motion.div variants={cardVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[rgba(255,255,255,0.08)] pb-4">
+            <motion.div variants={cardVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-outline pb-4">
               {/* Segmented capsule tabs for status */}
               <div className="segmented-container">
                 {[
@@ -455,28 +455,28 @@ export default function Courses() {
               {/* Search input + Segmented Layout View switcher */}
               <div className="flex items-center gap-4">
                 <div className="relative w-48 md:w-60">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#98989D]" strokeWidth={1.5} />
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" strokeWidth={1.5} />
                   <input 
                     type="text" 
                     placeholder={t('courses.search') || 'Поиск...'}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[12px] py-1.5 pl-8 pr-3 text-xs text-[#F5F5F7] placeholder:text-[#98989D] focus:outline-none focus:border-[rgba(255,255,255,0.3)] transition-colors"
+                    className="w-full bg-surface border border-outline rounded-[12px] py-1.5 pl-8 pr-3 text-xs text-on-background placeholder:text-on-surface-variant focus:outline-none focus:border-[rgba(255,255,255,0.3)] transition-colors"
                   />
                 </div>
                 
                 {/* Segmented control view toggle switcher */}
-                <div className="flex bg-[#1C1C1E] rounded-[10px] p-0.5 border border-[rgba(255,255,255,0.04)]">
+                <div className="flex bg-surface rounded-[10px] p-0.5 border border-outline-variant">
                   <button 
                     onClick={() => setViewMode('grid')}
-                    className={`p-1.5 rounded-[8px] transition-colors ${viewMode === 'grid' ? 'bg-[#FFFFFF] text-[#000000]' : 'text-[#98989D] hover:text-[#F5F5F7]'}`}
+                    className={`p-1.5 rounded-[8px] transition-colors ${viewMode === 'grid' ? 'bg-on-surface text-inverse-on-surface' : 'text-on-surface-variant hover:text-on-background'}`}
                     title="Сетка"
                   >
                     <Grid className="w-4 h-4" strokeWidth={1.5} />
                   </button>
                   <button 
                     onClick={() => setViewMode('list')}
-                    className={`p-1.5 rounded-[8px] transition-colors ${viewMode === 'list' ? 'bg-[#FFFFFF] text-[#000000]' : 'text-[#98989D] hover:text-[#F5F5F7]'}`}
+                    className={`p-1.5 rounded-[8px] transition-colors ${viewMode === 'list' ? 'bg-on-surface text-inverse-on-surface' : 'text-on-surface-variant hover:text-on-background'}`}
                     title="Список"
                   >
                     <ListIcon className="w-4 h-4" strokeWidth={1.5} />
@@ -504,7 +504,7 @@ export default function Courses() {
               {filteredCourses.length === 0 && (
                 <motion.div 
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="col-span-full py-20 flex flex-col items-center justify-center text-[#98989D]"
+                  className="col-span-full py-20 flex flex-col items-center justify-center text-on-surface-variant"
                 >
                   <Search className="w-12 h-12 mb-4 opacity-20" strokeWidth={1.5} />
                   <p className="text-xs font-semibold">{t('courses.noMatching') || 'Совпадений не найдено'}</p>

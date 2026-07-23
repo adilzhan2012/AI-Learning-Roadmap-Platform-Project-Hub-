@@ -520,7 +520,7 @@ ${ultraInstruction}`;
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0, opacity: 0, y: 50 }}
             onClick={() => setIsOpen(true)}
-            className="fixed bottom-6 right-6 z-[90] w-14 h-14 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 border border-indigo-400/30 flex items-center justify-center text-white shadow-[0_8px_30px_rgb(99,102,241,0.4)] hover:scale-105 active:scale-95 transition-all select-none group"
+            className="fixed bottom-6 right-6 z-[90] w-14 h-14 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 border border-indigo-400/30 flex items-center justify-center text-on-surface shadow-[0_8px_30px_rgb(99,102,241,0.4)] hover:scale-105 active:scale-95 transition-all select-none group"
           >
             <span className="absolute inset-0 rounded-full bg-indigo-500/20 animate-ping group-hover:animate-none" />
             <Sparkles className="w-6 h-6 animate-pulse group-hover:scale-110 transition-transform" />
@@ -625,7 +625,7 @@ ${ultraInstruction}`;
                           className={`group w-full px-3 py-2.5 rounded-xl flex items-center justify-between cursor-pointer transition-colors border ${
                             activeSessionId === s.id 
                               ? 'bg-indigo-600/10 border-indigo-500/35 text-indigo-300' 
-                              : 'hover:bg-white/5 border-transparent text-zinc-400 hover:text-white'
+                              : 'hover:bg-on-surface/5 border-transparent text-zinc-400 hover:text-on-surface'
                           }`}
                         >
                           {editingSessionId === s.id ? (
@@ -719,7 +719,7 @@ ${ultraInstruction}`;
                               <button 
                                 onClick={() => triggerCourseGeneration(proposalData.topic, proposalData.level, proposalData.preferences)}
                                 disabled={courseGenerating || generatedTopics.has(proposalData.topic)}
-                                className="w-full flex items-center justify-center gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full flex items-center justify-center gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-on-surface font-bold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 {generatedTopics.has(proposalData.topic) ? '✅ Роудмап запущен' : 'Сгенерировать и запустить роудмап'}
                                 {!generatedTopics.has(proposalData.topic) && <ArrowRight className="w-3.5 h-3.5" />}
@@ -733,7 +733,7 @@ ${ultraInstruction}`;
                                 setIsOpen(false);
                                 navigate('/graph');
                               }}
-                              className="mt-2 py-1.5 px-3 bg-white/10 hover:bg-white/15 border border-white/10 rounded-lg text-white font-bold text-[10px] flex items-center gap-1 transition-all"
+                              className="mt-2 py-1.5 px-3 bg-on-surface/10 hover:bg-on-surface/15 border border-white/10 rounded-lg text-on-surface font-bold text-[10px] flex items-center gap-1 transition-all"
                             >
                               🚀 Открыть Граф знаний
                             </button>
@@ -799,7 +799,7 @@ ${ultraInstruction}`;
                           ? `${Math.max(0, PLAN_LIMITS.PRO.aiMentorPerDay - (usage.mentorMessagesUsed || 0))} сообщ./день`
                           : `${Math.max(0, (isFreeOnboarding ? PLAN_LIMITS.FREE.onboardingMessagesTotal : PLAN_LIMITS.FREE.aiMentorPerDay) - (usage.mentorMessagesUsed || 0))} сообщ.${isFreeOnboarding ? ' всего (онбординг)' : '/день'}`}
                     </span>
-                    <button onClick={handleClearHistory} className="hover:text-white transition-colors">
+                    <button onClick={handleClearHistory} className="hover:text-on-surface transition-colors">
                       Очистить историю
                     </button>
                   </div>

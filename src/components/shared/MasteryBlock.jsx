@@ -7,8 +7,8 @@ const MasteryBlock = ({ masteryScore, attempts = [], onViewHistory }) => {
   if (masteryScore === null || masteryScore === undefined) return null;
 
   const getColor = (score) => {
-    if (score >= 80) return { bar: 'bg-[#FFFFFF]', text: 'text-[#FFFFFF]', label: 'Отлично' };
-    if (score >= 50) return { bar: 'bg-[#98989D]', text: 'text-[#98989D]', label: 'Повторить скоро' };
+    if (score >= 80) return { bar: 'bg-on-surface', text: 'text-on-surface', label: 'Отлично' };
+    if (score >= 50) return { bar: 'bg-[#98989D]', text: 'text-on-surface-variant', label: 'Повторить скоро' };
     return { bar: 'bg-[#FF453A]', text: 'text-[#FF453A]', label: 'Нужно повторение' };
   };
 
@@ -50,14 +50,14 @@ const MasteryBlock = ({ masteryScore, attempts = [], onViewHistory }) => {
   };
 
   return (
-    <div className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-4 flex flex-col gap-4 font-sans text-[#F5F5F7]">
+    <div className="bg-surface border border-outline rounded-[16px] p-4 flex flex-col gap-4 font-sans text-on-background">
       {/* Current Mastery Score */}
       <div>
         <div className="flex justify-between items-center mb-1.5">
-          <p className="text-xs font-semibold text-[#98989D]">Прогресс усвоения</p>
-          <span className="text-sm font-bold text-[#F5F5F7] font-mono">{masteryScore}%</span>
+          <p className="text-xs font-semibold text-on-surface-variant">Прогресс усвоения</p>
+          <span className="text-sm font-bold text-on-background font-mono">{masteryScore}%</span>
         </div>
-        <div className="h-[3px] bg-[#2C2C2E] border border-[rgba(255,255,255,0.04)] rounded-sm overflow-hidden mb-1">
+        <div className="h-[3px] bg-surface-container border border-outline-variant rounded-sm overflow-hidden mb-1">
           <div
             className={`h-full rounded-sm transition-all duration-500 ${colors.bar}`}
             style={{ width: `${masteryScore}%` }}
@@ -68,14 +68,14 @@ const MasteryBlock = ({ masteryScore, attempts = [], onViewHistory }) => {
 
       {/* Attempts Dynamics Section */}
       {attempts && attempts.length > 0 && (
-        <div className="border-t border-[rgba(255,255,255,0.08)] pt-3.5">
+        <div className="border-t border-outline pt-3.5">
           <div className="flex justify-between items-center mb-3">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-[#F5F5F7]">Динамика тестов</span>
+              <span className="text-xs font-bold text-on-background">Динамика тестов</span>
               {onViewHistory && (
                 <button
                   onClick={onViewHistory}
-                  className="text-[9px] font-bold text-[#FFFFFF] bg-[#2C2C2E]/60 hover:bg-[#FFFFFF]/10 border border-[rgba(255,255,255,0.08)] px-2 py-0.5 rounded-[5px] transition-all flex items-center gap-1"
+                  className="text-[9px] font-bold text-on-surface bg-surface-container/60 hover:bg-on-surface/10 border border-outline px-2 py-0.5 rounded-[5px] transition-all flex items-center gap-1"
                   title="Подробная история прохождений"
                 >
                   <Calendar className="w-2.5 h-2.5" />
@@ -86,17 +86,17 @@ const MasteryBlock = ({ masteryScore, attempts = [], onViewHistory }) => {
             
             {/* Tabs Toggle if > 1 attempt */}
             {attempts.length > 1 && (
-              <div className="flex bg-[#2C2C2E] rounded-[8px] p-0.5 border border-[rgba(255,255,255,0.04)]">
+              <div className="flex bg-surface-container rounded-[8px] p-0.5 border border-outline-variant">
                 <button
                   onClick={() => setActiveTab('chart')}
-                  className={`p-1.5 rounded-[6px] transition-all ${activeTab === 'chart' ? 'bg-[#FFFFFF] text-[#000000]' : 'text-[#98989D] hover:text-[#F5F5F7]'}`}
+                  className={`p-1.5 rounded-[6px] transition-all ${activeTab === 'chart' ? 'bg-on-surface text-inverse-on-surface' : 'text-on-surface-variant hover:text-on-background'}`}
                   title="График"
                 >
                   <AreaChart className="w-3.5 h-3.5" strokeWidth={1.5} />
                 </button>
                 <button
                   onClick={() => setActiveTab('list')}
-                  className={`p-1.5 rounded-[6px] transition-all ${activeTab === 'list' ? 'bg-[#FFFFFF] text-[#000000]' : 'text-[#98989D] hover:text-[#F5F5F7]'}`}
+                  className={`p-1.5 rounded-[6px] transition-all ${activeTab === 'list' ? 'bg-on-surface text-inverse-on-surface' : 'text-on-surface-variant hover:text-on-background'}`}
                   title="Список попыток"
                 >
                   <List className="w-3.5 h-3.5" strokeWidth={1.5} />
@@ -107,14 +107,14 @@ const MasteryBlock = ({ masteryScore, attempts = [], onViewHistory }) => {
 
           {/* Tab 1: Chart */}
           {activeTab === 'chart' || attempts.length === 1 ? (
-            <div className="relative bg-[#2C2C2E]/40 rounded-[8px] p-2 border border-[rgba(255,255,255,0.04)] flex flex-col items-center">
+            <div className="relative bg-surface-container/40 rounded-[8px] p-2 border border-outline-variant flex flex-col items-center">
               {attempts.length === 1 ? (
                 // Single attempt layout
                 <div className="py-4 text-center">
-                  <CheckCircle className="w-8 h-8 text-[#FFFFFF] mx-auto mb-2" strokeWidth={1.5} />
-                  <p className="text-xs font-bold text-[#F5F5F7]">Пройдена 1 попытка</p>
-                  <p className="text-[11px] text-[#98989D] mt-0.5">Результат: <strong className="text-[#FFFFFF] font-mono">{attempts[0].score}%</strong></p>
-                  <p className="text-[10px] text-[#98989D]/70 mt-1 font-mono">{formatDate(attempts[0].date)}</p>
+                  <CheckCircle className="w-8 h-8 text-on-surface mx-auto mb-2" strokeWidth={1.5} />
+                  <p className="text-xs font-bold text-on-background">Пройдена 1 попытка</p>
+                  <p className="text-[11px] text-on-surface-variant mt-0.5">Результат: <strong className="text-on-surface font-mono">{attempts[0].score}%</strong></p>
+                  <p className="text-[10px] text-on-surface-variant/70 mt-1 font-mono">{formatDate(attempts[0].date)}</p>
                 </div>
               ) : (
                 // SVG Graph
@@ -215,17 +215,17 @@ const MasteryBlock = ({ masteryScore, attempts = [], onViewHistory }) => {
                 return (
                   <div 
                     key={index} 
-                    className="flex justify-between items-center p-2 rounded-[8px] bg-[#2C2C2E]/40 border border-[rgba(255,255,255,0.04)] text-xs font-sans"
+                    className="flex justify-between items-center p-2 rounded-[8px] bg-surface-container/40 border border-outline-variant text-xs font-sans"
                   >
                     <div className="flex items-center gap-1.5">
-                      <div className={`w-1.5 h-1.5 rounded-full ${isPassed ? 'bg-[#FFFFFF]' : 'bg-[#FF453A]'}`} />
-                      <span className="font-semibold text-[#F5F5F7]">Попытка #{attemptNum}</span>
+                      <div className={`w-1.5 h-1.5 rounded-full ${isPassed ? 'bg-on-surface' : 'bg-[#FF453A]'}`} />
+                      <span className="font-semibold text-on-background">Попытка #{attemptNum}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`font-bold font-mono ${isPassed ? 'text-[#FFFFFF]' : 'text-[#FF453A]'}`}>
+                      <span className={`font-bold font-mono ${isPassed ? 'text-on-surface' : 'text-[#FF453A]'}`}>
                         {attempt.score}%
                       </span>
-                      <span className="text-[10px] text-[#98989D]/60 font-mono">
+                      <span className="text-[10px] text-on-surface-variant/60 font-mono">
                         {formatDate(attempt.date)}
                       </span>
                     </div>

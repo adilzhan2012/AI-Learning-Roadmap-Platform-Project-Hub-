@@ -25,7 +25,7 @@ export default function UpgradeModal({ isOpen, onClose, onUpgrade }) {
         >
           <button 
             onClick={onClose}
-            className="absolute top-4 right-4 z-20 w-10 h-10 bg-black/20 hover:bg-black/40 rounded-full flex items-center justify-center text-white transition-colors"
+            className="absolute top-4 right-4 z-20 w-10 h-10 bg-black/20 hover:bg-black/40 rounded-full flex items-center justify-center text-on-surface transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -61,14 +61,14 @@ export default function UpgradeModal({ isOpen, onClose, onUpgrade }) {
                 <Crown className="w-4 h-4" />
                 RECOMMENDED
               </div>
-              <h2 className="text-3xl font-black text-white mb-2">PRO План</h2>
+              <h2 className="text-3xl font-black text-on-surface mb-2">PRO План</h2>
               <p className="text-3xl font-black text-purple-300 mb-8">{PLAN_LIMITS.PRO.price}</p>
               
               <ul className="space-y-4 mb-8">
                 {PLAN_LIMITS.PRO.features.map((f, i) => (
                   <li key={i} className="flex items-start gap-3">
                     <CheckCircle2 className="w-6 h-6 text-amber-500 flex-shrink-0" />
-                    <span className="text-white text-lg leading-tight font-medium">{f}</span>
+                    <span className="text-on-surface text-lg leading-tight font-medium">{f}</span>
                   </li>
                 ))}
               </ul>
