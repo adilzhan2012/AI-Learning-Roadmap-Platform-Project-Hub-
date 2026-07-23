@@ -98,11 +98,7 @@ Provide a highly thorough, detailed code review in the Russian language. Include
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-<<<<<<< HEAD
-        className="relative bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] w-full max-w-4xl max-h-[90vh] rounded-[24px] shadow-2xl flex flex-col overflow-y-auto"
-=======
-        className="relative bg-surface border border-outline w-full max-w-4xl max-h-[90vh] rounded-[24px] shadow-2xl flex flex-col overflow-hidden"
->>>>>>> 1a9ad0df5c5074cda19a0eb897e16e4af9f6052c
+        className="relative bg-surface border border-outline w-full max-w-4xl max-h-[90vh] rounded-[24px] shadow-2xl flex flex-col overflow-y-auto"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-outline bg-surface shrink-0">
