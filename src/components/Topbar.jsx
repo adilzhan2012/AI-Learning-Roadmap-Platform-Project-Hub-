@@ -18,6 +18,7 @@ import {
 import { t, useLocale } from '../i18n.js';
 import { useXP } from '../hooks/useXP.js';
 import { useGamification } from '../context/GamificationContext.jsx';
+import { toggleTheme } from '../theme.js';
 import { auth, signOut } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getUserStats } from '../services/courseService.js';
