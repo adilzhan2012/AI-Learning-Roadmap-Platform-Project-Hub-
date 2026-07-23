@@ -12,7 +12,8 @@ import {
   BookmarkCheck,
   Search,
   Lock,
-  Loader2
+  Loader2,
+  Laptop
 } from 'lucide-react';
 import { t, useLocale } from '../i18n.js';
 import { auth } from '../firebase.js';
@@ -20,12 +21,14 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { getUserCourses } from '../services/courseService.js';
 import { useNavigate } from 'react-router-dom';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
+import ResourceModal from '../components/resources/ResourceModal.jsx';
 
 const RESOURCE_TYPES = {
   article:    { icon: FileText,   label: 'PDF',   labelKey: 'resources.tabs.articles' },
   video:      { icon: PlayCircle, label: 'VIDEO', labelKey: 'resources.tabs.videos' },
   cheatsheet: { icon: FileCode2,  label: 'CODE',  labelKey: 'resources.tabs.cheatsheets' },
   repository: { icon: GitBranch,  label: 'LINK',  labelKey: 'resources.tabs.repos' },
+  project:    { icon: Laptop,     label: 'PROJ',  labelKey: 'resources.tabs.projects' },
 };
 
 const containerVariants = {
@@ -113,6 +116,7 @@ const TABS = [
   { id: 'Videos', labelKey: 'resources.tabs.videos' },
   { id: 'Cheat Sheets', labelKey: 'resources.tabs.cheatsheets' },
   { id: 'Repositories', labelKey: 'resources.tabs.repos' },
+  { id: 'Projects', labelKey: 'resources.tabs.projects' },
 ];
 
 export default function Resources() {
@@ -125,6 +129,12 @@ export default function Resources() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [lockedModalOpen, setLockedModalOpen] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(5);
+  const [activeResource, setActiveResource] = useState(null);
+
+  useEffect(() => {
+    setVisibleCount(5);
+  }, [activeTab, searchQuery, selectedCategories]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -137,9 +147,16 @@ export default function Resources() {
           courses.forEach(course => {
             if (course.nodes) {
               course.nodes.forEach(node => {
+                const typeModulo = idCounter % 5;
+                let rType = 'article';
+                if (typeModulo === 0) rType = 'video';
+                else if (typeModulo === 1) rType = 'cheatsheet';
+                else if (typeModulo === 2) rType = 'repository';
+                else if (typeModulo === 3) rType = 'project';
+                
                 newResources.push({
                   id: idCounter++,
-                  type: idCounter % 4 === 0 ? 'video' : idCounter % 4 === 1 ? 'cheatsheet' : idCounter % 4 === 2 ? 'repository' : 'article',
+                  type: rType,
                   title: t(node.label),
                   desc: t(node.desc) || 'Учебные материалы, сгенерированные AI-ассистентом для углублённого изучения темы.',
                   tags: [t(course.title)],
@@ -182,6 +199,7 @@ export default function Resources() {
     else if (activeTab === 'Videos') matchesTab = r.type === 'video';
     else if (activeTab === 'Cheat Sheets') matchesTab = r.type === 'cheatsheet';
     else if (activeTab === 'Repositories') matchesTab = r.type === 'repository';
+    else if (activeTab === 'Projects') matchesTab = r.type === 'project';
 
     const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(r.tags[0]);
 
@@ -218,8 +236,13 @@ export default function Resources() {
               setLockedModalOpen(true);
               return;
             }
-            localStorage.setItem('selected_course_id', resources[0].courseId);
-            navigate('/graph');
+            if (resources[0].type === 'video') {
+              window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(resources[0].tags[0] + ' ' + resources[0].title + ' tutorial')}`, '_blank');
+            } else if (resources[0].type === 'repository') {
+              window.open(`https://github.com/search?q=${encodeURIComponent(resources[0].title)}`, '_blank');
+            } else {
+              setActiveResource(resources[0]);
+            }
           }}
           variants={cardVariants} 
           className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-6 md:p-8 mb-10 flex flex-col md:flex-row gap-8 items-center relative overflow-hidden group cursor-pointer hover:border-[rgba(255,255,255,0.3)] transition-colors"
@@ -301,14 +324,14 @@ export default function Resources() {
             {/* Search + Tabs Bar */}
             <div className="space-y-4">
               {/* Borderless bottom line search field */}
-              <div className="relative border-b border-[rgba(255,255,255,0.08)] focus-within:border-[#FFFFFF] transition-colors py-2">
-                <Search className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 text-[#98989D]" strokeWidth={1.5} />
+              <div className="relative border border-[rgba(255,255,255,0.08)] rounded-xl bg-[#1C1C1E] focus-within:border-white focus-within:bg-[#2C2C2E] transition-all py-3 px-4 shadow-sm flex items-center gap-3">
+                <Search className="w-4 h-4 text-[#98989D]" strokeWidth={1.5} />
                 <input
                   type="text"
                   placeholder="Поиск ресурсов..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-transparent pl-7 pr-3 text-xs text-[#F5F5F7] placeholder:text-[#98989D] focus:outline-none"
+                  className="w-full bg-transparent text-sm text-[#F5F5F7] placeholder:text-[#98989D] focus:outline-none"
                 />
               </div>
 
@@ -334,7 +357,8 @@ export default function Resources() {
               <AnimatePresence mode="popLayout">
                 {(() => {
                   const seenCourseIds = {};
-                  return filteredResources.map((resource) => {
+                  const displayedResources = activeTab === 'All' ? filteredResources.slice(0, visibleCount) : filteredResources;
+                  return displayedResources.map((resource) => {
                     const cId = resource.courseId;
                     if (!seenCourseIds[cId]) {
                       seenCourseIds[cId] = 0;
@@ -351,14 +375,30 @@ export default function Resources() {
                             setLockedModalOpen(true);
                             return;
                           }
-                          localStorage.setItem('selected_course_id', resource.courseId);
-                          navigate('/graph');
+                          if (resource.type === 'video') {
+                            window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(resource.tags[0] + ' ' + resource.title + ' tutorial')}`, '_blank');
+                          } else if (resource.type === 'repository') {
+                            window.open(`https://github.com/search?q=${encodeURIComponent(resource.title)}`, '_blank');
+                          } else {
+                            setActiveResource(resource);
+                          }
                         }}
                       />
                     );
                   });
                 })()}
               </AnimatePresence>
+              
+              {activeTab === 'All' && filteredResources.length > visibleCount && (
+                <div className="col-span-full flex justify-center mt-2 mb-4">
+                  <button 
+                    onClick={() => setVisibleCount(prev => prev + 10)}
+                    className="bg-[#2C2C2E] hover:bg-[#3C3C3E] text-white px-6 py-2.5 rounded-xl text-xs font-bold transition-colors border border-[rgba(255,255,255,0.08)] shadow-sm"
+                  >
+                    Показать остальные
+                  </button>
+                </div>
+              )}
               
               {!loading && filteredResources.length === 0 && (
                 <div className="col-span-full py-16 text-center text-[#98989D] font-sans">
@@ -414,6 +454,13 @@ export default function Resources() {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+      
+      {/* Dynamic AI Resource Modal */}
+      <AnimatePresence>
+        {activeResource && (
+          <ResourceModal resource={activeResource} onClose={() => setActiveResource(null)} />
         )}
       </AnimatePresence>
     </motion.main>

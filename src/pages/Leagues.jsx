@@ -72,7 +72,7 @@ export function LeagueIcon({ leagueId, className = "w-5 h-5" }) {
   }
 }
 
-export default function Leagues() {
+export default function Leagues({ embedded = false }) {
   const navigate = useNavigate();
   const locale = useLocale();
   const { plan } = usePlanLimits();
@@ -231,8 +231,9 @@ export default function Leagues() {
   const selectedLeagueName = isRu ? selectedLeague.nameRu : selectedLeague.nameEn;
 
   return (
-    <div className="max-w-[2000px] mx-auto min-h-[calc(100vh-4.5rem)] text-on-surface font-sans p-4 md:p-6 space-y-8">
+    <div className={`${embedded ? 'w-full px-4 md:px-6' : 'max-w-[2000px] mx-auto min-h-[calc(100vh-4.5rem)] p-4 md:p-6'} text-on-surface font-sans space-y-8`}>
       {/* Header section */}
+      {!embedded && (
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-outline-variant pb-6">
         <div>
           <h1 className="text-4xl font-bold font-clash text-on-background flex items-center gap-3">
@@ -259,6 +260,7 @@ export default function Leagues() {
           <p className="text-sm font-mono font-semibold tabular-nums text-on-surface mt-0.5">{timeLeft}</p>
         </div>
       </div>
+      )}
 
       {/* Free user paywall block if they are in graphite promotion zone */}
       {isFreePlanBlocked && (

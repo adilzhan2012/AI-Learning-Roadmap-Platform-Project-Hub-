@@ -110,6 +110,7 @@ Learning Preferences:
 - Study pace limit: Designed for about ${timeStr}
 - Tone and style: ${styleStr}
 - Target number of flashcards per lesson: ${preferences.flashcardCount || '5'}
+${preferences.duration ? `- Requested Duration: ${preferences.duration}` : ''}
     `.trim();
   }
 
@@ -132,7 +133,7 @@ The response must be a valid JSON object matching this schema:
   "title": "A short, professional title for the course",
   "category": "One of: AI Fundamentals, Machine Learning, Deep Learning, NLP, Computer Vision, Software Engineering, General",
   "level": "${level}",
-  "hours": "estimated total hours, e.g. '12h'",
+  "hours": "${preferences.duration ? preferences.duration + ' (CRITICAL: DO NOT change this value, output it exactly)' : "estimated total hours, e.g. '12h' (CRITICAL: if a specific duration is requested in preferences, copy it exactly)"}",
   "lessonsCount": 12,
   "gradient": "A Tailwind CSS gradient (e.g., 'from-blue-500 to-cyan-400', 'from-emerald-500 to-teal-400', 'from-violet-500 to-purple-400', 'from-orange-500 to-amber-400', 'from-pink-500 to-rose-400', 'from-sky-500 to-indigo-400')",
   "description": "A detailed course description of 2-3 sentences.",
@@ -213,7 +214,7 @@ The response must be a valid JSON object matching this schema:
     topic: topic,
     normalizedTopic: normalizedTopic,
     title: courseData.title || topic,
-    category: courseData.category || 'General',
+    category: '✨ Сгенерировано ИИ',
     level: courseData.level || level,
     hours: courseData.hours || '10h',
     lessonsCount: courseData.lessonsCount || nodes.length * 3,

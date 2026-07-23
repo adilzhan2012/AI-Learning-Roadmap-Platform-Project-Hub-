@@ -519,7 +519,7 @@ export default function Dashboard() {
         {/* Leagues Teaser (1/3 width) */}
         <motion.div 
           variants={itemVariants} 
-          onClick={() => navigate('/leagues')}
+          onClick={() => navigate('/achievements')}
           className="lg:col-span-1 bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] hover:border-white/20 transition-all rounded-[16px] p-6 flex flex-col justify-between cursor-pointer group min-h-[360px]"
         >
           <div className="w-full">

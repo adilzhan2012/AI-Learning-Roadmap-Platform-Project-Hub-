@@ -9,10 +9,11 @@ import {
   BookOpen, 
   Calendar,
   ArrowRight,
-  Plus,
   Trash2,
   Lock,
-  Menu
+  Menu,
+  Edit2,
+  Plus
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { auth, db } from '../firebase.js';
@@ -30,13 +31,7 @@ export default function MentorWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [courses, setCourses] = useState([]);
   const [profile, setProfile] = useState({});
-  const [messages, setMessages] = useState([
-    {
-      id: 'welcome',
-      role: 'assistant',
-      content: 'Привет! Я твой персональный AI-ментор. Я готов помочь разобраться в сложных понятиях, подсказать решения и ответить на любые вопросы по учебе. Если у тебя тариф **ULTRA**, напиши мне что-то вроде: *"Хочу выучить Go для бэкенда с нуля"* и мы составим твой персональный план прямо здесь!'
-    }
-  ]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [generating, setGenerating] = useState(false);
   const [courseGenerating, setCourseGenerating] = useState(false);
@@ -54,7 +49,9 @@ export default function MentorWidget() {
   const chatEndRef = useRef(null);
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
+  const [editingSessionId, setEditingSessionId] = useState(null);
+  const [editingTitle, setEditingTitle] = useState('');
 
   // Sync auth state & initial user data
   useEffect(() => {
@@ -90,45 +87,46 @@ export default function MentorWidget() {
           const q = query(sessionsCol, orderBy('createdAt', 'desc'));
           const snap = await getDocs(q);
           const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setSessions(list);
-          if (list.length > 0) {
-            setActiveSessionId(list[0].id);
-            setMessages(list[0].messages || []);
+          
+          const now = new Date().getTime();
+          const thresholdDays = plan === 'ULTRA' ? 10 : plan === 'PRO' ? 5 : 0;
+          const thresholdMs = thresholdDays * 24 * 60 * 60 * 1000;
+          
+          const validList = [];
+          for (const session of list) {
+            const sessionTime = session.createdAt?.toMillis ? session.createdAt.toMillis() : new Date(session.createdAt).getTime();
+            if (thresholdMs > 0 && (now - sessionTime > thresholdMs)) {
+              deleteDoc(doc(db, 'users', user.uid, 'mentorSessions', session.id)).catch(() => {});
+            } else {
+              validList.push(session);
+            }
+          }
+
+          setSessions(validList);
+          if (validList.length > 0) {
+            setActiveSessionId(validList[0].id);
+            setMessages(validList[0].messages || []);
           } else {
             // Create default session
             const newId = Date.now().toString();
-            const defaultMsg = [
-              {
-                id: 'welcome',
-                role: 'assistant',
-                content: 'Привет! Я твой персональный AI-ментор. Спроси меня о чём-нибудь!'
-              }
-            ];
             const newSession = {
               id: newId,
               title: 'Первый диалог',
               createdAt: new Date(),
-              messages: defaultMsg
+              messages: []
             };
             const docRef = doc(db, 'users', user.uid, 'mentorSessions', newId);
             await setDoc(docRef, newSession);
             setSessions([newSession]);
             setActiveSessionId(newId);
-            setMessages(defaultMsg);
+            setMessages([]);
           }
         } catch (e) {
           console.error("Failed to load mentor sessions:", e);
         }
       } else {
         // FREE users get a single local session
-        const defaultMsg = [
-          {
-            id: 'welcome',
-            role: 'assistant',
-            content: 'Привет! Я твой персональный AI-ментор. Спроси меня о чём-нибудь!'
-          }
-        ];
-        setMessages(defaultMsg);
+        setMessages([]);
         setSessions([]);
         setActiveSessionId('free_local');
       }
@@ -165,25 +163,18 @@ export default function MentorWidget() {
   const handleCreateNewSession = async () => {
     if (plan === 'FREE') return;
     const newId = Date.now().toString();
-    const defaultMsg = [
-      {
-        id: 'welcome',
-        role: 'assistant',
-        content: 'Привет! Я твой новый диалог с AI-ментором. Спроси меня о чём-нибудь!'
-      }
-    ];
     const newSession = {
       id: newId,
       title: `Диалог #${sessions.length + 1}`,
       createdAt: new Date(),
-      messages: defaultMsg
+      messages: []
     };
     try {
       const docRef = doc(db, 'users', user.uid, 'mentorSessions', newId);
       await setDoc(docRef, newSession);
       setSessions(prev => [newSession, ...prev]);
       setActiveSessionId(newId);
-      setMessages(defaultMsg);
+      setMessages([]);
     } catch (e) {
       console.error("Failed to create new session:", e);
     }
@@ -212,29 +203,37 @@ export default function MentorWidget() {
         } else {
           // If no sessions left, create a default one
           const newId = Date.now().toString();
-          const defaultMsg = [
-            {
-              id: 'welcome',
-              role: 'assistant',
-              content: 'Привет! Я твой персональный AI-ментор. Спроси меня о чём-нибудь!'
-            }
-          ];
           const newSession = {
             id: newId,
             title: 'Первый диалог',
             createdAt: new Date(),
-            messages: defaultMsg
+            messages: []
           };
           const newDocRef = doc(db, 'users', user.uid, 'mentorSessions', newId);
           await setDoc(newDocRef, newSession);
           setSessions([newSession]);
           setActiveSessionId(newId);
-          setMessages(defaultMsg);
+          setMessages([]);
         }
       }
     } catch (e) {
       console.error("Failed to delete session:", e);
     }
+  };
+
+  const handleRenameSubmit = async (sessionId) => {
+    if (!editingTitle.trim()) {
+      setEditingSessionId(null);
+      return;
+    }
+    try {
+      const docRef = doc(db, 'users', user.uid, 'mentorSessions', sessionId);
+      await setDoc(docRef, { title: editingTitle }, { merge: true });
+      setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, title: editingTitle } : s));
+    } catch (e) {
+      console.error("Failed to rename session:", e);
+    }
+    setEditingSessionId(null);
   };
 
   const handleSendMessage = async (e, textOverride = null) => {
@@ -265,18 +264,34 @@ export default function MentorWidget() {
         
         // Auto-rename dialog based on first query
         const currentSession = sessions.find(s => s.id === activeSessionId);
-        let updatedTitle = currentSession?.title || 'Диалог';
-        if (updatedTitle.startsWith('Диалог #') || updatedTitle === 'Первый диалог') {
-          updatedTitle = text.substring(0, 25) + (text.length > 25 ? '...' : '');
+        let currentTitle = currentSession?.title || 'Диалог';
+        const needsRename = currentTitle.startsWith('Диалог #') || currentTitle === 'Первый диалог';
+        
+        let displayTitle = currentTitle;
+        if (needsRename) {
+          displayTitle = text.substring(0, 25) + (text.length > 25 ? '...' : '');
         }
 
         const updateData = { 
           messages: next, 
-          title: updatedTitle 
+          title: displayTitle 
         };
 
         setDoc(docRef, updateData, { merge: true }).then(() => {
-          setSessions(sPrev => sPrev.map(s => s.id === activeSessionId ? { ...s, title: updatedTitle, messages: next } : s));
+          setSessions(sPrev => sPrev.map(s => s.id === activeSessionId ? { ...s, title: displayTitle, messages: next } : s));
+          
+          // Trigger async smart rename if needed
+          if (needsRename) {
+            const prompt = `Сгенерируй очень короткий заголовок (максимум 3-4 слова) для диалога, отражающий суть вопроса. Вопрос: "${text}". Выведи только заголовок, без кавычек и точек.`;
+            callGroqWithRetry(null, prompt, 'llama-3.1-8b-instant').then(smartTitle => {
+              if (smartTitle && smartTitle.trim()) {
+                const cleanTitle = smartTitle.trim().replace(/^["']|["']$/g, '').substring(0, 40);
+                setDoc(docRef, { title: cleanTitle }, { merge: true }).then(() => {
+                  setSessions(sPrev => sPrev.map(s => s.id === activeSessionId ? { ...s, title: cleanTitle } : s));
+                });
+              }
+            }).catch(e => console.error("Smart rename failed:", e));
+          }
         }).catch(err => {
           console.error("Failed to save session history:", err);
         });
@@ -352,10 +367,12 @@ INSTRUCTIONS:
 2. Adapt your tone and explanation complexity based on the user's queries.
 3. Keep your responses highly educational, structured, and clear.
 4. CRITICAL: ALWAYS respond ENTIRELY in Russian. Do NOT use Chinese characters or English unless quoting code.
-5. Address the user directly using their name.
+5. Address the user by name, but ONLY ONCE at the very beginning of the conversation. Do NOT repeat greetings like "Привет, Имя" or "Добрый день" in every single message. Just jump straight into answering the question.
 6. IMPORTANT LIMITATION: If the user asks to create, design, compose, or write a course syllabus, roadmap, or study plan (e.g., "составь курс", "сделай программу обучения"):
    - If they are on plan "ULTRA", guide them through the interactive briefing (as instructed below).
    - If they are on "FREE" or "PRO" plan, you MUST politely refuse to draft or write the syllabus. Explain that personalized course generation, interactive syllabus briefings, and materials-based roadmaps (RAG) are exclusive to the ULTRA plan. Suggest they upgrade to ULTRA to unlock this capability.
+7. IMPORTANT: Do NOT assume the user wants to discuss their existing courses unless they explicitly mention them. If they ask to "create a course" or "learn a new topic", they are asking for a NEW course, so IGNORE the existing enrolled roadmaps.
+8. REMEMBER THE CONTEXT: You must continue the conversation based on the 'Conversation History' provided below. Do not repeat questions you already asked.
 ${ultraInstruction}`;
 
       const isComplexQuery = text.length > 200 || text.toLowerCase().includes('объясни') || text.toLowerCase().includes('почему') || text.toLowerCase().includes('ошибка');
@@ -363,7 +380,12 @@ ${ultraInstruction}`;
         ? 'llama-3.1-8b-instant' 
         : (isComplexQuery ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant');
 
-      const fullPrompt = `${systemPrompt}\n\nUser Question: ${text}`;
+      const historyText = messages.slice(-6).map(m => {
+        if (m.id === 'welcome' || !m.content) return '';
+        return `${m.role === 'user' ? 'User' : 'Assistant'}: ${cleanMessageContent(m.content)}`;
+      }).filter(Boolean).join('\n\n');
+
+      const fullPrompt = `${systemPrompt}\n\nConversation History:\n${historyText || 'No previous history.'}\n\nUser Question: ${text}`;
       const responseText = await callGroqWithRetry(null, fullPrompt, selectedModel);
 
       const parsedAction = parseJsonBlock(responseText);
@@ -529,7 +551,7 @@ ${ultraInstruction}`;
               {/* Header */}
               <div className="bg-surface border-b border-outline-variant h-14 flex items-center justify-between px-4 sm:px-6 shrink-0 z-20 relative">
                 <div className="flex items-center gap-2.5">
-                  <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-1.5 md:hidden hover:bg-surface-container rounded-lg text-on-surface-variant hover:text-on-surface transition-colors mr-1">
+                  <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-1.5 hover:bg-surface-container rounded-lg text-on-surface-variant hover:text-on-surface transition-colors mr-1">
                     <Menu className="w-6 h-6" />
                   </button>
                   <div className="hidden sm:flex w-8 h-8 rounded-lg bg-indigo-500/10 items-center justify-center border border-indigo-500/20">
@@ -564,10 +586,9 @@ ${ultraInstruction}`;
 
                 {/* Left Sidebar - Dialogues History List */}
                 <div className={`
-                  absolute md:relative z-20 h-full
-                  w-[240px] md:w-[220px] bg-surface-container border-r border-outline-variant flex flex-col shrink-0
-                  transition-transform duration-300 ease-in-out
-                  ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+                  absolute z-20 h-full bg-surface-container border-r border-outline-variant flex flex-col shrink-0
+                  transition-all duration-300 ease-in-out overflow-hidden
+                  ${isSidebarOpen ? 'translate-x-0 w-[240px] md:w-[220px] md:relative' : '-translate-x-full w-[240px] md:w-0 border-r-0 md:relative'}
                 `}>
                   {/* New Session Button */}
                   <div className="p-3 border-b border-outline-variant shrink-0">
@@ -607,13 +628,33 @@ ${ultraInstruction}`;
                               : 'hover:bg-white/5 border-transparent text-zinc-400 hover:text-white'
                           }`}
                         >
-                          <span className="text-xs font-medium truncate max-w-[130px]">{s.title}</span>
-                          <button 
-                            onClick={(e) => handleDeleteSession(e, s.id)}
-                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/10 rounded text-zinc-500 hover:text-rose-400 transition-all shrink-0"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {editingSessionId === s.id ? (
+                            <input
+                              autoFocus
+                              value={editingTitle}
+                              onChange={e => setEditingTitle(e.target.value)}
+                              onBlur={() => handleRenameSubmit(s.id)}
+                              onKeyDown={e => { if(e.key === 'Enter') handleRenameSubmit(s.id); if(e.key === 'Escape') setEditingSessionId(null); }}
+                              onClick={e => e.stopPropagation()}
+                              className="text-xs bg-transparent border-b border-indigo-500 outline-none text-on-surface w-[110px]"
+                            />
+                          ) : (
+                            <span className="text-xs font-medium truncate max-w-[130px]">{s.title}</span>
+                          )}
+                          <div className="flex items-center opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); setEditingSessionId(s.id); setEditingTitle(s.title); }}
+                              className="p-1 hover:bg-surface-container rounded text-zinc-500 hover:text-indigo-400"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={(e) => handleDeleteSession(e, s.id)}
+                              className="p-1 hover:bg-surface-container rounded text-zinc-500 hover:text-rose-400"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -623,7 +664,18 @@ ${ultraInstruction}`;
                 {/* Right Chat Area */}
                 <div className="flex-1 flex flex-col min-h-0 bg-surface-container-low relative">
                   {/* Chat Body */}
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 scrollbar-thin">
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 scrollbar-thin relative flex flex-col">
+                    {messages.length === 0 && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-10 pointer-events-none">
+                        <div className="max-w-md w-full animate-in fade-in zoom-in duration-500">
+                          <h2 className="text-2xl font-bold text-on-surface mb-2">
+                            {new Date().getHours() < 6 ? 'Доброй ночи' : new Date().getHours() < 12 ? 'Доброе утро' : new Date().getHours() < 18 ? 'Добрый день' : 'Добрый вечер'}, {profile?.firstName || 'Пользователь'}!
+                          </h2>
+                          <p className="text-on-surface-variant text-base">Чем сегодня займемся?</p>
+                        </div>
+                      </div>
+                    )}
+                    
                     {messages.map((msg, index) => {
                       const isAssistant = msg.role === 'assistant';
                       const cleanContent = cleanMessageContent(msg.content);

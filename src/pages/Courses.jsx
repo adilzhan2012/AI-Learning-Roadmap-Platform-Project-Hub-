@@ -78,6 +78,8 @@ function CourseCard({ course, onDelete, viewMode }) {
   };
 
   const isCompleted = course.progress === 100;
+  const cardGradient = course.gradient || 'from-indigo-500 to-purple-600';
+  const isAi = course.category === '✨ Сгенерировано ИИ';
 
   if (viewMode === 'list') {
     return (
@@ -85,54 +87,55 @@ function CourseCard({ course, onDelete, viewMode }) {
         layout
         variants={cardVariants}
         onClick={handleOpenClick}
-        className="bg-[#1C1C1E] rounded-[16px] border border-[rgba(255,255,255,0.08)] p-4 flex flex-col md:flex-row items-center gap-4 transition-all duration-200 hover:border-[rgba(255,255,255,0.3)] cursor-pointer"
+        className="bg-white dark:bg-[#1A1A1C] rounded-[20px] shadow-sm dark:shadow-none border border-gray-100 dark:border-white/5 p-4 flex flex-col md:flex-row items-center gap-5 transition-all duration-300 hover:shadow-lg dark:hover:border-white/20 hover:-translate-y-1 cursor-pointer group"
       >
-        <div className="w-16 h-16 bg-[#2C2C2E]/50 border border-[rgba(255,255,255,0.08)] rounded-[12px] flex items-center justify-center overflow-hidden flex-shrink-0 relative">
-          <svg className="absolute inset-0 w-full h-full text-[#FFFFFF] opacity-10 stroke-current stroke-[0.5] fill-none" viewBox="0 0 40 40">
-            <line x1="0" y1="0" x2="40" y2="40" />
-            <circle cx="20" cy="20" r="10" />
-          </svg>
-          <Brain className="w-6 h-6 text-[#FFFFFF] opacity-40 relative z-10" strokeWidth={1.5} />
+        <div className={`w-20 h-20 rounded-[14px] bg-gradient-to-br ${cardGradient} flex items-center justify-center overflow-hidden flex-shrink-0 relative shadow-inner`}>
+          <div className="absolute inset-0 bg-white/20 dark:bg-black/20 mix-blend-overlay"></div>
+          {isAi ? (
+            <Sparkles className="w-8 h-8 text-white drop-shadow-md relative z-10" strokeWidth={1.5} />
+          ) : (
+            <Brain className="w-8 h-8 text-white drop-shadow-md relative z-10" strokeWidth={1.5} />
+          )}
         </div>
         
-        <div className="flex-1 min-w-0 text-center md:text-left">
-          <div className="flex items-center gap-2 flex-wrap justify-center md:justify-start">
-            <span className="text-[9px] font-mono font-bold text-[#98989D] tracking-wider uppercase border border-[rgba(255,255,255,0.08)] px-1.5 py-0.5 rounded-[4px]">
+        <div className="flex-1 min-w-0 text-center md:text-left flex flex-col justify-center">
+          <div className="flex items-center gap-2 flex-wrap justify-center md:justify-start mb-1.5">
+            <span className={`text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full ${isAi ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400'}`}>
               {course.category}
             </span>
-            <span className="text-[9px] font-mono text-[#98989D]">
-              {t('level.' + (course.level || 'Beginner'))}
+            <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 px-2 py-1 rounded-full border border-gray-200 dark:border-white/10">
+              {t('level.' + (course.level || 'Beginner')).startsWith('level.') ? course.level : t('level.' + (course.level || 'Beginner'))}
             </span>
           </div>
-          <h3 className="text-base font-bold text-[#FFFFFF] mt-1.5 truncate font-clash">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate font-clash">
             {t(course.title)}
           </h3>
         </div>
 
-        <div className="w-32 flex-shrink-0">
-          <div className="flex justify-between text-[11px] font-mono mb-1 text-[#98989D]">
-            <span>{isCompleted ? t('courses.completed') : t('courses.inProgress')}</span>
-            <span className="text-[#FFFFFF] font-bold">{course.progress || 0}%</span>
+        <div className="w-40 flex-shrink-0 flex flex-col justify-center px-4 md:px-0">
+          <div className="flex justify-between text-xs mb-2">
+            <span className="text-gray-500 dark:text-gray-400 font-medium">{isCompleted ? t('courses.completed') : t('courses.inProgress')}</span>
+            <span className="text-gray-900 dark:text-white font-bold">{course.progress || 0}%</span>
           </div>
-          <div className="w-full h-[2px] bg-[#2C2C2E] border border-[rgba(255,255,255,0.04)] rounded-sm overflow-hidden">
+          <div className="w-full h-2.5 bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden shadow-inner">
             <div 
               style={{ width: `${course.progress || 0}%` }}
-              className="h-full bg-[#FFFFFF]"
+              className={`h-full bg-gradient-to-r ${cardGradient} rounded-full transition-all duration-1000`}
             />
           </div>
         </div>
 
-        <div className="flex items-center gap-4 flex-shrink-0 text-xs text-[#98989D] font-mono">
-          <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" strokeWidth={1.5} /> {course.hours || '0h'}</span>
-          <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" strokeWidth={1.5} /> {course.nodes?.length || 0}</span>
+        <div className="flex items-center gap-5 flex-shrink-0 text-sm text-gray-500 dark:text-gray-400 font-medium justify-center md:justify-end px-2">
+          <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-gray-400" strokeWidth={1.5} /> {course.hours || '0h'}</span>
+          <span className="flex items-center gap-1.5"><BookOpen className="w-4 h-4 text-gray-400" strokeWidth={1.5} /> {course.nodes?.length || 0}</span>
         </div>
 
         <button 
           onClick={handleDelete}
-          className="p-2 bg-[#2C0D0E]/50 hover:bg-[#FF453A] border border-transparent hover:border-[#FF453A]/20 hover:text-white text-[#FF453A] rounded-[8px] transition-colors md:opacity-0 group-hover:opacity-100"
+          className="absolute top-4 right-4 md:relative md:top-0 md:right-0 p-2.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all opacity-100 md:opacity-0 group-hover:opacity-100"
           title="Delete roadmap"
         >
-          <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+          <Trash2 className="w-4 h-4" strokeWidth={2} />
         </button>
       </motion.div>
     );
@@ -143,48 +146,75 @@ function CourseCard({ course, onDelete, viewMode }) {
       layout
       variants={cardVariants}
       onClick={handleOpenClick}
-      className="bg-[#1C1C1E] rounded-[16px] border border-[rgba(255,255,255,0.08)] overflow-hidden transition-all duration-200 hover:border-[rgba(255,255,255,0.3)] cursor-pointer flex flex-col h-full group"
+      className="bg-white dark:bg-[#1A1A1C] rounded-[24px] shadow-sm dark:shadow-none border border-gray-100 dark:border-white/5 overflow-hidden transition-all duration-300 hover:shadow-xl dark:hover:border-white/20 hover:-translate-y-1.5 cursor-pointer flex flex-col h-full group"
     >
-      <div className="relative h-28 bg-[#2C2C2E]/50 border-b border-[rgba(255,255,255,0.08)] flex items-center justify-center overflow-hidden shrink-0">
-        <svg className="absolute inset-0 w-full h-full text-[#FFFFFF] opacity-10 stroke-current stroke-[0.5] fill-none" viewBox="0 0 100 40" preserveAspectRatio="none">
-          <line x1="0" y1="0" x2="100" y2="40" />
-          <line x1="0" y1="40" x2="100" y2="0" />
-          <circle cx="50" cy="20" r="10" />
-        </svg>
-        <Brain className="w-8 h-8 text-[#FFFFFF] opacity-40 relative z-10" strokeWidth={1} />
+      <div className={`relative h-36 bg-gradient-to-br ${cardGradient} p-5 flex flex-col justify-between shrink-0 overflow-hidden`}>
+        {/* Abstract shapes for visual interest */}
+        <div className="absolute -top-12 -right-12 w-32 h-32 bg-white/20 dark:bg-black/20 rounded-full blur-2xl mix-blend-overlay"></div>
+        <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-white/20 dark:bg-black/20 rounded-full blur-xl mix-blend-overlay"></div>
         
-        <span className="absolute top-3 left-3 bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] text-[9px] font-mono font-bold text-[#98989D] px-2 py-0.5 rounded-[4px] tracking-wider uppercase">
-          {course.category}
-        </span>
-        <button 
-          onClick={handleDelete}
-          className="absolute top-3 right-3 bg-[#2C0D0E]/50 hover:bg-[#FF453A] text-[#FF453A] hover:text-white p-1.5 rounded-[8px] border border-transparent hover:border-[#FF453A]/20 transition-all opacity-100 md:opacity-0 group-hover:opacity-100"
-          title="Delete roadmap"
-        >
-          <Trash2 className="w-3.5 h-3.5" strokeWidth={1.5} />
-        </button>
+        <div className="relative z-10 flex justify-between items-start">
+          <span className={`inline-flex items-center backdrop-blur-md bg-white/20 dark:bg-black/20 border border-white/20 text-[10px] font-bold text-white px-2.5 py-1 rounded-full tracking-wider uppercase shadow-sm`}>
+            {course.category}
+          </span>
+          <button 
+            onClick={handleDelete}
+            className="p-2 backdrop-blur-md bg-black/20 hover:bg-red-500/90 text-white rounded-xl transition-all opacity-100 md:opacity-0 group-hover:opacity-100 border border-white/10"
+            title="Delete roadmap"
+          >
+            <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />
+          </button>
+        </div>
+        
+        <div className="relative z-10 flex justify-between items-end mt-4">
+          <div className="p-2.5 bg-white/20 dark:bg-black/20 backdrop-blur-md rounded-2xl border border-white/20 shadow-lg">
+            {isAi ? (
+              <Sparkles className="w-6 h-6 text-white" strokeWidth={1.5} />
+            ) : (
+              <Brain className="w-6 h-6 text-white" strokeWidth={1.5} />
+            )}
+          </div>
+          <span className="text-[11px] font-medium text-white/90 bg-black/20 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
+            {t('level.' + (course.level || 'Beginner')).startsWith('level.') ? course.level : t('level.' + (course.level || 'Beginner'))}
+          </span>
+        </div>
       </div>
 
-      <div className="p-5 flex-1 flex flex-col">
-        <h3 className="text-base font-bold text-[#FFFFFF] leading-snug mb-2 font-clash line-clamp-2">
+      <div className="p-6 flex-1 flex flex-col bg-white dark:bg-[#1A1A1C]">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white leading-snug mb-2 font-clash line-clamp-2">
           {t(course.title)}
         </h3>
-        <p className="text-xs text-[#98989D] mb-6 line-clamp-2">{course.description || ''}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 line-clamp-2 leading-relaxed">
+          {course.description || ''}
+        </p>
 
-        <div className="mt-auto">
-          <div className="flex items-center justify-between mb-1.5 text-[11px] font-mono text-[#98989D]">
-            <span>{isCompleted ? t('courses.completed') : t('courses.inProgress')}</span>
-            <span className="text-[#FFFFFF] font-bold">{course.progress || 0}%</span>
+        <div className="mt-auto space-y-4">
+          <div>
+            <div className="flex items-center justify-between mb-2 text-xs font-medium">
+              <span className="text-gray-500 dark:text-gray-400">{isCompleted ? t('courses.completed') : t('courses.inProgress')}</span>
+              <span className="text-gray-900 dark:text-white font-bold">{course.progress || 0}%</span>
+            </div>
+            <div className="w-full h-2 bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden shadow-inner">
+              <div 
+                className={`h-full bg-gradient-to-r ${cardGradient} rounded-full transition-all duration-1000`}
+                style={{ width: `${course.progress || 0}%` }}
+              />
+            </div>
           </div>
-          <div className="w-full h-[2px] bg-[#2C2C2E] border border-[rgba(255,255,255,0.04)] rounded-sm overflow-hidden mb-4">
-            <div 
-              className="h-full bg-[#FFFFFF]"
-              style={{ width: `${course.progress || 0}%` }}
-            />
-          </div>
-          <div className="flex items-center justify-between text-[11px] text-[#98989D] font-mono border-t border-[rgba(255,255,255,0.04)] pt-3">
-            <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" strokeWidth={1.5} /> {course.hours || '0h'}</span>
-            <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" strokeWidth={1.5} /> {course.nodes?.length || 0} {t('courses.lessons')}</span>
+          
+          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 font-medium border-t border-gray-100 dark:border-white/5 pt-4">
+            <span className="flex items-center gap-1.5">
+              <div className="p-1.5 bg-gray-50 dark:bg-white/5 rounded-lg">
+                <Clock className="w-3.5 h-3.5" strokeWidth={2} />
+              </div>
+              {course.hours || '0h'}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <div className="p-1.5 bg-gray-50 dark:bg-white/5 rounded-lg">
+                <BookOpen className="w-3.5 h-3.5" strokeWidth={2} />
+              </div>
+              {course.nodes?.length || 0} {t('courses.lessons')}
+            </span>
           </div>
         </div>
       </div>
@@ -361,7 +391,7 @@ export default function Courses() {
                             )}
                           </div>
                         </div>
-                        <span className="text-xs text-[#98989D] group-hover:text-[#F5F5F7] transition-colors truncate max-w-[120px]">{cat}</span>
+                        <span className={`text-xs transition-colors truncate max-w-[120px] ${cat === '✨ Сгенерировано ИИ' ? 'bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-indigo-400 font-extrabold group-hover:opacity-80' : 'text-[#98989D] group-hover:text-[#F5F5F7]'}`}>{cat}</span>
                       </label>
                     ))
                   )}

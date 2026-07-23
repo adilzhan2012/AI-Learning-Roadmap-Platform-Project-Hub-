@@ -5,6 +5,7 @@ import { ACHIEVEMENTS } from '../../constants/achievements.js';
 import { useAchievements } from '../../hooks/useAchievements.js';
 import { usePlanLimits } from '../../hooks/usePlanLimits.js';
 import { useNavigate } from 'react-router-dom';
+import LeaguesComponent from '../../pages/Leagues.jsx';
 
 const CATEGORIES = [
   { id: 'all', label: 'Все' },
@@ -270,59 +271,8 @@ export default function AchievementsPage() {
       )}
 
       {activeMainTab === 'leagues' && (
-        <div className="space-y-6 max-w-2xl mx-auto">
-          <div className="text-center mb-8">
-            <h2 className="text-xl font-bold font-clash text-[#FFFFFF]">Лиги обучения</h2>
-            <p className="text-[#98989D] text-xs mt-1">Проходите уроки, зарабатывайте XP и продвигайтесь по лигам.</p>
-          </div>
-
-          <div className="space-y-4">
-            {[
-              { id: 'bronze', name: 'Бронзовая лига', desc: 'Начальная лига для всех участников. Стартовая площадка для вашего обучения.', xp: '0 XP', isPro: false },
-              { id: 'silver', name: 'Серебряная лига', desc: 'Лига для активных студентов. Требует регулярного закрепления знаний.', xp: '500 XP', isPro: false },
-              { id: 'gold', name: 'Золотая лига', desc: 'Высшая лига бесплатного плана. Требует глубокого погружения в темы.', xp: '1500 XP', isPro: false },
-              { id: 'diamond', name: 'Алмазная лига', desc: 'Элитная лига для профессионалов. Доступна только с Pro-подпиской.', xp: '5000 XP', isPro: true },
-              { id: 'master', name: 'Лига Магистров', desc: 'Легендарный уровень. Для настоящих мастеров своего дела с Pro-подпиской.', xp: '10000 XP', isPro: true },
-            ].map((lg) => {
-              const isLgLocked = lg.isPro && plan === 'FREE';
-              return (
-                <div
-                  key={lg.id}
-                  onClick={() => {
-                    if (isLgLocked) {
-                      navigate('/pricing');
-                    }
-                  }}
-                  className={`bg-[#1C1C1E] rounded-2xl p-6 flex items-center justify-between border ${
-                    isLgLocked 
-                      ? 'border-transparent opacity-40 hover:opacity-50 transition-opacity cursor-pointer' 
-                      : 'border-[rgba(255,255,255,0.06)] hover:border-[rgba(255,255,255,0.15)] transition-colors'
-                  }`}
-                >
-                  <div className="flex-1 min-w-0 pr-4">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <h4 className="font-bold text-base text-white">{lg.name}</h4>
-                      {lg.isPro && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#2C2C2E] border border-[rgba(255,255,255,0.08)] text-white uppercase tracking-wider">
-                          Pro
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-[#98989D] leading-relaxed max-w-md">{lg.desc}</p>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-mono font-bold text-[#8E8E93] bg-[#2C2C2E]/40 border border-[rgba(255,255,255,0.04)] px-2.5 py-1 rounded-[6px]">
-                      {lg.xp}
-                    </span>
-                    {isLgLocked && (
-                      <Lock className="w-4 h-4 text-[#8E8E93]" strokeWidth={1.5} />
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+        <div className="mt-4 -mx-4 md:-mx-6">
+          <LeaguesComponent embedded={true} />
         </div>
       )}
     </div>

@@ -879,14 +879,15 @@ Respond in Russian. Keep your reply concise and professional.`;
                     isDragging ? 'cursor-grabbing' : 'cursor-grab'
                   } ${isDragging ? '' : 'transition-all duration-500 ease-out'}`}
                   style={{
-                    left: pos.x - cardWidth / 2,
-                    top: pos.y - cardHeight / 2,
+                    left: pos.x,
+                    top: pos.y,
                     width: cardWidth,
-                    height: cardHeight,
+                    minHeight: cardHeight,
+                    transform: 'translate(-50%, -50%)'
                   }}
                 >
                   <div 
-                    className={`relative w-full h-full rounded-[8px] p-2 flex items-center justify-center overflow-hidden transition-all duration-300 ${
+                    className={`relative w-full min-h-[55px] h-full rounded-[8px] p-2 flex flex-col items-center justify-center overflow-visible transition-all duration-300 ${
                       !isDragging ? 'transform hover:scale-[1.03]' : ''
                     } ${cardBg} ${cardBorder} ${cardText} ${cardShadow}`}
                   >
@@ -894,7 +895,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                     <div className="flex items-center justify-center gap-1.5 px-1.5 w-full text-center">
                       {isCompleted && <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[3]" />}
                       {isLocked && <Lock className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
-                      <span className="text-[12px] leading-tight select-none pointer-events-none">
+                      <span className="text-[12px] leading-tight select-none pointer-events-none break-words whitespace-pre-wrap">
                         {t(node.label || node.title)}
                       </span>
                     </div>

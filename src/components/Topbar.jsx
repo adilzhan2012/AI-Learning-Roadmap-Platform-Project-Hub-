@@ -12,7 +12,8 @@ import {
   Sun, 
   Moon,
   ChevronRight,
-  CreditCard
+  CreditCard,
+  Trophy
 } from 'lucide-react';
 import { t, useLocale } from '../i18n.js';
 import { useXP } from '../hooks/useXP.js';
@@ -60,7 +61,6 @@ export default function Topbar() {
     { path: '/courses', label: t('nav.courses') },
     { path: '/graph', label: t('nav.graph') },
     { path: '/achievements', label: 'Достижения' },
-    { path: '/leagues', label: 'Лиги' },
     { path: '/resources', label: t('nav.resources') },
     { path: '/insights', label: t('nav.insights') },
   ];
@@ -169,7 +169,7 @@ export default function Topbar() {
           
           {/* Current League Emblem */}
           <div 
-            onClick={() => navigate('/leagues')}
+            onClick={() => navigate('/achievements')}
             className="hidden sm:flex items-center gap-1.5 cursor-pointer text-[10px] font-semibold text-[#98989D] hover:text-white transition-colors border border-[rgba(255,255,255,0.08)] bg-[#1C1C1E] rounded-full px-2.5 py-1 select-none font-sans"
             title="Лига соревнований"
           >
@@ -311,6 +311,19 @@ export default function Topbar() {
                     </span>
                     <ChevronRight className="w-3.5 h-3.5 text-[#636366]" strokeWidth={1.5} />
                   </button>
+
+                  <div className="py-2 border-b border-[rgba(255,255,255,0.08)]">
+            <button 
+              onClick={() => {
+                navigate('/achievements');
+                setShowProfileMenu(false);
+              }}
+              className="w-full text-left px-4 py-2 text-xs font-semibold text-[#F5F5F7] hover:bg-[#2C2C2E]/50 transition-colors flex items-center gap-2"
+            >
+              <Trophy className="w-3.5 h-3.5 text-[#98989D]" strokeWidth={1.5} />
+              Достижения
+            </button>
+          </div>
 
                   <div className="border-t border-[rgba(255,255,255,0.08)] my-1"></div>
 
