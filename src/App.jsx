@@ -23,35 +23,31 @@ import LeaguesComponent from './pages/Leagues.jsx';
 import { auth } from './firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 
-function AnimatedRoutes() {
-  const location = useLocation();
-  
+function AppRoutes() {
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
-        <Route element={<Layout />}>
-          {/* Public Routes */}
-          <Route path="/" element={<PageTransition><Landing /></PageTransition>} />
-          <Route path="/login" element={<PageTransition><Auth type="login" /></PageTransition>} />
-          <Route path="/register" element={<PageTransition><Auth type="register" /></PageTransition>} />
-          
-          {/* Protected Dashboard Routes */}
-          <Route path="/dashboard" element={<PageTransition><DashboardComponent /></PageTransition>} />
-          <Route path="/courses" element={<PageTransition><CoursesComponent /></PageTransition>} />
-          <Route path="/graph" element={<PageTransition><GraphComponent /></PageTransition>} />
-          <Route path="/resources" element={<PageTransition><ResourcesComponent /></PageTransition>} />
-          <Route path="/insights" element={<PageTransition><InsightsComponent /></PageTransition>} />
-          <Route path="/settings" element={<PageTransition><SettingsComponent /></PageTransition>} />
-          <Route path="/achievements" element={<PageTransition><AchievementsPage /></PageTransition>} />
-          <Route path="/mentor" element={<PageTransition><MentorComponent /></PageTransition>} />
-          <Route path="/pricing" element={<PageTransition><PricingComponent /></PageTransition>} />
-          <Route path="/leagues" element={<PageTransition><LeaguesComponent /></PageTransition>} />
-          
-          {/* Catch-all 404 */}
-          <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
-        </Route>
-      </Routes>
-    </AnimatePresence>
+    <Routes>
+      <Route element={<Layout />}>
+        {/* Public Routes */}
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Auth type="login" />} />
+        <Route path="/register" element={<Auth type="register" />} />
+        
+        {/* Protected Dashboard Routes */}
+        <Route path="/dashboard" element={<DashboardComponent />} />
+        <Route path="/courses" element={<CoursesComponent />} />
+        <Route path="/graph" element={<GraphComponent />} />
+        <Route path="/resources" element={<ResourcesComponent />} />
+        <Route path="/insights" element={<InsightsComponent />} />
+        <Route path="/settings" element={<SettingsComponent />} />
+        <Route path="/achievements" element={<AchievementsPage />} />
+        <Route path="/mentor" element={<MentorComponent />} />
+        <Route path="/pricing" element={<PricingComponent />} />
+        <Route path="/leagues" element={<LeaguesComponent />} />
+        
+        {/* Catch-all 404 */}
+        <Route path="*" element={<NotFound />} />
+      </Route>
+    </Routes>
   );
 }
 
@@ -76,7 +72,7 @@ export default function App() {
   return (
     <GamificationProvider>
       <HashRouter>
-        <AnimatedRoutes />
+        <AppRoutes />
       </HashRouter>
     </GamificationProvider>
   );

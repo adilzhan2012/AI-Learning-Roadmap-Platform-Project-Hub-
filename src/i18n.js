@@ -7,11 +7,8 @@ import { useState, useEffect } from 'react';
 const STORAGE_KEY = 'yourway-locale';
 
 const getInitialLocale = () => {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved) return saved;
-  const browserLang = navigator.language ? navigator.language.split('-')[0] : 'en';
-  const available = ['en', 'kk', 'ru', 'zh'];
-  return available.includes(browserLang) ? browserLang : 'ru'; // Default to ru as it's the primary audience
+  localStorage.setItem(STORAGE_KEY, 'ru');
+  return 'ru';
 };
 
 let currentLocale = getInitialLocale();
@@ -26,8 +23,6 @@ async function loadLocale(locale) {
     let data;
     switch (locale) {
       case 'ru': data = await import('./locales/ru.json'); break;
-      case 'kk': data = await import('./locales/kk.json'); break;
-      case 'zh': data = await import('./locales/zh.json'); break;
       case 'en':
       default: data = await import('./locales/en.json'); break;
     }
@@ -88,6 +83,9 @@ export function getLocale() {
 }
 
 export async function setLocale(locale) {
+  if (locale !== 'ru') {
+    return; // Non-Russian locales disabled (under development)
+  }
   if (locale !== currentLocale) {
     await loadLocale(locale);
     currentLocale = locale;
@@ -99,10 +97,8 @@ export async function setLocale(locale) {
 
 export function getAvailableLocales() {
   return [
-    { code: 'en', label: 'English (US)', flag: '🇺🇸' },
-    { code: 'kk', label: 'Қазақша', flag: '🇰🇿' },
-    { code: 'ru', label: 'Русский', flag: '🇷🇺' },
-    { code: 'zh', label: '中文 (HSK 1)', flag: '🇨🇳' },
+    { code: 'ru', label: 'Русский', flag: '🇷🇺', active: true, disabled: false },
+    { code: 'en', label: 'English (US)', flag: '🇺🇸', active: false, disabled: true, statusText: 'Скоро в разработке' },
   ];
 }
 

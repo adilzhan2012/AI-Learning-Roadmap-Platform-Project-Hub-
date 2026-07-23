@@ -129,34 +129,34 @@ export default function Pricing() {
 
   if (loading || upgrading) {
     return (
-      <div className="flex flex-col items-center justify-center h-[calc(100vh-4.5rem)] bg-[#000000] text-white">
-        <Loader2 className="w-8 h-8 animate-spin text-white mb-2" />
-        <p className="text-sm text-[#98989D] font-mono">Обновление тарифного плана...</p>
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-4.5rem)] bg-background text-on-surface">
+        <Loader2 className="w-8 h-8 animate-spin text-on-surface mb-2" />
+        <p className="text-sm text-on-surface-variant font-mono">Обновление тарифного плана...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-[calc(100vh-4.5rem)] bg-[#000000] text-[#FFFFFF] font-sans py-12 px-4 select-none relative">
+    <div className="min-h-[calc(100vh-4.5rem)] bg-background text-on-surface font-sans py-12 px-4 select-none relative">
       {/* Header */}
       <div className="text-center max-w-xl mx-auto mb-10">
         <motion.h1 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-3xl font-black tracking-tight text-[#FFFFFF] mb-3 font-clash uppercase"
+          className="text-3xl font-black tracking-tight text-on-surface mb-3 font-clash uppercase"
         >
           Тарифные планы
         </motion.h1>
-        <p className="text-xs text-[#98989D] leading-relaxed">
+        <p className="text-xs text-on-surface-variant leading-relaxed">
           Выберите подходящий уровень для достижения ваших целей обучения. Сгенерируйте индивидуальные курсы с использованием ИИ.
         </p>
 
         {/* Toggle Billing Period */}
-        <div className="inline-flex bg-[#1C1C1E] p-1 rounded-xl border border-[rgba(255,255,255,0.06)] mt-8">
+        <div className="inline-flex bg-surface p-1 rounded-xl border border-outline mt-8">
           <button 
             onClick={() => setBillingPeriod('monthly')}
             className={`px-4 py-2 text-[10px] font-bold rounded-lg transition-all ${
-              billingPeriod === 'monthly' ? 'bg-[#FFFFFF] text-[#000000] shadow-sm' : 'text-[#98989D] hover:text-[#FFFFFF]'
+              billingPeriod === 'monthly' ? 'bg-on-surface text-inverse-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
             Ежемесячно
@@ -164,11 +164,11 @@ export default function Pricing() {
           <button 
             onClick={() => setBillingPeriod('yearly')}
             className={`px-4 py-2 text-[10px] font-bold rounded-lg transition-all flex items-center gap-1.5 ${
-              billingPeriod === 'yearly' ? 'bg-[#FFFFFF] text-[#000000] shadow-sm' : 'text-[#98989D] hover:text-[#FFFFFF]'
+              billingPeriod === 'yearly' ? 'bg-on-surface text-inverse-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
             Ежегодно
-            <span className="bg-[#2C2C2E]/60 text-[#30D158] text-[8px] font-mono px-1.5 py-0.5 rounded border border-[#30D158]/20 uppercase tracking-wide">Скидка 15%</span>
+            <span className="bg-surface-container/60 text-[#30D158] text-[8px] font-mono px-1.5 py-0.5 rounded border border-[#30D158]/20 uppercase tracking-wide">Скидка 15%</span>
           </button>
         </div>
       </div>
@@ -199,22 +199,22 @@ export default function Pricing() {
             {/* Checklist */}
             <ul className="space-y-4 mb-8">
               <li className="flex items-start gap-3 text-sm">
-                <Check className="w-5 h-5 text-[#8E8E93] shrink-0 mt-0.5" strokeWidth={2} />
-                <span className="text-[#F5F5F7] leading-tight">1 Сгенерированный курс</span>
+                <Check className="w-5 h-5 text-on-surface-variant shrink-0 mt-0.5" strokeWidth={2} />
+                <span className="text-on-background leading-tight">1 Сгенерированный курс</span>
               </li>
               <li className="flex items-start gap-3 text-sm">
-                <Check className="w-5 h-5 text-[#8E8E93] shrink-0 mt-0.5" strokeWidth={2} />
-                <span className="text-[#F5F5F7] leading-tight">5 пробных сообщений AI-ментору</span>
+                <Check className="w-5 h-5 text-on-surface-variant shrink-0 mt-0.5" strokeWidth={2} />
+                <span className="text-on-background leading-tight">5 пробных сообщений AI-ментору</span>
               </li>
-              <li className="flex items-start gap-3 text-sm text-[#98989D]/60">
+              <li className="flex items-start gap-3 text-sm text-on-surface-variant/60">
                 <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
                 <span className="leading-tight">Интерактивная практика и код-ревью</span>
               </li>
-              <li className="flex items-start gap-3 text-sm text-[#98989D]/60">
+              <li className="flex items-start gap-3 text-sm text-on-surface-variant/60">
                 <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
                 <span className="leading-tight">RAG: Генерация из PDF/YouTube</span>
               </li>
-              <li className="flex items-start gap-3 text-sm text-[#98989D]/60">
+              <li className="flex items-start gap-3 text-sm text-on-surface-variant/60">
                 <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
                 <span className="leading-tight">Mock Interview & Экспорт</span>
               </li>
@@ -225,14 +225,14 @@ export default function Pricing() {
             {plan === 'FREE' ? (
               <button 
                 disabled 
-                className="w-full py-4 rounded-2xl font-bold bg-transparent border border-[rgba(255,255,255,0.08)] text-[#98989D] text-xs cursor-default"
+                className="w-full py-4 rounded-2xl font-bold bg-transparent border border-outline text-on-surface-variant text-xs cursor-default"
               >
                 Текущий тариф
               </button>
             ) : (
               <button 
                 onClick={() => handleDowngrade()}
-                className="w-full py-4 rounded-2xl font-bold bg-transparent border border-[rgba(255,255,255,0.15)] text-[#FFFFFF] hover:bg-[rgba(255,255,255,0.04)] active:scale-[0.98] transition-all text-xs"
+                className="w-full py-4 rounded-2xl font-bold bg-transparent border border-outline text-on-surface hover:bg-[rgba(255,255,255,0.04)] active:scale-[0.98] transition-all text-xs"
               >
                 Перейти на Free
               </button>
@@ -283,11 +283,11 @@ export default function Pricing() {
                 <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" strokeWidth={2.5} />
                 <span className="text-on-surface font-medium leading-tight">Доступ к Алмазной и Магистр лигам</span>
               </li>
-              <li className="flex items-start gap-3 text-sm text-[#98989D]/60">
+              <li className="flex items-start gap-3 text-sm text-on-surface-variant/60">
                 <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
                 <span className="leading-tight">Интерактивная практика и код-ревью</span>
               </li>
-              <li className="flex items-start gap-3 text-sm text-[#98989D]/60">
+              <li className="flex items-start gap-3 text-sm text-on-surface-variant/60">
                 <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
                 <span className="leading-tight">RAG: Генерация по PDF/YouTube</span>
               </li>
@@ -298,10 +298,10 @@ export default function Pricing() {
             {plan === 'PRO' ? (
               dbBillingPeriod === billingPeriod ? (
                 <div className="space-y-4">
-                  <div className="bg-[#2C2C2E]/40 border border-white/5 rounded-2xl p-4 text-left select-none">
-                    <span className="text-[10px] text-[#8E8E93] uppercase tracking-wider block mb-1">Сведения о подписке</span>
-                    <span className="text-xs text-white block mb-1 font-bold">Тариф YourWay Pro · Активен</span>
-                    <span className="text-[11px] text-[#98989D] block">
+                  <div className="bg-surface-container/40 border border-white/5 rounded-2xl p-4 text-left select-none">
+                    <span className="text-[10px] text-on-surface-variant uppercase tracking-wider block mb-1">Сведения о подписке</span>
+                    <span className="text-xs text-on-surface block mb-1 font-bold">Тариф YourWay Pro · Активен</span>
+                    <span className="text-[11px] text-on-surface-variant block">
                       Продление: {getRenewalDate()}
                     </span>
                   </div>
@@ -315,7 +315,7 @@ export default function Pricing() {
               ) : (
                 <button 
                   onClick={() => handleSelectPlan('PRO')}
-                  className="w-full py-4 rounded-2xl font-bold bg-[#FFFFFF] text-[#000000] hover:bg-[#F5F5F7] active:scale-[0.98] transition-all text-xs shadow-md"
+                  className="w-full py-4 rounded-2xl font-bold bg-on-surface text-inverse-on-surface hover:bg-[#F5F5F7] active:scale-[0.98] transition-all text-xs shadow-md"
                 >
                   {billingPeriod === 'yearly' ? 'Перейти на годовой Pro' : 'Перейти на месячный Pro'}
                 </button>
@@ -323,7 +323,7 @@ export default function Pricing() {
             ) : (
               <button 
                 onClick={() => handleSelectPlan('PRO')}
-                className="w-full py-4 rounded-2xl font-bold bg-[#FFFFFF] text-[#000000] hover:bg-[#F5F5F7] active:scale-[0.98] transition-all text-xs shadow-md"
+                className="w-full py-4 rounded-2xl font-bold bg-on-surface text-inverse-on-surface hover:bg-[#F5F5F7] active:scale-[0.98] transition-all text-xs shadow-md"
               >
                 Активировать Pro
               </button>
@@ -341,14 +341,14 @@ export default function Pricing() {
           }`}
         >
           {/* Badge */}
-          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-indigo-600 text-[#FFFFFF] px-3 py-1 rounded-full text-[9px] font-bold tracking-wider uppercase font-sans flex items-center gap-1 shadow-md shadow-indigo-950/55">
-            <span className="material-symbols-outlined text-[10px] icon-filled text-white animate-pulse">star</span> Элитный тариф
+          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-indigo-600 text-on-surface px-3 py-1 rounded-full text-[9px] font-bold tracking-wider uppercase font-sans flex items-center gap-1 shadow-md shadow-indigo-950/55">
+            <span className="material-symbols-outlined text-[10px] icon-filled text-on-surface animate-pulse">star</span> Элитный тариф
           </div>
 
           <div>
             <div className="mb-6">
               <h3 className="text-xl font-bold tracking-tight text-on-surface mb-1 flex items-center gap-1.5">
-                Ultra <span className="text-[10px] font-black bg-indigo-500 text-white px-1.5 py-0.5 rounded leading-none">ULTRA</span>
+                Ultra <span className="text-[10px] font-black bg-indigo-500 text-on-surface px-1.5 py-0.5 rounded leading-none">ULTRA</span>
               </h3>
               <p className="text-xs text-indigo-600 dark:text-indigo-300 font-medium">Максимальный AI-арсенал YourWay</p>
             </div>
@@ -404,7 +404,7 @@ export default function Pricing() {
                 <div className="space-y-4">
                   <div className="bg-indigo-950/40 border border-indigo-500/20 rounded-2xl p-4 text-left select-none">
                     <span className="text-[10px] text-indigo-300 uppercase tracking-wider block mb-1">Сведения о подписке</span>
-                    <span className="text-xs text-white block mb-1 font-bold font-clash">Тариф YourWay Ultra · Активен</span>
+                    <span className="text-xs text-on-surface block mb-1 font-bold font-clash">Тариф YourWay Ultra · Активен</span>
                     <span className="text-[11px] text-zinc-300 block">
                       Продление: {getRenewalDate()}
                     </span>
@@ -419,7 +419,7 @@ export default function Pricing() {
               ) : (
                 <button 
                   onClick={() => handleSelectPlan('ULTRA')}
-                  className="w-full py-4 rounded-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-400 hover:to-purple-500 active:scale-[0.98] transition-all text-xs shadow-md"
+                  className="w-full py-4 rounded-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-on-surface hover:from-indigo-400 hover:to-purple-500 active:scale-[0.98] transition-all text-xs shadow-md"
                 >
                   {billingPeriod === 'yearly' ? 'Перейти на годовой Ultra' : 'Перейти на месячный Ultra'}
                 </button>
@@ -427,7 +427,7 @@ export default function Pricing() {
             ) : (
               <button 
                 onClick={() => handleSelectPlan('ULTRA')}
-                className="w-full py-4 rounded-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-400 hover:to-purple-500 active:scale-[0.98] transition-all text-xs shadow-md shadow-indigo-900/40"
+                className="w-full py-4 rounded-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-on-surface hover:from-indigo-400 hover:to-purple-500 active:scale-[0.98] transition-all text-xs shadow-md shadow-indigo-900/40"
               >
                 Активировать Ultra
               </button>
@@ -468,11 +468,11 @@ export default function Pricing() {
               ].map((feat, i) => (
                 <div 
                   key={i} 
-                  className="bg-[#1C1C1E] border border-indigo-500/20 rounded-[1.5rem] p-6 text-left hover:border-indigo-400/50 transition-colors shadow-inner"
+                  className="bg-surface border border-indigo-500/20 rounded-[1.5rem] p-6 text-left hover:border-indigo-400/50 transition-colors shadow-inner"
                 >
                   <div className="text-2xl mb-3">{feat.icon}</div>
-                  <h3 className="text-sm font-bold text-white mb-2">{feat.title}</h3>
-                  <p className="text-xs text-[#98989D] leading-relaxed">{feat.desc}</p>
+                  <h3 className="text-sm font-bold text-on-surface mb-2">{feat.title}</h3>
+                  <p className="text-xs text-on-surface-variant leading-relaxed">{feat.desc}</p>
                 </div>
               ))
             ) : (
@@ -500,11 +500,11 @@ export default function Pricing() {
               ].map((feat, i) => (
                 <div 
                   key={i} 
-                  className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.06)] rounded-[1.5rem] p-6 text-left hover:border-white/20 transition-colors"
+                  className="bg-surface border border-outline rounded-[1.5rem] p-6 text-left hover:border-white/20 transition-colors"
                 >
                   <div className="text-2xl mb-3">{feat.icon}</div>
-                  <h3 className="text-sm font-bold text-white mb-2">{feat.title}</h3>
-                  <p className="text-xs text-[#98989D] leading-relaxed">{feat.desc}</p>
+                  <h3 className="text-sm font-bold text-on-surface mb-2">{feat.title}</h3>
+                  <p className="text-xs text-on-surface-variant leading-relaxed">{feat.desc}</p>
                 </div>
               ))
             )}
@@ -516,7 +516,7 @@ export default function Pricing() {
       <div className="text-center mb-16">
         <button 
           onClick={() => setShowFullComparison(!showFullComparison)}
-          className="inline-flex items-center gap-2 text-xs font-bold text-[#98989D] hover:text-[#FFFFFF] transition-colors"
+          className="inline-flex items-center gap-2 text-xs font-bold text-on-surface-variant hover:text-on-surface transition-colors"
         >
           {showFullComparison ? 'Скрыть подробное сравнение' : 'Показать подробное сравнение'}
           {showFullComparison ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -530,65 +530,65 @@ export default function Pricing() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="max-w-[800px] mx-auto bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[2rem] p-8 overflow-x-auto"
+            className="max-w-[800px] mx-auto bg-surface border border-outline rounded-[2rem] p-8 overflow-x-auto"
           >
             <table className="w-full text-left text-xs leading-normal">
               <thead>
-                <tr className="border-b border-[rgba(255,255,255,0.08)]">
-                  <th className="pb-4 font-bold text-[#8E8E93]">Функция</th>
-                  <th className="pb-4 text-center font-bold text-[#8E8E93]">Free</th>
-                  <th className="pb-4 text-center font-bold text-[#FFFFFF]">Pro</th>
+                <tr className="border-b border-outline">
+                  <th className="pb-4 font-bold text-on-surface-variant">Функция</th>
+                  <th className="pb-4 text-center font-bold text-on-surface-variant">Free</th>
+                  <th className="pb-4 text-center font-bold text-on-surface">Pro</th>
                   <th className="pb-4 text-center font-bold text-indigo-400">Ultra</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[rgba(255,255,255,0.04)] font-sans">
                 {/* Courses */}
                 <tr>
-                  <td className="py-4 text-[#F5F5F7]">Генерация дорожных карт</td>
-                  <td className="text-center py-4 text-[#98989D]">2 курса / мес</td>
-                  <td className="text-center py-4 text-[#FFFFFF] font-bold">Безлимитно</td>
+                  <td className="py-4 text-on-background">Генерация дорожных карт</td>
+                  <td className="text-center py-4 text-on-surface-variant">2 курса / мес</td>
+                  <td className="text-center py-4 text-on-surface font-bold">Безлимитно</td>
                   <td className="text-center py-4 text-indigo-300 font-bold">Безлимитно</td>
                 </tr>
                 {/* AI Mentor */}
                 <tr>
-                  <td className="py-4 text-[#F5F5F7]">Интерактивный AI-ментор</td>
-                  <td className="text-center py-4 text-[#98989D]">5 сообщений</td>
-                  <td className="text-center py-4 text-[#FFFFFF] font-bold">50 сообщ/день</td>
+                  <td className="py-4 text-on-background">Интерактивный AI-ментор</td>
+                  <td className="text-center py-4 text-on-surface-variant">5 сообщений</td>
+                  <td className="text-center py-4 text-on-surface font-bold">50 сообщ/день</td>
                   <td className="text-center py-4 text-indigo-300 font-bold">Без ограничений</td>
                 </tr>
                 {/* RAG Generation */}
                 <tr>
-                  <td className="py-4 text-[#F5F5F7]">RAG (PDF, YouTube лекции)</td>
-                  <td className="text-center py-4 text-[#98989D]"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
-                  <td className="text-center py-4 text-[#98989D]"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
+                  <td className="py-4 text-on-background">RAG (PDF, YouTube лекции)</td>
+                  <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
+                  <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
                   <td className="text-center py-4 text-indigo-300 font-bold">Включено</td>
                 </tr>
                 {/* Code review */}
                 <tr>
-                  <td className="py-4 text-[#F5F5F7]">AI Code Review и практика программирования</td>
-                  <td className="text-center py-4 text-[#98989D]"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
-                  <td className="text-center py-4 text-[#98989D]"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
+                  <td className="py-4 text-on-background">AI Code Review и практика программирования</td>
+                  <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
+                  <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
                   <td className="text-center py-4 text-indigo-300 font-bold">Включено</td>
                 </tr>
                 {/* Adaptive Graph */}
                 <tr>
-                  <td className="py-4 text-[#F5F5F7]">Адаптивный граф (микромодули)</td>
-                  <td className="text-center py-4 text-[#98989D]"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
-                  <td className="text-center py-4 text-[#FFFFFF] font-bold">Частично</td>
+                  <td className="py-4 text-on-background">Адаптивный граф (микромодули)</td>
+                  <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
+                  <td className="text-center py-4 text-on-surface font-bold">Частично</td>
                   <td className="text-center py-4 text-indigo-300 font-bold">Полное покрытие</td>
                 </tr>
                 {/* Mock Interview */}
                 <tr>
-                  <td className="py-4 text-[#F5F5F7]">ИнтервьюHR / Tech-лид</td>
-                  <td className="text-center py-4 text-[#98989D]"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
-                  <td className="text-center py-4 text-[#98989D]"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
+                  <td className="py-4 text-on-background">ИнтервьюHR / Tech-лид</td>
+                  <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
+                  <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
                   <td className="text-center py-4 text-indigo-300 font-bold">Включено</td>
                 </tr>
                 {/* Export */}
                 <tr>
-                  <td className="py-4 text-[#F5F5F7]">Экспорт в Notion и Anki</td>
-                  <td className="text-center py-4 text-[#98989D]"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
-                  <td className="text-center py-4 text-[#98989D]"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
+                  <td className="py-4 text-on-background">Экспорт в Notion и Anki</td>
+                  <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
+                  <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
                   <td className="text-center py-4 text-indigo-300 font-bold">Включено</td>
                 </tr>
               </tbody>
@@ -618,43 +618,43 @@ export default function Pricing() {
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98 }}
-              className="relative bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] w-full max-w-md rounded-[2rem] p-8 shadow-2xl z-10 text-center overflow-hidden"
+              className="relative bg-surface border border-outline w-full max-w-md rounded-[2rem] p-8 shadow-2xl z-10 text-center overflow-hidden"
             >
               {checkoutStage === 'input' && (
                 <>
-                  <h3 className="text-xl font-bold text-white mb-1 font-clash">Оформление подписки {selectedUpgradePlan}</h3>
-                  <p className="text-xs text-[#98989D] mb-6">
+                  <h3 className="text-xl font-bold text-on-surface mb-1 font-clash">Оформление подписки {selectedUpgradePlan}</h3>
+                  <p className="text-xs text-on-surface-variant mb-6">
                     Тариф: {selectedUpgradePlan} ({billingPeriod === 'monthly' ? `Ежемесячный - $${selectedUpgradePlan === 'ULTRA' ? '29.99' : '9.99'}/мес` : `Ежегодный - $${selectedUpgradePlan === 'ULTRA' ? '249.99' : '89.99'}/год`})
                   </p>
 
                   <div className="w-full aspect-[1.586/1] bg-gradient-to-br from-[#2C2C2E] to-[#1C1C1E] rounded-2xl p-6 text-left border border-white/10 relative overflow-hidden mb-6 shadow-inner select-none">
-                    <svg className="absolute inset-0 w-full h-full text-white opacity-[0.03] stroke-current stroke-[0.5] fill-none" viewBox="0 0 100 60" preserveAspectRatio="none">
+                    <svg className="absolute inset-0 w-full h-full text-on-surface opacity-[0.03] stroke-current stroke-[0.5] fill-none" viewBox="0 0 100 60" preserveAspectRatio="none">
                       <circle cx="50" cy="30" r="25" />
                       <circle cx="50" cy="30" r="15" />
                     </svg>
                     
                     <div className="flex justify-between items-start mb-6">
-                      <span className="text-[10px] font-mono tracking-widest text-[#8E8E93] uppercase">YourWay {selectedUpgradePlan}</span>
-                      <svg className="w-8 h-8 text-white opacity-40 fill-current" viewBox="0 0 24 24">
+                      <span className="text-[10px] font-mono tracking-widest text-on-surface-variant uppercase">YourWay {selectedUpgradePlan}</span>
+                      <svg className="w-8 h-8 text-on-surface opacity-40 fill-current" viewBox="0 0 24 24">
                         <circle cx="8" cy="12" r="6" />
                         <circle cx="16" cy="12" r="6" />
                       </svg>
                     </div>
 
-                    <div className="text-base md:text-lg font-mono tracking-wider tabular-nums text-white mb-6">
+                    <div className="text-base md:text-lg font-mono tracking-wider tabular-nums text-on-surface mb-6">
                       {cardNumber || '•••• •••• •••• ••••'}
                     </div>
 
                     <div className="flex justify-between items-end">
                       <div>
-                        <span className="text-[8px] text-[#8E8E93] uppercase block">Cardholder</span>
-                        <span className="text-xs font-mono text-white truncate max-w-[150px] inline-block uppercase">
+                        <span className="text-[8px] text-on-surface-variant uppercase block">Cardholder</span>
+                        <span className="text-xs font-mono text-on-surface truncate max-w-[150px] inline-block uppercase">
                           {cardHolder || 'ALEXANDER SMIRNOV'}
                         </span>
                       </div>
                       <div>
-                        <span className="text-[8px] text-[#8E8E93] uppercase block">Expires</span>
-                        <span className="text-xs font-mono text-white tabular-nums">
+                        <span className="text-[8px] text-on-surface-variant uppercase block">Expires</span>
+                        <span className="text-xs font-mono text-on-surface tabular-nums">
                           {cardExpiry || 'MM/YY'}
                         </span>
                       </div>
@@ -663,18 +663,18 @@ export default function Pricing() {
 
                   <div className="space-y-4 text-left">
                     <div>
-                      <label className="text-[10px] text-[#8E8E93] uppercase tracking-wider block mb-1">Имя на карте</label>
+                      <label className="text-[10px] text-on-surface-variant uppercase tracking-wider block mb-1">Имя на карте</label>
                       <input 
                         type="text"
                         placeholder="ALEXANDER SMIRNOV"
                         value={cardHolder}
                         onChange={(e) => setCardHolder(e.target.value.toUpperCase())}
-                        className="w-full bg-[#2C2C2E]/40 border border-[rgba(255,255,255,0.08)] rounded-xl px-4 py-2.5 text-xs text-white uppercase focus:outline-none focus:border-white transition-colors"
+                        className="w-full bg-surface-container/40 border border-outline rounded-xl px-4 py-2.5 text-xs text-on-surface uppercase focus:outline-none focus:border-white transition-colors"
                       />
                     </div>
 
                     <div>
-                      <label className="text-[10px] text-[#8E8E93] uppercase tracking-wider block mb-1">Номер карты</label>
+                      <label className="text-[10px] text-on-surface-variant uppercase tracking-wider block mb-1">Номер карты</label>
                       <input 
                         type="text"
                         placeholder="4000 1234 5678 9010"
@@ -684,13 +684,13 @@ export default function Pricing() {
                           const val = e.target.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim();
                           setCardNumber(val);
                         }}
-                        className="w-full bg-[#2C2C2E]/40 border border-[rgba(255,255,255,0.08)] rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-white transition-colors"
+                        className="w-full bg-surface-container/40 border border-outline rounded-xl px-4 py-2.5 text-xs font-mono text-on-surface focus:outline-none focus:border-white transition-colors"
                       />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-[10px] text-[#8E8E93] uppercase tracking-wider block mb-1">Срок действия</label>
+                        <label className="text-[10px] text-on-surface-variant uppercase tracking-wider block mb-1">Срок действия</label>
                         <input 
                           type="text"
                           placeholder="MM/YY"
@@ -703,18 +703,18 @@ export default function Pricing() {
                             }
                             setCardExpiry(val);
                           }}
-                          className="w-full bg-[#2C2C2E]/40 border border-[rgba(255,255,255,0.08)] rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-white transition-colors"
+                          className="w-full bg-surface-container/40 border border-outline rounded-xl px-4 py-2.5 text-xs font-mono text-on-surface focus:outline-none focus:border-white transition-colors"
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] text-[#8E8E93] uppercase tracking-wider block mb-1">CVC-код</label>
+                        <label className="text-[10px] text-on-surface-variant uppercase tracking-wider block mb-1">CVC-код</label>
                         <input 
                           type="password"
                           placeholder="•••"
                           maxLength={3}
                           value={cardCvc}
                           onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, ''))}
-                          className="w-full bg-[#2C2C2E]/40 border border-[rgba(255,255,255,0.08)] rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-white transition-colors"
+                          className="w-full bg-surface-container/40 border border-outline rounded-xl px-4 py-2.5 text-xs font-mono text-on-surface focus:outline-none focus:border-white transition-colors"
                         />
                       </div>
                     </div>
@@ -727,13 +727,13 @@ export default function Pricing() {
                   <div className="flex gap-4 mt-8">
                     <button
                       onClick={() => setIsCheckoutOpen(false)}
-                      className="flex-1 py-3 rounded-xl border border-[rgba(255,255,255,0.08)] text-white hover:bg-[#2C2C2E]/40 transition-colors text-xs font-bold"
+                      className="flex-1 py-3 rounded-xl border border-outline text-on-surface hover:bg-surface-container/40 transition-colors text-xs font-bold"
                     >
                       Отмена
                     </button>
                     <button
                       onClick={handleSubmitPayment}
-                      className="flex-1 py-3 rounded-xl bg-white text-black hover:bg-[#E8E8ED] transition-colors text-xs font-bold"
+                      className="flex-1 py-3 rounded-xl bg-on-surface text-black hover:bg-surface-container transition-colors text-xs font-bold"
                     >
                       Оплатить {selectedUpgradePlan === 'ULTRA' ? (billingPeriod === 'monthly' ? '$29.99' : '$249.99') : (billingPeriod === 'monthly' ? '$9.99' : '$89.99')}
                     </button>
@@ -743,8 +743,8 @@ export default function Pricing() {
 
               {checkoutStage === 'processing' && (
                 <div className="py-12 flex flex-col items-center justify-center gap-4">
-                  <Loader2 className="w-8 h-8 animate-spin text-white" />
-                  <p className="text-sm font-mono text-[#8E8E93]">Авторизация платежа...</p>
+                  <Loader2 className="w-8 h-8 animate-spin text-on-surface" />
+                  <p className="text-sm font-mono text-on-surface-variant">Авторизация платежа...</p>
                   <p className="text-xs text-[#636366] max-w-xs leading-relaxed">
                     Пожалуйста, не закрывайте окно. Мы проверяем безопасность транзакции через 3D-Secure эмуляцию.
                   </p>
@@ -766,7 +766,7 @@ export default function Pricing() {
                     transition={{ type: 'spring', damping: 15, stiffness: 200, delay: 0.1 }}
                     className="w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 p-[2px] shadow-[0_0_40px_rgba(99,102,241,0.5)]"
                   >
-                    <div className="w-full h-full bg-[#1C1C1E] rounded-full flex items-center justify-center">
+                    <div className="w-full h-full bg-surface rounded-full flex items-center justify-center">
                       <Check className="w-10 h-10 text-indigo-400 drop-shadow-[0_0_15px_rgba(99,102,241,0.8)]" strokeWidth={3} />
                     </div>
                   </motion.div>
@@ -780,10 +780,10 @@ export default function Pricing() {
                     <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 font-clash mb-3">
                       Поздравляем!
                     </h3>
-                    <p className="text-sm text-[#F5F5F7] max-w-sm mx-auto leading-relaxed font-medium">
+                    <p className="text-sm text-on-background max-w-sm mx-auto leading-relaxed font-medium">
                       Тариф <span className="font-bold text-indigo-400 uppercase tracking-widest">{selectedUpgradePlan}</span> успешно активирован.
                       <br/>
-                      <span className="text-xs text-[#98989D] mt-2 block">
+                      <span className="text-xs text-on-surface-variant mt-2 block">
                         Откройте для себя новые возможности обучения с ИИ. Добро пожаловать на новый уровень.
                       </span>
                     </p>
@@ -796,7 +796,7 @@ export default function Pricing() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={handleFinishUpgrade}
-                    className="w-full mt-4 py-4 rounded-xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:shadow-[0_0_30px_rgba(99,102,241,0.4)] transition-all flex justify-center items-center gap-2"
+                    className="w-full mt-4 py-4 rounded-xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-on-surface hover:shadow-[0_0_30px_rgba(99,102,241,0.4)] transition-all flex justify-center items-center gap-2"
                   >
                     <Sparkles className="w-5 h-5 fill-current" />
                     Начать обучение
@@ -826,29 +826,29 @@ export default function Pricing() {
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98 }}
-              className="relative bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] w-full max-w-md rounded-[2rem] p-8 shadow-2xl z-10 text-center overflow-hidden"
+              className="relative bg-surface border border-outline w-full max-w-md rounded-[2rem] p-8 shadow-2xl z-10 text-center overflow-hidden"
             >
               {cancelling ? (
                 <div className="py-12 flex flex-col items-center justify-center gap-4">
-                  <Loader2 className="w-8 h-8 animate-spin text-white" />
-                  <p className="text-sm font-mono text-[#8E8E93]">Отмена подписки...</p>
+                  <Loader2 className="w-8 h-8 animate-spin text-on-surface" />
+                  <p className="text-sm font-mono text-on-surface-variant">Отмена подписки...</p>
                 </div>
               ) : (
                 <>
                   <div className="w-12 h-12 bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <X className="w-5 h-5" strokeWidth={2} />
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-2 font-clash">
+                  <h3 className="text-xl font-bold text-on-surface mb-2 font-clash">
                     Вы уверены, что хотите отменить подписку?
                   </h3>
-                  <p className="text-xs text-[#98989D] mb-6 leading-relaxed">
+                  <p className="text-xs text-on-surface-variant mb-6 leading-relaxed">
                     Вы потеряете доступ ко всем Pro-возможностям, включая безлимитную генерацию курсов (останется только 1 активный), память сессий AI-ментора, экспертные лиги и PDF-сертификаты.
                   </p>
 
                   <div className="flex gap-4">
                     <button
                       onClick={() => setIsCancelModalOpen(false)}
-                      className="flex-1 py-3 rounded-xl bg-white text-black hover:bg-[#E8E8ED] transition-colors text-xs font-bold"
+                      className="flex-1 py-3 rounded-xl bg-on-surface text-black hover:bg-surface-container transition-colors text-xs font-bold"
                     >
                       Назад
                     </button>

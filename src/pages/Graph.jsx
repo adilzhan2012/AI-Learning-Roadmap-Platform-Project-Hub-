@@ -582,11 +582,11 @@ Respond in Russian. Keep your reply concise and professional.`;
     return (
       <div className="p-8 max-w-7xl mx-auto h-[calc(100vh-4rem)] flex flex-col justify-center items-center text-center bg-[#07080a]">
         <Network className="w-16 h-16 text-zinc-600 mb-4 opacity-30 animate-pulse" />
-        <h2 className="text-xl font-bold text-white mb-2 font-clash">{t('graph.noRoadmaps')}</h2>
+        <h2 className="text-xl font-bold text-on-surface mb-2 font-clash">{t('graph.noRoadmaps')}</h2>
         <p className="text-xs text-zinc-400 max-w-md mb-6">{t('graph.noRoadmapsDesc')}</p>
         <button 
           onClick={() => navigate('/dashboard')}
-          className="bg-white hover:bg-zinc-200 text-black px-6 py-3 rounded-[12px] font-bold text-xs uppercase tracking-wider transition-all"
+          className="bg-on-surface hover:bg-zinc-200 text-black px-6 py-3 rounded-[12px] font-bold text-xs uppercase tracking-wider transition-all"
         >
           {t('lessons.goDashboard')}
         </button>
@@ -648,7 +648,7 @@ Respond in Russian. Keep your reply concise and professional.`;
       <div 
         className={`mb-4 flex-shrink-0 flex flex-col xl:flex-row xl:items-center justify-between gap-4 px-5 py-3 border rounded-[16px] font-sans ${
           isLightTheme 
-            ? 'bg-white border-zinc-200 text-zinc-900 shadow-sm' 
+            ? 'bg-on-surface border-zinc-200 text-zinc-900 shadow-sm' 
             : 'bg-[#18181b] border-zinc-800 text-zinc-100 shadow-sm'
         }`}
       >
@@ -673,7 +673,7 @@ Respond in Russian. Keep your reply concise and professional.`;
           {/* XP Progress Bar */}
           {userLevelData && (
             <div className={`flex items-center gap-3 border px-3 py-1.5 rounded-[10px] ${
-              isLightTheme ? 'bg-zinc-50 border-zinc-200' : 'bg-[#09090b]/40 border-zinc-800'
+              isLightTheme ? 'bg-zinc-50 border-zinc-200' : 'bg-background/40 border-zinc-800'
             }`}>
               <div className="text-right">
                 <p className={`text-[9px] font-medium ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>Уровень {userLevelData.current.level}</p>
@@ -693,7 +693,7 @@ Respond in Russian. Keep your reply concise and professional.`;
 
           {/* Streak */}
           <div className={`flex items-center gap-2 border px-3 py-1.5 rounded-[10px] ${
-            isLightTheme ? 'bg-zinc-50 border-zinc-200' : 'bg-[#09090b]/40 border-zinc-800'
+            isLightTheme ? 'bg-zinc-50 border-zinc-200' : 'bg-background/40 border-zinc-800'
           }`}>
             <div className="w-6 h-6 rounded bg-orange-500/10 flex items-center justify-center">
               <Flame className="w-3.5 h-3.5 text-orange-500 animate-bounce" />
@@ -706,11 +706,11 @@ Respond in Russian. Keep your reply concise and professional.`;
 
           {/* Legend */}
           <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1 rounded-[10px] border ${
-            isLightTheme ? 'bg-zinc-50 border-zinc-200' : 'bg-[#09090b]/40 border-zinc-800'
+            isLightTheme ? 'bg-zinc-50 border-zinc-200' : 'bg-background/40 border-zinc-800'
           }`}>
             {[
               { bgClass: 'bg-[#ffe100] border-black', textClass: 'text-black', label: 'Темы' },
-              { bgClass: 'bg-[#1a1a1a] border-zinc-700', textClass: 'text-white', label: 'Практика' },
+              { bgClass: 'bg-[#1a1a1a] border-zinc-700', textClass: 'text-on-surface', label: 'Практика' },
               { bgClass: isLightTheme ? 'bg-[#f4f4f5] border-zinc-300' : 'bg-[#27272a] border-zinc-800', textClass: isLightTheme ? 'text-zinc-500' : 'text-zinc-400', label: 'Заблокировано' }
             ].map(({ bgClass, label }) => (
               <div key={label} className="flex items-center gap-1.5 font-sans">
@@ -728,7 +728,7 @@ Respond in Russian. Keep your reply concise and professional.`;
               }}
               className={`flex items-center justify-center gap-1 border px-3 py-2 rounded-[10px] text-xs font-bold transition-all ${
                 isLightTheme 
-                  ? 'bg-white hover:bg-zinc-100 border-zinc-200 text-zinc-700' 
+                  ? 'bg-on-surface hover:bg-zinc-100 border-zinc-200 text-zinc-700' 
                   : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-200'
               }`}
             >
@@ -741,12 +741,12 @@ Respond in Russian. Keep your reply concise and professional.`;
               onChange={handleCourseChange}
               className={`border rounded-[10px] px-3 py-2 text-xs font-mono focus:outline-none focus:border-violet-500 ${
                 isLightTheme 
-                  ? 'bg-white border-zinc-200 text-zinc-700' 
+                  ? 'bg-on-surface border-zinc-200 text-zinc-700' 
                   : 'bg-zinc-900 border-zinc-800 text-zinc-200'
               }`}
             >
               {courses.map(c => (
-                <option key={c.id} value={c.id} className={isLightTheme ? 'bg-white text-zinc-900' : 'bg-zinc-950 text-zinc-100'}>{t(c.title)}</option>
+                <option key={c.id} value={c.id} className={isLightTheme ? 'bg-on-surface text-zinc-900' : 'bg-zinc-950 text-zinc-100'}>{t(c.title)}</option>
               ))}
             </select>
           </div>
@@ -759,8 +759,8 @@ Respond in Russian. Keep your reply concise and professional.`;
         <div 
           className={`flex-1 skill-tree-grid ${
             isLightTheme 
-              ? 'bg-[#FFFFFF] border-zinc-200 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]' 
-              : 'bg-[#0f172a] border-[rgba(255,255,255,0.08)]'
+              ? 'bg-on-surface border-zinc-200 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]' 
+              : 'bg-[#0f172a] border-outline'
           } border rounded-[20px] overflow-y-auto overflow-x-auto relative flex flex-col p-8 items-center custom-scrollbar`}
           ref={containerRef}
         >
@@ -850,7 +850,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                   : (isLightTheme ? 'border-zinc-300 border' : 'border-zinc-800 border');
               } else if (isCheckpoint) {
                 cardBg = 'bg-[#1a1a1a]';
-                cardText = 'text-white font-bold';
+                cardText = 'text-on-surface font-bold';
                 cardBorder = isSelected 
                   ? 'border-violet-500 border-2 ring-2 ring-violet-500/40' 
                   : isCurrent 
@@ -919,7 +919,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                         className={`fold-btn absolute bottom-[-9px] left-1/2 -translate-x-1/2 z-20 w-4.5 h-4.5 rounded-full flex items-center justify-center border border-black text-[10px] font-extrabold shadow-sm transition-all ${
                           isFolded 
                             ? 'bg-[#ffe100] text-black animate-pulse' 
-                            : 'bg-white text-black hover:bg-zinc-200'
+                            : 'bg-on-surface text-black hover:bg-zinc-200'
                         }`}
                       >
                         {isFolded ? '+' : '-'}
@@ -943,14 +943,14 @@ Respond in Russian. Keep your reply concise and professional.`;
                 className="w-full border border-white/10 bg-slate-900/50 backdrop-blur-xl flex flex-col overflow-hidden flex-shrink-0 rounded-[20px] h-full font-sans shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]"
               >
                 {/* Header */}
-                <div className="p-4 border-b border-white/10 bg-white/5">
+                <div className="p-4 border-b border-white/10 bg-on-surface/5">
                   {/* Level Badge */}
                   <span className="inline-flex items-center text-[9px] font-mono font-bold px-2 py-0.5 rounded-[6px] bg-violet-500/20 text-violet-300 border border-violet-500/30 mb-2 uppercase tracking-wider">
                     {selectedNode.level || 'Intermediate'}
                   </span>
                   
                   {/* Title */}
-                  <h3 className="text-sm font-extrabold text-white leading-snug font-clash">
+                  <h3 className="text-sm font-extrabold text-on-surface leading-snug font-clash">
                     {t(selectedNode.label || selectedNode.title)}
                   </h3>
                   
@@ -1031,7 +1031,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                 </div>
 
                 {/* Start Button & AI CTA */}
-                <div className="p-3 border-t border-white/10 bg-white/5 flex flex-col gap-2.5">
+                <div className="p-3 border-t border-white/10 bg-on-surface/5 flex flex-col gap-2.5">
                   <button
                     onClick={() => setIsStudying(true)}
                     disabled={selectedNode.status === 'locked'}
@@ -1039,8 +1039,8 @@ Respond in Russian. Keep your reply concise and professional.`;
                       selectedNode.status === 'locked'
                         ? 'bg-zinc-800/40 border border-white/5 text-zinc-500 cursor-not-allowed'
                         : selectedNode.status === 'completed'
-                        ? 'bg-transparent border border-white/20 text-white hover:bg-white/5 hover:border-white'
-                        : 'bg-white text-black hover:bg-zinc-200'
+                        ? 'bg-transparent border border-white/20 text-on-surface hover:bg-on-surface/5 hover:border-white'
+                        : 'bg-on-surface text-black hover:bg-zinc-200'
                     }`}
                   >
                     {selectedNode.status === 'locked' && <Lock className="w-3.5 h-3.5" />}
@@ -1058,7 +1058,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                 className="bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-[20px] p-6 h-full flex flex-col items-center justify-center text-center text-zinc-400 font-sans shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] animate-fade-in-up"
               >
                 <div className="w-16 h-16 bg-zinc-950/40 border border-white/5 rounded-[16px] flex items-center justify-center mb-6">
-                  <Pointer className="w-6 h-6 text-white opacity-40" strokeWidth={1.5} />
+                  <Pointer className="w-6 h-6 text-on-surface opacity-40" strokeWidth={1.5} />
                 </div>
                 <p className="text-sm font-semibold">{t('graph.details.placeholder') || 'Выберите тему на карте, чтобы увидеть детали'}</p>
                 
@@ -1069,7 +1069,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                       <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
                       Твой plan обучения
                     </span>
-                    <span className="text-[8px] font-black tracking-widest uppercase bg-indigo-500 text-white px-1.5 py-0.5 rounded-[4px]">PRO</span>
+                    <span className="text-[8px] font-black tracking-widest uppercase bg-indigo-500 text-on-surface px-1.5 py-0.5 rounded-[4px]">PRO</span>
                   </div>
                   <p className="text-[10px] text-zinc-300 leading-normal">Спланируй свой путь обучения. Получи советы по сложным темам у AI Mentor.</p>
                   <button
@@ -1080,7 +1080,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                         } 
                       }));
                     }}
-                    className="w-full py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-[10px] font-bold rounded-[8px] transition-all flex items-center justify-center gap-1 shadow-[0_4px_12px_rgba(99,102,241,0.2)]"
+                    className="w-full py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-on-surface text-[10px] font-bold rounded-[8px] transition-all flex items-center justify-center gap-1 shadow-[0_4px_12px_rgba(99,102,241,0.2)]"
                   >
                     Составить план с AI
                   </button>
@@ -1093,7 +1093,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                       <span className="flex items-center gap-1 text-[10px] font-bold text-purple-300">
                         🎓 AI Mock Interview
                       </span>
-                      <span className="text-[8px] bg-purple-500 text-white px-1.5 py-0.5 rounded font-black tracking-wide leading-none">ULTRA</span>
+                      <span className="text-[8px] bg-purple-500 text-on-surface px-1.5 py-0.5 rounded font-black tracking-wide leading-none">ULTRA</span>
                     </div>
                     <p className="text-[10px] text-zinc-300 leading-normal">
                       Готовы к собеседованию? Пройдите симуляцию технического или HR интервью по теме "{selectedCourse?.title}".
@@ -1102,7 +1102,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                       onClick={() => {
                         setMockInterviewOpen(true);
                       }}
-                      className="w-full py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-[10px] font-bold rounded-[8px] transition-all flex items-center justify-center gap-1 shadow-[0_4px_12px_rgba(139,92,246,0.2)]"
+                      className="w-full py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-on-surface text-[10px] font-bold rounded-[8px] transition-all flex items-center justify-center gap-1 shadow-[0_4px_12px_rgba(139,92,246,0.2)]"
                     >
                       Запустить собеседование
                     </button>
@@ -1176,7 +1176,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                 initial={{ scale: 0.95, y: 20, opacity: 0 }}
                 animate={{ scale: 1, y: 0, opacity: 1 }}
                 exit={{ scale: 0.95, y: 20, opacity: 0 }}
-                className="w-full max-w-2xl bg-zinc-900 border border-zinc-800 rounded-3xl p-6 md:p-8 shadow-2xl relative z-10 overflow-hidden text-white flex flex-col max-h-[85vh]"
+                className="w-full max-w-2xl bg-zinc-900 border border-zinc-800 rounded-3xl p-6 md:p-8 shadow-2xl relative z-10 overflow-hidden text-on-surface flex flex-col max-h-[85vh]"
               >
                 <div className="flex justify-between items-start mb-6 shrink-0">
                   <div>
@@ -1206,7 +1206,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                       </p>
                       <button
                         onClick={handleStartInterview}
-                        className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg transition-all text-xs font-sans"
+                        className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-on-surface font-bold rounded-xl shadow-lg transition-all text-xs font-sans"
                       >
                         Начать собеседование
                       </button>
@@ -1223,7 +1223,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                           className={`flex gap-3 max-w-[85%] ${msg.role === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}
                         >
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border text-[10px] font-bold ${
-                            msg.role === 'user' ? 'bg-zinc-700 border-zinc-600 text-white' : 'bg-purple-950/40 border-purple-500/30 text-purple-300'
+                            msg.role === 'user' ? 'bg-zinc-700 border-zinc-600 text-on-surface' : 'bg-purple-950/40 border-purple-500/30 text-purple-300'
                           }`}>
                             {msg.role === 'user' ? 'Я' : 'HR'}
                           </div>
@@ -1249,12 +1249,12 @@ Respond in Russian. Keep your reply concise and professional.`;
                         onChange={(e) => setInterviewInput(e.target.value)}
                         placeholder="Введите ваш ответ..."
                         onKeyDown={(e) => e.key === 'Enter' && handleSendInterviewAnswer()}
-                        className="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-purple-500 transition-colors font-sans"
+                        className="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-xs text-on-surface placeholder:text-zinc-600 focus:outline-none focus:border-purple-500 transition-colors font-sans"
                       />
                       <button
                         onClick={handleSendInterviewAnswer}
                         disabled={!interviewInput.trim() || interviewGenerating}
-                        className="px-5 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-all font-sans"
+                        className="px-5 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-on-surface text-xs font-bold rounded-xl transition-all font-sans"
                       >
                         Ответить
                       </button>
@@ -1267,7 +1267,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                     <div className="flex items-center gap-3 p-4 bg-purple-950/20 border border-purple-500/20 rounded-2xl">
                       <Trophy className="w-8 h-8 text-yellow-400 shrink-0" />
                       <div>
-                        <h4 className="text-sm font-bold text-white font-sans">Интервью успешно пройдено!</h4>
+                        <h4 className="text-sm font-bold text-on-surface font-sans">Интервью успешно пройдено!</h4>
                         <p className="text-[10px] text-zinc-400 mt-0.5 font-sans">Оценка составлена ИИ Тимлидом на основе ваших ответов.</p>
                       </div>
                     </div>
@@ -1284,7 +1284,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                           setInterviewFeedback('');
                           setInterviewMessages([]);
                         }}
-                        className="px-6 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold rounded-xl transition-colors font-sans"
+                        className="px-6 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-on-surface text-xs font-bold rounded-xl transition-colors font-sans"
                       >
                         Закрыть симулятор
                       </button>

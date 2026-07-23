@@ -105,7 +105,7 @@ export default function QuizModal({ questions, isOpen, onClose, onComplete, onAs
             <button
               onClick={handleNext}
               disabled={selectedOption === undefined}
-              className="bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 disabled:hover:bg-indigo-500 text-white px-8 py-3 rounded-xl font-bold transition-all"
+              className="bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 disabled:hover:bg-indigo-500 text-on-surface px-8 py-3 rounded-xl font-bold transition-all"
             >
               {isLast ? 'Завершить' : 'Далее'}
             </button>

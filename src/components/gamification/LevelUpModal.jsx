@@ -34,7 +34,7 @@ export default function LevelUpModal({ oldLevel, newLevel, onClose }) {
         <div className="relative mb-6">
           <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-full blur-xl opacity-50 animate-pulse" />
           <div className="w-24 h-24 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-full flex items-center justify-center relative z-10 shadow-inner">
-            <Trophy className="w-12 h-12 text-white drop-shadow-md" />
+            <Trophy className="w-12 h-12 text-on-surface drop-shadow-md" />
           </div>
         </div>
 
@@ -54,7 +54,7 @@ export default function LevelUpModal({ oldLevel, newLevel, onClose }) {
 
         <button 
           onClick={onClose}
-          className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all"
+          className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-on-surface py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all"
         >
           Продолжить
         </button>

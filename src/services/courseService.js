@@ -86,10 +86,7 @@ export async function generateCourseAndSave(userId, topic, level, preferences = 
   }
 
   const currentLocale = getLocale();
-  let languageName = 'English';
-  if (currentLocale === 'ru') languageName = 'Russian';
-  if (currentLocale === 'kk') languageName = 'Kazakh';
-  if (currentLocale === 'zh') languageName = 'Chinese (Simplified)';
+  const languageName = currentLocale === 'ru' ? 'Russian' : 'English';
 
   let prefString = '';
   if (level === 'Advanced') {
@@ -242,10 +239,7 @@ The response must be a valid JSON object matching this schema:
 export async function generateLessonContent(courseId, nodeId, courseTitle, topicLabel, topicDesc, preferences = {}) {
 
   const currentLocale = getLocale();
-  let languageName = 'English';
-  if (currentLocale === 'ru') languageName = 'Russian';
-  if (currentLocale === 'kk') languageName = 'Kazakh';
-  if (currentLocale === 'zh') languageName = 'Chinese (Simplified)';
+  const languageName = currentLocale === 'ru' ? 'Russian' : 'English';
 
   let prefString = '';
   let flashcardInstruction = 'include 3-5 flashcards';

@@ -262,8 +262,8 @@ INSTRUCTIONS:
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-[#000000] text-white">
-        <Loader2 className="w-8 h-8 animate-spin text-white mb-2" />
+      <div className="flex flex-col items-center justify-center h-screen bg-background text-on-surface">
+        <Loader2 className="w-8 h-8 animate-spin text-on-surface mb-2" />
         <p className="text-sm text-on-surface-variant font-mono">Подключение к AI-ментору...</p>
       </div>
     );
@@ -276,7 +276,7 @@ INSTRUCTIONS:
         {/* Profile Card */}
         <div className="bg-surface border border-outline-variant rounded-3xl p-6 shadow-sm flex flex-col">
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+            <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-on-surface font-bold text-lg">
               {profile.firstName?.charAt(0) || '?'}
             </div>
             <div>
@@ -385,7 +385,7 @@ INSTRUCTIONS:
             <div>
               <h2 className="font-bold text-base flex items-center gap-1.5 leading-tight">
                 AI Ментор 
-                <span className="px-1.5 py-0.5 text-[8px] font-bold tracking-widest text-[#98989D] border border-[#98989D]/30 rounded leading-none uppercase">
+                <span className="px-1.5 py-0.5 text-[8px] font-bold tracking-widest text-on-surface-variant border border-[#98989D]/30 rounded leading-none uppercase">
                   Pro
                 </span>
               </h2>
@@ -400,7 +400,7 @@ INSTRUCTIONS:
             {plan === 'PRO' && (
               <button 
                 onClick={handleClearHistory}
-                className="text-[10px] text-[#98989D] hover:text-white border border-[#98989D]/20 hover:border-white/40 rounded-xl px-2.5 py-1.5 flex items-center gap-1 transition-all"
+                className="text-[10px] text-on-surface-variant hover:text-on-surface border border-[#98989D]/20 hover:border-white/40 rounded-xl px-2.5 py-1.5 flex items-center gap-1 transition-all"
                 title="Очистить историю сессии"
               >
                 <RefreshCw className="w-3 h-3" />
@@ -409,17 +409,17 @@ INSTRUCTIONS:
             )}
             <div className="text-right">
             {plan === 'PRO' ? (
-              <span className="text-xs text-[#98989D] font-medium font-sans">
-                Обращений сегодня: <span className="font-mono font-bold text-white">{usage.mentorMessagesUsed || 0}</span>
+              <span className="text-xs text-on-surface-variant font-medium font-sans">
+                Обращений сегодня: <span className="font-mono font-bold text-on-surface">{usage.mentorMessagesUsed || 0}</span>
               </span>
             ) : (
               <div className="flex flex-col items-end gap-1">
-                <span className="text-[11px] text-[#98989D] font-medium">
-                  <span className="font-mono font-bold text-white">{usage.mentorMessagesUsed || 0}</span> из <span className="font-mono text-white">5</span> сообщений в этом месяце
+                <span className="text-[11px] text-on-surface-variant font-medium">
+                  <span className="font-mono font-bold text-on-surface">{usage.mentorMessagesUsed || 0}</span> из <span className="font-mono text-on-surface">5</span> сообщений в этом месяце
                 </span>
-                <div className="w-24 bg-white/10 h-1 rounded-full overflow-hidden">
+                <div className="w-24 bg-on-surface/10 h-1 rounded-full overflow-hidden">
                   <div 
-                    className="bg-white h-full rounded-full transition-all duration-300"
+                    className="bg-on-surface h-full rounded-full transition-all duration-300"
                     style={{ width: `${Math.min(100, ((usage.mentorMessagesUsed || 0) / 5) * 100)}%` }}
                   />
                 </div>
@@ -441,7 +441,7 @@ INSTRUCTIONS:
                 </p>
                 <button 
                   onClick={() => navigate('/settings')}
-                  className="bg-red-500 text-white font-bold px-4 py-2 rounded-xl text-xs hover:bg-red-600 transition-colors"
+                  className="bg-red-500 text-on-surface font-bold px-4 py-2 rounded-xl text-xs hover:bg-red-600 transition-colors"
                 >
                   Перейти в Настройки
                 </button>
@@ -519,14 +519,14 @@ INSTRUCTIONS:
         {/* Input Bar or Paywall */}
         {((plan === 'FREE' && (usage.mentorMessagesUsed || 0) >= limitVal) ||
           (plan === 'ULTRA' && (usage.ultraTokensUsed || 0) >= PLAN_LIMITS.ULTRA.aiMentorTokensPerDay)) ? (
-          <div className="p-6 border-t border-outline-variant bg-[#1C1C1E] flex flex-col sm:flex-row items-center justify-between gap-4 flex-shrink-0 rounded-b-3xl">
+          <div className="p-6 border-t border-outline-variant bg-surface flex flex-col sm:flex-row items-center justify-between gap-4 flex-shrink-0 rounded-b-3xl">
             <div className="flex items-center gap-3 text-left">
-              <div className="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center text-white flex-shrink-0">
+              <div className="w-10 h-10 bg-on-surface/5 border border-white/10 rounded-xl flex items-center justify-center text-on-surface flex-shrink-0">
                 <Lock className="w-5 h-5" strokeWidth={1.5} />
               </div>
               <div>
-                <h5 className="font-bold text-sm text-white">Достигнут лимит сообщений ментора</h5>
-                <p className="text-xs text-[#98989D] leading-tight mt-0.5">
+                <h5 className="font-bold text-sm text-on-surface">Достигнут лимит сообщений ментора</h5>
+                <p className="text-xs text-on-surface-variant leading-tight mt-0.5">
                   {plan === 'ULTRA' 
                     ? 'Вы израсходовали дневной бюджет токенов тарифа ULTRA. Лимит обнулится завтра.' 
                     : `Вы исчерпали доступные сообщения на сегодня. Обновите тариф для продолжения.`}
@@ -536,7 +536,7 @@ INSTRUCTIONS:
             <button
               type="button"
               onClick={() => navigate('/pricing')}
-              className="w-full sm:w-auto px-6 py-2.5 rounded-xl font-bold bg-[#FFFFFF] text-[#000000] hover:bg-[#F5F5F7] transition-all text-xs"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl font-bold bg-on-surface text-inverse-on-surface hover:bg-[#F5F5F7] transition-all text-xs"
             >
               {plan === 'FREE' ? 'Купить PRO' : 'Посмотреть тарифы'}
             </button>

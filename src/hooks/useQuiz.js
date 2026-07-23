@@ -39,10 +39,7 @@ export const useQuiz = () => {
       const apiKey = null;
       
       const currentLocale = getLocale();
-      let languageName = 'English';
-      if (currentLocale === 'ru') languageName = 'Russian';
-      if (currentLocale === 'kk') languageName = 'Kazakh';
-      if (currentLocale === 'zh') languageName = 'Chinese (Simplified)';
+      const languageName = currentLocale === 'ru' ? 'Russian' : 'English';
 
       const quizPrompt = `
 You are a strict examiner. Based on the lesson material below, create 5 questions to test REAL understanding of the topic.

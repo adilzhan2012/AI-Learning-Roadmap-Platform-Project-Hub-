@@ -20,7 +20,7 @@ import { useGamification } from '../context/GamificationContext.jsx';
 import { auth, signOut } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getUserStats } from '../services/courseService.js';
-import { toggleTheme } from '../theme.js';
+import Logo from './shared/Logo.jsx';
 import { LeagueIcon } from '../pages/Leagues.jsx';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 
@@ -126,14 +126,11 @@ export default function Topbar() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-[80] h-14 border-b border-[rgba(255,255,255,0.08)] bg-[#000000]/90 backdrop-blur-md flex items-center justify-between px-12 md:px-16 font-sans">
+      <header className="fixed top-0 left-0 right-0 z-[80] h-14 border-b border-outline bg-background/90 backdrop-blur-md flex items-center justify-between px-12 md:px-16 font-sans transition-colors duration-200">
         {/* Left Brand Area */}
         <div className="flex items-center gap-6">
-          <div onClick={() => navigate('/dashboard')} className="flex items-center gap-2 cursor-pointer select-none">
-            <div className="w-7 h-7 rounded-[8px] bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] flex items-center justify-center">
-              <span className="material-symbols-outlined text-[#FFFFFF] icon-filled text-sm">psychology</span>
-            </div>
-            <span className="text-sm font-semibold tracking-tight text-[#FFFFFF] font-clash">yourway.co</span>
+          <div onClick={() => navigate('/dashboard')} className="flex items-center cursor-pointer select-none">
+            <Logo variant="icon" className="h-9 md:h-9.5" scale={1.05} />
           </div>
         </div>
 
@@ -146,17 +143,17 @@ export default function Topbar() {
                 key={item.path} 
                 to={item.path} 
                 className={`relative flex items-center h-full py-1 text-xs font-medium transition-colors ${
-                  isActive ? 'text-[#FFFFFF]' : 'text-[#98989D] hover:text-[#FFFFFF]'
+                  isActive ? 'text-on-background font-semibold' : 'text-on-surface-variant hover:text-on-background'
                 } group`}
               >
                 <span>{item.label}</span>
                 {item.isPro && (
-                  <span className="ml-1 px-1 py-0.5 text-[8px] font-bold tracking-widest text-[#98989D] border border-[#98989D]/30 rounded group-hover:border-[#FFFFFF]/50 group-hover:text-[#FFFFFF] transition-colors leading-none uppercase">
+                  <span className="ml-1 px-1 py-0.5 text-[8px] font-bold tracking-widest text-on-surface-variant border border-outline rounded group-hover:border-on-background group-hover:text-on-background transition-colors leading-none uppercase">
                     Pro
                   </span>
                 )}
                 {/* 2px Apple Style bottom selection line */}
-                <span className={`absolute bottom-0 left-0 right-0 h-[2px] bg-[#FFFFFF] transition-transform duration-200 origin-center ${
+                <span className={`absolute bottom-0 left-0 right-0 h-[2px] bg-on-background transition-transform duration-200 origin-center ${
                   isActive ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
                 }`} />
               </NavLink>
@@ -170,19 +167,19 @@ export default function Topbar() {
           {/* Current League Emblem */}
           <div 
             onClick={() => navigate('/leagues')}
-            className="hidden sm:flex items-center gap-1.5 cursor-pointer text-[10px] font-semibold text-[#98989D] hover:text-white transition-colors border border-[rgba(255,255,255,0.08)] bg-[#1C1C1E] rounded-full px-2.5 py-1 select-none font-sans"
+            className="hidden sm:flex items-center gap-1.5 cursor-pointer text-[10px] font-semibold text-on-surface-variant hover:text-on-background transition-colors border border-outline bg-surface-container rounded-full px-2.5 py-1 select-none font-sans"
             title="Лига соревнований"
           >
-            <LeagueIcon leagueId={currentLeague} className="w-3.5 h-3.5 text-[#98989D]" />
+            <LeagueIcon leagueId={currentLeague} className="w-3.5 h-3.5 text-on-surface-variant" />
             <span>{LEAGUE_NAMES[currentLeague] || 'Кварц'}</span>
           </div>
 
           {/* User Progress */}
           {userLevelData && userLevelData.current && (
-            <div className="hidden sm:flex items-center gap-2 text-[10px] font-mono text-[#98989D] select-none">
-              <span className="font-bold text-[#FFFFFF]">LVL {userLevelData.current.level}</span>
-              <div className="w-10 h-[2px] bg-[#2C2C2E] border border-[rgba(255,255,255,0.04)] rounded-full overflow-hidden">
-                <div className="h-full bg-[#FFFFFF]" style={{ width: `${userLevelData.progress || 0}%` }} />
+            <div className="hidden sm:flex items-center gap-2 text-[10px] font-mono text-on-surface-variant select-none">
+              <span className="font-bold text-on-background">LVL {userLevelData.current.level}</span>
+              <div className="w-10 h-[2px] bg-surface-container-high border border-outline-variant rounded-full overflow-hidden">
+                <div className="h-full bg-on-background" style={{ width: `${userLevelData.progress || 0}%` }} />
               </div>
             </div>
           )}
@@ -256,7 +253,7 @@ export default function Topbar() {
           <div className="relative">
             <button 
               onClick={() => { setShowProfileMenu(!showProfileMenu); setShowNotifications(false); }}
-              className="w-7 h-7 rounded-full bg-[#2C2C2E] border border-[rgba(255,255,255,0.08)] flex items-center justify-center text-[#FFFFFF] font-semibold text-xs font-mono hover:border-[rgba(255,255,255,0.3)] transition-colors select-none"
+              className="w-7 h-7 rounded-full bg-surface-container border border-outline flex items-center justify-center text-on-surface font-semibold text-xs font-mono hover:border-[rgba(255,255,255,0.3)] transition-colors select-none"
             >
               {userInitial}
             </button>
@@ -269,18 +266,18 @@ export default function Topbar() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.98 }}
                   transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-                  className="absolute right-0 mt-2 w-64 bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] z-[90] shadow-[0_20px_60px_rgba(0,0,0,0.4)] py-2 font-sans text-xs"
+                  className="absolute right-0 mt-2 w-64 bg-surface border border-outline rounded-[16px] z-[90] shadow-[0_20px_60px_rgba(0,0,0,0.4)] py-2 font-sans text-xs"
                 >
                   {/* Profile Info block */}
-                  <div className="px-4 py-3 border-b border-[rgba(255,255,255,0.08)]">
-                    <p className="font-bold text-[#FFFFFF] text-sm">{profile.firstName || 'User'}</p>
-                    <p className="text-[10px] text-[#98989D] truncate font-mono mt-0.5">{userEmail}</p>
+                  <div className="px-4 py-3 border-b border-outline">
+                    <p className="font-bold text-on-surface text-sm">{profile.firstName || 'User'}</p>
+                    <p className="text-[10px] text-on-surface-variant truncate font-mono mt-0.5">{userEmail}</p>
                   </div>
 
                   {/* Toggle Theme Menu button */}
                   <button 
                     onClick={handleToggleTheme} 
-                    className="flex items-center justify-between w-full px-4 py-2.5 text-[#98989D] hover:text-[#FFFFFF] hover:bg-[#2C2C2E]/40 transition-colors text-left"
+                    className="flex items-center justify-between w-full px-4 py-2.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container/40 transition-colors text-left"
                   >
                     <span className="flex items-center gap-2">
                       {isDarkMode ? <Sun className="w-4 h-4" strokeWidth={1.5} /> : <Moon className="w-4 h-4" strokeWidth={1.5} />}
@@ -291,7 +288,7 @@ export default function Topbar() {
                   {/* Settings Page option */}
                   <button 
                     onClick={() => { setShowProfileMenu(false); navigate('/settings'); }}
-                    className="flex items-center justify-between w-full px-4 py-2.5 text-[#98989D] hover:text-[#FFFFFF] hover:bg-[#2C2C2E]/40 transition-colors text-left"
+                    className="flex items-center justify-between w-full px-4 py-2.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container/40 transition-colors text-left"
                   >
                     <span className="flex items-center gap-2">
                       <Settings className="w-4 h-4" strokeWidth={1.5} />
@@ -303,7 +300,7 @@ export default function Topbar() {
                   {/* Tariffs Page option */}
                   <button 
                     onClick={() => { setShowProfileMenu(false); navigate('/pricing'); }}
-                    className="flex items-center justify-between w-full px-4 py-2.5 text-[#98989D] hover:text-[#FFFFFF] hover:bg-[#2C2C2E]/40 transition-colors text-left"
+                    className="flex items-center justify-between w-full px-4 py-2.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container/40 transition-colors text-left"
                   >
                     <span className="flex items-center gap-2">
                       <CreditCard className="w-4 h-4" strokeWidth={1.5} />
@@ -312,12 +309,12 @@ export default function Topbar() {
                     <ChevronRight className="w-3.5 h-3.5 text-[#636366]" strokeWidth={1.5} />
                   </button>
 
-                  <div className="border-t border-[rgba(255,255,255,0.08)] my-1"></div>
+                  <div className="border-t border-outline my-1"></div>
 
                   {/* Logout/Sign Out Option */}
                   <button 
                     onClick={handleSignOut}
-                    className="flex items-center gap-2 w-full px-4 py-2.5 text-[#FF453A] hover:bg-[#2C2C2E]/40 transition-colors text-left font-bold"
+                    className="flex items-center gap-2 w-full px-4 py-2.5 text-[#FF453A] hover:bg-surface-container/40 transition-colors text-left font-bold"
                   >
                     <LogOut className="w-4 h-4" strokeWidth={1.5} />
                     <span>Выйти</span>
@@ -330,7 +327,7 @@ export default function Topbar() {
           {/* Mobile hamburger menu (Lucide) */}
           <button 
             onClick={() => setShowMobileMenu(true)} 
-            className="p-1 text-[#98989D] hover:text-[#FFFFFF] md:hidden"
+            className="p-1 text-on-surface-variant hover:text-on-surface md:hidden"
             title="Menu"
           >
             <Menu className="w-5 h-5" strokeWidth={1.5} />
@@ -347,14 +344,14 @@ export default function Topbar() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[100] bg-[#000000] flex flex-col p-6 font-sans"
+            className="fixed inset-0 z-[100] bg-background flex flex-col p-6 font-sans"
           >
             {/* Top Close trigger row */}
             <div className="flex items-center justify-between mb-12">
-              <span className="text-sm font-semibold tracking-tight text-[#FFFFFF] font-clash">yourway.co</span>
+              <span className="text-sm font-semibold tracking-tight text-on-surface font-clash">yourway.co</span>
               <button 
                 onClick={() => setShowMobileMenu(false)}
-                className="p-2 text-[#98989D] hover:text-[#FFFFFF] bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[12px]"
+                className="p-2 text-on-surface-variant hover:text-on-surface bg-surface border border-outline rounded-[12px]"
                 title="Close menu"
               >
                 <X className="w-5 h-5" strokeWidth={1.5} />
@@ -378,7 +375,7 @@ export default function Topbar() {
                         navigate(item.path);
                       }}
                       className={`text-left text-3xl font-bold font-clash tracking-tight transition-colors flex items-center gap-3 ${
-                        isActive ? 'text-[#FFFFFF]' : 'text-[#98989D]'
+                        isActive ? 'text-on-surface' : 'text-on-surface-variant'
                       }`}
                     >
                       <span>{item.label}</span>
@@ -394,14 +391,14 @@ export default function Topbar() {
             </div>
             
             {/* Mobile Footer Area */}
-            <div className="mt-auto border-t border-[rgba(255,255,255,0.08)] pt-6 flex flex-col gap-4 text-xs">
-              <div className="flex items-center justify-between text-[#98989D] font-mono">
+            <div className="mt-auto border-t border-outline pt-6 flex flex-col gap-4 text-xs">
+              <div className="flex items-center justify-between text-on-surface-variant font-mono">
                 <span>{profile.firstName || 'User'}</span>
                 <span>{userEmail}</span>
               </div>
               <button 
                 onClick={() => { setShowMobileMenu(false); handleSignOut(); }}
-                className="w-full py-3 bg-[#FF453A] text-white rounded-[12px] text-center font-bold text-xs uppercase tracking-wider"
+                className="w-full py-3 bg-[#FF453A] text-on-surface rounded-[12px] text-center font-bold text-xs uppercase tracking-wider"
               >
                 Выйти
               </button>

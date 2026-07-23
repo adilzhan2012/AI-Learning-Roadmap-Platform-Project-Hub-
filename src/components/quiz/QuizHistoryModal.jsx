@@ -159,35 +159,35 @@ export default function QuizHistoryModal({
         animate={{ scale: 1, y: 0, opacity: 1 }}
         exit={{ scale: 0.95, y: 30, opacity: 0 }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="w-full max-w-4xl bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[24px] shadow-[0_24px_80px_rgba(0,0,0,0.6)] relative z-10 flex flex-col max-h-[85vh] text-[#F5F5F7] overflow-hidden"
+        className="w-full max-w-4xl bg-surface border border-outline rounded-[24px] shadow-[0_24px_80px_rgba(0,0,0,0.6)] relative z-10 flex flex-col max-h-[85vh] text-on-background overflow-hidden"
       >
         {/* Header */}
-        <div className="p-6 border-b border-[rgba(255,255,255,0.06)] flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0 bg-[#1C1C1E]">
+        <div className="p-6 border-b border-outline flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0 bg-surface">
           <div>
-            <h2 className="text-xl font-bold font-clash text-white flex items-center gap-2">
-              <Clock className="w-5 h-5 text-[#98989D]" />
+            <h2 className="text-xl font-bold font-clash text-on-surface flex items-center gap-2">
+              <Clock className="w-5 h-5 text-on-surface-variant" />
               История прохождений тестов
             </h2>
-            <p className="text-xs text-[#98989D] mt-1 font-mono">
+            <p className="text-xs text-on-surface-variant mt-1 font-mono">
               Курс: {t(selectedCourse.title)}
             </p>
           </div>
 
           <div className="flex items-center gap-3">
             {/* Filter Dropdown */}
-            <div className="flex items-center gap-2 bg-[#2C2C2E]/40 border border-[rgba(255,255,255,0.06)] rounded-[12px] px-3 py-1.5">
-              <Filter className="w-3.5 h-3.5 text-[#98989D]" />
+            <div className="flex items-center gap-2 bg-surface-container/40 border border-outline rounded-[12px] px-3 py-1.5">
+              <Filter className="w-3.5 h-3.5 text-on-surface-variant" />
               <select
                 value={filterNodeId}
                 onChange={(e) => setFilterNodeId(e.target.value)}
-                className="bg-transparent text-xs text-white focus:outline-none pr-1 max-w-[200px] cursor-pointer"
+                className="bg-transparent text-xs text-on-surface focus:outline-none pr-1 max-w-[200px] cursor-pointer"
               >
-                <option value="all" className="bg-[#1C1C1E]">Все темы</option>
+                <option value="all" className="bg-surface">Все темы</option>
                 {(selectedCourse.nodes || []).map(n => {
                   const nodeResults = quizResults[n.id];
                   if (!nodeResults || !nodeResults.attempts || nodeResults.attempts.length === 0) return null;
                   return (
-                    <option key={n.id} value={n.id} className="bg-[#1C1C1E]">
+                    <option key={n.id} value={n.id} className="bg-surface">
                       {t(n.label || n.title)}
                     </option>
                   );
@@ -198,9 +198,9 @@ export default function QuizHistoryModal({
             {/* Close Button */}
             <button 
               onClick={onClose} 
-              className="p-2 rounded-full hover:bg-[#2C2C2E]/60 border border-[rgba(255,255,255,0.04)] transition-colors"
+              className="p-2 rounded-full hover:bg-surface-container/60 border border-outline-variant transition-colors"
             >
-              <X className="w-4 h-4 text-[#98989D] hover:text-white" />
+              <X className="w-4 h-4 text-on-surface-variant hover:text-on-surface" />
             </button>
           </div>
         </div>
@@ -210,11 +210,11 @@ export default function QuizHistoryModal({
           
           {filteredAttempts.length === 0 ? (
             <div className="py-20 text-center flex flex-col items-center justify-center">
-              <div className="w-12 h-12 rounded-xl bg-[#2C2C2E]/40 border border-[rgba(255,255,255,0.04)] flex items-center justify-center mb-4">
-                <BookOpen className="w-5 h-5 text-[#98989D]" />
+              <div className="w-12 h-12 rounded-xl bg-surface-container/40 border border-outline-variant flex items-center justify-center mb-4">
+                <BookOpen className="w-5 h-5 text-on-surface-variant" />
               </div>
-              <p className="text-sm font-semibold text-[#F5F5F7]">Тесты еще не пройдены</p>
-              <p className="text-xs text-[#98989D] max-w-sm mt-1 leading-relaxed">
+              <p className="text-sm font-semibold text-on-background">Тесты еще не пройдены</p>
+              <p className="text-xs text-on-surface-variant max-w-sm mt-1 leading-relaxed">
                 Нажмите «Начать урок» на любой доступной теме графа, а затем завершите проверочный тест.
               </p>
             </div>
@@ -223,25 +223,25 @@ export default function QuizHistoryModal({
               {/* Summary KPIs */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                  { label: 'Всего попыток', val: stats.total, icon: Clock, color: 'text-[#FFFFFF]' },
+                  { label: 'Всего попыток', val: stats.total, icon: Clock, color: 'text-on-surface' },
                   { label: 'Лучший балл', val: `${stats.best}%`, icon: Trophy, color: 'text-[#FFD700]' },
-                  { label: 'Средний балл', val: `${stats.avg}%`, icon: BarChart3, color: 'text-[#98989D]' },
-                  { label: 'Успешность', val: `${stats.passRate}%`, icon: CheckCircle, color: stats.passRate >= 60 ? 'text-[#FFFFFF]' : 'text-[#FF453A]' }
+                  { label: 'Средний балл', val: `${stats.avg}%`, icon: BarChart3, color: 'text-on-surface-variant' },
+                  { label: 'Успешность', val: `${stats.passRate}%`, icon: CheckCircle, color: stats.passRate >= 60 ? 'text-on-surface' : 'text-[#FF453A]' }
                 ].map((kpi, idx) => (
-                  <div key={idx} className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.06)] rounded-[16px] p-4 flex flex-col gap-1">
-                    <div className="flex justify-between items-center text-[#98989D]">
+                  <div key={idx} className="bg-surface border border-outline rounded-[16px] p-4 flex flex-col gap-1">
+                    <div className="flex justify-between items-center text-on-surface-variant">
                       <span className="text-[10px] font-semibold uppercase tracking-wider">{kpi.label}</span>
                       <kpi.icon className={`w-3.5 h-3.5 ${kpi.color}`} />
                     </div>
-                    <span className="text-2xl font-bold font-clash text-white mt-1">{kpi.val}</span>
+                    <span className="text-2xl font-bold font-clash text-on-surface mt-1">{kpi.val}</span>
                   </div>
                 ))}
               </div>
 
               {/* Score Trend Chart for single topic */}
               {trendChart && (
-                <div className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.06)] rounded-[16px] p-4">
-                  <span className="text-xs font-bold text-white mb-3 block">Динамика результатов (прогресс)</span>
+                <div className="bg-surface border border-outline rounded-[16px] p-4">
+                  <span className="text-xs font-bold text-on-surface mb-3 block">Динамика результатов (прогресс)</span>
                   <div className="w-full overflow-x-auto">
                     <svg viewBox={`0 0 ${trendChart.width} ${trendChart.height}`} className="w-full min-w-[450px] overflow-visible">
                       <defs>
@@ -331,11 +331,11 @@ export default function QuizHistoryModal({
               )}
 
               {/* Attempts Table */}
-              <div className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.06)] rounded-[16px] overflow-hidden">
+              <div className="bg-surface border border-outline rounded-[16px] overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="border-b border-[rgba(255,255,255,0.06)] bg-[#2C2C2E]/25 text-[10px] text-[#98989D] uppercase tracking-wider font-semibold">
+                      <tr className="border-b border-outline bg-surface-container/25 text-[10px] text-on-surface-variant uppercase tracking-wider font-semibold">
                         <th className="px-5 py-3 font-sans">Дата и время</th>
                         {filterNodeId === 'all' && <th className="px-5 py-3 font-sans">Тема урока</th>}
                         <th className="px-5 py-3 font-sans">Попытка</th>
@@ -344,21 +344,21 @@ export default function QuizHistoryModal({
                         <th className="px-5 py-3 font-sans text-right">Действие</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[rgba(255,255,255,0.04)] text-xs text-[#F5F5F7]">
+                    <tbody className="divide-y divide-[rgba(255,255,255,0.04)] text-xs text-on-background">
                       {/* For table view, display attempts newest to oldest */}
                       {((filterNodeId !== 'all') ? [...filteredAttempts].reverse() : filteredAttempts).map((att, idx) => (
                         <tr 
                           key={idx} 
-                          className="hover:bg-[#2C2C2E]/10 transition-colors group"
+                          className="hover:bg-surface-container/10 transition-colors group"
                         >
-                          <td className="px-5 py-3.5 font-mono text-[#98989D]">
+                          <td className="px-5 py-3.5 font-mono text-on-surface-variant">
                             <div className="flex items-center gap-2">
                               <Calendar className="w-3.5 h-3.5 opacity-60" />
                               <span>{formatDate(att.date)}</span>
                             </div>
                           </td>
                           {filterNodeId === 'all' && (
-                            <td className="px-5 py-3.5 font-semibold text-white max-w-[220px] truncate">
+                            <td className="px-5 py-3.5 font-semibold text-on-surface max-w-[220px] truncate">
                               <button 
                                 onClick={() => handleRowClick(att.nodeId)}
                                 className="hover:underline text-left"
@@ -367,26 +367,26 @@ export default function QuizHistoryModal({
                               </button>
                             </td>
                           )}
-                          <td className="px-5 py-3.5 text-[#98989D] font-medium font-mono">
+                          <td className="px-5 py-3.5 text-on-surface-variant font-medium font-mono">
                             #{att.attemptIndex}
                           </td>
                           <td className="px-5 py-3.5">
                             <div className="flex items-center gap-3">
-                              <span className="font-bold font-mono text-white min-w-[32px]">{att.score}%</span>
-                              <div className="w-20 h-1.5 bg-[#2C2C2E] border border-[rgba(255,255,255,0.02)] rounded-full overflow-hidden hidden sm:block">
+                              <span className="font-bold font-mono text-on-surface min-w-[32px]">{att.score}%</span>
+                              <div className="w-20 h-1.5 bg-surface-container border border-[rgba(255,255,255,0.02)] rounded-full overflow-hidden hidden sm:block">
                                 <div 
-                                  className={`h-full rounded-full ${att.passed ? 'bg-white' : 'bg-[#FF453A]'}`}
+                                  className={`h-full rounded-full ${att.passed ? 'bg-on-surface' : 'bg-[#FF453A]'}`}
                                   style={{ width: `${att.score}%` }}
                                 />
                               </div>
                             </div>
                           </td>
                           <td className="px-5 py-3.5 text-center">
-                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border bg-[#2C2C2E]/40 border-[rgba(255,255,255,0.06)]">
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border bg-surface-container/40 border-outline">
                               {att.passed ? (
                                 <>
-                                  <CheckCircle className="w-3 h-3 text-white" />
-                                  <span className="text-white">Сдано</span>
+                                  <CheckCircle className="w-3 h-3 text-on-surface" />
+                                  <span className="text-on-surface">Сдано</span>
                                 </>
                               ) : (
                                 <>
@@ -399,7 +399,7 @@ export default function QuizHistoryModal({
                           <td className="px-5 py-3.5 text-right">
                             <button
                               onClick={() => handleRowClick(att.nodeId)}
-                              className="text-xs font-bold text-white border border-[rgba(255,255,255,0.08)] bg-[#2C2C2E]/50 hover:bg-[#FFFFFF] hover:text-[#000000] px-3 py-1.5 rounded-[8px] transition-all inline-flex items-center gap-1 opacity-80 group-hover:opacity-100"
+                              className="text-xs font-bold text-on-surface border border-outline bg-surface-container/50 hover:bg-on-surface hover:text-inverse-on-surface px-3 py-1.5 rounded-[8px] transition-all inline-flex items-center gap-1 opacity-80 group-hover:opacity-100"
                             >
                               Перейти
                               <ArrowRight className="w-3 h-3" />

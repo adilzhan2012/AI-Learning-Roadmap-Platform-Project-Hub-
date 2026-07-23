@@ -184,13 +184,13 @@ export const GamificationProvider = ({ children }) => {
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              className="pointer-events-auto bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-xl p-4 shadow-xl flex items-center gap-3 text-left"
+              className="pointer-events-auto bg-surface border border-outline rounded-xl p-4 shadow-xl flex items-center gap-3 text-left"
             >
-              <div className="p-2 rounded-[8px] bg-white/5 border border-white/10 text-white">
+              <div className="p-2 rounded-[8px] bg-on-surface/5 border border-white/10 text-on-surface">
                 <Trophy className="w-4 h-4" strokeWidth={1.5} />
               </div>
               <div className="flex-1">
-                <p className="text-xs text-[#F5F5F7] font-medium leading-relaxed font-sans">{leagueToast.text}</p>
+                <p className="text-xs text-on-background font-medium leading-relaxed font-sans">{leagueToast.text}</p>
               </div>
             </motion.div>
           )}

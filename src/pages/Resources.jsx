@@ -49,14 +49,14 @@ function ResourceCard({ resource, onClick, isLocked }) {
       layout
       variants={cardVariants}
       onClick={onClick}
-      className={`bg-[#1C1C1E] rounded-[16px] border border-[rgba(255,255,255,0.08)] overflow-hidden transition-all duration-200 hover:border-[rgba(255,255,255,0.3)] flex flex-col h-full relative group cursor-pointer ${
+      className={`bg-surface rounded-[16px] border border-outline overflow-hidden transition-all duration-200 hover:border-[rgba(255,255,255,0.3)] flex flex-col h-full relative group cursor-pointer ${
         isLocked ? 'pointer-events-auto' : ''
       }`}
     >
       {/* Centered lock icon over locked card */}
       {isLocked && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#000000]/20 backdrop-blur-[1px]">
-          <div className="w-10 h-10 bg-[#1C1C1E]/80 border border-[rgba(255,255,255,0.1)] rounded-xl flex items-center justify-center text-[#FFFFFF] shadow-lg">
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/20 backdrop-blur-[1px]">
+          <div className="w-10 h-10 bg-surface/80 border border-[rgba(255,255,255,0.1)] rounded-xl flex items-center justify-center text-on-surface shadow-lg">
             <Lock className="w-4.5 h-4.5" strokeWidth={1.5} />
           </div>
         </div>
@@ -64,39 +64,39 @@ function ResourceCard({ resource, onClick, isLocked }) {
 
       <div className={`flex flex-col h-full ${isLocked ? 'opacity-40 select-none pointer-events-none' : ''}`}>
         {/* Corner type badge */}
-        <span className="absolute top-4 right-4 bg-[#2C2C2E] border border-[rgba(255,255,255,0.08)] text-[9px] font-mono font-bold text-[#FFFFFF] px-2 py-0.5 rounded-[4px] tracking-wider uppercase z-10">
+        <span className="absolute top-4 right-4 bg-surface-container border border-outline text-[9px] font-mono font-bold text-on-surface px-2 py-0.5 rounded-[4px] tracking-wider uppercase z-10">
           {typeInfo.label}
         </span>
 
         <div className="p-6 flex flex-col h-full">
-          <div className="flex items-center gap-2 text-[#98989D] mb-4">
+          <div className="flex items-center gap-2 text-on-surface-variant mb-4">
             <Icon className="w-4 h-4" strokeWidth={1.5} />
             <span className="text-[10px] uppercase tracking-wider font-mono font-bold">{t(typeInfo.labelKey)}</span>
           </div>
           
-          <h3 className="text-base font-bold text-[#FFFFFF] leading-tight mb-2 group-hover:text-[#FFFFFF] transition-colors font-clash line-clamp-2">
+          <h3 className="text-base font-bold text-on-surface leading-tight mb-2 group-hover:text-on-surface transition-colors font-clash line-clamp-2">
             {resource.title}
           </h3>
-          <p className="text-xs text-[#98989D] leading-relaxed mb-6 flex-1 line-clamp-3">
+          <p className="text-xs text-on-surface-variant leading-relaxed mb-6 flex-1 line-clamp-3">
             {resource.desc}
           </p>
           
           <div className="flex flex-wrap gap-1.5 mb-6">
             {resource.tags.map(tag => (
-              <span key={tag} className="bg-[#2C2C2E] text-[#98989D] border border-[rgba(255,255,255,0.04)] text-[9px] font-mono font-bold rounded-[4px] px-2 py-0.5 uppercase tracking-wider">
+              <span key={tag} className="bg-surface-container text-on-surface-variant border border-outline-variant text-[9px] font-mono font-bold rounded-[4px] px-2 py-0.5 uppercase tracking-wider">
                 {tag}
               </span>
             ))}
           </div>
 
-          <div className="flex items-center justify-between pt-4 border-t border-[rgba(255,255,255,0.08)] mt-auto">
-            <div className="flex items-center gap-3 text-[10px] text-[#98989D] font-mono">
+          <div className="flex items-center justify-between pt-4 border-t border-outline mt-auto">
+            <div className="flex items-center gap-3 text-[10px] text-on-surface-variant font-mono">
               {resource.author && <span className="flex items-center gap-1"><User className="w-3.5 h-3.5" strokeWidth={1.5} />{resource.author}</span>}
               {resource.meta && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" strokeWidth={1.5} />{resource.meta}</span>}
             </div>
             <button 
               onClick={(e) => { e.stopPropagation(); setBookmarked(!bookmarked); }}
-              className={`p-1.5 rounded-[6px] transition-colors ${bookmarked ? 'text-[#000000] bg-[#FFFFFF]' : 'text-[#98989D] hover:text-[#FFFFFF] hover:bg-[#2C2C2E]'}`}
+              className={`p-1.5 rounded-[6px] transition-colors ${bookmarked ? 'text-inverse-on-surface bg-on-surface' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'}`}
             >
               {bookmarked ? <BookmarkCheck className="w-4 h-4" strokeWidth={1.5} /> : <Bookmark className="w-4 h-4" strokeWidth={1.5} />}
             </button>
@@ -190,9 +190,9 @@ export default function Resources() {
 
   if (loading || planLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-[calc(100vh-4.5rem)] bg-[#000000] text-white">
-        <Loader2 className="w-8 h-8 animate-spin text-white mb-2" />
-        <p className="text-sm text-[#98989D] font-mono">Загрузка ресурсов...</p>
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-4.5rem)] bg-background text-on-surface">
+        <Loader2 className="w-8 h-8 animate-spin text-on-surface mb-2" />
+        <p className="text-sm text-on-surface-variant font-mono">Загрузка ресурсов...</p>
       </div>
     );
   }
@@ -202,11 +202,11 @@ export default function Resources() {
       initial="hidden"
       animate="show"
       variants={containerVariants}
-      className="max-w-[2000px] mx-auto text-[#F5F5F7] font-sans p-4 md:p-6"
+      className="max-w-[2000px] mx-auto text-on-background font-sans p-4 md:p-6"
     >
       <motion.div variants={cardVariants} className="mb-10">
-        <h1 className="text-4xl font-bold font-clash text-[#FFFFFF] mb-2 tracking-tight">{t('resources.title')}</h1>
-        <p className="text-sm text-[#98989D] max-w-xl">{t('resources.subtitle')}</p>
+        <h1 className="text-4xl font-bold font-clash text-on-surface mb-2 tracking-tight">{t('resources.title')}</h1>
+        <p className="text-sm text-on-surface-variant max-w-xl">{t('resources.subtitle')}</p>
       </motion.div>
 
       {/* Featured Resource */}
@@ -222,30 +222,30 @@ export default function Resources() {
             navigate('/graph');
           }}
           variants={cardVariants} 
-          className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-6 md:p-8 mb-10 flex flex-col md:flex-row gap-8 items-center relative overflow-hidden group cursor-pointer hover:border-[rgba(255,255,255,0.3)] transition-colors"
+          className="bg-surface border border-outline rounded-[16px] p-6 md:p-8 mb-10 flex flex-col md:flex-row gap-8 items-center relative overflow-hidden group cursor-pointer hover:border-[rgba(255,255,255,0.3)] transition-colors"
         >
           {/* Featured resource is the first material and is unlocked */}
           
           {/* Grayscale geometry card decoration */}
-          <div className="w-full md:w-48 h-32 rounded-[12px] bg-[#2C2C2E]/40 border border-[rgba(255,255,255,0.08)] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-            <svg className="absolute inset-0 w-full h-full text-[#FFFFFF] opacity-10 stroke-current stroke-[0.5] fill-none" viewBox="0 0 100 40" preserveAspectRatio="none">
+          <div className="w-full md:w-48 h-32 rounded-[12px] bg-surface-container/40 border border-outline flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+            <svg className="absolute inset-0 w-full h-full text-on-surface opacity-10 stroke-current stroke-[0.5] fill-none" viewBox="0 0 100 40" preserveAspectRatio="none">
               <line x1="0" y1="0" x2="100" y2="40" />
               <line x1="0" y1="40" x2="100" y2="0" />
               <circle cx="50" cy="20" r="10" />
             </svg>
-            <BookOpen className="w-10 h-10 text-[#FFFFFF] opacity-40 relative z-10" strokeWidth={1.5} />
+            <BookOpen className="w-10 h-10 text-on-surface opacity-40 relative z-10" strokeWidth={1.5} />
           </div>
           <div className="flex-1 min-w-0">
-            <span className="text-[9px] font-mono font-bold text-[#000000] bg-[#FFFFFF] rounded-[4px] px-2.5 py-0.5 inline-block mb-3 uppercase tracking-tight">{t('resources.featured')}</span>
-            <h2 className="text-xl font-bold text-[#FFFFFF] mb-2 group-hover:text-[#FFFFFF] transition-colors font-clash truncate">{resources[0].title}</h2>
-            <p className="text-xs text-[#98989D] leading-relaxed mb-6 max-w-2xl line-clamp-2">
+            <span className="text-[9px] font-mono font-bold text-inverse-on-surface bg-on-surface rounded-[4px] px-2.5 py-0.5 inline-block mb-3 uppercase tracking-tight">{t('resources.featured')}</span>
+            <h2 className="text-xl font-bold text-on-surface mb-2 group-hover:text-on-surface transition-colors font-clash truncate">{resources[0].title}</h2>
+            <p className="text-xs text-on-surface-variant leading-relaxed mb-6 max-w-2xl line-clamp-2">
               {resources[0].desc}
             </p>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <button className="bg-[#FFFFFF] hover:bg-[#E8E8ED] text-[#000000] rounded-[12px] px-5 py-2.5 text-xs font-bold transition-colors flex items-center gap-2 self-start font-sans">
+              <button className="bg-on-surface hover:bg-surface-container text-inverse-on-surface rounded-[12px] px-5 py-2.5 text-xs font-bold transition-colors flex items-center gap-2 self-start font-sans">
                 <BookOpen className="w-4 h-4" strokeWidth={1.5} /> {t('resources.readNow')}
               </button>
-              <div className="flex gap-4 text-[10px] font-mono text-[#98989D]">
+              <div className="flex gap-4 text-[10px] font-mono text-on-surface-variant">
                 <span className="flex items-center gap-1.5"><User className="w-4 h-4" strokeWidth={1.5} /> {resources[0].author}</span>
                 <span className="flex items-center gap-1.5"><Clock className="w-4 h-4" strokeWidth={1.5} /> {resources[0].meta}</span>
               </div>
@@ -256,20 +256,20 @@ export default function Resources() {
 
       {/* Catalog layout with narrow left filters */}
       {resources.length === 0 ? (
-        <div className="py-20 text-center bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] text-[#98989D] font-sans">
+        <div className="py-20 text-center bg-surface border border-outline rounded-[16px] text-on-surface-variant font-sans">
           <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-20" strokeWidth={1.5} />
           <p className="text-sm font-semibold">Нет доступных ресурсов</p>
-          <p className="text-xs text-[#98989D]/60 mt-1">Создайте хотя бы один курс, чтобы сгенерировать библиотеку ресурсов.</p>
+          <p className="text-xs text-on-surface-variant/60 mt-1">Создайте хотя бы один курс, чтобы сгенерировать библиотеку ресурсов.</p>
         </div>
       ) : (
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Narrow Left Column Filters (20% width) */}
           <div className="w-full lg:w-48 flex-shrink-0 space-y-6">
-            <div className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-4">
-              <h4 className="text-[10px] font-bold uppercase tracking-tight text-[#98989D] mb-3 font-sans">Курсы</h4>
+            <div className="bg-surface border border-outline rounded-[16px] p-4">
+              <h4 className="text-[10px] font-bold uppercase tracking-tight text-on-surface-variant mb-3 font-sans">Курсы</h4>
               <div className="space-y-2">
                 {availableCategories.length === 0 ? (
-                  <p className="text-xs text-[#98989D]">Категории отсутствуют</p>
+                  <p className="text-xs text-on-surface-variant">Категории отсутствуют</p>
                 ) : (
                   availableCategories.map(cat => (
                     <label key={cat} className="flex items-center gap-3 cursor-pointer group select-none">
@@ -280,7 +280,7 @@ export default function Resources() {
                           onChange={() => toggleCategory(cat)} 
                           className="sr-only" 
                         />
-                        <div className={`w-4 h-4 border rounded-[6px] transition-all flex items-center justify-center ${selectedCategories.includes(cat) ? 'bg-[#FFFFFF] border-[#FFFFFF]' : 'border-[rgba(255,255,255,0.15)] group-hover:border-[rgba(255,255,255,0.3)] bg-transparent'}`}>
+                        <div className={`w-4 h-4 border rounded-[6px] transition-all flex items-center justify-center ${selectedCategories.includes(cat) ? 'bg-on-surface border-[#FFFFFF]' : 'border-outline group-hover:border-[rgba(255,255,255,0.3)] bg-transparent'}`}>
                           {selectedCategories.includes(cat) && (
                             <svg viewBox="0 0 10 10" className="w-2 h-2 stroke-[#000000] stroke-[2] fill-none">
                               <polyline points="2,5.5 4,7.5 8,2.5" />
@@ -288,7 +288,7 @@ export default function Resources() {
                           )}
                         </div>
                       </div>
-                      <span className="text-xs text-[#98989D] group-hover:text-[#F5F5F7] transition-colors truncate max-w-[120px]">{cat}</span>
+                      <span className="text-xs text-on-surface-variant group-hover:text-on-background transition-colors truncate max-w-[120px]">{cat}</span>
                     </label>
                   ))
                 )}
@@ -301,14 +301,14 @@ export default function Resources() {
             {/* Search + Tabs Bar */}
             <div className="space-y-4">
               {/* Borderless bottom line search field */}
-              <div className="relative border-b border-[rgba(255,255,255,0.08)] focus-within:border-[#FFFFFF] transition-colors py-2">
-                <Search className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 text-[#98989D]" strokeWidth={1.5} />
+              <div className="relative border-b border-outline focus-within:border-[#FFFFFF] transition-colors py-2">
+                <Search className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" strokeWidth={1.5} />
                 <input
                   type="text"
                   placeholder="Поиск ресурсов..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-transparent pl-7 pr-3 text-xs text-[#F5F5F7] placeholder:text-[#98989D] focus:outline-none"
+                  className="w-full bg-transparent pl-7 pr-3 text-xs text-on-background placeholder:text-on-surface-variant focus:outline-none"
                 />
               </div>
 
@@ -361,7 +361,7 @@ export default function Resources() {
               </AnimatePresence>
               
               {!loading && filteredResources.length === 0 && (
-                <div className="col-span-full py-16 text-center text-[#98989D] font-sans">
+                <div className="col-span-full py-16 text-center text-on-surface-variant font-sans">
                   <Search className="w-8 h-8 mx-auto mb-3 opacity-20" strokeWidth={1.5} />
                   <p className="text-xs font-semibold">Совпадений не найдено</p>
                 </div>
@@ -386,13 +386,13 @@ export default function Resources() {
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98 }}
-              className="relative bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] w-full max-w-sm rounded-[2rem] p-6 shadow-2xl z-10 text-center"
+              className="relative bg-surface border border-outline w-full max-w-sm rounded-[2rem] p-6 shadow-2xl z-10 text-center"
             >
-              <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Lock className="w-5 h-5 text-white" strokeWidth={1.5} />
+              <div className="w-12 h-12 bg-on-surface/5 border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Lock className="w-5 h-5 text-on-surface" strokeWidth={1.5} />
               </div>
-              <h3 className="text-lg font-bold text-white mb-2">Ресурс доступен в Pro</h3>
-              <p className="text-xs text-[#98989D] mb-6 leading-relaxed">
+              <h3 className="text-lg font-bold text-on-surface mb-2">Ресурс доступен в Pro</h3>
+              <p className="text-xs text-on-surface-variant mb-6 leading-relaxed">
                 Этот материал является эксклюзивной Pro-частью вашего курса. Обновите тарифный план для получения безлимитного доступа ко всем ресурсам.
               </p>
               <div className="space-y-3">
@@ -401,13 +401,13 @@ export default function Resources() {
                     setLockedModalOpen(false);
                     navigate('/pricing');
                   }}
-                  className="w-full py-3 rounded-xl font-bold bg-[#FFFFFF] text-[#000000] hover:bg-[#F5F5F7] transition-all text-xs"
+                  className="w-full py-3 rounded-xl font-bold bg-on-surface text-inverse-on-surface hover:bg-[#F5F5F7] transition-all text-xs"
                 >
                   Узнать о Pro
                 </button>
                 <button
                   onClick={() => setLockedModalOpen(false)}
-                  className="w-full py-3 rounded-xl font-bold bg-transparent border border-[rgba(255,255,255,0.08)] text-[#FFFFFF] hover:bg-[rgba(255,255,255,0.04)] transition-all text-xs"
+                  className="w-full py-3 rounded-xl font-bold bg-transparent border border-outline text-on-surface hover:bg-[rgba(255,255,255,0.04)] transition-all text-xs"
                 >
                   Понятно
                 </button>

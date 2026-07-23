@@ -6,6 +6,15 @@
    yourway.co — App Styles
    ============================================ */
 
+html {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
+#page-content {
+  scrollbar-gutter: stable;
+}
+
 /* ---- MD3 Color Tokens (Apple Dark Mode default) ---- */
 :root,
 .dark {

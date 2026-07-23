@@ -66,7 +66,7 @@ export default function QuizResults({ score, total, passed, explanations, onRetr
         {passed && (
           <button 
             onClick={onContinue}
-            className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-500 hover:shadow-lg hover:shadow-indigo-500/25 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all"
+            className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-500 hover:shadow-lg hover:shadow-indigo-500/25 text-on-surface py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all"
           >
             Продолжить
             <ArrowRight className="w-5 h-5" />
