@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Sparkles, Loader2, X, ChevronDown, ChevronUp, Settings, Lock } from 'lucide-react';
+import { Brain, Sparkles, Loader2, X, ChevronDown, ChevronUp, Settings, Lock, FileText, Video, Link } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { generateCourseAndSave } from '../services/courseService.js';
 import { t, useLocale } from '../i18n.js';
@@ -14,6 +14,13 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
   const [level, setLevel] = useState('Beginner');
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState('');
+
+  // RAG States
+  const [generationMode, setGenerationMode] = useState('topic'); // 'topic' | 'rag'
+  const [ragType, setRagType] = useState('pdf'); // 'pdf' | 'url'
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [uploadedFileName, setUploadedFileName] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
 
   // Advanced settings state
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -35,17 +42,29 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
 
   const handleCreateCourse = async (e) => {
     e.preventDefault();
-    const trimmedTopic = topic.trim();
-    if (!trimmedTopic) return;
+    let finalTopic = topic.trim();
+    
+    if (plan === 'ULTRA' && generationMode === 'rag') {
+      if (!finalTopic) {
+        finalTopic = ragType === 'pdf' 
+          ? `Курс на основе: ${uploadedFileName || 'книги'}` 
+          : `Курс на основе: YouTube лекции`;
+      }
+    }
+
+    if (!finalTopic) {
+      setGenError('Пожалуйста, укажите тему курса или загрузите материалы.');
+      return;
+    }
 
     // Validate that the topic is not just random gibberish or too short
-    if (trimmedTopic.length < 2) {
+    if (finalTopic.length < 2) {
       setGenError(t('dashboard.modal.errorTooShort') || 'Topic is too short. Please be more specific.');
       return;
     }
     
     // Check for repetitive characters (e.g. "ваываываываыва")
-    const hasRepetitiveChars = /(.)\1{4,}/.test(trimmedTopic) || /(.{2,})\1{3,}/.test(trimmedTopic);
+    const hasRepetitiveChars = /(.)\1{4,}/.test(finalTopic) || /(.{2,})\1{3,}/.test(finalTopic);
     if (hasRepetitiveChars) {
       setGenError(t('dashboard.modal.errorInvalid') || 'Please enter a real learning topic, not random characters.');
       return;
@@ -63,11 +82,21 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
       const preferences = level === 'Advanced'
         ? { duration, focus, goal, tone, prerequisites, stack }
         : { dailyTime, flashcardCount, courseStyle };
-      const generated = await generateCourseAndSave(userUid, topic, level, preferences);
+        
+      if (plan === 'ULTRA' && generationMode === 'rag') {
+        preferences.ragMode = true;
+        preferences.ragType = ragType;
+        preferences.source = ragType === 'pdf' ? uploadedFileName : youtubeUrl;
+      }
+
+      const generated = await generateCourseAndSave(userUid, finalTopic, level, preferences);
       await incrementUsage('roadmap');
       onClose();
       setTopic('');
       setLevel('Beginner');
+      setUploadedFileName('');
+      setYoutubeUrl('');
+      setGenerationMode('topic');
       // Redirect to the newly generated course's Knowledge Graph
       localStorage.setItem('selected_course_id', generated.id);
       navigate('/graph');
@@ -82,6 +111,24 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
       }
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      setUploadedFileName(files[0].name);
     }
   };
 
@@ -103,14 +150,14 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.95, y: 20, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 250 }}
-            className="w-full max-w-lg bg-surface border border-outline-variant rounded-3xl p-6 md:p-8 shadow-2xl relative z-10 overflow-hidden"
+            className="w-full max-w-lg bg-surface border border-outline-variant rounded-3xl p-6 md:p-8 shadow-2xl relative z-10 overflow-hidden flex flex-col max-h-[90vh] text-white"
           >
             {generating && (
               <div className="absolute inset-0 bg-surface/90 backdrop-blur-md z-20 flex flex-col items-center justify-center p-6 text-center">
                 <motion.div 
-                  animate={{ rotate: 360 }}
-                  transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
-                  className="mb-6"
+                   animate={{ rotate: 360 }}
+                   transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
+                   className="mb-6"
                 >
                   <Brain className="w-16 h-16 text-primary" />
                 </motion.div>
@@ -138,25 +185,117 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
               </button>
             </div>
 
-
-
-            <form onSubmit={handleCreateCourse} className="space-y-6">
+            <form onSubmit={handleCreateCourse} className="space-y-5 overflow-y-auto pr-2 pb-2 scrollbar-thin">
               {genError && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl p-4 text-sm font-semibold">
+                <div className="bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl p-4 text-sm font-semibold text-left">
                   {genError}
                 </div>
               )}
 
+              {/* ULTRA RAG Selection Tabs */}
+              {plan === 'ULTRA' && (
+                <div className="bg-surface-container-high border border-outline-variant p-1 rounded-xl flex gap-1 text-xs shrink-0 select-none">
+                  <button
+                    type="button"
+                    onClick={() => setGenerationMode('topic')}
+                    className={`flex-1 py-2 font-bold rounded-lg transition-all ${
+                      generationMode === 'topic' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    💡 Стандартная тема
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGenerationMode('rag')}
+                    className={`flex-1 py-2 font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                      generationMode === 'rag' ? 'bg-indigo-600 text-white shadow-sm' : 'text-on-surface-variant hover:text-on-surface animate-pulse'
+                    }`}
+                  >
+                    <Sparkles className="w-3 h-3 text-indigo-300" /> RAG: Из материалов
+                  </button>
+                </div>
+              )}
+
+              {/* RAG Dropzone / Inputs */}
+              {plan === 'ULTRA' && generationMode === 'rag' && (
+                <div className="bg-indigo-950/20 border border-indigo-500/20 p-4 rounded-2xl space-y-4 text-left">
+                  <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block">Импорт материалов (RAG)</span>
+                  
+                  <div className="flex gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setRagType('pdf')}
+                      className={`px-3 py-1.5 rounded-lg border font-bold flex items-center gap-1 transition-all ${
+                        ragType === 'pdf' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-surface-container border-outline-variant text-zinc-400'
+                      }`}
+                    >
+                      <FileText className="w-3.5 h-3.5" /> PDF / Документ
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRagType('url')}
+                      className={`px-3 py-1.5 rounded-lg border font-bold flex items-center gap-1 transition-all ${
+                        ragType === 'url' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-surface-container border-outline-variant text-zinc-400'
+                      }`}
+                    >
+                      <Video className="w-3.5 h-3.5" /> YouTube / Ссылка
+                    </button>
+                  </div>
+
+                  {ragType === 'pdf' ? (
+                    <div 
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      className={`border-2 border-dashed rounded-xl p-5 flex flex-col items-center justify-center cursor-pointer transition-all ${
+                        isDragging ? 'border-indigo-400 bg-indigo-500/10' : 'border-indigo-500/25 bg-surface-container-lowest hover:bg-surface-container'
+                      }`}
+                      onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = '.pdf,.txt,.doc,.docx';
+                        input.onchange = (e) => {
+                          if (e.target.files && e.target.files.length > 0) {
+                            setUploadedFileName(e.target.files[0].name);
+                          }
+                        };
+                        input.click();
+                      }}
+                    >
+                      <FileText className="w-8 h-8 text-indigo-400 mb-2" />
+                      <p className="text-[11px] font-bold text-center text-zinc-300">
+                        {uploadedFileName ? `Выбран файл: ${uploadedFileName}` : 'Перетащите PDF сюда или нажмите для выбора'}
+                      </p>
+                      <span className="text-[9px] text-zinc-500 mt-1">До 25 МБ (PDF, TXT, DOCX)</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <label className="text-[10px] text-zinc-400 font-bold block">Ссылка на лекцию или веб-документацию</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={youtubeUrl}
+                          onChange={(e) => setYoutubeUrl(e.target.value)}
+                          placeholder="https://www.youtube.com/watch?v=... или https://docs.go.dev/..."
+                          className="flex-1 bg-surface-container border border-outline-variant rounded-xl px-3 py-2 text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div>
-                <label htmlFor="topic" className="block text-sm font-bold text-on-surface mb-2">{t('dashboard.modal.topicLabel')}</label>
+                <label htmlFor="topic" className="block text-sm font-bold text-on-surface mb-2">
+                  {generationMode === 'rag' ? 'Тема курса по материалам (опционально)' : t('dashboard.modal.topicLabel')}
+                </label>
                 <input 
                   type="text" 
                   id="topic" 
-                  required 
                   disabled={generating}
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
-                  placeholder={t('dashboard.modal.topicPlaceholder')}
+                  placeholder={generationMode === 'rag' ? 'Например: Основы дизайна, 3D-моделирование, Биология' : (locale === 'ru' ? 'Например, Основы маркетинга, Теория вероятностей, Квантовая физика' : 'e.g. Design basics, Probability, Quantum Physics')}
                   className="w-full bg-surface-container border border-outline-variant rounded-xl px-4 py-3 text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all duration-200"
                 />
               </div>
@@ -165,7 +304,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
                 <label className="block text-sm font-bold text-on-surface mb-2">{t('dashboard.modal.levelLabel')}</label>
                 <div className="grid grid-cols-3 gap-2">
                   {['Beginner', 'Intermediate', 'Advanced'].map(lvl => {
-                    const isLocked = plan === 'FREE' && lvl !== 'Beginner';
+                    const isLocked = (lvl === 'Advanced' && plan !== 'ULTRA') || (lvl === 'Intermediate' && plan === 'FREE');
                     return (
                       <button
                         key={lvl}
@@ -173,7 +312,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
                         disabled={generating}
                         onClick={() => {
                           if (isLocked) {
-                            setUpgradeReason('level');
+                            setUpgradeReason(lvl === 'Advanced' ? 'level_advanced' : 'level_intermediate');
                             setUpgradeModalOpen(true);
                           } else {
                             setLevel(lvl);
@@ -262,13 +401,13 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
                             <label className="block text-xs font-bold text-on-surface-variant mb-1">
                               {locale === 'ru' ? 'Что вы уже знаете? (чтобы ИИ это пропустил)' : 'What do you already know? (AI will skip this)'}
                             </label>
-                            <input type="text" value={prerequisites} onChange={e => setPrerequisites(e.target.value)} disabled={generating} placeholder={locale === 'ru' ? 'Например: HTML, CSS, базовый JS' : 'e.g. HTML, CSS, basic JS'} className="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary" />
+                            <input type="text" value={prerequisites} onChange={e => setPrerequisites(e.target.value)} disabled={generating} placeholder={locale === 'ru' ? 'Например: базовая математика, Фотошоп' : 'e.g. basic math, Photoshop'} className="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary" />
                           </div>
                           <div>
                             <label className="block text-xs font-bold text-on-surface-variant mb-1">
-                              {locale === 'ru' ? 'Стек технологий (опционально)' : 'Tech stack (optional)'}
+                              {locale === 'ru' ? 'Инструменты / Программы (опционально)' : 'Tools / Software (optional)'}
                             </label>
-                            <input type="text" value={stack} onChange={e => setStack(e.target.value)} disabled={generating} placeholder={locale === 'ru' ? 'Например: React, Node.js' : 'e.g. React, Node.js'} className="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary" />
+                            <input type="text" value={stack} onChange={e => setStack(e.target.value)} disabled={generating} placeholder={locale === 'ru' ? 'Например: Figma, Blender, Excel' : 'e.g. Figma, Blender, Excel'} className="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary" />
                           </div>
                         </div>
                       </motion.div>
@@ -423,15 +562,26 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
               <Lock className="w-5 h-5 text-on-surface" strokeWidth={1.5} />
             </div>
             
-            {upgradeReason === 'level' ? (
+            {upgradeReason === 'level_advanced' ? (
+              <>
+                <h3 className="text-lg font-bold text-on-surface mb-2">
+                  {locale === 'ru' ? 'Доступно на тарифе ULTRA' : 'Available on ULTRA'}
+                </h3>
+                <p className="text-xs text-on-surface-variant mb-6 leading-relaxed">
+                  {locale === 'ru' 
+                    ? 'Уровень сложности Продвинутый доступен только на тарифе ULTRA. Обновите тариф для доступа к углубленному обучению.' 
+                    : 'Advanced difficulty levels are only available on the ULTRA plan. Upgrade to unlock deep learning.'}
+                </p>
+              </>
+            ) : upgradeReason === 'level_intermediate' ? (
               <>
                 <h3 className="text-lg font-bold text-on-surface mb-2">
                   {locale === 'ru' ? 'Доступно на тарифе PRO' : 'Available on PRO'}
                 </h3>
                 <p className="text-xs text-on-surface-variant mb-6 leading-relaxed">
                   {locale === 'ru' 
-                    ? 'Уровни сложности Средний и Продвинутый доступны только на тарифе PRO. Обновите тариф для доступа к углубленному обучению.' 
-                    : 'Intermediate and Advanced difficulty levels are only available on the PRO plan. Upgrade to unlock deep learning.'}
+                    ? 'Уровень сложности Средний доступен на тарифе PRO и выше. Обновите тариф для доступа к расширенному обучению.' 
+                    : 'Intermediate difficulty is available on the PRO plan and higher. Upgrade to unlock broader learning.'}
                 </p>
               </>
             ) : upgradeReason === 'cards' ? (
@@ -466,7 +616,9 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
                 }}
                 className="w-full py-3 rounded-xl font-bold bg-primary text-on-primary hover:bg-primary/90 transition-all text-xs"
               >
-                {locale === 'ru' ? 'Перейти на Pro' : 'Upgrade to Pro'}
+                {upgradeReason === 'level_advanced'
+                  ? (locale === 'ru' ? 'Перейти на Ultra' : 'Upgrade to Ultra')
+                  : (locale === 'ru' ? 'Перейти на Pro' : 'Upgrade to Pro')}
               </button>
               <button
                 onClick={() => setUpgradeModalOpen(false)}

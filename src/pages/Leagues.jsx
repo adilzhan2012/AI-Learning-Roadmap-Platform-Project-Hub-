@@ -11,12 +11,12 @@ import { useNavigate } from 'react-router-dom';
 import { useLocale } from '../i18n.js';
 
 const LEAGUES_DATA = [
-  { id: 'silicon', nameRu: 'Кремний', nameEn: 'Silicon', isPro: false, xpRequired: 0, descRu: 'Стартовая лига. Понижение невозможно.', descEn: 'Starting league. Demotion is not possible.' },
-  { id: 'graphite', nameRu: 'Графит', nameEn: 'Graphite', isPro: false, xpRequired: 500, descRu: 'Лига для активных студентов. Требуется стабильность.', descEn: 'League for active students. Stability is required.' },
-  { id: 'quartz', nameRu: 'Кварц', nameEn: 'Quartz', isPro: true, xpRequired: 1500, descRu: 'Первый элитный уровень. Доступна с подпиской Pro.', descEn: 'First elite level. Available with Pro subscription.' },
-  { id: 'obsidian', nameRu: 'Обсидиан', nameEn: 'Obsidian', isPro: true, xpRequired: 3000, descRu: 'Лига для глубокого погружения. Доступна с подпиской Pro.', descEn: 'Deep immersion league. Available with Pro subscription.' },
-  { id: 'platinum', nameRu: 'Платина', nameEn: 'Platinum', isPro: true, xpRequired: 5000, descRu: 'Лига экспертов. Доступна с подпиской Pro.', descEn: 'Experts league. Available with Pro subscription.' },
-  { id: 'titan', nameRu: 'Титан', nameEn: 'Titan', isPro: true, xpRequired: 10000, descRu: 'Легендарная вершина. Высший соревновательный уровень.', descEn: 'Legendary peak. Ultimate competitive level.' }
+  { id: 'silicon', nameRu: 'Кремний', nameEn: 'Silicon', planRequired: 'FREE', xpRequired: 0, descRu: 'Стартовая лига. Понижение невозможно.', descEn: 'Starting league. Demotion is not possible.' },
+  { id: 'graphite', nameRu: 'Графит', nameEn: 'Graphite', planRequired: 'FREE', xpRequired: 500, descRu: 'Лига для активных студентов. Требуется стабильность.', descEn: 'League for active students. Stability is required.' },
+  { id: 'quartz', nameRu: 'Кварц', nameEn: 'Quartz', planRequired: 'PRO', xpRequired: 1500, descRu: 'Первый элитный уровень. Доступна с подпиской Pro.', descEn: 'First elite level. Available with Pro subscription.' },
+  { id: 'obsidian', nameRu: 'Обсидиан', nameEn: 'Obsidian', planRequired: 'PRO', xpRequired: 3000, descRu: 'Лига для глубокого погружения. Доступна с подпиской Pro.', descEn: 'Deep immersion league. Available with Pro subscription.' },
+  { id: 'platinum', nameRu: 'Платина', nameEn: 'Platinum', planRequired: 'ULTRA', xpRequired: 5000, descRu: 'Лига экспертов. Доступна с подпиской Ultra.', descEn: 'Experts league. Available with Ultra subscription.' },
+  { id: 'titan', nameRu: 'Титан', nameEn: 'Titan', planRequired: 'ULTRA', xpRequired: 10000, descRu: 'Легендарная вершина. Высший соревновательный уровень. Требуется Ultra.', descEn: 'Legendary peak. Ultimate competitive level. Ultra required.' }
 ];
 
 export function LeagueIcon({ leagueId, className = "w-5 h-5" }) {
@@ -104,6 +104,8 @@ export default function Leagues() {
           });
 
           // Fetch other users from Firestore
+          // TEMPORARILY DISABLED UNTIL LAUNCH to avoid showing test accounts
+          /*
           const usersRef = collection(db, 'users');
           const snap = await getDocs(usersRef);
           const uList = [];
@@ -121,6 +123,8 @@ export default function Leagues() {
             }
           });
           setDbUsers(uList);
+          */
+          setDbUsers([]);
         } catch (e) {
           console.error("Error loading league data:", e);
         } finally {
@@ -391,7 +395,9 @@ export default function Leagues() {
               {LEAGUES_DATA.map((lg) => {
                 const isSelected = selectedLeagueId === lg.id;
                 const isUserActiveLeague = activeUserLeague === lg.id;
-                const isLocked = lg.isPro && plan === 'FREE';
+                const isLocked = 
+                  (lg.planRequired === 'PRO' && plan === 'FREE') || 
+                  (lg.planRequired === 'ULTRA' && (plan === 'FREE' || plan === 'PRO'));
                 const lgName = isRu ? lg.nameRu : lg.nameEn;
                 const lgDesc = isRu ? lg.descRu : lg.descEn;
 
@@ -433,9 +439,13 @@ export default function Leagues() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {lg.isPro && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-surface-container-high border border-outline text-on-surface uppercase">
-                          Pro
+                      {lg.planRequired !== 'FREE' && (
+                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border uppercase tracking-widest ${
+                          lg.planRequired === 'ULTRA'
+                            ? 'bg-indigo-500/10 border-indigo-500/35 text-indigo-400'
+                            : 'bg-amber-500/10 border-amber-500/35 text-amber-500'
+                        }`}>
+                          {lg.planRequired}
                         </span>
                       )}
                       {isLocked && (

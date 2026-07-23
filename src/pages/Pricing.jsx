@@ -7,7 +7,8 @@ import {
   ChevronDown, 
   ChevronUp, 
   Crown,
-  Loader2
+  Loader2,
+  Sparkles
 } from 'lucide-react';
 import { auth, db } from '../firebase.js';
 import { doc, setDoc } from 'firebase/firestore';
@@ -24,6 +25,7 @@ export default function Pricing() {
   const [billingPeriod, setBillingPeriod] = useState('monthly'); // 'monthly' | 'yearly'
   const [showFullComparison, setShowFullComparison] = useState(false);
   const [upgrading, setUpgrading] = useState(false);
+  const [selectedUpgradePlan, setSelectedUpgradePlan] = useState('PRO'); // 'PRO' | 'ULTRA'
 
   // Simulated payment state
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -71,7 +73,8 @@ export default function Pricing() {
       return;
     }
     
-    if (targetPlan === 'PRO') {
+    if (targetPlan === 'PRO' || targetPlan === 'ULTRA') {
+      setSelectedUpgradePlan(targetPlan);
       setIsCheckoutOpen(true);
     } else {
       handleDowngrade();
@@ -113,7 +116,7 @@ export default function Pricing() {
     setUpgrading(true);
     try {
       const ref = doc(db, 'users', auth.currentUser.uid, 'subscription', 'details');
-      await setDoc(ref, { plan: 'PRO' }, { merge: true });
+      await setDoc(ref, { plan: selectedUpgradePlan }, { merge: true });
       setTimeout(() => {
         setUpgrading(false);
         window.location.reload();
@@ -138,187 +141,155 @@ export default function Pricing() {
       {/* Header */}
       <div className="text-center max-w-xl mx-auto mb-10">
         <motion.h1 
-          initial={{ opacity: 0, y: 15 }}
+          initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-4xl md:text-5xl font-black font-clash tracking-tight mb-3"
+          className="text-3xl font-black tracking-tight text-[#FFFFFF] mb-3 font-clash uppercase"
         >
-          Выберите свой план
+          Тарифные планы
         </motion.h1>
-        <motion.p 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          className="text-base text-[#98989D] font-medium leading-relaxed"
-        >
-          Инвестируйте в свое обучение с AI-ментором, персонализированными траекториями и интерактивным графом знаний.
-        </motion.p>
-      </div>
+        <p className="text-xs text-[#98989D] leading-relaxed">
+          Выберите подходящий уровень для достижения ваших целей обучения. Сгенерируйте индивидуальные курсы с использованием ИИ.
+        </p>
 
-      {/* Segmented iOS Period Toggle */}
-      <div className="flex justify-center mb-12">
-        <div className="relative bg-[#1C1C1E] p-1 rounded-full flex items-center border border-[rgba(255,255,255,0.06)] shadow-inner">
-          <button
+        {/* Toggle Billing Period */}
+        <div className="inline-flex bg-[#1C1C1E] p-1 rounded-xl border border-[rgba(255,255,255,0.06)] mt-8">
+          <button 
             onClick={() => setBillingPeriod('monthly')}
-            className={`relative px-5 py-2 text-xs font-semibold rounded-full transition-all leading-none ${
-              billingPeriod === 'monthly' ? 'text-[#000000] bg-[#FFFFFF] shadow-sm' : 'text-[#98989D] hover:text-[#FFFFFF]'
+            className={`px-4 py-2 text-[10px] font-bold rounded-lg transition-all ${
+              billingPeriod === 'monthly' ? 'bg-[#FFFFFF] text-[#000000] shadow-sm' : 'text-[#98989D] hover:text-[#FFFFFF]'
             }`}
           >
-            Месяц
+            Ежемесячно
           </button>
-          <button
+          <button 
             onClick={() => setBillingPeriod('yearly')}
-            className={`relative px-5 py-2 text-xs font-semibold rounded-full transition-all leading-none flex items-center gap-1.5 ${
-              billingPeriod === 'yearly' ? 'text-[#000000] bg-[#FFFFFF] shadow-sm' : 'text-[#98989D] hover:text-[#FFFFFF]'
+            className={`px-4 py-2 text-[10px] font-bold rounded-lg transition-all flex items-center gap-1.5 ${
+              billingPeriod === 'yearly' ? 'bg-[#FFFFFF] text-[#000000] shadow-sm' : 'text-[#98989D] hover:text-[#FFFFFF]'
             }`}
           >
-            Год
-            <span className={`text-[9px] font-mono font-bold leading-none ${billingPeriod === 'yearly' ? 'text-[#636366]' : 'text-[#8E8E93]'}`}>
-              -20%
-            </span>
+            Ежегодно
+            <span className="bg-[#2C2C2E]/60 text-[#30D158] text-[8px] font-mono px-1.5 py-0.5 rounded border border-[#30D158]/20 uppercase tracking-wide">Скидка 15%</span>
           </button>
         </div>
       </div>
 
       {/* Cards Grid */}
-      <div className={`mx-auto gap-8 items-stretch mb-16 ${
-        plan === 'PRO' 
-          ? 'max-w-[450px] grid grid-cols-1' 
-          : 'max-w-[900px] grid grid-cols-1 md:grid-cols-2'
-      }`}>
+      <div className="mx-auto gap-8 items-stretch mb-16 max-w-[1100px] grid grid-cols-1 md:grid-cols-3">
         
         {/* FREE PLAN CARD */}
-        {plan !== 'PRO' && (
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ type: 'spring', stiffness: 200, damping: 22 }}
-            className={`bg-[#1C1C1E] border ${
-              plan === 'FREE' ? 'border-[#FFFFFF]/25' : 'border-[rgba(255,255,255,0.06)]'
-            } rounded-[2rem] p-8 flex flex-col justify-between relative`}
-          >
-            <div>
-              <div className="mb-6">
-                <h3 className="text-xl font-bold tracking-tight text-[#FFFFFF] mb-1">Free</h3>
-                <p className="text-xs text-[#98989D] font-medium">Базовое знакомство с платформой</p>
-              </div>
-
-              <div className="mb-8">
-                <span className="text-4xl font-black font-clash tracking-tight text-[#FFFFFF]">$0</span>
-                <span className="text-xs text-[#98989D] block mt-1">Всегда бесплатно</span>
-              </div>
-
-              {/* Checklist */}
-              <ul className="space-y-4 mb-8">
-                <li className="flex items-start gap-3 text-sm">
-                  <Check className="w-5 h-5 text-[#8E8E93] shrink-0 mt-0.5" strokeWidth={2} />
-                  <span className="text-[#F5F5F7] leading-tight">1 Сгенерированный курс в месяц</span>
-                </li>
-                <li className="flex items-start gap-3 text-sm">
-                  <Check className="w-5 h-5 text-[#8E8E93] shrink-0 mt-0.5" strokeWidth={2} />
-                  <span className="text-[#F5F5F7] leading-tight">5 пробных сообщений AI-ментору</span>
-                </li>
-                <li className="flex items-start gap-3 text-sm">
-                  <Check className="w-5 h-5 text-[#8E8E93] shrink-0 mt-0.5" strokeWidth={2} />
-                  <span className="text-[#F5F5F7] leading-tight">Базовый интерактивный граф знаний</span>
-                </li>
-                <li className="flex items-start gap-3 text-sm text-[#98989D]/60">
-                  <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
-                  <span className="leading-tight">Полная аналитика прогресса</span>
-                </li>
-                <li className="flex items-start gap-3 text-sm text-[#98989D]/60">
-                  <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
-                  <span className="leading-tight">Доступ к Алмазной и Магистр лигам</span>
-                </li>
-              </ul>
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ type: 'spring', stiffness: 200, damping: 22 }}
+          className={`bg-surface-container border ${
+            plan === 'FREE' ? 'border-outline bg-surface-container-high' : 'border-outline-variant'
+          } rounded-[2rem] p-8 flex flex-col justify-between relative`}
+        >
+          <div>
+            <div className="mb-6">
+              <h3 className="text-xl font-bold tracking-tight text-on-surface mb-1">Free</h3>
+              <p className="text-xs text-on-surface-variant font-medium">Базовое знакомство с платформой</p>
             </div>
 
-            <div>
-              {plan === 'FREE' ? (
-                <button 
-                  disabled 
-                  className="w-full py-4 rounded-2xl font-bold bg-transparent border border-[rgba(255,255,255,0.08)] text-[#98989D] text-xs cursor-default"
-                >
-                  Текущий тариф
-                </button>
-              ) : (
-                <button 
-                  onClick={() => handleSelectPlan('FREE')}
-                  className="w-full py-4 rounded-2xl font-bold bg-transparent border border-[rgba(255,255,255,0.15)] text-[#FFFFFF] hover:bg-[rgba(255,255,255,0.04)] active:scale-[0.98] transition-all text-xs"
-                >
-                  Перейти на Free
-                </button>
-              )}
+            <div className="mb-8">
+              <span className="text-4xl font-black font-clash tracking-tight text-on-surface">$0</span>
+              <span className="text-xs text-on-surface-variant block mt-1">Всегда бесплатно</span>
             </div>
-          </motion.div>
-        )}
+
+            {/* Checklist */}
+            <ul className="space-y-4 mb-8">
+              <li className="flex items-start gap-3 text-sm">
+                <Check className="w-5 h-5 text-[#8E8E93] shrink-0 mt-0.5" strokeWidth={2} />
+                <span className="text-[#F5F5F7] leading-tight">1 Сгенерированный курс</span>
+              </li>
+              <li className="flex items-start gap-3 text-sm">
+                <Check className="w-5 h-5 text-[#8E8E93] shrink-0 mt-0.5" strokeWidth={2} />
+                <span className="text-[#F5F5F7] leading-tight">5 пробных сообщений AI-ментору</span>
+              </li>
+              <li className="flex items-start gap-3 text-sm text-[#98989D]/60">
+                <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
+                <span className="leading-tight">Интерактивная практика и код-ревью</span>
+              </li>
+              <li className="flex items-start gap-3 text-sm text-[#98989D]/60">
+                <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
+                <span className="leading-tight">RAG: Генерация из PDF/YouTube</span>
+              </li>
+              <li className="flex items-start gap-3 text-sm text-[#98989D]/60">
+                <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
+                <span className="leading-tight">Mock Interview & Экспорт</span>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            {plan === 'FREE' ? (
+              <button 
+                disabled 
+                className="w-full py-4 rounded-2xl font-bold bg-transparent border border-[rgba(255,255,255,0.08)] text-[#98989D] text-xs cursor-default"
+              >
+                Текущий тариф
+              </button>
+            ) : (
+              <button 
+                onClick={() => handleDowngrade()}
+                className="w-full py-4 rounded-2xl font-bold bg-transparent border border-[rgba(255,255,255,0.15)] text-[#FFFFFF] hover:bg-[rgba(255,255,255,0.04)] active:scale-[0.98] transition-all text-xs"
+              >
+                Перейти на Free
+              </button>
+            )}
+          </div>
+        </motion.div>
 
         {/* PRO PLAN CARD (ACCENTED) */}
         <motion.div 
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ type: 'spring', stiffness: 200, damping: 22 }}
-          className={`bg-[#1C1C1E] rounded-[2rem] p-8 flex flex-col justify-between relative scale-[1.03] shadow-[0_30px_70px_rgba(255,255,255,0.04)] md:z-10 border-[2px] ${
-            (plan === 'PRO' && dbBillingPeriod === billingPeriod) || plan !== 'PRO'
-              ? 'border-[#FFFFFF]'
-              : 'border-[rgba(255,255,255,0.06)]'
+          className={`bg-surface-container rounded-[2rem] p-8 flex flex-col justify-between relative border-[2px] ${
+            plan === 'PRO' ? 'border-primary bg-surface-container-high' : 'border-outline-variant'
           }`}
         >
-          {/* Recommended Tag */}
-          {plan !== 'PRO' && (
-            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#2C2C2E] text-[#FFFFFF] border border-[rgba(255,255,255,0.1)] px-3 py-1 rounded-full text-[9px] font-bold tracking-wider uppercase font-sans">
-              Рекомендуется
-            </div>
-          )}
-
           <div>
-            <div className="mb-6 flex justify-between items-start">
-              <div>
-                <h3 className="text-xl font-bold tracking-tight text-[#FFFFFF] mb-1 flex items-center gap-1.5">
-                  Pro <Crown className="w-4 h-4 text-[#FFFFFF]" strokeWidth={2} />
-                </h3>
-                <p className="text-xs text-[#98989D] font-medium">Безлимитное и адаптивное обучение</p>
-              </div>
+            <div className="mb-6">
+              <h3 className="text-xl font-bold tracking-tight text-on-surface mb-1 flex items-center gap-1.5">
+                Pro <Crown className="w-4 h-4 text-on-surface" strokeWidth={2} />
+              </h3>
+              <p className="text-xs text-on-surface-variant font-medium">Безлимитное и адаптивное обучение</p>
             </div>
 
             <div className="mb-8">
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-black font-clash tracking-tight text-[#FFFFFF] font-mono tabular-nums">
-                  {billingPeriod === 'monthly' ? '$10' : '$8.33'}
+                <span className="text-4xl font-black font-clash tracking-tight text-on-surface font-mono tabular-nums">
+                  {billingPeriod === 'monthly' ? '$9.99' : '$7.50'}
                 </span>
-                <span className="text-xs text-[#98989D] font-medium">
-                  /мес
-                </span>
+                <span className="text-xs text-on-surface-variant font-medium">/мес</span>
               </div>
-              <span className="text-[10px] text-[#8E8E93] block mt-1 font-sans">
-                {billingPeriod === 'monthly' ? 'Оплата ежемесячно ($10)' : 'Оплата ежегодно ($100)'}
+              <span className="text-[10px] text-on-surface-variant block mt-1 font-sans">
+                {billingPeriod === 'monthly' ? 'Оплата ежемесячно ($9.99)' : 'Оплата ежегодно ($89.99)'}
               </span>
             </div>
 
             {/* Checklist */}
             <ul className="space-y-4 mb-8">
               <li className="flex items-start gap-3 text-sm">
-                <Check className="w-5 h-5 text-[#FFFFFF] shrink-0 mt-0.5" strokeWidth={2.5} />
-                <span className="text-[#FFFFFF] font-medium leading-tight">Безлимитная генерация курсов</span>
+                <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" strokeWidth={2.5} />
+                <span className="text-on-surface font-medium leading-tight">Безлимитная генерация курсов</span>
               </li>
               <li className="flex items-start gap-3 text-sm">
-                <Check className="w-5 h-5 text-[#FFFFFF] shrink-0 mt-0.5" strokeWidth={2.5} />
-                <span className="text-[#FFFFFF] font-medium leading-tight">AI-ментор с памятью о сессиях (50/день)</span>
+                <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" strokeWidth={2.5} />
+                <span className="text-on-surface font-medium leading-tight">AI-ментор (50 сообщений в день)</span>
               </li>
               <li className="flex items-start gap-3 text-sm">
-                <Check className="w-5 h-5 text-[#FFFFFF] shrink-0 mt-0.5" strokeWidth={2.5} />
-                <span className="text-[#FFFFFF] font-medium leading-tight">Полный доступ к аналитике прогресса</span>
+                <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" strokeWidth={2.5} />
+                <span className="text-on-surface font-medium leading-tight">Доступ к Алмазной и Магистр лигам</span>
               </li>
-              <li className="flex items-start gap-3 text-sm">
-                <Check className="w-5 h-5 text-[#FFFFFF] shrink-0 mt-0.5" strokeWidth={2.5} />
-                <span className="text-[#FFFFFF] font-medium leading-tight">Все лиги (включая Алмазную и Магистров)</span>
+              <li className="flex items-start gap-3 text-sm text-[#98989D]/60">
+                <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
+                <span className="leading-tight">Интерактивная практика и код-ревью</span>
               </li>
-              <li className="flex items-start gap-3 text-sm">
-                <Check className="w-5 h-5 text-[#FFFFFF] shrink-0 mt-0.5" strokeWidth={2.5} />
-                <span className="text-[#FFFFFF] font-medium leading-tight">Сертификаты по завершению курсов</span>
-              </li>
-              <li className="flex items-start gap-3 text-sm">
-                <Check className="w-5 h-5 text-[#FFFFFF] shrink-0 mt-0.5" strokeWidth={2.5} />
-                <span className="text-[#FFFFFF] font-medium leading-tight">Приоритетная поддержка 24/7</span>
+              <li className="flex items-start gap-3 text-sm text-[#98989D]/60">
+                <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
+                <span className="leading-tight">RAG: Генерация по PDF/YouTube</span>
               </li>
             </ul>
           </div>
@@ -331,7 +302,7 @@ export default function Pricing() {
                     <span className="text-[10px] text-[#8E8E93] uppercase tracking-wider block mb-1">Сведения о подписке</span>
                     <span className="text-xs text-white block mb-1 font-bold">Тариф YourWay Pro · Активен</span>
                     <span className="text-[11px] text-[#98989D] block">
-                      Автоматическое продление: {getRenewalDate()}
+                      Продление: {getRenewalDate()}
                     </span>
                   </div>
                   <button 
@@ -346,7 +317,7 @@ export default function Pricing() {
                   onClick={() => handleSelectPlan('PRO')}
                   className="w-full py-4 rounded-2xl font-bold bg-[#FFFFFF] text-[#000000] hover:bg-[#F5F5F7] active:scale-[0.98] transition-all text-xs shadow-md"
                 >
-                  {billingPeriod === 'yearly' ? 'Перейти на годовой тариф' : 'Перейти на месячный тариф'}
+                  {billingPeriod === 'yearly' ? 'Перейти на годовой Pro' : 'Перейти на месячный Pro'}
                 </button>
               )
             ) : (
@@ -359,46 +330,184 @@ export default function Pricing() {
             )}
           </div>
         </motion.div>
+
+        {/* ULTRA PLAN CARD (PREMIUM PURPLE GLOW) */}
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ type: 'spring', stiffness: 200, damping: 22 }}
+          className={`bg-gradient-to-b from-surface-container to-indigo-50 dark:to-[#1E1B4B]/80 rounded-[2rem] p-8 flex flex-col justify-between relative border-[2px] shadow-[0_30px_70px_rgba(99,102,241,0.06)] ${
+            plan === 'ULTRA' ? 'border-[#818CF8] bg-indigo-50/50 dark:bg-[#1E1B4B]/20' : 'border-indigo-500/20 hover:border-indigo-500/50'
+          }`}
+        >
+          {/* Badge */}
+          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-indigo-600 text-[#FFFFFF] px-3 py-1 rounded-full text-[9px] font-bold tracking-wider uppercase font-sans flex items-center gap-1 shadow-md shadow-indigo-950/55">
+            <span className="material-symbols-outlined text-[10px] icon-filled text-white animate-pulse">star</span> Элитный тариф
+          </div>
+
+          <div>
+            <div className="mb-6">
+              <h3 className="text-xl font-bold tracking-tight text-on-surface mb-1 flex items-center gap-1.5">
+                Ultra <span className="text-[10px] font-black bg-indigo-500 text-white px-1.5 py-0.5 rounded leading-none">ULTRA</span>
+              </h3>
+              <p className="text-xs text-indigo-600 dark:text-indigo-300 font-medium">Максимальный AI-арсенал YourWay</p>
+            </div>
+
+            <div className="mb-8">
+              <div className="flex items-baseline gap-1">
+                <span className="text-4xl font-black font-clash tracking-tight text-on-surface font-mono tabular-nums">
+                  {billingPeriod === 'monthly' ? '$29.99' : '$20.83'}
+                </span>
+                <span className="text-xs text-on-surface-variant font-medium">/мес</span>
+              </div>
+              <span className="text-[10px] text-indigo-600 dark:text-indigo-300 block mt-1 font-sans">
+                {billingPeriod === 'monthly' ? 'Оплата ежемесячно ($29.99)' : 'Оплата ежегодно ($249.99)'}
+              </span>
+            </div>
+
+            {/* Checklist */}
+            <ul className="space-y-3.5 mb-8 text-left">
+              <li className="flex items-start gap-2.5 text-xs text-on-surface">
+                <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
+                <span className="leading-tight">Безлимитный AI-ментор (без лимита сообщений)</span>
+              </li>
+              <li className="flex items-start gap-2.5 text-xs text-on-surface">
+                <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
+                <span className="leading-tight">Интерактивный брифинг-составление курсов</span>
+              </li>
+              <li className="flex items-start gap-2.5 text-xs text-on-surface">
+                <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
+                <span className="leading-tight">RAG: Импорт PDF, YouTube и веб-документации</span>
+              </li>
+              <li className="flex items-start gap-2.5 text-xs text-on-surface">
+                <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
+                <span className="leading-tight">AI Code Review: анализ кода на ошибки и уязвимости</span>
+              </li>
+              <li className="flex items-start gap-2.5 text-xs text-on-surface">
+                <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
+                <span className="leading-tight">Адаптивный Граф знаний (авто-микромодули)</span>
+              </li>
+              <li className="flex items-start gap-2.5 text-xs text-on-surface">
+                <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
+                <span className="leading-tight">AI Mock Interview: HR & Tech-симулятор в финале</span>
+              </li>
+              <li className="flex items-start gap-2.5 text-xs text-on-surface">
+                <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
+                <span className="leading-tight">Экспорт лекций и карточек в Notion & Anki</span>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            {plan === 'ULTRA' ? (
+              dbBillingPeriod === billingPeriod ? (
+                <div className="space-y-4">
+                  <div className="bg-indigo-950/40 border border-indigo-500/20 rounded-2xl p-4 text-left select-none">
+                    <span className="text-[10px] text-indigo-300 uppercase tracking-wider block mb-1">Сведения о подписке</span>
+                    <span className="text-xs text-white block mb-1 font-bold font-clash">Тариф YourWay Ultra · Активен</span>
+                    <span className="text-[11px] text-zinc-300 block">
+                      Продление: {getRenewalDate()}
+                    </span>
+                  </div>
+                  <button 
+                    onClick={() => setIsCancelModalOpen(true)}
+                    className="w-full py-3.5 rounded-2xl font-bold bg-transparent border border-red-500/30 text-red-400 hover:bg-red-500/10 active:scale-[0.98] transition-all text-xs"
+                  >
+                    Отменить подписку
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => handleSelectPlan('ULTRA')}
+                  className="w-full py-4 rounded-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-400 hover:to-purple-500 active:scale-[0.98] transition-all text-xs shadow-md"
+                >
+                  {billingPeriod === 'yearly' ? 'Перейти на годовой Ultra' : 'Перейти на месячный Ultra'}
+                </button>
+              )
+            ) : (
+              <button 
+                onClick={() => handleSelectPlan('ULTRA')}
+                className="w-full py-4 rounded-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-400 hover:to-purple-500 active:scale-[0.98] transition-all text-xs shadow-md shadow-indigo-900/40"
+              >
+                Активировать Ultra
+              </button>
+            )}
+          </div>
+        </motion.div>
       </div>
 
-      {/* Active PRO features grid (Large features cards) */}
-      {plan === 'PRO' && (
+      {/* Active Features Info Cards */}
+      {(plan === 'PRO' || plan === 'ULTRA') && (
         <div className="max-w-[900px] mx-auto mt-16 mb-12 text-center">
-          <h2 className="text-xl font-bold tracking-tight text-white mb-8 font-clash uppercase">
-            Вам доступны все возможности PRO
+          <h2 className="text-xl font-bold tracking-tight text-on-surface mb-8 font-clash uppercase">
+            Вам доступны возможности тарифа {plan}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[
-              {
-                title: 'Безлимитные курсы',
-                desc: 'Создавайте неограниченное количество дорожных карт любой сложности. Генерируйте расширенные разделы с максимальной глубиной.',
-                icon: '📚'
-              },
-              {
-                title: 'AI-Ментор с памятью',
-                desc: 'Глубокий контекст обучения. Ментор помнит все предыдущие вопросы, сохраняет историю переписки и адаптируется под ваши цели.',
-                icon: '🧠'
-              },
-              {
-                title: 'Доступ ко всем лигам',
-                desc: 'Вы больше не ограничены лигой Графит. Соревнуйтесь в Кварцевой, Обсидиановой, Платиновой и легендарной Титановой лигах.',
-                icon: '🏆'
-              },
-              {
-                title: 'Официальные сертификаты',
-                desc: 'Генерируйте верифицируемые PDF-сертификаты после завершения курсов для подтверждения ваших профессиональных навыков.',
-                icon: '🎓'
-              }
-            ].map((feat, i) => (
-              <div 
-                key={i} 
-                className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.06)] rounded-[1.5rem] p-6 text-left hover:border-white/20 transition-colors"
-              >
-                <div className="text-2xl mb-3">{feat.icon}</div>
-                <h3 className="text-sm font-bold text-white mb-2">{feat.title}</h3>
-                <p className="text-xs text-[#98989D] leading-relaxed">{feat.desc}</p>
-              </div>
-            ))}
+            {plan === 'ULTRA' ? (
+              [
+                {
+                  title: 'RAG: Генерация по материалам',
+                  desc: 'Загрузите PDF книгу, статью или документацию, вставьте YouTube лекцию — искусственный интеллект сгенерирует курс и граф знаний на их основе.',
+                  icon: '📖'
+                },
+                {
+                  title: 'AI Code Review и интерактивная практика',
+                  desc: 'Пишите реальный код непосредственно в окне урока. AI-эксперт проверит код-стайл, укажет на утечки, ошибки и уязвимости.',
+                  icon: '💻'
+                },
+                {
+                  title: 'Адаптивный Граф знаний',
+                  desc: 'Если тесты по ноде пройдены с низким результатом, система автоматически перестраивает граф, генерируя микро-модули закрытия пробелов.',
+                  icon: '🧬'
+                },
+                {
+                  title: 'Симуляция собеседований',
+                  desc: 'Mock-интервью в конце курсов. Голосовой/текстовый тренажер, оценивающий вас по вопросам HR и Tech-лидов.',
+                  icon: '🤝'
+                }
+              ].map((feat, i) => (
+                <div 
+                  key={i} 
+                  className="bg-[#1C1C1E] border border-indigo-500/20 rounded-[1.5rem] p-6 text-left hover:border-indigo-400/50 transition-colors shadow-inner"
+                >
+                  <div className="text-2xl mb-3">{feat.icon}</div>
+                  <h3 className="text-sm font-bold text-white mb-2">{feat.title}</h3>
+                  <p className="text-xs text-[#98989D] leading-relaxed">{feat.desc}</p>
+                </div>
+              ))
+            ) : (
+              [
+                {
+                  title: 'Безлимитные курсы',
+                  desc: 'Создавайте неограниченное количество дорожных карт любой сложности. Генерируйте расширенные разделы с максимальной глубиной.',
+                  icon: '📚'
+                },
+                {
+                  title: 'AI-Ментор с памятью',
+                  desc: 'Глубокий контекст обучения. Ментор помнит все предыдущие вопросы, сохраняет историю переписки и адаптируется под ваши цели.',
+                  icon: '🧠'
+                },
+                {
+                  title: 'Доступ ко всем лигам',
+                  desc: 'Вы больше не ограничены лигой Графит. Соревнуйтесь в Кварцевой, Обсидиановой, Платиновой и легендарной Титановой лигах.',
+                  icon: '🏆'
+                },
+                {
+                  title: 'Официальные сертификаты',
+                  desc: 'Генерируйте верифицируемые PDF-сертификаты после завершения курсов для подтверждения ваших профессиональных навыков.',
+                  icon: '🎓'
+                }
+              ].map((feat, i) => (
+                <div 
+                  key={i} 
+                  className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.06)] rounded-[1.5rem] p-6 text-left hover:border-white/20 transition-colors"
+                >
+                  <div className="text-2xl mb-3">{feat.icon}</div>
+                  <h3 className="text-sm font-bold text-white mb-2">{feat.title}</h3>
+                  <p className="text-xs text-[#98989D] leading-relaxed">{feat.desc}</p>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
@@ -421,7 +530,7 @@ export default function Pricing() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="max-w-[700px] mx-auto bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[2rem] p-8 overflow-x-auto"
+            className="max-w-[800px] mx-auto bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[2rem] p-8 overflow-x-auto"
           >
             <table className="w-full text-left text-xs leading-normal">
               <thead>
@@ -429,44 +538,58 @@ export default function Pricing() {
                   <th className="pb-4 font-bold text-[#8E8E93]">Функция</th>
                   <th className="pb-4 text-center font-bold text-[#8E8E93]">Free</th>
                   <th className="pb-4 text-center font-bold text-[#FFFFFF]">Pro</th>
+                  <th className="pb-4 text-center font-bold text-indigo-400">Ultra</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[rgba(255,255,255,0.04)] font-sans">
                 {/* Courses */}
                 <tr>
                   <td className="py-4 text-[#F5F5F7]">Генерация дорожных карт</td>
-                  <td className="text-center py-4 text-[#98989D]">2 курса в месяц</td>
+                  <td className="text-center py-4 text-[#98989D]">2 курса / мес</td>
                   <td className="text-center py-4 text-[#FFFFFF] font-bold">Безлимитно</td>
+                  <td className="text-center py-4 text-indigo-300 font-bold">Безлимитно</td>
                 </tr>
                 {/* AI Mentor */}
                 <tr>
                   <td className="py-4 text-[#F5F5F7]">Интерактивный AI-ментор</td>
                   <td className="text-center py-4 text-[#98989D]">5 сообщений</td>
-                  <td className="text-center py-4 text-[#FFFFFF] font-bold">50 обращений в день</td>
+                  <td className="text-center py-4 text-[#FFFFFF] font-bold">50 сообщ/день</td>
+                  <td className="text-center py-4 text-indigo-300 font-bold">Без ограничений</td>
                 </tr>
-                {/* Knowledge Graph */}
+                {/* RAG Generation */}
                 <tr>
-                  <td className="py-4 text-[#F5F5F7]">Граф знаний</td>
-                  <td className="text-center py-4 text-[#98989D]">Базовый</td>
-                  <td className="text-center py-4 text-[#FFFFFF] font-bold">Полная кастомизация</td>
-                </tr>
-                {/* Analytics */}
-                <tr>
-                  <td className="py-4 text-[#F5F5F7]">Аналитика и инсайты</td>
+                  <td className="py-4 text-[#F5F5F7]">RAG (PDF, YouTube лекции)</td>
                   <td className="text-center py-4 text-[#98989D]"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
-                  <td className="text-center py-4 text-[#FFFFFF] font-bold">Включено (полный доступ)</td>
-                </tr>
-                {/* Leagues */}
-                <tr>
-                  <td className="py-4 text-[#F5F5F7]">Доступ к элитным лигам</td>
-                  <td className="text-center py-4 text-[#98989D]">Базовые лиги</td>
-                  <td className="text-center py-4 text-[#FFFFFF] font-bold">Все лиги (Diamond + Master)</td>
-                </tr>
-                {/* Certificates */}
-                <tr>
-                  <td className="py-4 text-[#F5F5F7]">Сертификация выпускников</td>
                   <td className="text-center py-4 text-[#98989D]"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
-                  <td className="text-center py-4 text-[#FFFFFF] font-bold">Включено</td>
+                  <td className="text-center py-4 text-indigo-300 font-bold">Включено</td>
+                </tr>
+                {/* Code review */}
+                <tr>
+                  <td className="py-4 text-[#F5F5F7]">AI Code Review и практика программирования</td>
+                  <td className="text-center py-4 text-[#98989D]"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
+                  <td className="text-center py-4 text-[#98989D]"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
+                  <td className="text-center py-4 text-indigo-300 font-bold">Включено</td>
+                </tr>
+                {/* Adaptive Graph */}
+                <tr>
+                  <td className="py-4 text-[#F5F5F7]">Адаптивный граф (микромодули)</td>
+                  <td className="text-center py-4 text-[#98989D]"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
+                  <td className="text-center py-4 text-[#FFFFFF] font-bold">Частично</td>
+                  <td className="text-center py-4 text-indigo-300 font-bold">Полное покрытие</td>
+                </tr>
+                {/* Mock Interview */}
+                <tr>
+                  <td className="py-4 text-[#F5F5F7]">ИнтервьюHR / Tech-лид</td>
+                  <td className="text-center py-4 text-[#98989D]"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
+                  <td className="text-center py-4 text-[#98989D]"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
+                  <td className="text-center py-4 text-indigo-300 font-bold">Включено</td>
+                </tr>
+                {/* Export */}
+                <tr>
+                  <td className="py-4 text-[#F5F5F7]">Экспорт в Notion и Anki</td>
+                  <td className="text-center py-4 text-[#98989D]"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
+                  <td className="text-center py-4 text-[#98989D]"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
+                  <td className="text-center py-4 text-indigo-300 font-bold">Включено</td>
                 </tr>
               </tbody>
             </table>
@@ -478,7 +601,6 @@ export default function Pricing() {
       <AnimatePresence>
         {isCheckoutOpen && (
           <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
-            {/* Backdrop blur */}
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -492,7 +614,6 @@ export default function Pricing() {
               className="absolute inset-0 bg-black/75 backdrop-blur-md"
             />
 
-            {/* Modal box */}
             <motion.div 
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -501,28 +622,25 @@ export default function Pricing() {
             >
               {checkoutStage === 'input' && (
                 <>
-                  <h3 className="text-xl font-bold text-white mb-1 font-clash">Оформление подписки PRO</h3>
+                  <h3 className="text-xl font-bold text-white mb-1 font-clash">Оформление подписки {selectedUpgradePlan}</h3>
                   <p className="text-xs text-[#98989D] mb-6">
-                    Тариф: {billingPeriod === 'monthly' ? 'Ежемесячный ($10/мес)' : 'Ежегодный ($100/год)'}
+                    Тариф: {selectedUpgradePlan} ({billingPeriod === 'monthly' ? `Ежемесячный - $${selectedUpgradePlan === 'ULTRA' ? '29.99' : '9.99'}/мес` : `Ежегодный - $${selectedUpgradePlan === 'ULTRA' ? '249.99' : '89.99'}/год`})
                   </p>
 
-                  {/* Credit Card Mock Visual */}
                   <div className="w-full aspect-[1.586/1] bg-gradient-to-br from-[#2C2C2E] to-[#1C1C1E] rounded-2xl p-6 text-left border border-white/10 relative overflow-hidden mb-6 shadow-inner select-none">
-                    {/* Subtle lines inside card */}
                     <svg className="absolute inset-0 w-full h-full text-white opacity-[0.03] stroke-current stroke-[0.5] fill-none" viewBox="0 0 100 60" preserveAspectRatio="none">
                       <circle cx="50" cy="30" r="25" />
                       <circle cx="50" cy="30" r="15" />
                     </svg>
                     
                     <div className="flex justify-between items-start mb-6">
-                      <span className="text-[10px] font-mono tracking-widest text-[#8E8E93] uppercase">YourWay PRO</span>
+                      <span className="text-[10px] font-mono tracking-widest text-[#8E8E93] uppercase">YourWay {selectedUpgradePlan}</span>
                       <svg className="w-8 h-8 text-white opacity-40 fill-current" viewBox="0 0 24 24">
                         <circle cx="8" cy="12" r="6" />
                         <circle cx="16" cy="12" r="6" />
                       </svg>
                     </div>
 
-                    {/* Card Number */}
                     <div className="text-base md:text-lg font-mono tracking-wider tabular-nums text-white mb-6">
                       {cardNumber || '•••• •••• •••• ••••'}
                     </div>
@@ -543,7 +661,6 @@ export default function Pricing() {
                     </div>
                   </div>
 
-                  {/* Form fields */}
                   <div className="space-y-4 text-left">
                     <div>
                       <label className="text-[10px] text-[#8E8E93] uppercase tracking-wider block mb-1">Имя на карте</label>
@@ -618,7 +735,7 @@ export default function Pricing() {
                       onClick={handleSubmitPayment}
                       className="flex-1 py-3 rounded-xl bg-white text-black hover:bg-[#E8E8ED] transition-colors text-xs font-bold"
                     >
-                      Оплатить {billingPeriod === 'monthly' ? '$10' : '$100'}
+                      Оплатить {selectedUpgradePlan === 'ULTRA' ? (billingPeriod === 'monthly' ? '$29.99' : '$249.99') : (billingPeriod === 'monthly' ? '$9.99' : '$89.99')}
                     </button>
                   </div>
                 </>
@@ -635,21 +752,56 @@ export default function Pricing() {
               )}
 
               {checkoutStage === 'success' && (
-                <div className="py-8 flex flex-col items-center justify-center gap-4">
-                  <div className="w-16 h-16 bg-white/5 border border-white/20 rounded-full flex items-center justify-center text-white mb-2 shadow-lg">
-                    <Check className="w-8 h-8 text-white animate-pulse" strokeWidth={2.5} />
-                  </div>
-                  <h3 className="text-xl font-bold text-white font-clash">Оплата успешно проведена!</h3>
-                  <p className="text-xs text-[#98989D] max-w-xs leading-relaxed">
-                    Счет оплачен. Подписка PRO успешно активирована. Добро пожаловать в элитный соревновательный клуб YourWay!
-                  </p>
-                  <button
-                    onClick={handleFinishUpgrade}
-                    className="w-full mt-6 py-3 rounded-xl bg-white text-black hover:bg-[#E8E8ED] transition-colors text-xs font-bold"
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }} 
+                  animate={{ opacity: 1, scale: 1 }} 
+                  transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                  className="py-12 flex flex-col items-center justify-center gap-6 relative"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/20 via-purple-500/20 to-pink-500/20 blur-3xl -z-10 rounded-full" />
+                  
+                  <motion.div 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1, rotate: 360 }}
+                    transition={{ type: 'spring', damping: 15, stiffness: 200, delay: 0.1 }}
+                    className="w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 p-[2px] shadow-[0_0_40px_rgba(99,102,241,0.5)]"
                   >
+                    <div className="w-full h-full bg-[#1C1C1E] rounded-full flex items-center justify-center">
+                      <Check className="w-10 h-10 text-indigo-400 drop-shadow-[0_0_15px_rgba(99,102,241,0.8)]" strokeWidth={3} />
+                    </div>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="text-center"
+                  >
+                    <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 font-clash mb-3">
+                      Поздравляем!
+                    </h3>
+                    <p className="text-sm text-[#F5F5F7] max-w-sm mx-auto leading-relaxed font-medium">
+                      Тариф <span className="font-bold text-indigo-400 uppercase tracking-widest">{selectedUpgradePlan}</span> успешно активирован.
+                      <br/>
+                      <span className="text-xs text-[#98989D] mt-2 block">
+                        Откройте для себя новые возможности обучения с ИИ. Добро пожаловать на новый уровень.
+                      </span>
+                    </p>
+                  </motion.div>
+
+                  <motion.button
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleFinishUpgrade}
+                    className="w-full mt-4 py-4 rounded-xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:shadow-[0_0_30px_rgba(99,102,241,0.4)] transition-all flex justify-center items-center gap-2"
+                  >
+                    <Sparkles className="w-5 h-5 fill-current" />
                     Начать обучение
-                  </button>
-                </div>
+                  </motion.button>
+                </motion.div>
               )}
             </motion.div>
           </div>
@@ -660,7 +812,6 @@ export default function Pricing() {
       <AnimatePresence>
         {isCancelModalOpen && (
           <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
-            {/* Backdrop blur */}
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -671,7 +822,6 @@ export default function Pricing() {
               className="absolute inset-0 bg-black/75 backdrop-blur-md"
             />
 
-            {/* Modal box */}
             <motion.div 
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}

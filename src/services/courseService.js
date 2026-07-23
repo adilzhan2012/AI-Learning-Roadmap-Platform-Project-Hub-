@@ -113,8 +113,18 @@ Learning Preferences:
     `.trim();
   }
 
+  let ragContext = '';
+  if (preferences && preferences.ragMode) {
+    if (preferences.ragType === 'pdf') {
+      ragContext = `\nSOURCE MATERIAL FOR GENERATION: The course structure and nodes MUST be generated based on the uploaded file contents: "${preferences.source}". Focus exclusively on topics covered in this material.`;
+    } else {
+      ragContext = `\nSOURCE MATERIAL FOR GENERATION: The course structure and nodes MUST be generated based on the YouTube lecture / documentation link: "${preferences.source}". Analyze the lecture content/link and generate matching lessons.`;
+    }
+  }
+
   const prompt = `You are an expert AI curriculum designer. Build a complete, highly structured learning roadmap for the topic: "${topic}" at difficulty level: "${level}".
 ${prefString}
+${ragContext}
 
 CRITICAL INSTRUCTION: You MUST generate the ENTIRE response (titles, descriptions, labels) in the ${languageName} language.
 The response must be a valid JSON object matching this schema:
@@ -142,10 +152,9 @@ The response must be a valid JSON object matching this schema:
     { "from": 1, "to": 2 }
   ]
 }
-Ensure:
 1. All nodes have a unique sequential numeric id (starting from 1).
 2. The edges represent prerequisites (from must be completed before to).
-3. The graph must respect the requested duration. Express = 3-5 nodes. Standard = 6-10 nodes. Deep Dive = 12-15 nodes. Edges should form a logical, directed acyclic graph (DAG) representing the learning path.
+3. The graph must respect the requested duration. Express = 3-5 nodes. Standard = 6-10 nodes. Deep Dive (months long) = 15-20 nodes. CRITICAL: If the course is intended for multiple months, you MUST generate at least 15 nodes. Edges should form a logical, directed acyclic graph (DAG).
 4. Set the status of the first node (with no prerequisites) to "active" and all other nodes to "locked".
 5. Return ONLY the JSON object, with no markdown formatting tags. Do NOT wrap it in \`\`\`json \`\`\`. Do not include any explanations.`;
 
@@ -620,9 +629,8 @@ ${originalContent}
 
 export async function generateRealWorldExample(topicLabel, topicDesc) {
 
-  const currentLocale = localStorage.getItem('yourway-locale') || 'en';
-  let languageName = 'English';
-  if (currentLocale === 'ru') languageName = 'Russian';
+  const currentLocale = localStorage.getItem('yourway-locale');
+  let languageName = currentLocale === 'en' ? 'English' : 'Russian';
 
   const prompt = `You are a career mentor. The student is learning about "${topicLabel}".
 Context: ${topicDesc}
@@ -645,3 +653,74 @@ export function markdownToSlides(markdown) {
     return { title, body };
   });
 }
+
+export async function rebuildGraphForFailedNode(courseId, nodeId) {
+  const course = await getCourseById(courseId);
+  const failedNode = course.nodes.find(n => String(n.id) === String(nodeId));
+  if (!failedNode) return null;
+
+  // Check if a micro-module for this node already exists to avoid duplicates
+  const alreadyExists = course.nodes.some(n => n.label.includes(`Работа над ошибками: ${failedNode.label}`));
+  if (alreadyExists) return course;
+
+  const newId = Math.max(...course.nodes.map(n => n.id)) + 1;
+
+  const currentLocale = getLocale();
+  let languageName = 'English';
+  if (currentLocale === 'ru') languageName = 'Russian';
+
+  const prompt = `You are a friendly AI tutor correcting student errors.
+The student has failed a test on the topic: "${failedNode.label}".
+Description of topic: "${failedNode.desc}".
+
+Please generate a brief, hyper-focused micro-module lesson content (500-1000 characters) in Markdown explaining the common pitfalls, key rules, and a simple walkthrough that addresses gaps in understanding "${failedNode.label}".
+Provide structured bullet points, examples, and highlight typical mistakes.
+CRITICAL INSTRUCTION: Respond entirely in ${languageName}.`;
+
+  let aiGeneratedContent = '';
+  try {
+    aiGeneratedContent = await callGroqWithRetry(null, prompt, 'ai_question');
+  } catch (e) {
+    console.error("Failed to generate micro-module content via AI", e);
+    aiGeneratedContent = `## Микро-модуль для закрытия пробелов: ${failedNode.label}\n\nЗдесь собраны ключевые моменты и пояснения по теме "${failedNode.label}". Пожалуйста, перечитайте основные материалы и обратитесь к AI-ассистенту за дополнительными вопросами.`;
+  }
+
+  const microNode = {
+    id: newId,
+    label: `🔍 Работа над ошибками: ${failedNode.label}`,
+    desc: `Автоматически сгенерированный микро-модуль для закрытия пробелов по теме "${failedNode.label}".`,
+    hours: '0.5h',
+    lessons: 1,
+    category: 'Работа над ошибками',
+    status: 'active',
+    content: aiGeneratedContent
+  };
+
+  const updatedEdges = [
+    ...course.edges.filter(e => String(e.from) !== String(failedNode.id)),
+    { from: parseInt(failedNode.id, 10), to: newId },
+    ...course.edges.filter(e => String(e.from) === String(failedNode.id)).map(e => ({ from: newId, to: parseInt(e.to, 10) }))
+  ];
+
+  const updatedNodes = course.nodes.map(n => {
+    if (String(n.id) === String(failedNode.id)) {
+      return { ...n, status: 'completed' };
+    }
+    const dependsOnFailedNode = course.edges.some(e => String(e.from) === String(failedNode.id) && String(e.to) === String(n.id));
+    if (dependsOnFailedNode) {
+      return { ...n, status: 'locked' };
+    }
+    return n;
+  });
+
+  const finalNodes = [...updatedNodes, microNode];
+
+  const courseRef = doc(db, 'courses', courseId);
+  await updateDoc(courseRef, {
+    nodes: finalNodes,
+    edges: updatedEdges
+  });
+
+  return { ...course, nodes: finalNodes, edges: updatedEdges };
+}
+

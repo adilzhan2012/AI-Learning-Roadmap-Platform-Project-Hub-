@@ -19,9 +19,10 @@ import { useQuiz } from '../../hooks/useQuiz.js';
 import { usePlanLimits } from '../../hooks/usePlanLimits.js';
 import QuizModal from '../quiz/QuizModal.jsx';
 import UpgradeModal from '../shared/UpgradeModal.jsx';
-import { generateLessonContent, updateNodeStatus, generateELI5Content, generateRealWorldExample, updateNodeFields } from '../../services/courseService.js';
+import { generateLessonContent, updateNodeStatus, generateELI5Content, generateRealWorldExample, updateNodeFields, rebuildGraphForFailedNode, callGroqWithRetry } from '../../services/courseService.js';
 import ReactMarkdown from 'react-markdown';
 import Flashcard from './Flashcard.jsx';
+import ContextualMentor from './ContextualMentor.jsx';
 import { markdownToSlides } from '../../services/courseService.js';
 import SlideViewer from './SlideViewer.jsx';
 import SelectionPopover from '../shared/SelectionPopover.jsx';
@@ -48,13 +49,22 @@ export default function LessonPanel({
   const [quizData, setQuizData] = useState([]);
   
   // Plan limits
-  const { plan, checkLimit, incrementUsage, isUpgradeModalOpen, setUpgradeModalOpen } = usePlanLimits();
+  const { plan, usage, checkLimit, incrementUsage, isUpgradeModalOpen, setUpgradeModalOpen } = usePlanLimits();
 
   // New UX States
   const [isELI5, setIsELI5] = useState(false);
   const [eli5Generating, setEli5Generating] = useState(false);
   const [insight, setInsight] = useState('');
   const [insightGenerating, setInsightGenerating] = useState(false);
+
+  // ULTRA States
+  const [practiceCode, setPracticeCode] = useState('package main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello, Go!")\n}');
+  const [codeReviewResult, setCodeReviewResult] = useState('');
+  const [reviewingCode, setReviewingCode] = useState(false);
+  const [showPractice, setShowPractice] = useState(false);
+  const [practiceAssignment, setPracticeAssignment] = useState('');
+  const [generatingAssignment, setGeneratingAssignment] = useState(false);
+  const [adaptationBanner, setAdaptationBanner] = useState(false);
 
   const [showSlides, setShowSlides] = useState(false);
   const contentRef = React.useRef(null);
@@ -150,7 +160,100 @@ export default function LessonPanel({
            }
         }
       }
+    } else {
+      if (plan === 'ULTRA') {
+        setAdaptationBanner(true);
+        try {
+          const updatedCourse = await rebuildGraphForFailedNode(selectedCourse.id, selectedNode.id);
+          if (updatedCourse) {
+            const updatedNode = updatedCourse.nodes.find(n => n.id === selectedNode.id);
+            if (updatedNode) {
+              onNodeUpdated(updatedNode, updatedCourse);
+            }
+          }
+        } catch (e) {
+          console.error("Adaptive graph rebuild failed:", e);
+        }
+      }
     }
+  };
+
+  const handleRunCodeReview = async () => {
+    if (!practiceCode.trim() || reviewingCode) return;
+    setReviewingCode(true);
+    setCodeReviewResult('');
+    try {
+      const prompt = `You are an expert software developer and security auditor.
+Analyze the following Go/programming code submitted by a student for the lesson: "${selectedNode.label}".
+Topic description: "${selectedNode.desc}"
+Practice assignment: "${practiceAssignment}"
+
+Student Code:
+\`\`\`go
+${practiceCode}
+\`\`\`
+
+INSTRUCTIONS:
+Provide a highly thorough, detailed code review in the Russian language. Include the following sections using Markdown formatting:
+1. **Корректность и логика**: Проверьте на наличие синтаксических ошибок, компиляции или логических багов.
+2. **Стиль и стандарты (Code-Style)**: Укажите, насколько код идиоматичен для Go (например, именование, обработка ошибок, структура).
+3. **Безопасность и уязвимости**: Укажите на возможные утечки памяти, состояния гонки, небезопасные указатели или переполнения.
+4. **Вердикт**: Принят ли код (Пройдено / Не пройдено) и краткое резюме.`;
+      const result = await callGroqWithRetry(null, prompt, 'ai_question');
+      setCodeReviewResult(result);
+      addXP(40, 'AI Code Review пройден');
+    } catch (e) {
+      console.error(e);
+      setCodeReviewResult('❌ Не удалось сгенерировать рецензию ИИ. Пожалуйста, попробуйте еще раз.');
+    } finally {
+      setReviewingCode(false);
+    }
+  };
+
+  const generatePracticeAssignment = async () => {
+    setGeneratingAssignment(true);
+    try {
+      const prompt = `You are a technical mentor. Generate a short, realistic, 1-paragraph programming exercise in the Russian language matching this lesson's topic: "${selectedNode.label}" (${selectedNode.desc}). Focus on core Go concepts.
+Provide a code boilerplate template at the end.`;
+      const result = await callGroqWithRetry(null, prompt, 'ai_question');
+      setPracticeAssignment(result);
+    } catch (e) {
+      console.error(e);
+      setPracticeAssignment('Напишите простую функцию на Go, демонстрирующую концепты этого урока.');
+    } finally {
+      setGeneratingAssignment(false);
+    }
+  };
+
+  const handleExportNotion = () => {
+    const header = `# ${selectedNode.label}\n\n`;
+    const cleanContent = selectedNode.content.replace(/---FLASHCARD---[\s\S]*?---/g, '');
+    const blob = new Blob([header + cleanContent], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${selectedNode.label.replace(/\s+/g, '_')}_notion.md`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportAnki = () => {
+    if (flashcards.length === 0) return;
+    let csvContent = "Question;Answer\n";
+    flashcards.forEach(fc => {
+      const q = fc.term.replace(/"/g, '""');
+      const a = fc.definition.replace(/"/g, '""');
+      csvContent += `"${q}";"${a}"\n`;
+    });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${selectedNode.label.replace(/\s+/g, '_')}_anki.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleELI5Toggle = async () => {
@@ -229,10 +332,24 @@ export default function LessonPanel({
   }
   displayContent = displayContent.replace(flashcardRegex, '').trim();
 
+  const isCodingCourse = selectedCourse && (
+    selectedCourse.title.toLowerCase().includes('go') ||
+    selectedCourse.title.toLowerCase().includes('python') ||
+    selectedCourse.title.toLowerCase().includes('rust') ||
+    selectedCourse.title.toLowerCase().includes('compiler') ||
+    selectedCourse.title.toLowerCase().includes('разработ') ||
+    selectedCourse.title.toLowerCase().includes('программ') ||
+    selectedCourse.title.toLowerCase().includes('code') ||
+    selectedCourse.title.toLowerCase().includes('js') ||
+    selectedCourse.title.toLowerCase().includes('c++') ||
+    selectedCourse.title.toLowerCase().includes('java')
+  );
+
   return (
-    <div className="flex-1 bg-surface border-l border-outline-variant shadow-2xl flex flex-col relative h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 md:p-6 border-b border-outline-variant bg-surface-container-lowest flex-shrink-0">
+    <div className="flex w-full h-full bg-[#09090b]">
+      <div className="flex-1 border-l border-white/10 shadow-2xl flex flex-col relative h-full text-zinc-300 min-w-0">
+        {/* Header */}
+      <div className="flex items-center justify-between p-4 md:p-6 border-b border-white/10 bg-[#09090b] flex-shrink-0">
         <div>
           <span className="text-xs font-bold px-2 py-1 bg-primary/10 text-primary rounded-md mb-2 inline-block">
             {t(selectedCourse.title)}
@@ -242,6 +359,34 @@ export default function LessonPanel({
         <div className="flex items-center gap-2">
           {selectedNode.content && (
             <>
+              {/* Notion/Anki Export */}
+              {plan === 'ULTRA' && (
+                <div className="relative group flex-shrink-0">
+                  <button 
+                    className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-indigo-500/10 text-indigo-400 border border-indigo-500/25 rounded-full transition-colors font-medium text-sm"
+                    title="Экспорт урока"
+                  >
+                    <span>📥 Экспорт</span>
+                  </button>
+                  <div className="absolute right-0 mt-2 w-48 bg-[#1C1C1E] border border-white/10 rounded-xl py-1.5 shadow-xl hidden group-hover:block z-50 text-left">
+                    <button 
+                      onClick={handleExportNotion}
+                      className="w-full text-left px-4 py-2 hover:bg-white/5 text-xs text-zinc-200 transition-colors"
+                    >
+                      📓 Экспорт в Notion (.md)
+                    </button>
+                    {flashcards.length > 0 && (
+                      <button 
+                        onClick={handleExportAnki}
+                        className="w-full text-left px-4 py-2 hover:bg-white/5 text-xs text-zinc-200 transition-colors"
+                      >
+                        📇 Карточки в Anki (.csv)
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <button 
                 onClick={handleRealWorldInsight}
                 disabled={insightGenerating}
@@ -253,22 +398,21 @@ export default function LessonPanel({
               </button>
 
               <button 
-                onClick={handleELI5Toggle}
-                disabled={eli5Generating}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors font-medium text-sm border disabled:opacity-50 ${isELI5 ? 'bg-primary text-on-primary border-primary' : 'hover:bg-primary/10 text-primary border-primary/20'}`}
-                title="Объясни как 5-летнему"
+                onClick={() => alert('В разработке! Опция "Просто о сложном" скоро будет добавлена.')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors font-medium text-sm border opacity-70 hover:bg-primary/10 text-primary border-primary/20`}
+                title="Объясни как 5-летнему (В разработке)"
               >
-                {eli5Generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Baby className="w-4 h-4" />}
-                <span className="hidden md:inline">Просто о сложном</span>
+                <Baby className="w-4 h-4" />
+                <span className="hidden md:inline">Просто о сложном (Скоро)</span>
               </button>
 
               <button 
-                onClick={handleOpenSlides}
-                className="flex items-center gap-2 px-3 py-1.5 hover:bg-surface-container rounded-full transition-colors font-medium text-sm border border-outline-variant text-on-surface-variant"
-                title="Слайды"
+                onClick={() => alert('В разработке! Слайды скоро будут добавлены.')}
+                className="flex items-center gap-2 px-3 py-1.5 hover:bg-surface-container rounded-full transition-colors font-medium text-sm border border-outline-variant text-on-surface-variant opacity-70"
+                title="Слайды (В разработке)"
               >
                 <PlayCircle className="w-4 h-4" />
-                <span className="hidden md:inline">Слайды</span>
+                <span className="hidden md:inline">Слайды (Скоро)</span>
               </button>
             </>
           )}
@@ -293,9 +437,16 @@ export default function LessonPanel({
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto relative custom-scrollbar bg-surface">
+      <div className="flex-1 overflow-y-auto relative custom-scrollbar bg-[#09090b] text-left">
         {selectedNode.content ? (
           <div className="flex flex-col min-h-full">
+            {adaptationBanner && (
+              <div className="mx-6 md:mx-10 mt-6 p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex gap-3 items-center text-xs text-indigo-300">
+                <span>🧬 <strong>AI-Наставник:</strong> Обнаружены пробелы по теме. Граф знаний перестроен, добавлен микро-модуль для закрытия пробелов.</span>
+                <button onClick={() => setAdaptationBanner(false)} className="ml-auto text-indigo-400 hover:text-white">✕</button>
+              </div>
+            )}
+
             {insight && (
               <motion.div 
                 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
@@ -311,7 +462,7 @@ export default function LessonPanel({
               </motion.div>
             )}
 
-            <div className={`p-6 md:p-10 flex-1 w-full mx-auto prose dark:prose-invert prose-primary lg:prose-lg font-sans ${isZenMode ? 'max-w-3xl' : 'max-w-4xl'}`}>
+            <div className={`p-8 md:p-12 flex-1 w-full mx-auto prose dark:prose-invert prose-primary prose-base md:prose-lg prose-p:text-zinc-300 prose-headings:text-zinc-100 prose-p:leading-[1.8] prose-li:leading-[1.8] prose-li:text-zinc-300 prose-strong:text-zinc-200 tracking-normal font-sans ${isZenMode ? 'max-w-2xl' : 'max-w-3xl'}`}>
               <div ref={contentRef} className="relative">
                 <ReactMarkdown>{displayContent}</ReactMarkdown>
                 {selection && (
@@ -322,8 +473,11 @@ export default function LessonPanel({
                     onAskMentor={(sel, q, ans) => {
                       clear();
                       onClose();
-                      sessionStorage.setItem('mentor_initial_prompt', `У меня вопрос по теме "${selectedCourse.title}" -> "${selectedNode.label}".\nЯ выделил текст: "${sel}"\nМой вопрос: "${q}"\nОтвет ИИ: "${ans}"\n\nДавай обсудим это подробнее.`);
-                      navigate('/mentor');
+                      window.dispatchEvent(new CustomEvent('mentor:open', { 
+                        detail: { 
+                          prompt: `У меня вопрос по теме "${selectedCourse.title}" -> "${selectedNode.label}".\nЯ выделил текст: "${sel}"\nМой вопрос: "${q}"\nОтвет ИИ: "${ans}"\n\nДавай обсудим это подробнее.` 
+                        } 
+                      }));
                     }}
                   />
                 )}
@@ -343,9 +497,93 @@ export default function LessonPanel({
                 </div>
               )}
             </div>
+
+            {/* ULTRA Code Practice and AI Code Review Workspace */}
+            {plan === 'ULTRA' && isCodingCourse && (
+              <div className="mx-6 md:mx-10 mb-8 p-6 bg-slate-950/40 border border-indigo-500/20 rounded-2xl not-prose text-left">
+                <div className="flex items-center justify-between mb-4 border-b border-indigo-500/10 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">💻</span>
+                    <h3 className="text-sm font-bold text-white m-0">Практическая зона: AI Code Review</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowPractice(!showPractice);
+                      if (!showPractice && !practiceAssignment) {
+                        generatePracticeAssignment();
+                      }
+                    }}
+                    className="px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 rounded-lg text-xs font-bold transition-all border border-indigo-500/25"
+                  >
+                    {showPractice ? 'Свернуть практику' : 'Открыть практику'}
+                  </button>
+                </div>
+
+                {showPractice && (
+                  <div className="space-y-4">
+                    {generatingAssignment ? (
+                      <div className="flex items-center gap-2 text-zinc-400 text-xs italic">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+                        Составляем задание...
+                      </div>
+                    ) : (
+                      <div className="bg-indigo-950/20 border border-indigo-500/5 p-4 rounded-xl text-zinc-300 text-xs leading-relaxed">
+                        <strong>Задание:</strong> {practiceAssignment || 'Напишите код на Go, решающий задачу из данного урока. Нажмите "Отправить на AI Code Review", чтобы получить полный аудит от AI.'}
+                      </div>
+                    )}
+
+                    <div className="relative">
+                      <label className="text-[10px] text-zinc-500 uppercase tracking-wider block mb-1 font-bold">Код (Go / Другое)</label>
+                      <textarea
+                        rows={12}
+                        value={practiceCode}
+                        onChange={(e) => setPracticeCode(e.target.value)}
+                        className="w-full bg-[#0c0c0e] border border-white/10 rounded-xl p-4 text-xs font-mono text-emerald-400 focus:outline-none focus:border-indigo-500 transition-colors leading-relaxed"
+                        style={{ tabSize: 4 }}
+                      />
+                    </div>
+
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        disabled={reviewingCode || generatingAssignment}
+                        onClick={handleRunCodeReview}
+                        className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5"
+                      >
+                        {reviewingCode ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            Код-ревью в процессе...
+                          </>
+                        ) : (
+                          <>
+                            <span>Отправить на AI Code Review</span>
+                            <Sparkles className="w-3.5 h-3.5 text-white" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {codeReviewResult && (
+                      <div className="bg-indigo-950/10 border border-indigo-500/10 p-5 rounded-xl text-zinc-300 text-xs leading-relaxed text-left mt-4">
+                        <div className="flex items-center gap-1.5 mb-3 border-b border-indigo-500/10 pb-2">
+                          <span className="text-[10px] font-black text-indigo-400 uppercase tracking-wider">Результат AI Code Review</span>
+                        </div>
+                        <div className="prose prose-invert prose-xs text-left">
+                          <ReactMarkdown>
+                            {codeReviewResult}
+                          </ReactMarkdown>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             
             {/* Footer actions */}
-            <div className="p-6 md:p-8 mt-auto border-t border-outline-variant bg-surface-container-lowest flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="p-6 md:p-8 mt-auto border-t border-white/10 bg-[#09090b] flex flex-col md:flex-row justify-between items-center gap-6">
               <div>
                 <p className="text-base font-bold text-on-surface mb-1">Завершили изучение материала?</p>
                 <p className="text-sm text-on-surface-variant">Пройдите тест, чтобы закрепить знания и разблокировать следующие уроки.</p>
@@ -416,8 +654,11 @@ export default function LessonPanel({
         onAskMentor={(questionText, userAnswer, correctAnswer, explanation) => {
           setQuizOpen(false);
           onClose(); // Close lesson panel
-          sessionStorage.setItem('mentor_initial_prompt', `Я прохожу тест по теме "${selectedNode.label}". Я ошибся в вопросе:\n"${questionText}"\nМой ответ: "${userAnswer}"\nПравильный ответ: "${correctAnswer}"\nПояснение: "${explanation}"\n\nОбъясни мне, пожалуйста, простыми словами, почему мой ответ неверный и как правильно рассуждать в этом случае.`);
-          navigate('/mentor');
+          window.dispatchEvent(new CustomEvent('mentor:open', { 
+            detail: { 
+              prompt: `Я прохожу тест по теме "${selectedNode.label}". Я ошибся в вопросе:\n"${questionText}"\nМой ответ: "${userAnswer}"\nПравильный ответ: "${correctAnswer}"\nПояснение: "${explanation}"\n\nОбъясни мне, пожалуйста, простыми словами, почему мой ответ неверный и как правильно рассуждать в этом случае.` 
+            } 
+          }));
         }}
       />
 
@@ -432,6 +673,20 @@ export default function LessonPanel({
         <SlideViewer
           slides={selectedNode.slides || markdownToSlides(selectedNode.content || '')}
           onClose={() => setShowSlides(false)}
+        />
+      )}
+      </div>
+
+      {/* Contextual AI Mentor Panel (Hidden in Zen Mode) */}
+      {!isZenMode && (
+        <ContextualMentor 
+          selectedNode={selectedNode}
+          selectedCourse={selectedCourse}
+          plan={plan}
+          usage={usage}
+          checkLimit={checkLimit}
+          incrementUsage={incrementUsage}
+          setUpgradeModalOpen={setUpgradeModalOpen}
         />
       )}
     </div>

@@ -306,7 +306,7 @@ export default function Insights() {
       </motion.div>
 
       {/* Main Chart Card */}
-      <motion.div variants={itemVariants} className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-6">
+      <motion.div variants={itemVariants} className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-4 md:p-6 w-full overflow-hidden">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <h2 className="text-base font-bold text-[#FFFFFF] font-clash">{t('insights.trajectory')}</h2>
@@ -505,7 +505,7 @@ export default function Insights() {
       {/* Courses Progress List */}
       <motion.div 
         variants={itemVariants} 
-        className={`bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-6 ${
+        className={`bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-4 md:p-6 overflow-hidden ${
           courses.length === 1 ? 'max-w-2xl' : 'w-full'
         }`}
       >

@@ -61,7 +61,6 @@ export default function Topbar() {
     { path: '/graph', label: t('nav.graph') },
     { path: '/achievements', label: 'Достижения' },
     { path: '/leagues', label: 'Лиги' },
-    { path: '/mentor', label: t('nav.mentor') || 'AI Ментор', isPro: true },
     { path: '/resources', label: t('nav.resources') },
     { path: '/insights', label: t('nav.insights') },
   ];
@@ -192,12 +191,12 @@ export default function Topbar() {
           <div className="relative">
             <button 
               onClick={handleToggleNotifications}
-              className={`p-1.5 rounded-[8px] border border-transparent transition-all relative ${showNotifications ? 'bg-[#1C1C1E] border-[rgba(255,255,255,0.08)] text-[#FFFFFF]' : 'text-[#98989D] hover:text-[#FFFFFF]'}`}
+              className={`p-1.5 rounded-[8px] border border-transparent transition-all relative ${showNotifications ? 'bg-surface-container border-outline-variant text-on-surface' : 'text-on-surface-variant hover:text-on-surface'}`}
               title="Notifications"
             >
               <Bell className="w-4 h-4" strokeWidth={1.5} />
               {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-[#FFFFFF] rounded-full" />
+                <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full" />
               )}
             </button>
 
@@ -209,37 +208,37 @@ export default function Topbar() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.98 }}
                   transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-                  className="absolute right-0 mt-2 w-80 bg-[#1C1C1E]/95 backdrop-blur-md border border-[rgba(255,255,255,0.08)] rounded-[16px] z-[90] flex flex-col max-h-96 font-sans shadow-[0_20px_60px_rgba(0,0,0,0.4)] overflow-hidden"
+                  className="absolute right-0 mt-2 w-[300px] sm:w-80 bg-surface-container border border-outline-variant rounded-[16px] z-[90] flex flex-col max-h-96 font-sans shadow-2xl overflow-hidden"
                 >
-                  <div className="p-4 border-b border-[rgba(255,255,255,0.08)] bg-[#1C1C1E] flex justify-between items-center">
-                    <h3 className="font-bold text-[#F5F5F7] text-xs">Уведомления</h3>
+                  <div className="p-4 border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
+                    <h3 className="font-bold text-on-surface text-xs">Уведомления</h3>
                     {notifications.length > 0 && (
                       <button 
                         onClick={clearAllNotifications}
-                        className="text-[10px] font-bold text-[#FF453A] hover:text-[#FF453A]/80 transition-colors flex items-center gap-1 uppercase tracking-wider font-mono"
+                        className="text-[10px] font-bold text-red-500 hover:text-red-400 transition-colors flex items-center gap-1 uppercase tracking-wider font-mono"
                       >
                         <Trash2 className="w-3.5 h-3.5" strokeWidth={1.5} /> Очистить все
                       </button>
                     )}
                   </div>
                   
-                  <div className="flex-1 overflow-y-auto divide-y divide-[rgba(255,255,255,0.04)] scrollbar-thin">
+                  <div className="flex-1 overflow-y-auto divide-y divide-outline-variant scrollbar-thin">
                     {notifications.length === 0 ? (
-                      <div className="p-6 text-center text-xs text-[#98989D] font-medium">
+                      <div className="p-6 text-center text-xs text-on-surface-variant font-medium">
                         {t('topbar.noNotifications') || 'Нет уведомлений'}
                       </div>
                     ) : (
                       notifications.map(notif => (
-                        <div key={notif.id} className="p-3 flex items-start gap-3 hover:bg-[#2C2C2E]/40 transition-colors relative group">
+                        <div key={notif.id} className="p-3 flex items-start gap-3 hover:bg-surface-container-high transition-colors relative group">
                           <div className="text-xl flex-shrink-0 mt-0.5">{notif.icon || '🏆'}</div>
                           <div className="flex-1 min-w-0 pr-6">
-                            <p className="font-bold text-xs text-[#F5F5F7] leading-tight truncate">{notif.title}</p>
-                            <p className="text-[11px] text-[#98989D] mt-1 leading-snug break-words">{notif.description}</p>
-                            <p className="text-[9px] text-[#636366] mt-1 font-mono">{formatTime(notif.timestamp)}</p>
+                            <p className="font-bold text-xs text-on-surface leading-tight truncate">{notif.title}</p>
+                            <p className="text-[11px] text-on-surface-variant mt-1 leading-snug break-words">{notif.description}</p>
+                            <p className="text-[9px] text-on-surface-variant/70 mt-1 font-mono">{formatTime(notif.timestamp)}</p>
                           </div>
                           <button 
                             onClick={() => clearNotification(notif.id)}
-                            className="absolute right-2 top-2.5 p-1 rounded-[6px] hover:bg-[#2C2C2E] text-[#98989D]/60 hover:text-[#FF453A] transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                            className="absolute right-2 top-2.5 p-1 rounded-[6px] hover:bg-surface-container-highest text-on-surface-variant hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
                             title="Удалить"
                           >
                             <X className="w-3.5 h-3.5" strokeWidth={1.5} />

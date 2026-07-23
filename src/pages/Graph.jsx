@@ -2,13 +2,13 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Network, Loader2, BookOpen, Clock, Brain, Pointer, ZoomIn, ZoomOut, RotateCcw, Lock,
-  Code, Terminal, Layers, Database, Cpu, Settings, Shield, Sliders, Globe, Star, Sparkles, Check, Flame, Trophy, Award
+  Code, Terminal, Layers, Database, Cpu, Settings, Shield, Sliders, Globe, Star, Sparkles, Check, Flame, Trophy, Award, X
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
-import { getUserCourses } from '../services/courseService.js';
+import { getUserCourses, callGroqWithRetry } from '../services/courseService.js';
 import { t } from '../i18n.js';
 import LessonPanel from '../components/lessons/LessonPanel.jsx';
 import MasteryBlock from '../components/shared/MasteryBlock.jsx';
@@ -16,6 +16,7 @@ import { calculateMastery } from '../hooks/useMastery.js';
 import QuizHistoryModal from '../components/quiz/QuizHistoryModal.jsx';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import { useXP } from '../hooks/useXP.js';
+import ReactMarkdown from 'react-markdown';
 
 // Simple vis-network map icons fallback
 const iconMap = {
@@ -130,31 +131,29 @@ const calculateNodePositions = (nodes, edges) => {
   });
 
   const positions = {};
-  const spacingX = 330; // Increased spacing for larger cards
-  const spacingY = 190;
-  const startX = 160;
-  const centerY = 350;
+  const spacingX = 240; // Горизонтальный отступ между соседними узлами
+  const spacingY = 160; // Вертикальный отступ между уровнями (топиками)
+  const startY = 120;
+  const centerX = 450; // Центрирование по горизонтали
 
   Object.entries(levelGroups).forEach(([lStr, nodeIds]) => {
     const l = parseInt(lStr);
     const count = nodeIds.length;
     
     nodeIds.forEach((id, idx) => {
-      const x = startX + l * spacingX + (idx % 2 === 0 ? 0 : 25);
+      // Y определяется уровнем (сверху вниз)
+      const y = startY + l * spacingY;
       
-      let y = centerY;
+      // X распределяет сестринские узлы горизонтально (слева направо)
+      let x = centerX;
       if (count > 1) {
-        const totalHeight = (count - 1) * spacingY;
-        y = centerY - totalHeight / 2 + idx * spacingY;
+        const totalWidth = (count - 1) * spacingX;
+        x = centerX - totalWidth / 2 + idx * spacingX;
       }
       
-      const hashVal = getNumericHash(id);
-      const jitterX = (Math.sin(hashVal * 0.5) * 12);
-      const jitterY = (Math.cos(hashVal * 0.5) * 18);
-      
       positions[id] = {
-        x: x + jitterX,
-        y: y + jitterY
+        x,
+        y
       };
     });
   });
@@ -232,12 +231,25 @@ const BackgroundParticles = () => {
 export default function Graph() {
   const navigate = useNavigate();
   const { plan } = usePlanLimits();
-  const { userLevelData } = useXP();
+  const { userLevelData, addXP } = useXP();
   
   const [courses, setCourses] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedNode, setSelectedNode] = useState(null);
+
+  // Draggable node states
+  const [draggedOffsets, setDraggedOffsets] = useState({});
+  const dragStartRef = useRef(null);
+  const [activeDragNodeId, setActiveDragNodeId] = useState(null);
+
+  // Mock Interview States
+  const [mockInterviewOpen, setMockInterviewOpen] = useState(false);
+  const [interviewMessages, setInterviewMessages] = useState([]);
+  const [interviewInput, setInterviewInput] = useState('');
+  const [interviewGenerating, setInterviewGenerating] = useState(false);
+  const [interviewStage, setInterviewStage] = useState('welcome'); // 'welcome' | 'chat' | 'results'
+  const [interviewFeedback, setInterviewFeedback] = useState('');
   const [quizResults, setQuizResults] = useState({});
   const [isStudying, setIsStudying] = useState(false);
   const [isZenMode, setIsZenMode] = useState(false);
@@ -247,16 +259,8 @@ export default function Graph() {
   const [historyModalFilterNodeId, setHistoryModalFilterNodeId] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
 
-  // Layout view coordinates
-  const [pan, setPan] = useState({ x: 100, y: 150 });
-  const [zoom, setZoom] = useState(0.85);
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStart = useRef({ x: 0, y: 0 });
+  // Layout view container ref
   const containerRef = useRef(null);
-
-  // Card dragging offset state
-  const [draggedNodeOffsets, setDraggedNodeOffsets] = useState({});
-  const [draggingNode, setDraggingNode] = useState(null);
 
   // Folded nodes state
   const [foldedNodes, setFoldedNodes] = useState(new Set());
@@ -337,11 +341,119 @@ export default function Graph() {
     loadQuizResults();
   }, [selectedCourse, quizRefreshTrigger]);
 
-  // Node position mapping memo
-  const nodePositions = useMemo(() => {
+  const handleStartInterview = async () => {
+    setInterviewStage('chat');
+    setInterviewGenerating(true);
+    setInterviewMessages([]);
+    try {
+      const prompt = `You are a Team Lead Go backend developer and HR specialist conducting a technical mock interview.
+The student is applying for a job and has completed a course on "${selectedCourse?.title}".
+Topic description: "${selectedCourse?.description}"
+
+Please start the interview. Greet the student, state your name/role, and ask your first challenging technical question related to the course topic.
+Respond in Russian. Keep your introduction short and professional.`;
+      const result = await callGroqWithRetry(null, prompt, 'ai_question');
+      setInterviewMessages([{
+        id: '1',
+        role: 'assistant',
+        content: result
+      }]);
+    } catch (e) {
+      console.error(e);
+      setInterviewMessages([{
+        id: '1',
+        role: 'assistant',
+        content: 'Привет! Я тимлид компании. Давай начнем наше собеседование. Расскажи, пожалуйста, своими словами, как ты понимаешь основные концепты курса?'
+      }]);
+    } finally {
+      setInterviewGenerating(false);
+    }
+  };
+
+  const handleSendInterviewAnswer = async () => {
+    if (!interviewInput.trim() || interviewGenerating) return;
+    const userMsg = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: interviewInput
+    };
+    const updatedMsgs = [...interviewMessages, userMsg];
+    setInterviewMessages(updatedMsgs);
+    setInterviewInput('');
+    setInterviewGenerating(true);
+
+    const answerCount = updatedMsgs.filter(m => m.role === 'user').length;
+    
+    try {
+      if (answerCount >= 3) {
+        const prompt = `You are a Team Lead Go backend developer and HR specialist compiling a mock interview scorecard.
+Here is the transcript of your mock interview with the student for the course "${selectedCourse?.title}":
+${updatedMsgs.map(m => `${m.role === 'user' ? 'Студент' : 'Интервьюер'}: ${m.content}`).join('\n')}
+
+Provide a final detailed performance feedback report in the Russian language. Include:
+1. **Технические навыки**: Оцените глубину ответов, точность терминологии и понимание темы.
+2. **HR / Soft Skills**: Оцените уверенность ответов и стиль изложения.
+3. **Рекомендации**: На какие темы стоит обратить внимание.
+4. **Вердикт**: Готовность к реальному собеседованию (в процентах, например: "Готовность: 85%").
+Use Markdown formatting.`;
+        const feedback = await callGroqWithRetry(null, prompt, 'ai_question');
+        setInterviewFeedback(feedback);
+        setInterviewStage('results');
+        addXP(100, 'AI Mock Interview завершено');
+      } else {
+        const prompt = `You are a Team Lead Go backend developer and HR specialist conducting a mock interview.
+Here is the transcript of your interview so far for the course "${selectedCourse?.title}":
+${updatedMsgs.map(m => `${m.role === 'user' ? 'Студент' : 'Интервьюер'}: ${m.content}`).join('\n')}
+
+Analyze the student's last response. Briefly comment on it (constructively) and ask the next technical or HR question to proceed.
+Respond in Russian. Keep your reply concise and professional.`;
+        const nextQuestion = await callGroqWithRetry(null, prompt, 'ai_question');
+        setInterviewMessages([...updatedMsgs, {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: nextQuestion
+        }]);
+      }
+    } catch (e) {
+      console.error(e);
+      setInterviewMessages([...updatedMsgs, {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: 'Интересный ответ. Давай перейдем к следующему вопросу. Расскажи подробнее о практическом применении изученных тобою подходов?'
+      }]);
+    } finally {
+      setInterviewGenerating(false);
+    }
+  };
+
+  // Base node position mapping memo
+  const baseNodePositions = useMemo(() => {
     if (!selectedCourse) return {};
     return calculateNodePositions(selectedCourse.nodes, selectedCourse.edges);
   }, [selectedCourse]);
+
+  // Combined positions including dragging offsets
+  const nodePositions = useMemo(() => {
+    const positions = { ...baseNodePositions };
+    Object.entries(draggedOffsets).forEach(([id, offset]) => {
+      if (positions[id]) {
+        positions[id] = {
+          x: baseNodePositions[id].x + offset.x,
+          y: baseNodePositions[id].y + offset.y
+        };
+      }
+    });
+    return positions;
+  }, [baseNodePositions, draggedOffsets]);
+
+  const graphHeight = useMemo(() => {
+    if (!selectedCourse || Object.keys(nodePositions).length === 0) return 800;
+    const ys = selectedCourse.nodes
+      .map(n => nodePositions[n.id]?.y)
+      .filter(y => y !== undefined);
+    if (ys.length === 0) return 800;
+    return Math.max(...ys) + 200;
+  }, [selectedCourse, nodePositions]);
 
   // Node branch folding memo
   const hiddenNodeIds = useMemo(() => {
@@ -349,142 +461,11 @@ export default function Graph() {
     return getHiddenNodeIds(foldedNodes, selectedCourse.nodes, selectedCourse.edges);
   }, [foldedNodes, selectedCourse]);
 
-  // Reset folded state & positions on course change
+  // Reset folded state and dragged offsets on course change
   useEffect(() => {
     setFoldedNodes(new Set());
-    setDraggedNodeOffsets({});
+    setDraggedOffsets({});
   }, [selectedCourse]);
-
-  // Center on mount/course change
-  useEffect(() => {
-    if (Object.keys(nodePositions).length === 0) return;
-    
-    const centerGraph = () => {
-      if (!containerRef.current) return;
-      const containerWidth = containerRef.current.clientWidth || window.innerWidth - 320;
-      const containerHeight = containerRef.current.clientHeight || window.innerHeight - 200;
-      
-      const firstActive = selectedCourse.nodes.find(n => n.status === 'active') || selectedCourse.nodes[0];
-      const startPos = nodePositions[firstActive?.id] || Object.values(nodePositions)[0];
-      
-      if (startPos) {
-        setPan({
-          x: containerWidth / 2 - startPos.x * zoom,
-          y: containerHeight / 2 - startPos.y * zoom
-        });
-      }
-    };
-
-    centerGraph();
-    const t = setTimeout(centerGraph, 100);
-    return () => clearTimeout(t);
-  }, [nodePositions]);
-
-  // Panning + Node Dragging logic on Mouse Move
-  const handleMouseMove = (e) => {
-    if (draggingNode) {
-      // Calculate delta divided by zoom factor so drag tracks the pointer accurately
-      const dx = (e.clientX - draggingNode.startX) / zoom;
-      const dy = (e.clientY - draggingNode.startY) / zoom;
-      setDraggedNodeOffsets(prev => ({
-        ...prev,
-        [draggingNode.id]: {
-          x: draggingNode.initialOffsetX + dx,
-          y: draggingNode.initialOffsetY + dy
-        }
-      }));
-    } else if (isDragging) {
-      setPan({
-        x: e.clientX - dragStart.current.x,
-        y: e.clientY - dragStart.current.y
-      });
-    }
-  };
-
-  const handleTouchMove = (e) => {
-    if (e.touches.length !== 1) return;
-    const touch = e.touches[0];
-    if (draggingNode) {
-      const dx = (touch.clientX - draggingNode.startX) / zoom;
-      const dy = (touch.clientY - draggingNode.startY) / zoom;
-      setDraggedNodeOffsets(prev => ({
-        ...prev,
-        [draggingNode.id]: {
-          x: draggingNode.initialOffsetX + dx,
-          y: draggingNode.initialOffsetY + dy
-        }
-      }));
-    } else if (isDragging) {
-      setPan({
-        x: touch.clientX - dragStart.current.x,
-        y: touch.clientY - dragStart.current.y
-      });
-    }
-  };
-
-  // Drag start for background panning
-  const handleMouseDown = (e) => {
-    if (e.button !== 0) return;
-    setIsDragging(true);
-    dragStart.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
-  };
-
-  const handleTouchStart = (e) => {
-    if (e.touches.length !== 1) return;
-    setIsDragging(true);
-    const touch = e.touches[0];
-    dragStart.current = { x: touch.clientX - pan.x, y: touch.clientY - pan.y };
-  };
-
-  // Drag start for individual node cards
-  const handleNodeDragStart = (e, nodeId) => {
-    e.stopPropagation();
-    // Only drag with left click / single touch
-    const clientX = e.clientX !== undefined ? e.clientX : e.touches?.[0]?.clientX;
-    const clientY = e.clientY !== undefined ? e.clientY : e.touches?.[0]?.clientY;
-    if (clientX === undefined) return;
-
-    const currentOffset = draggedNodeOffsets[nodeId] || { x: 0, y: 0 };
-    setDraggingNode({
-      id: nodeId,
-      startX: clientX,
-      startY: clientY,
-      initialOffsetX: currentOffset.x,
-      initialOffsetY: currentOffset.y
-    });
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    setDraggingNode(null);
-  };
-
-  const handleWheel = (e) => {
-    if (plan === 'FREE') return;
-    e.preventDefault();
-    const zoomFactor = 1.08;
-    const nextZoom = e.deltaY < 0 ? zoom * zoomFactor : zoom / zoomFactor;
-    setZoom(Math.max(0.4, Math.min(nextZoom, 1.8)));
-  };
-
-  const handleZoomIn = () => setZoom(z => Math.min(z * 1.15, 1.8));
-  const handleZoomOut = () => setZoom(z => Math.max(z / 1.15, 0.4));
-  const handleReset = () => {
-    setZoom(0.85);
-    setDraggedNodeOffsets({});
-    if (selectedCourse && containerRef.current) {
-      const containerWidth = containerRef.current.clientWidth;
-      const containerHeight = containerRef.current.clientHeight;
-      const firstActive = selectedCourse.nodes.find(n => n.status === 'active') || selectedCourse.nodes[0];
-      const pos = nodePositions[firstActive?.id];
-      if (pos) {
-        setPan({
-          x: containerWidth / 2 - pos.x * 0.85,
-          y: containerHeight / 2 - pos.y * 0.85
-        });
-      }
-    }
-  };
 
   const handleCourseChange = (e) => {
     const courseId = e.target.value;
@@ -496,18 +477,75 @@ export default function Graph() {
 
   const handleSelectNode = (node) => {
     setSelectedNode(node);
-    
-    // Smooth camera center
-    if (containerRef.current) {
-      const containerWidth = containerRef.current.clientWidth;
-      const containerHeight = containerRef.current.clientHeight;
-      const pos = nodePositions[node.id];
-      const offset = draggedNodeOffsets[node.id] || { x: 0, y: 0 };
-      if (pos) {
-        setPan({
-          x: containerWidth / 2 - (pos.x + offset.x) * zoom,
-          y: containerHeight / 2 - (pos.y + offset.y) * zoom
-        });
+  };
+
+  // Pointer-based dragging handlers to allow card movement without selection conflict
+  const handlePointerDown = (e, nodeId) => {
+    if (e.button !== 0) return; // Only drag with left click
+    if (e.target.closest('.fold-btn')) return; // Ignore drag if clicking fold/unfold button
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const currentOffset = draggedOffsets[nodeId] || { x: 0, y: 0 };
+
+    dragStartRef.current = {
+      startX,
+      startY,
+      initialOffsetX: currentOffset.x,
+      initialOffsetY: currentOffset.y,
+      hasMoved: false,
+      pointerId: e.pointerId
+    };
+
+    setActiveDragNodeId(nodeId);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e, nodeId) => {
+    if (activeDragNodeId !== nodeId || !dragStartRef.current) return;
+    e.stopPropagation();
+
+    const dx = e.clientX - dragStartRef.current.startX;
+    const dy = e.clientY - dragStartRef.current.startY;
+
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      dragStartRef.current.hasMoved = true;
+    }
+
+    const initialOffsetX = dragStartRef.current.initialOffsetX;
+    const initialOffsetY = dragStartRef.current.initialOffsetY;
+
+    setDraggedOffsets(prev => ({
+      ...prev,
+      [nodeId]: {
+        x: initialOffsetX + dx,
+        y: initialOffsetY + dy
+      }
+    }));
+  };
+
+  const handlePointerUp = (e, nodeId) => {
+    if (activeDragNodeId !== nodeId || !dragStartRef.current) return;
+    e.stopPropagation();
+
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch (err) {
+      // ignore
+    }
+
+    const { hasMoved } = dragStartRef.current;
+    dragStartRef.current = null;
+    setActiveDragNodeId(null);
+
+    // If there was no drag movement, select the node
+    if (!hasMoved) {
+      const node = selectedCourse.nodes.find(n => n.id === nodeId);
+      if (node) {
+        handleSelectNode(node);
       }
     }
   };
@@ -574,127 +612,109 @@ export default function Graph() {
   const visibleEdges = selectedCourse.edges.filter(e => !hiddenNodeIds.has(e.from) && !hiddenNodeIds.has(e.to));
 
   return (
-    <motion.div initial="hidden" animate="show" className="max-w-[2000px] mx-auto h-[calc(100vh-4.5rem)] flex flex-col text-zinc-100 p-4 font-sans select-none overflow-hidden">
+    <motion.div initial="hidden" animate="show" className="w-full h-full flex flex-col text-zinc-100 font-sans select-none overflow-hidden pb-2">
       
       {/* Custom Styles Injector */}
       <style>{`
         .skill-tree-grid {
-          background-image: 
-            radial-gradient(var(--grid-dot) 1px, transparent 1px),
-            linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
-            linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
-          background-size: 24px 24px, 120px 120px, 120px 120px;
+          background-image: radial-gradient(var(--grid-dot) 1.2px, transparent 1.2px);
+          background-size: 20px 20px;
         }
         
         :root {
-          --grid-dot: rgba(255, 255, 255, 0.035);
-          --grid-line: rgba(255, 255, 255, 0.008);
+          --grid-dot: rgba(255, 255, 255, 0.05);
         }
-        .light {
-          --grid-dot: rgba(0, 0, 0, 0.04);
-          --grid-line: rgba(0, 0, 0, 0.015);
+        .light, :host-context(.light), html.light {
+          --grid-dot: rgba(0, 0, 0, 0.06) !important;
         }
 
-        @keyframes path-glow-flow {
-          0% {
-            stroke-dashoffset: 0;
-          }
-          100% {
-            stroke-dashoffset: -40;
-          }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
         }
-
-        .neon-glow-active {
-          filter: drop-shadow(0 0 5px rgba(59, 130, 246, 0.4)) drop-shadow(0 0 10px rgba(59, 130, 246, 0.2));
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
         }
-        
-        .neon-glow-completed {
-          filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.4)) drop-shadow(0 0 10px rgba(16, 185, 129, 0.2));
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(100, 116, 139, 0.2);
+          border-radius: 4px;
         }
-
-        .flowing-particles-completed {
-          stroke-dasharray: 8 20;
-          animation: path-glow-flow 1.8s linear infinite;
-        }
-
-        .flowing-particles-active {
-          stroke-dasharray: 6 15;
-          animation: path-glow-flow 1.4s linear infinite;
-        }
-
-        @keyframes active-pulse {
-          0%, 100% {
-            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.25);
-          }
-          50% {
-            box-shadow: 0 6px 26px rgba(59, 130, 246, 0.55);
-          }
-        }
-        
-        .glow-node-current-dark {
-          animation: active-pulse 2.5s infinite;
-        }
-        
-        .glow-node-completed {
-          box-shadow: 0 4px 14px rgba(16, 185, 129, 0.15);
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(100, 116, 139, 0.4);
         }
       `}</style>
 
       {/* Top Header Card */}
-      <motion.div 
-        className="mb-4 flex-shrink-0 flex flex-col xl:flex-row xl:items-center justify-between gap-4 px-5 py-4 border border-white/10 bg-slate-900/60 backdrop-blur-xl rounded-[20px] shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] font-sans"
+      <div 
+        className={`mb-4 flex-shrink-0 flex flex-col xl:flex-row xl:items-center justify-between gap-4 px-5 py-3 border rounded-[16px] font-sans ${
+          isLightTheme 
+            ? 'bg-white border-zinc-200 text-zinc-900 shadow-sm' 
+            : 'bg-[#18181b] border-zinc-800 text-zinc-100 shadow-sm'
+        }`}
       >
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-gradient-to-tr from-violet-600 to-indigo-600 rounded-[14px] flex items-center justify-center shadow-[0_4px_20px_rgba(99,102,241,0.3)]">
-            <Trophy className="w-6 h-6 text-white" />
+          <div className={`w-10 h-10 rounded-[10px] flex items-center justify-center shadow-sm ${
+            isLightTheme ? 'bg-zinc-100 text-zinc-700' : 'bg-zinc-800 text-zinc-300'
+          }`}>
+            <Trophy className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white font-clash tracking-wide">{t('graph.title') || 'Knowledge graph'}</h2>
-            <p className="text-[11px] text-zinc-400 mt-0.5 font-mono">
+            <h2 className="text-md font-bold font-clash tracking-wide">{t('graph.title') || 'Knowledge graph'}</h2>
+            <p className={`text-[11px] mt-0.5 font-mono ${
+              isLightTheme ? 'text-zinc-500' : 'text-zinc-400'
+            }`}>
               {selectedCourse ? t(selectedCourse.title) : ''} · {selectedCourse?.nodes?.length || 0} тем
             </p>
           </div>
         </div>
         
         {/* Gamified stats bar */}
-        <div className="flex flex-wrap items-center gap-4 xl:gap-6">
+        <div className="flex flex-wrap items-center gap-4">
           {/* XP Progress Bar */}
           {userLevelData && (
-            <div className="flex items-center gap-3 bg-zinc-950/40 border border-white/5 px-4 py-2 rounded-[14px]">
+            <div className={`flex items-center gap-3 border px-3 py-1.5 rounded-[10px] ${
+              isLightTheme ? 'bg-zinc-50 border-zinc-200' : 'bg-[#09090b]/40 border-zinc-800'
+            }`}>
               <div className="text-right">
-                <p className="text-[9px] text-zinc-400 font-medium">Уровень {userLevelData.current.level}</p>
-                <p className="text-[11px] font-bold text-violet-400 leading-tight">{userLevelData.current.title}</p>
+                <p className={`text-[9px] font-medium ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>Уровень {userLevelData.current.level}</p>
+                <p className="text-[10px] font-bold text-violet-500 leading-tight">{userLevelData.current.title}</p>
               </div>
-              <div className="w-28 h-2 bg-zinc-800 rounded-full overflow-hidden border border-white/5 relative">
+              <div className={`w-24 h-1.5 rounded-full overflow-hidden relative ${
+                isLightTheme ? 'bg-zinc-200' : 'bg-zinc-800'
+              }`}>
                 <div 
-                  className="h-full bg-gradient-to-r from-violet-500 to-indigo-500 rounded-full transition-all duration-500"
+                  className="h-full bg-violet-600 rounded-full transition-all duration-500"
                   style={{ width: `${userLevelData.progress}%` }}
                 />
               </div>
-              <p className="text-[10px] font-mono text-zinc-300">{userLevelData.progress.toFixed(0)}%</p>
+              <p className={`text-[9px] font-mono ${isLightTheme ? 'text-zinc-600' : 'text-zinc-400'}`}>{userLevelData.progress.toFixed(0)}%</p>
             </div>
           )}
 
           {/* Streak */}
-          <div className="flex items-center gap-2 bg-zinc-950/40 border border-white/5 px-4 py-2 rounded-[14px]">
-            <div className="w-7 h-7 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
-              <Flame className="w-4 h-4 text-orange-500 animate-bounce" />
+          <div className={`flex items-center gap-2 border px-3 py-1.5 rounded-[10px] ${
+            isLightTheme ? 'bg-zinc-50 border-zinc-200' : 'bg-[#09090b]/40 border-zinc-800'
+          }`}>
+            <div className="w-6 h-6 rounded bg-orange-500/10 flex items-center justify-center">
+              <Flame className="w-3.5 h-3.5 text-orange-500 animate-bounce" />
             </div>
             <div>
-              <p className="text-[9px] text-zinc-400 font-medium leading-none">Стрик дней</p>
-              <p className="text-[11px] font-bold text-orange-400 mt-0.5">{userProfile?.streakDays || 1} дн.</p>
+              <p className={`text-[9px] font-medium leading-none ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>Стрик</p>
+              <p className="text-[10px] font-bold text-orange-500 mt-0.5">{userProfile?.streakDays || 1} дн.</p>
             </div>
           </div>
 
           {/* Legend */}
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 bg-zinc-950/20 px-3 py-1.5 rounded-[12px] border border-white/5">
+          <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1 rounded-[10px] border ${
+            isLightTheme ? 'bg-zinc-50 border-zinc-200' : 'bg-[#09090b]/40 border-zinc-800'
+          }`}>
             {[
-              { bgClass: isLightTheme ? 'bg-emerald-50 border-emerald-500/60' : 'bg-emerald-950/10 border-emerald-500/60', label: 'Изучено' },
-              { bgClass: isLightTheme ? 'bg-black border-zinc-800' : 'bg-white border-zinc-200', label: 'Рекомендуется' },
-              { bgClass: isLightTheme ? 'bg-zinc-150 border-zinc-300' : 'bg-zinc-900/30 border-zinc-800/40', label: 'Заблокировано' },
+              { bgClass: 'bg-[#ffe100] border-black', textClass: 'text-black', label: 'Темы' },
+              { bgClass: 'bg-[#1a1a1a] border-zinc-700', textClass: 'text-white', label: 'Практика' },
+              { bgClass: isLightTheme ? 'bg-[#f4f4f5] border-zinc-300' : 'bg-[#27272a] border-zinc-800', textClass: isLightTheme ? 'text-zinc-500' : 'text-zinc-400', label: 'Заблокировано' }
             ].map(({ bgClass, label }) => (
               <div key={label} className="flex items-center gap-1.5 font-sans">
-                <div className={`w-6 h-4 rounded-md border ${bgClass}`} />
+                <div className={`w-5 h-3.5 rounded border ${bgClass}`} />
                 <span className="text-[10px] font-semibold text-zinc-400">{label}</span>
               </div>
             ))}
@@ -706,7 +726,11 @@ export default function Graph() {
                 setHistoryModalFilterNodeId(null);
                 setHistoryModalOpen(true);
               }}
-              className="flex items-center justify-center gap-1 bg-zinc-900/60 hover:bg-white/10 border border-white/10 text-white px-3.5 py-2.5 rounded-[12px] text-xs font-bold transition-all"
+              className={`flex items-center justify-center gap-1 border px-3 py-2 rounded-[10px] text-xs font-bold transition-all ${
+                isLightTheme 
+                  ? 'bg-white hover:bg-zinc-100 border-zinc-200 text-zinc-700' 
+                  : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-200'
+              }`}
             >
               <Clock className="w-3.5 h-3.5 text-zinc-400" />
               История тестов
@@ -715,83 +739,38 @@ export default function Graph() {
             <select 
               value={selectedCourse?.id || ''} 
               onChange={handleCourseChange}
-              className="bg-zinc-900 border border-white/10 rounded-[12px] px-3 py-2.5 text-xs font-mono text-zinc-100 focus:outline-none focus:border-violet-500"
+              className={`border rounded-[10px] px-3 py-2 text-xs font-mono focus:outline-none focus:border-violet-500 ${
+                isLightTheme 
+                  ? 'bg-white border-zinc-200 text-zinc-700' 
+                  : 'bg-zinc-900 border-zinc-800 text-zinc-200'
+              }`}
             >
               {courses.map(c => (
-                <option key={c.id} value={c.id} className="bg-zinc-950">{t(c.title)}</option>
+                <option key={c.id} value={c.id} className={isLightTheme ? 'bg-white text-zinc-900' : 'bg-zinc-950 text-zinc-100'}>{t(c.title)}</option>
               ))}
             </select>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Main Content Area */}
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 relative">
         
-        {/* Canvas Wrapper */}
-        <motion.div 
-          className="flex-1 bg-[#07080a] border border-white/10 rounded-[20px] overflow-hidden relative flex flex-col group cursor-grab active:cursor-grabbing"
+        <div 
+          className={`flex-1 skill-tree-grid ${
+            isLightTheme 
+              ? 'bg-[#FFFFFF] border-zinc-200 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]' 
+              : 'bg-[#0f172a] border-[rgba(255,255,255,0.08)]'
+          } border rounded-[20px] overflow-y-auto overflow-x-auto relative flex flex-col p-8 items-center custom-scrollbar`}
           ref={containerRef}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleMouseUp}
-          onWheel={handleWheel}
         >
-          {/* Drifting particle background & Grid */}
-          <BackgroundParticles />
-          <div className="absolute inset-0 skill-tree-grid pointer-events-none opacity-45" />
-
-          {/* Floating Controls Dock */}
-          {plan !== 'FREE' && (
-            <div className="absolute bottom-6 left-6 z-10 flex gap-2 bg-slate-900/60 backdrop-blur-xl px-3 py-2 rounded-full border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)]" onMouseDown={(e) => e.stopPropagation()}>
-              {[ 
-                { icon: ZoomIn, onClick: handleZoomIn, label: 'Приблизить' }, 
-                { icon: ZoomOut, onClick: db && handleZoomOut, label: 'Отдалить' }, 
-                { icon: RotateCcw, onClick: handleReset, label: 'Сбросить' } 
-              ].map((btn, i) => (
-                <motion.button 
-                  key={i} 
-                  whileTap={{ scale: 0.95 }} 
-                  onClick={btn.onClick} 
-                  title={btn.label}
-                  className="w-9 h-9 rounded-full hover:bg-white/10 flex items-center justify-center text-zinc-100 transition-colors border border-white/5 bg-zinc-950/20"
-                >
-                  <btn.icon className="w-4 h-4" strokeWidth={1.5} />
-                </motion.button>
-              ))}
-            </div>
-          )}
-
-          {/* Interactive Viewport */}
-          <motion.div
-            animate={{ x: pan.x, y: pan.y, scale: zoom }}
-            transition={isDragging || draggingNode ? { type: "tween", duration: 0 } : { type: "spring", stiffness: 180, damping: 24 }}
-            className="absolute origin-center select-none"
-            style={{ width: svgWidth, height: svgHeight, pointerEvents: 'none' }}
+          {/* Static Roadmap Layout (Centered) */}
+          <div
+            className="relative select-none shrink-0"
+            style={{ width: '900px', height: `${graphHeight}px` }}
           >
             {/* SVG connections layer */}
-            <svg className="absolute inset-0 pointer-events-none w-full h-full">
-              <defs>
-                <filter id="glow-blue" x="-30%" y="-30%" width="160%" height="160%">
-                  <feGaussianBlur stdDeviation="6" result="blur" />
-                  <feMerge>
-                    <feMergeNode in="blur" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-                <filter id="glow-green" x="-30%" y="-30%" width="160%" height="160%">
-                  <feGaussianBlur stdDeviation="6" result="blur" />
-                  <feMerge>
-                    <feMergeNode in="blur" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-              </defs>
-
+            <svg className="absolute inset-0 pointer-events-none w-full h-full" style={{ width: '900px', height: `${graphHeight}px` }}>
               {/* Render paths */}
               {visibleEdges.map(edge => {
                 const isFromCompleted = selectedCourse.nodes.find(n => n.id === edge.from)?.status === 'completed' || quizResults?.[edge.from]?.passed === true;
@@ -803,68 +782,33 @@ export default function Graph() {
                 const toPos = nodePositions[edge.to];
                 if (!fromPos || !toPos) return null;
 
-                const offsetFrom = draggedNodeOffsets[edge.from] || { x: 0, y: 0 };
-                const offsetTo = draggedNodeOffsets[edge.to] || { x: 0, y: 0 };
+                const x1 = fromPos.x;
+                const y1 = fromPos.y;
+                const x2 = toPos.x;
+                const y2 = toPos.y;
                 
-                const x1 = fromPos.x + offsetFrom.x;
-                const y1 = fromPos.y + offsetFrom.y;
-                const x2 = toPos.x + offsetTo.x;
-                const y2 = toPos.y + offsetTo.y;
-                
-                const dx = x2 - x1;
-                const cx1 = x1 + dx * 0.45;
-                const cy1 = y1;
-                const cx2 = x1 + dx * 0.55;
-                const cy2 = y2;
+                const dy = y2 - y1;
+                const cx1 = x1;
+                const cy1 = y1 + dy * 0.45;
+                const cx2 = x2;
+                const cy2 = y2 - dy * 0.45;
                 
                 const d = `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`;
                 
-                let strokeColor = 'rgba(63, 63, 70, 0.35)'; // Locked gray
-                let filterId = null;
-                let flowClass = '';
+                let strokeColor = isLightTheme ? '#d1d5db' : '#3f3f46'; // grey for locked/inactive
 
-                if (isEdgeCompleted) {
-                  strokeColor = 'rgba(16, 185, 129, 0.25)';
-                  filterId = 'url(#glow-green)';
-                  flowClass = 'flowing-particles-completed';
-                } else if (isEdgeActive) {
-                  strokeColor = 'rgba(59, 130, 246, 0.35)';
-                  filterId = 'url(#glow-blue)';
-                  flowClass = 'flowing-particles-active';
+                if (isEdgeCompleted || isEdgeActive) {
+                  strokeColor = '#2563eb'; // blue for active/completed connections
                 }
                 
                 return (
                   <g key={`${edge.from}-${edge.to}`}>
-                    {/* Glowing shadow underlay */}
-                    {filterId && (
-                      <path 
-                        d={d} 
-                        fill="none" 
-                        stroke={isEdgeCompleted ? '#10B981' : '#3B82F6'} 
-                        strokeWidth="4" 
-                        opacity="0.25" 
-                        filter={filterId} 
-                      />
-                    )}
-                    {/* Base path */}
                     <path 
                       d={d} 
                       fill="none" 
                       stroke={strokeColor} 
-                      strokeWidth={isEdgeCompleted || isEdgeActive ? '2.2' : '1.5'} 
-                      strokeDasharray={isEdgeCompleted || isEdgeActive ? undefined : '5 4'}
+                      strokeWidth="2" 
                     />
-                    {/* Animated Flow Dashing */}
-                    {(isEdgeCompleted || isEdgeActive) && (
-                      <path 
-                        d={d} 
-                        fill="none" 
-                        stroke={isEdgeCompleted ? '#34D399' : '#60A5FA'} 
-                        strokeWidth="2" 
-                        className={flowClass} 
-                        opacity="0.85"
-                      />
-                    )}
                   </g>
                 );
               })}
@@ -875,8 +819,6 @@ export default function Graph() {
               const pos = nodePositions[node.id];
               if (!pos) return null;
 
-              const offset = draggedNodeOffsets[node.id] || { x: 0, y: 0 };
-
               const result = quizResults?.[node.id];
               const isCompleted = node.status === 'completed' || result?.passed === true;
               const isLocked = node.status === 'locked' && !isCompleted;
@@ -886,125 +828,81 @@ export default function Graph() {
               const hasChildren = selectedCourse.edges.some(e => String(e.from) === String(node.id));
               const isFolded = foldedNodes.has(node.id);
               
-              // Larger rectangular card dimensions (230x120px)
-              const cardWidth = 230;
-              const cardHeight = 120;
+              // Dynamic card widths/heights in style:
+              const cardWidth = 200;
+              const cardHeight = 55;
 
-              const TopicIcon = getTopicIcon(node);
-              const masteryScore = result ? calculateMastery(result.score, result.lastAttemptAt?.toDate?.() || result.lastAttemptAt) : 0;
               const isSelected = selectedNode?.id === node.id;
+              const isCheckpoint = (node.label || node.title || '').toLowerCase().includes('checkpoint') || 
+                                   (node.label || node.title || '').toLowerCase().includes('project') || 
+                                   (node.label || node.title || '').toLowerCase().includes('проект');
 
-              // Themes & Visual configurations for rectangular cards
               let cardBg = '';
               let cardText = '';
               let cardBorder = '';
               let cardShadow = '';
 
-              if (isCompleted) {
-                cardBg = isLightTheme ? 'bg-emerald-50/95' : 'bg-emerald-950/10';
-                cardText = isLightTheme ? 'text-emerald-950' : 'text-emerald-50';
-                cardBorder = isSelected ? 'border-violet-500 ring-2 ring-violet-500/20' : 'border-emerald-500/60';
-                cardShadow = 'glow-node-completed shadow-[0_6px_16px_rgba(16,185,129,0.2)]';
-              } else if (isCurrent) {
-                // Active node: WHITE on dark theme, BLACK on light theme!
-                cardBg = isLightTheme ? 'bg-black' : 'bg-white';
-                cardText = isLightTheme ? 'text-white' : 'text-black';
-                cardBorder = isSelected ? 'border-violet-500 ring-2 ring-violet-500/35' : (isLightTheme ? 'border-zinc-800' : 'border-zinc-200');
-                cardShadow = isLightTheme 
-                  ? 'shadow-[0_6px_22px_rgba(0,0,0,0.3)]' 
-                  : 'glow-node-current-dark shadow-[0_0_20px_rgba(59,130,246,0.45)]';
+              if (isLocked) {
+                cardBg = isLightTheme ? 'bg-[#f4f4f5]' : 'bg-[#27272a]';
+                cardText = isLightTheme ? 'text-zinc-400 font-semibold' : 'text-zinc-500 font-semibold';
+                cardBorder = isSelected 
+                  ? 'border-violet-600 border-2 ring-2 ring-violet-500/30' 
+                  : (isLightTheme ? 'border-zinc-300 border' : 'border-zinc-800 border');
+              } else if (isCheckpoint) {
+                cardBg = 'bg-[#1a1a1a]';
+                cardText = 'text-white font-bold';
+                cardBorder = isSelected 
+                  ? 'border-violet-500 border-2 ring-2 ring-violet-500/40' 
+                  : isCurrent 
+                  ? 'border-blue-600 border-2 ring-2 ring-blue-500/40' 
+                  : 'border-black border-2';
               } else {
-                // Locked
-                cardBg = isLightTheme ? 'bg-zinc-150' : 'bg-zinc-900/35';
-                cardText = isLightTheme ? 'text-zinc-400' : 'text-zinc-500';
-                cardBorder = isSelected ? 'border-violet-500/50' : 'border-zinc-800/40';
-                cardShadow = '';
+                // Yellow topic cards
+                cardBg = 'bg-[#ffe100]';
+                cardText = 'text-black font-bold';
+                cardBorder = isSelected 
+                  ? 'border-violet-600 border-2 ring-2 ring-violet-500/50' 
+                  : isCurrent 
+                  ? 'border-blue-600 border-2 ring-2 ring-blue-500/50' 
+                  : 'border-black border-2';
               }
+
+              const isDragging = activeDragNodeId === node.id;
 
               return (
                 <div
                   key={node.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleSelectNode(node);
-                  }}
-                  onMouseDown={(e) => handleNodeDragStart(e, node.id)} // Node Drag and Drop triggers!
-                  onTouchStart={(e) => handleNodeDragStart(e, node.id)}
-                  className="absolute pointer-events-auto transition-all duration-300"
+                  onPointerDown={(e) => handlePointerDown(e, node.id)}
+                  onPointerMove={(e) => handlePointerMove(e, node.id)}
+                  onPointerUp={(e) => handlePointerUp(e, node.id)}
+                  className={`absolute pointer-events-auto z-10 select-none touch-none ${
+                    isDragging ? 'cursor-grabbing' : 'cursor-grab'
+                  } ${isDragging ? '' : 'transition-all duration-500 ease-out'}`}
                   style={{
-                    left: (pos.x + offset.x) - cardWidth / 2,
-                    top: (pos.y + offset.y) - cardHeight / 2,
+                    left: pos.x - cardWidth / 2,
+                    top: pos.y - cardHeight / 2,
                     width: cardWidth,
                     height: cardHeight,
                   }}
                 >
                   <div 
-                    className={`relative w-full h-full rounded-[16px] border p-4 flex flex-col justify-between overflow-hidden transition-all duration-300 transform hover:scale-[1.03] active:scale-[0.98] ${cardBg} ${cardBorder} ${cardText} ${cardShadow} ${isLocked ? 'opacity-55 hover:opacity-80' : ''}`}
+                    className={`relative w-full h-full rounded-[8px] p-2 flex items-center justify-center overflow-hidden transition-all duration-300 ${
+                      !isDragging ? 'transform hover:scale-[1.03]' : ''
+                    } ${cardBg} ${cardBorder} ${cardText} ${cardShadow}`}
                   >
-                    {/* Cute sticker mascot on completed cards */}
-                    {isCompleted && (
-                      <div className="absolute right-0 bottom-0 opacity-[0.25] pointer-events-none translate-x-1 translate-y-1">
-                        <GoMascotAvatar />
-                      </div>
-                    )}
-
-                    {/* Top Row: Icon + State Badge */}
-                    <div className="flex items-center justify-between w-full">
-                      <div className={`p-2 rounded-xl border ${
-                        isCurrent 
-                          ? (isLightTheme ? 'bg-zinc-900 text-cyan-400 border-zinc-800' : 'bg-zinc-100 text-blue-600 border-zinc-200')
-                          : isCompleted
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                          : 'bg-zinc-900/40 text-zinc-600 border-white/5'
-                      }`}>
-                        <TopicIcon className="w-5 h-5" strokeWidth={2} />
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        {isCompleted ? (
-                          <>
-                            <div className="w-4 h-4 bg-emerald-500 text-white rounded-full flex items-center justify-center shadow-[0_1px_4px_rgba(16,185,129,0.4)]">
-                              <Check className="w-2.5 h-2.5 stroke-[3]" />
-                            </div>
-                            <span className="text-[10px] font-bold font-mono tracking-wider opacity-75">100%</span>
-                          </>
-                        ) : isLocked ? (
-                          <>
-                            <Lock className="w-3.5 h-3.5 text-zinc-500" />
-                            <span className="text-[10px] font-bold font-mono opacity-65">🔒</span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="text-[10px] font-extrabold font-mono text-cyan-400 tracking-wider bg-cyan-500/10 px-1.5 py-0.5 rounded animate-pulse">+150 XP</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Title Area */}
-                    <div className="flex-1 my-2.5 flex items-center">
-                      <p 
-                        className={`text-xs font-bold leading-snug line-clamp-2 w-full text-left`}
-                      >
+                    {/* Inner content: centered text with status icons */}
+                    <div className="flex items-center justify-center gap-1.5 px-1.5 w-full text-center">
+                      {isCompleted && <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[3]" />}
+                      {isLocked && <Lock className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
+                      <span className="text-[12px] leading-tight select-none pointer-events-none">
                         {t(node.label || node.title)}
-                      </p>
-                    </div>
-
-                    {/* Bottom Row: Progress */}
-                    <div className="flex items-center justify-between w-full border-t border-white/5 pt-2 text-[9px] font-mono opacity-80">
-                      <span>Уроков: {node.lessons || 3}</span>
-                      {isCompleted && (
-                        <span className="text-emerald-500 dark:text-emerald-400 font-bold">Очки: {masteryScore}%</span>
-                      )}
-                      {isCurrent && (
-                        <span className="text-cyan-400 font-bold tracking-widest animate-pulse">АКТИВЕН</span>
-                      )}
+                      </span>
                     </div>
 
                     {/* Milestone badge indicator */}
-                    {isMilestone && (
-                      <div className="absolute top-0 right-10 translate-y-[-50%] bg-gradient-to-r from-amber-500 to-yellow-500 text-black font-black text-[7.5px] tracking-widest uppercase px-2 py-0.5 rounded shadow-[0_2px_5px_rgba(245,158,11,0.3)]">
-                        MILESTONE
+                    {isMilestone && !isLocked && (
+                      <div className="absolute top-0 right-4 translate-y-[-50%] bg-gradient-to-r from-amber-500 to-yellow-500 text-black font-black text-[7px] tracking-widest uppercase px-1.5 py-0.5 rounded border border-black shadow-sm">
+                        ★
                       </div>
                     )}
 
@@ -1018,10 +916,10 @@ export default function Graph() {
                         onMouseDown={(e) => e.stopPropagation()}
                         onTouchStart={(e) => e.stopPropagation()}
                         title={isFolded ? "Развернуть ветку" : "Свернуть ветку"}
-                        className={`absolute right-1 top-1/2 -translate-y-1/2 z-20 w-5.5 h-5.5 rounded-full flex items-center justify-center border text-[11px] font-extrabold shadow-[0_2px_6px_rgba(0,0,0,0.4)] transition-all ${
+                        className={`fold-btn absolute bottom-[-9px] left-1/2 -translate-x-1/2 z-20 w-4.5 h-4.5 rounded-full flex items-center justify-center border border-black text-[10px] font-extrabold shadow-sm transition-all ${
                           isFolded 
-                            ? 'bg-gradient-to-r from-violet-600 to-indigo-600 border-violet-400 text-white animate-pulse' 
-                            : 'bg-zinc-900 border-white/15 text-zinc-400 hover:text-white hover:border-white/30'
+                            ? 'bg-[#ffe100] text-black animate-pulse' 
+                            : 'bg-white text-black hover:bg-zinc-200'
                         }`}
                       >
                         {isFolded ? '+' : '-'}
@@ -1031,8 +929,8 @@ export default function Graph() {
                 </div>
               );
             })}
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
 
         {/* Right Detail Sidebar Panel */}
         <motion.div className="w-full lg:w-80 flex-shrink-0 flex flex-col">
@@ -1151,29 +1049,6 @@ export default function Graph() {
                     {selectedNode.status !== 'locked' && selectedNode.status !== 'completed' && 'Начать урок'}
                   </button>
 
-                  {/* AI Mentor CTA */}
-                  <div className="relative overflow-hidden p-3 rounded-[12px] bg-gradient-to-br from-indigo-950/40 to-purple-950/40 border border-indigo-500/20 flex flex-col gap-1.5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1 text-[10px] font-bold text-indigo-300">
-                        <Sparkles className="w-3 h-3 text-indigo-400 animate-pulse" />
-                        AI Наставник
-                      </span>
-                      <span className="text-[7px] font-black tracking-widest uppercase bg-indigo-500 text-white px-1.5 py-0.5 rounded-[4px] shadow-[0_2px_10px_rgba(99,102,241,0.3)]">PRO</span>
-                    </div>
-                    <p className="text-[9px] text-zinc-300 leading-normal">Хочешь узнать больше об этой теме? Спроси AI Mentor.</p>
-                    <button
-                      onClick={() => {
-                        navigate('/mentor', { 
-                          state: { 
-                            query: `Привет! Я изучаю тему "${selectedNode.label || selectedNode.title}". Пожалуйста, объясни её основы и покажи типичные практические примеры по этой теме.` 
-                          } 
-                        });
-                      }}
-                      className="w-full py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-[10px] font-bold rounded-[8px] transition-all flex items-center justify-center gap-1 shadow-[0_4px_12px_rgba(99,102,241,0.2)]"
-                    >
-                      Спросить AI Наставника
-                    </button>
-                  </div>
                 </div>
               </motion.div>
             ) : (
@@ -1192,24 +1067,47 @@ export default function Graph() {
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-1 text-[10px] font-bold text-indigo-300">
                       <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                      Твой план обучения
+                      Твой plan обучения
                     </span>
                     <span className="text-[8px] font-black tracking-widest uppercase bg-indigo-500 text-white px-1.5 py-0.5 rounded-[4px]">PRO</span>
                   </div>
                   <p className="text-[10px] text-zinc-300 leading-normal">Спланируй свой путь обучения. Получи советы по сложным темам у AI Mentor.</p>
                   <button
                     onClick={() => {
-                      navigate('/mentor', { 
-                        state: { 
-                          query: `Привет! Помоги мне составить план обучения на основе моего графа знаний по курсу "${selectedCourse?.title || 'мои предметы'}".` 
+                      window.dispatchEvent(new CustomEvent('mentor:open', { 
+                        detail: { 
+                          prompt: `Привет! Помоги мне составить план обучения на основе моего графа знаний по курсу "${selectedCourse?.title || 'мои предметы'}".` 
                         } 
-                      });
+                      }));
                     }}
                     className="w-full py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-[10px] font-bold rounded-[8px] transition-all flex items-center justify-center gap-1 shadow-[0_4px_12px_rgba(99,102,241,0.2)]"
                   >
                     Составить план с AI
                   </button>
                 </div>
+
+                {/* AI Mock Interview (ULTRA feature) */}
+                {plan === 'ULTRA' && (
+                  <div className="mt-4 w-full relative overflow-hidden p-4 rounded-[16px] bg-gradient-to-br from-purple-950/40 to-pink-950/40 border border-purple-500/20 flex flex-col gap-2.5 text-left shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-purple-300">
+                        🎓 AI Mock Interview
+                      </span>
+                      <span className="text-[8px] bg-purple-500 text-white px-1.5 py-0.5 rounded font-black tracking-wide leading-none">ULTRA</span>
+                    </div>
+                    <p className="text-[10px] text-zinc-300 leading-normal">
+                      Готовы к собеседованию? Пройдите симуляцию технического или HR интервью по теме "{selectedCourse?.title}".
+                    </p>
+                    <button
+                      onClick={() => {
+                        setMockInterviewOpen(true);
+                      }}
+                      className="w-full py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-[10px] font-bold rounded-[8px] transition-all flex items-center justify-center gap-1 shadow-[0_4px_12px_rgba(139,92,246,0.2)]"
+                    >
+                      Запустить собеседование
+                    </button>
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -1223,7 +1121,7 @@ export default function Graph() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className={`absolute right-0 z-50 bg-[#07080a] border-l border-white/10 flex flex-col transition-all duration-500 ease-in-out ${isZenMode ? 'inset-0 w-full h-full' : 'inset-y-0 w-full lg:w-[65%] xl:w-[70%]'}`}
+              className="absolute inset-0 z-50 bg-[#07080a] flex flex-col transition-all duration-500 ease-in-out"
             >
               <LessonPanel 
                 selectedCourse={selectedCourse}
@@ -1259,6 +1157,142 @@ export default function Graph() {
               initialNodeId={historyModalFilterNodeId}
               onSelectNode={handleSelectNodeFromHistory}
             />
+          )}
+        </AnimatePresence>
+
+        {/* Mock Interview Modal */}
+        <AnimatePresence>
+          {mockInterviewOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => !interviewGenerating && setMockInterviewOpen(false)}
+                className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              />
+              
+              <motion.div 
+                initial={{ scale: 0.95, y: 20, opacity: 0 }}
+                animate={{ scale: 1, y: 0, opacity: 1 }}
+                exit={{ scale: 0.95, y: 20, opacity: 0 }}
+                className="w-full max-w-2xl bg-zinc-900 border border-zinc-800 rounded-3xl p-6 md:p-8 shadow-2xl relative z-10 overflow-hidden text-white flex flex-col max-h-[85vh]"
+              >
+                <div className="flex justify-between items-start mb-6 shrink-0">
+                  <div>
+                    <h3 className="text-xl font-bold flex items-center gap-2 text-purple-400">
+                      <span>🎓</span> AI Mock Interview: {selectedCourse?.title}
+                    </h3>
+                    <p className="text-xs text-zinc-400 mt-1">Симулятор технического и HR собеседования с ИИ Тимлидом</p>
+                  </div>
+                  <button 
+                    disabled={interviewGenerating}
+                    onClick={() => setMockInterviewOpen(false)}
+                    className="p-1.5 rounded-full hover:bg-zinc-800 text-zinc-400 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {interviewStage === 'welcome' && (
+                  <div className="space-y-6 text-center py-8 flex-1 flex flex-col justify-center items-center">
+                    <div className="w-20 h-20 bg-purple-500/10 rounded-full flex items-center justify-center mb-4 border border-purple-500/20">
+                      <Sparkles className="w-10 h-10 text-purple-400 animate-pulse" />
+                    </div>
+                    <div className="max-w-md">
+                      <h4 className="text-lg font-bold text-zinc-200 mb-2 font-sans">Добро пожаловать на тренировочное интервью!</h4>
+                      <p className="text-xs text-zinc-400 leading-relaxed mb-6 font-sans">
+                        ИИ задаст вам 3 сложных вопроса по пройденному материалу курса. В конце вы получите развернутую оценку технических знаний (Hard Skills) и стиля общения (Soft Skills) с процентом готовности к реальной работе.
+                      </p>
+                      <button
+                        onClick={handleStartInterview}
+                        className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg transition-all text-xs font-sans"
+                      >
+                        Начать собеседование
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {interviewStage === 'chat' && (
+                  <div className="flex-1 flex flex-col min-h-0">
+                    <div className="flex-1 overflow-y-auto space-y-4 pr-2 mb-4 custom-scrollbar text-left">
+                      {interviewMessages.map((msg, i) => (
+                        <div 
+                          key={msg.id}
+                          className={`flex gap-3 max-w-[85%] ${msg.role === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}
+                        >
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border text-[10px] font-bold ${
+                            msg.role === 'user' ? 'bg-zinc-700 border-zinc-600 text-white' : 'bg-purple-950/40 border-purple-500/30 text-purple-300'
+                          }`}>
+                            {msg.role === 'user' ? 'Я' : 'HR'}
+                          </div>
+                          <div className={`p-4 rounded-2xl text-xs leading-relaxed font-sans ${
+                            msg.role === 'user' ? 'bg-zinc-800 text-zinc-100' : 'bg-zinc-900 border border-zinc-800/80 text-zinc-200'
+                          }`}>
+                            {msg.content}
+                          </div>
+                        </div>
+                      ))}
+                      {interviewGenerating && (
+                        <div className="flex gap-3 max-w-[85%] mr-auto items-center text-zinc-500 text-xs italic font-sans">
+                          <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
+                          Собеседник печатает вопрос...
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2 border-t border-zinc-800 pt-4 shrink-0">
+                      <input 
+                        type="text"
+                        value={interviewInput}
+                        onChange={(e) => setInterviewInput(e.target.value)}
+                        placeholder="Введите ваш ответ..."
+                        onKeyDown={(e) => e.key === 'Enter' && handleSendInterviewAnswer()}
+                        className="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-purple-500 transition-colors font-sans"
+                      />
+                      <button
+                        onClick={handleSendInterviewAnswer}
+                        disabled={!interviewInput.trim() || interviewGenerating}
+                        className="px-5 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-all font-sans"
+                      >
+                        Ответить
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {interviewStage === 'results' && (
+                  <div className="flex-1 overflow-y-auto space-y-6 text-left pr-2 custom-scrollbar">
+                    <div className="flex items-center gap-3 p-4 bg-purple-950/20 border border-purple-500/20 rounded-2xl">
+                      <Trophy className="w-8 h-8 text-yellow-400 shrink-0" />
+                      <div>
+                        <h4 className="text-sm font-bold text-white font-sans">Интервью успешно пройдено!</h4>
+                        <p className="text-[10px] text-zinc-400 mt-0.5 font-sans">Оценка составлена ИИ Тимлидом на основе ваших ответов.</p>
+                      </div>
+                    </div>
+
+                    <div className="prose prose-invert prose-sm leading-relaxed max-w-none text-left font-sans">
+                      <ReactMarkdown>{interviewFeedback}</ReactMarkdown>
+                    </div>
+
+                    <div className="flex justify-end pt-4 border-t border-zinc-800">
+                      <button
+                        onClick={() => {
+                          setMockInterviewOpen(false);
+                          setInterviewStage('welcome');
+                          setInterviewFeedback('');
+                          setInterviewMessages([]);
+                        }}
+                        className="px-6 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold rounded-xl transition-colors font-sans"
+                      >
+                        Закрыть симулятор
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            </div>
           )}
         </AnimatePresence>
 

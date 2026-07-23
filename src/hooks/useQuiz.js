@@ -14,16 +14,26 @@ export const useQuiz = () => {
     
     try {
       const userId = auth.currentUser?.uid;
+      let cachedQuestions = null;
+
       if (userId && nodeId) {
-        const quizRef = doc(db, 'users', userId, 'quizResults', String(nodeId));
-        const quizSnap = await getDoc(quizRef);
-        if (quizSnap.exists()) {
-          const data = quizSnap.data();
-          if (data.questions && data.questions.length > 0) {
-            setGenerating(false);
-            return data.questions;
+        try {
+          const quizRef = doc(db, 'users', userId, 'quizResults', String(nodeId));
+          const quizSnap = await getDoc(quizRef);
+          if (quizSnap.exists()) {
+            const data = quizSnap.data();
+            if (data.questions && data.questions.length > 0) {
+              cachedQuestions = data.questions;
+            }
           }
+        } catch (readErr) {
+          console.warn("Failed to check Firestore cache for quiz (ignoring and proceeding to generate):", readErr);
         }
+      }
+
+      if (cachedQuestions) {
+        setGenerating(false);
+        return cachedQuestions;
       }
 
       const apiKey = null;
@@ -85,14 +95,18 @@ IMPORTANT: Return ONLY a valid JSON object without markdown tags or explanations
       }
 
       if (userId && nodeId) {
-        const quizRef = doc(db, 'users', userId, 'quizResults', String(nodeId));
-        await setDoc(quizRef, {
-          userId,
-          roadmapId,
-          nodeId: String(nodeId),
-          questions: parsed.questions,
-          lastGeneratedAt: serverTimestamp()
-        }, { merge: true });
+        try {
+          const quizRef = doc(db, 'users', userId, 'quizResults', String(nodeId));
+          await setDoc(quizRef, {
+            userId,
+            roadmapId,
+            nodeId: String(nodeId),
+            questions: parsed.questions,
+            lastGeneratedAt: serverTimestamp()
+          }, { merge: true });
+        } catch (writeErr) {
+          console.warn("Failed to cache generated quiz in Firestore (proceeding anyway):", writeErr);
+        }
       }
 
       return parsed.questions;

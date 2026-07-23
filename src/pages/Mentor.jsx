@@ -171,11 +171,19 @@ INSTRUCTIONS:
 4. Keep your responses highly educational, structured, and clear. Use Markdown (bold text, lists, code snippets, blockquotes).
 5. Address the user directly using their name when appropriate.
 6. Strictly respond in the language of the user's message (default to Russian).
-7. If they ask about quiz errors, explain the underlying logic thoroughly so they understand.`;
+   7. If they ask about quiz errors, explain the underlying logic thoroughly so they understand.
+8. IMPORTANT LIMITATION: If the user asks to create, design, compose, or write a course syllabus, roadmap, or study plan (e.g., "составь курс", "сделай программу обучения"):
+   - If they are on plan "ULTRA", guide them through the interactive briefing.
+   - If they are on "FREE" or "PRO" plan, you MUST politely refuse to draft or write the syllabus. Explain that personalized course generation, interactive syllabus briefings, and materials-based roadmaps (RAG) are exclusive to the ULTRA plan. Suggest they upgrade to ULTRA to unlock this capability.`;
 
       // Smart model routing: use Llama 3.1 8B for short queries to minimize token cost, Llama 3.3 70B for complex/deep responses
+      const isProSoftCapped = plan === 'PRO' && (usage.mentorMessagesUsed || 0) >= PLAN_LIMITS.PRO.aiMentorPerDay;
       const isComplexQuery = text.length > 200 || text.toLowerCase().includes('объясни') || text.toLowerCase().includes('почему') || text.toLowerCase().includes('ошибка');
-      const selectedModel = isComplexQuery ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant';
+      
+      // If PRO soft limit is exceeded, degrade model to basic Llama 3.1 8B
+      const selectedModel = isProSoftCapped 
+        ? 'llama-3.1-8b-instant' 
+        : (isComplexQuery ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant');
 
       const fullPrompt = `${systemPrompt}\n\nUser Question: ${text}`;
       const responseText = await callGroqWithRetry(apiKey, fullPrompt, selectedModel);
@@ -197,7 +205,11 @@ INSTRUCTIONS:
         return next;
       });
 
-      await incrementUsage('mentor_message');
+      const promptTokens = Math.ceil((text.length + systemPrompt.length) / 4);
+      const responseTokens = Math.ceil((responseText || '').length / 4);
+      const totalTokens = promptTokens + responseTokens;
+
+      await incrementUsage('mentor_message', totalTokens);
     } catch (err) {
       console.error("Mentor chat error:", err);
       setMessages(prev => [...prev, {
@@ -233,8 +245,20 @@ INSTRUCTIONS:
     }
   };
 
-  const limitVal = plan === 'PRO' ? PLAN_LIMITS.PRO.maxMentorMessages : PLAN_LIMITS.FREE.maxMentorMessages;
-  const messagesRemaining = Math.max(0, limitVal - (usage.mentorMessagesUsed || 0));
+  const regTime = new Date(auth.currentUser?.metadata?.creationTime || new Date()).getTime();
+  const nowTime = new Date().getTime();
+  const daysSinceReg = (nowTime - regTime) / (1000 * 60 * 60 * 24);
+  const isFreeOnboarding = daysSinceReg <= 7;
+
+  const limitVal = plan === 'ULTRA' 
+    ? PLAN_LIMITS.ULTRA.aiMentorTokensPerDay 
+    : (plan === 'PRO' ? PLAN_LIMITS.PRO.aiMentorPerDay : (isFreeOnboarding ? PLAN_LIMITS.FREE.onboardingMessagesTotal : PLAN_LIMITS.FREE.aiMentorPerDay));
+    
+  const isProSoftCapped = plan === 'PRO' && (usage.mentorMessagesUsed || 0) >= PLAN_LIMITS.PRO.aiMentorPerDay;
+  
+  const remainingVal = plan === 'ULTRA'
+    ? Math.max(0, limitVal - (usage.ultraTokensUsed || 0))
+    : Math.max(0, limitVal - (usage.mentorMessagesUsed || 0));
 
   if (loading) {
     return (
@@ -292,20 +316,34 @@ INSTRUCTIONS:
             <h4 className="font-bold text-sm">Лимиты сообщений</h4>
           </div>
           <p className="text-xs text-on-surface-variant mb-4 leading-relaxed">
-            {plan === 'PRO' 
-              ? 'В PRO тарифе вам доступно до 50 сообщений ментору в день.' 
-              : 'В бесплатном тарифе вам доступно 5 пробных сообщений в месяц.'}
+            {plan === 'ULTRA' 
+              ? 'В ULTRA тарифе вам доступен дневной бюджет в 300 000 токенов.' 
+              : plan === 'PRO'
+                ? 'В PRO тарифе вам доступно до 40 сообщений ментору в день.' 
+                : isFreeOnboarding
+                  ? `Вам доступен приветственный пакет из ${PLAN_LIMITS.FREE.onboardingMessagesTotal} сообщений на первые 7 дней.`
+                  : `Вам доступно до ${PLAN_LIMITS.FREE.aiMentorPerDay} сообщений ментору в день.`}
           </p>
           <div className="space-y-2">
             <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
               <div 
                 className="bg-indigo-500 h-full rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, ((usage.mentorMessagesUsed || 0) / limitVal) * 100)}%` }}
+                style={{ 
+                  width: `${Math.min(100, (
+                    plan === 'ULTRA' 
+                      ? ((usage.ultraTokensUsed || 0) / limitVal) * 100 
+                      : ((usage.mentorMessagesUsed || 0) / limitVal) * 100
+                  ))}%` 
+                }}
               />
             </div>
             <div className="flex justify-between text-[11px] font-mono text-on-surface-variant">
-              <span>Использовано: {usage.mentorMessagesUsed || 0}</span>
-              <span>Осталось: {messagesRemaining}</span>
+              <span>Использовано: {plan === 'ULTRA' ? (usage.ultraTokensUsed || 0) : (usage.mentorMessagesUsed || 0)}</span>
+              <span>
+                Осталось: {plan === 'ULTRA' 
+                  ? `${remainingVal.toLocaleString()} токенов` 
+                  : `${remainingVal} сообщ.`}
+              </span>
             </div>
           </div>
         </div>
@@ -479,7 +517,8 @@ INSTRUCTIONS:
         )}
 
         {/* Input Bar or Paywall */}
-        {messagesRemaining <= 0 ? (
+        {((plan === 'FREE' && (usage.mentorMessagesUsed || 0) >= limitVal) ||
+          (plan === 'ULTRA' && (usage.ultraTokensUsed || 0) >= PLAN_LIMITS.ULTRA.aiMentorTokensPerDay)) ? (
           <div className="p-6 border-t border-outline-variant bg-[#1C1C1E] flex flex-col sm:flex-row items-center justify-between gap-4 flex-shrink-0 rounded-b-3xl">
             <div className="flex items-center gap-3 text-left">
               <div className="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center text-white flex-shrink-0">
@@ -488,40 +527,52 @@ INSTRUCTIONS:
               <div>
                 <h5 className="font-bold text-sm text-white">Достигнут лимит сообщений ментора</h5>
                 <p className="text-xs text-[#98989D] leading-tight mt-0.5">
-                  {plan === 'PRO' 
-                    ? 'Вы израсходовали 50 сообщений на сегодня. Лимит обнулится завтра.' 
-                    : 'Купите подписку Pro, чтобы общаться с ментором до 50 раз в день.'}
+                  {plan === 'ULTRA' 
+                    ? 'Вы израсходовали дневной бюджет токенов тарифа ULTRA. Лимит обнулится завтра.' 
+                    : `Вы исчерпали доступные сообщения на сегодня. Обновите тариф для продолжения.`}
                 </p>
               </div>
             </div>
-            {plan !== 'PRO' && (
-              <button
-                type="button"
-                onClick={() => navigate('/pricing')}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl font-bold bg-[#FFFFFF] text-[#000000] hover:bg-[#F5F5F7] transition-all text-xs"
-              >
-                Получить Pro
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => navigate('/pricing')}
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl font-bold bg-[#FFFFFF] text-[#000000] hover:bg-[#F5F5F7] transition-all text-xs"
+            >
+              {plan === 'FREE' ? 'Купить PRO' : 'Посмотреть тарифы'}
+            </button>
           </div>
         ) : (
-          <form onSubmit={handleSendMessage} className="p-4 border-t border-outline-variant bg-surface-container-lowest flex items-center gap-3 flex-shrink-0">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              disabled={generating || apiKeyError}
-              placeholder={apiKeyError ? "Настройте Groq API Key для отправки сообщений..." : "Задайте вопрос AI-ментору..."}
-              className="flex-1 bg-surface border border-outline-variant rounded-xl px-4 py-3 text-sm text-on-surface placeholder-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/45 focus:border-primary transition-all disabled:opacity-50"
-            />
-            <button
-              type="submit"
-              disabled={!input.trim() || generating || apiKeyError}
-              className="bg-primary hover:bg-primary/95 text-on-primary w-11 h-11 rounded-xl flex items-center justify-center shadow-lg transition-transform hover:scale-102 active:scale-98 disabled:opacity-40 disabled:hover:scale-100 disabled:active:scale-100 flex-shrink-0"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          </form>
+          <div className="flex flex-col flex-shrink-0 w-full">
+            {isProSoftCapped && (
+              <div className="px-6 py-2 bg-amber-500/10 border-t border-outline-variant/30 text-[11px] text-amber-500 flex items-center justify-between select-none">
+                <span className="font-medium">⚠️ Достигнут лимит Grok Mini. Чат переведен на упрощенную модель ИИ Llama.</span>
+                <button 
+                  type="button" 
+                  onClick={() => navigate('/pricing')} 
+                  className="font-bold underline hover:text-amber-400 ml-2"
+                >
+                  Перейти на ULTRA
+                </button>
+              </div>
+            )}
+            <form onSubmit={handleSendMessage} className="p-4 border-t border-outline-variant bg-surface-container-lowest flex items-center gap-3 w-full">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                disabled={generating || apiKeyError}
+                placeholder={apiKeyError ? "Настройте Groq API Key для отправки сообщений..." : "Задайте вопрос AI-ментору..."}
+                className="flex-1 bg-surface border border-outline-variant rounded-xl px-4 py-3 text-sm text-on-surface placeholder-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/45 focus:border-primary transition-all disabled:opacity-50"
+              />
+              <button
+                type="submit"
+                disabled={!input.trim() || generating || apiKeyError}
+                className="bg-primary hover:bg-primary/95 text-on-primary w-11 h-11 rounded-xl flex items-center justify-center shadow-lg transition-transform hover:scale-102 active:scale-98 disabled:opacity-40 disabled:hover:scale-100 disabled:active:scale-100 flex-shrink-0"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </form>
+          </div>
         )}
       </div>
 

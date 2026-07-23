@@ -4,6 +4,7 @@ import Topbar from './Topbar.jsx';
 import { auth } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import CookieBanner from './shared/CookieBanner.jsx';
+import MentorWidget from './MentorWidget.jsx';
 
 export default function Layout() {
   const [user, setUser] = useState(auth.currentUser);
@@ -40,12 +41,22 @@ export default function Layout() {
     );
   }
 
+  const isGraphPage = location.pathname === '/graph';
+
   return (
     <div className="flex flex-col w-full min-h-screen bg-[#000000] text-[#F5F5F7] font-sans">
       <div id="topbar-container"><Topbar /></div>
-      <main id="page-content" className="flex-1 pt-14 overflow-y-auto bg-[#000000] transition-all duration-150 relative w-full max-w-[2000px] mx-auto px-12 md:px-16 pb-12">
+      <main 
+        id="page-content" 
+        className={`flex-1 pt-14 transition-all duration-150 relative w-full max-w-[2000px] mx-auto ${
+          isGraphPage 
+            ? 'h-[calc(100vh-3.5rem)] overflow-hidden px-4 pb-4 flex flex-col' 
+            : 'overflow-y-auto px-12 md:px-16 pb-12'
+        }`}
+      >
         <Outlet />
       </main>
+      <MentorWidget />
       <CookieBanner />
     </div>
   );

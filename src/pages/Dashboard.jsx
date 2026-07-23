@@ -544,22 +544,20 @@ export default function Dashboard() {
             </div>
 
             <div className="space-y-2">
-              {[
-                { name: 'Alexander', weeklyXP: 380 },
-                { name: 'Elena', weeklyXP: 290 },
-                { name: 'Dmitry', weeklyXP: 240 }
-              ].map((player, idx) => (
-                <div 
-                  key={idx} 
-                  className="flex items-center justify-between p-2 rounded-lg text-xs bg-transparent border border-transparent"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[#8E8E93] w-4">{idx + 1}</span>
-                    <span className="text-[#F5F5F7] truncate max-w-[100px]">{player.name}</span>
-                  </div>
-                  <span className="font-mono tabular-nums text-[#8E8E93]">{player.weeklyXP} XP</span>
+              <div className="flex items-center justify-between p-2 rounded-lg text-xs bg-[#2C2C2E]/20 border border-[rgba(255,255,255,0.06)]">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-white w-4">1</span>
+                  <span className="text-white font-bold truncate max-w-[100px]">{user?.displayName || 'Вы'}</span>
                 </div>
-              ))}
+                <span className="font-mono tabular-nums text-white">{stats?.weeklyXP || 0} XP</span>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-lg text-xs bg-transparent border border-transparent opacity-50">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[#8E8E93] w-4">-</span>
+                  <span className="text-[#8E8E93] truncate max-w-[100px]">Ожидание игроков...</span>
+                </div>
+                <span className="font-mono tabular-nums text-[#8E8E93]">0 XP</span>
+              </div>
             </div>
           </div>
 

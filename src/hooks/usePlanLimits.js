@@ -11,6 +11,7 @@ export const usePlanLimits = () => {
     aiQuestionsUsed: 0, 
     lastQuestionDate: null,
     mentorMessagesUsed: 0,
+    ultraTokensUsed: 0,
     lastMentorDate: null,
     mentorMonthStart: null
   });
@@ -38,13 +39,26 @@ export const usePlanLimits = () => {
           }
 
           let newMentorMessagesUsed = data.mentorMessagesUsed || 0;
-          if (currentPlan === 'PRO') {
-            if (data.lastMentorDate !== todayStr) {
-              newMentorMessagesUsed = 0;
+          let newUltraTokensUsed = data.ultraTokensUsed || 0;
+
+          if (currentPlan === 'FREE') {
+            const regTime = new Date(user.metadata.creationTime || new Date()).getTime();
+            const nowTime = new Date().getTime();
+            const daysSinceReg = (nowTime - regTime) / (1000 * 60 * 60 * 24);
+            
+            if (daysSinceReg > 7) {
+              // Regular FREE plan (after onboarding): daily reset
+              if (data.lastMentorDate !== todayStr) {
+                newMentorMessagesUsed = 0;
+              }
+            } else {
+              // Onboarding phase: cumulative (no daily reset)
             }
           } else {
-            if (data.mentorMonthStart !== monthStr) {
+            // PRO & ULTRA: daily reset
+            if (data.lastMentorDate !== todayStr) {
               newMentorMessagesUsed = 0;
+              newUltraTokensUsed = 0;
             }
           }
 
@@ -53,6 +67,7 @@ export const usePlanLimits = () => {
             aiQuestionsUsed: newAiQuestionsUsed,
             lastQuestionDate: todayStr,
             mentorMessagesUsed: newMentorMessagesUsed,
+            ultraTokensUsed: newUltraTokensUsed,
             lastMentorDate: data.lastMentorDate || todayStr,
             mentorMonthStart: data.mentorMonthStart || monthStr
           });
@@ -63,6 +78,7 @@ export const usePlanLimits = () => {
             aiQuestionsUsed: 0, 
             lastQuestionDate: todayStr,
             mentorMessagesUsed: 0,
+            ultraTokensUsed: 0,
             lastMentorDate: todayStr,
             mentorMonthStart: monthStr
           };
@@ -81,28 +97,62 @@ export const usePlanLimits = () => {
 
   const checkLimit = useCallback((type) => {
     if (type === 'mentor_message') {
-      const limitVal = plan === 'PRO' ? PLAN_LIMITS.PRO.maxMentorMessages : PLAN_LIMITS.FREE.maxMentorMessages;
-      if (usage.mentorMessagesUsed >= limitVal) {
+      if (plan === 'FREE') {
+        const regTime = new Date(auth.currentUser?.metadata?.creationTime || new Date()).getTime();
+        const nowTime = new Date().getTime();
+        const daysSinceReg = (nowTime - regTime) / (1000 * 60 * 60 * 24);
+        
+        const limitVal = daysSinceReg <= 7 
+          ? PLAN_LIMITS.FREE.onboardingMessagesTotal 
+          : PLAN_LIMITS.FREE.aiMentorPerDay;
+          
+        if (usage.mentorMessagesUsed >= limitVal) {
+          setUpgradeModalOpen(true);
+          return false;
+        }
+        return true;
+      }
+      
+      if (plan === 'PRO') {
+        // Soft limit: always allowed to pass so user isn't abruptly blocked, we degrade model in chat
+        return true;
+      }
+      
+      if (plan === 'ULTRA') {
+        if (usage.ultraTokensUsed >= PLAN_LIMITS.ULTRA.aiMentorTokensPerDay) {
+          setUpgradeModalOpen(true);
+          return false;
+        }
+        return true;
+      }
+    }
+
+    if (type === 'roadmap') {
+      const limitVal = plan === 'ULTRA' 
+        ? PLAN_LIMITS.ULTRA.maxActiveRoadmaps 
+        : (plan === 'PRO' ? PLAN_LIMITS.PRO.maxActiveRoadmaps : PLAN_LIMITS.FREE.maxActiveRoadmaps);
+      if (usage.roadmapsGenerated >= limitVal) {
         setUpgradeModalOpen(true);
         return false;
       }
       return true;
     }
 
-    if (plan === 'PRO') return true;
+    if (type === 'ai_question') {
+      const limitVal = plan === 'ULTRA' 
+        ? PLAN_LIMITS.ULTRA.aiQuestionsPerDay 
+        : (plan === 'PRO' ? PLAN_LIMITS.PRO.aiQuestionsPerDay : PLAN_LIMITS.FREE.aiQuestionsPerDay);
+      if (usage.aiQuestionsUsed >= limitVal) {
+        setUpgradeModalOpen(true);
+        return false;
+      }
+      return true;
+    }
 
-    if (type === 'roadmap' && usage.roadmapsGenerated >= PLAN_LIMITS.FREE.maxRoadmaps) {
-      setUpgradeModalOpen(true);
-      return false;
-    }
-    if (type === 'ai_question' && usage.aiQuestionsUsed >= PLAN_LIMITS.FREE.maxAiQuestions) {
-      setUpgradeModalOpen(true);
-      return false;
-    }
     return true;
   }, [plan, usage]);
 
-  const incrementUsage = useCallback(async (type) => {
+  const incrementUsage = useCallback(async (type, tokenCount = 0) => {
     if (!auth.currentUser) return;
     const ref = doc(db, 'users', auth.currentUser.uid, 'subscription', 'details');
     const todayStr = new Date().toISOString().split('T')[0];
@@ -119,12 +169,15 @@ export const usePlanLimits = () => {
         newUsage.mentorMessagesUsed += 1;
         newUsage.lastMentorDate = todayStr;
         newUsage.mentorMonthStart = monthStr;
+        if (plan === 'ULTRA' && tokenCount > 0) {
+          newUsage.ultraTokensUsed = (newUsage.ultraTokensUsed || 0) + tokenCount;
+        }
       }
       // Fire-and-forget sync to Firestore
       setDoc(ref, newUsage, { merge: true }).catch(console.error);
       return newUsage;
     });
-  }, []);
+  }, [plan]);
 
   return { plan, usage, checkLimit, incrementUsage, isUpgradeModalOpen, setUpgradeModalOpen, loading, dbBillingPeriod };
 };
