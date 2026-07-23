@@ -9,12 +9,14 @@ import { getUserCourses } from '../services/courseService.js';
 
 export const useAchievements = () => {
   const [unlockedAchievements, setUnlockedAchievements] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
   const { showAchievementToast } = useGamification();
   const { addXP } = useXP();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
+        setIsLoading(true);
         try {
           // 1. Fetch user's unlocked achievements from Firestore
           const achRef = collection(db, 'users', user.uid, 'achievements');
@@ -158,9 +160,12 @@ export const useAchievements = () => {
           
         } catch (err) {
           console.error("Error auto-checking achievements:", err);
+        } finally {
+          setIsLoading(false);
         }
       } else {
         setUnlockedAchievements({});
+        setIsLoading(false);
       }
     });
     return () => unsubscribe();
@@ -189,5 +194,5 @@ export const useAchievements = () => {
     }
   }, [unlockedAchievements, showAchievementToast, addXP]);
 
-  return { unlockedAchievements, unlockAchievement };
+  return { unlockedAchievements, unlockAchievement, isLoading };
 };

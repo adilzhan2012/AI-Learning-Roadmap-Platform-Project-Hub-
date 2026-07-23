@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, ChevronDown, ChevronUp, Trophy } from 'lucide-react';
+import { Lock, ChevronDown, ChevronUp, Trophy, Loader2 } from 'lucide-react';
 import { ACHIEVEMENTS } from '../../constants/achievements.js';
 import { useAchievements } from '../../hooks/useAchievements.js';
 import { usePlanLimits } from '../../hooks/usePlanLimits.js';
@@ -60,7 +60,7 @@ const getCategoryIcon = (category, isUnlocked) => {
 export default function AchievementsPage() {
   const navigate = useNavigate();
   const { plan } = usePlanLimits();
-  const { unlockedAchievements } = useAchievements();
+  const { unlockedAchievements, isLoading } = useAchievements();
   const [showAll, setShowAll] = useState(false);
   const [activeCategory, setActiveCategory] = useState('all');
   const [activeMainTab, setActiveMainTab] = useState('achievements'); // 'achievements' | 'leagues'
@@ -76,6 +76,15 @@ export default function AchievementsPage() {
   const filteredAchievements = activeCategory === 'all'
     ? ACHIEVEMENTS
     : ACHIEVEMENTS.filter(ach => ach.category === activeCategory);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4.5rem)] text-on-surface">
+        <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
+        <p className="text-sm font-mono text-on-surface-variant">Синхронизация достижений...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-[2000px] mx-auto min-h-[calc(100vh-4.5rem)] text-on-background font-sans p-4 md:p-6">

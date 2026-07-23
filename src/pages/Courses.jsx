@@ -391,7 +391,7 @@ export default function Courses() {
                             )}
                           </div>
                         </div>
-                        <span className={`text-xs transition-colors truncate max-w-[120px] ${cat === '✨ Сгенерировано ИИ' ? 'bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-indigo-400 font-extrabold group-hover:opacity-80' : 'text-[#98989D] group-hover:text-[#F5F5F7]'}`}>{cat}</span>
+                        <span className={`text-xs transition-colors truncate max-w-[120px] ${cat === '✨ Сгенерировано ИИ' ? 'bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-indigo-400 font-extrabold group-hover:opacity-80' : 'text-on-surface-variant group-hover:text-on-surface'}`}>{cat}</span>
                       </label>
                     ))
                   )}

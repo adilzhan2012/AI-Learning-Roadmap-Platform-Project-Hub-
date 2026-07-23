@@ -18,6 +18,7 @@ import {
 import { t, useLocale } from '../i18n.js';
 import { useXP } from '../hooks/useXP.js';
 import { useGamification } from '../context/GamificationContext.jsx';
+import { toggleTheme } from '../theme.js';
 import { auth, signOut } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getUserStats } from '../services/courseService.js';
@@ -167,7 +168,7 @@ export default function Topbar() {
           {/* Current League Emblem */}
           <div 
             onClick={() => navigate('/achievements')}
-            className="hidden sm:flex items-center gap-1.5 cursor-pointer text-[10px] font-semibold text-[#98989D] hover:text-white transition-colors border border-[rgba(255,255,255,0.08)] bg-[#1C1C1E] rounded-full px-2.5 py-1 select-none font-sans"
+            className="hidden sm:flex items-center gap-1.5 cursor-pointer text-[10px] font-semibold text-on-surface-variant hover:text-white transition-colors border border-outline bg-surface rounded-full px-2.5 py-1 select-none font-sans"
             title="Лига соревнований"
           >
             <LeagueIcon leagueId={currentLeague} className="w-3.5 h-3.5 text-on-surface-variant" />
@@ -309,6 +310,22 @@ export default function Topbar() {
                     <ChevronRight className="w-3.5 h-3.5 text-[#636366]" strokeWidth={1.5} />
                   </button>
 
+<<<<<<< HEAD
+=======
+                  <div className="py-2 border-b border-outline">
+            <button 
+              onClick={() => {
+                navigate('/achievements');
+                setShowProfileMenu(false);
+              }}
+              className="w-full text-left px-4 py-2 text-xs font-semibold text-on-surface hover:bg-surface-container-high/50 transition-colors flex items-center gap-2"
+            >
+              <Trophy className="w-3.5 h-3.5 text-on-surface-variant" strokeWidth={1.5} />
+              Достижения
+            </button>
+          </div>
+
+>>>>>>> 1a9ad0df5c5074cda19a0eb897e16e4af9f6052c
                   <div className="border-t border-outline my-1"></div>
 
                   {/* Logout/Sign Out Option */}

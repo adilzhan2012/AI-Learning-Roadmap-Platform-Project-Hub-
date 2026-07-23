@@ -520,7 +520,7 @@ export default function Dashboard() {
         <motion.div 
           variants={itemVariants} 
           onClick={() => navigate('/achievements')}
-          className="lg:col-span-1 bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] hover:border-white/20 transition-all rounded-[16px] p-6 flex flex-col justify-between cursor-pointer group min-h-[360px]"
+          className="lg:col-span-1 bg-surface border border-outline hover:border-white/20 transition-all rounded-[16px] p-6 flex flex-col justify-between cursor-pointer group min-h-[360px]"
         >
           <div className="w-full">
             <div className="flex items-center justify-between mb-4">
