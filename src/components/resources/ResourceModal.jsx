@@ -98,16 +98,16 @@ Provide a highly thorough, detailed code review in the Russian language. Include
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] w-full max-w-4xl max-h-[90vh] rounded-[24px] shadow-2xl flex flex-col overflow-hidden"
+        className="relative bg-surface border border-outline w-full max-w-4xl max-h-[90vh] rounded-[24px] shadow-2xl flex flex-col overflow-hidden"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[rgba(255,255,255,0.08)] bg-[#1C1C1E] shrink-0">
+        <div className="flex items-center justify-between p-6 border-b border-outline bg-surface shrink-0">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#98989D] border border-[rgba(255,255,255,0.1)] px-2 py-0.5 rounded">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-on-surface-variant border border-[rgba(255,255,255,0.1)] px-2 py-0.5 rounded">
                 {resource.type === 'project' ? 'ПРОЕКТ' : resource.type === 'cheatsheet' ? 'ШПАРГАЛКА' : 'СТАТЬЯ'}
               </span>
-              <span className="text-[10px] font-mono text-[#98989D]">{resource.tags?.[0]}</span>
+              <span className="text-[10px] font-mono text-on-surface-variant">{resource.tags?.[0]}</span>
             </div>
             <h2 className="text-xl md:text-2xl font-bold font-clash text-white">{resource.title}</h2>
           </div>
@@ -122,7 +122,7 @@ Provide a highly thorough, detailed code review in the Russian language. Include
             </button>
             <button 
               onClick={onClose}
-              className="p-2 hover:bg-[rgba(255,255,255,0.05)] rounded-full text-[#98989D] transition-colors"
+              className="p-2 hover:bg-[rgba(255,255,255,0.05)] rounded-full text-on-surface-variant transition-colors"
             >
               <X className="w-6 h-6" />
             </button>
@@ -134,7 +134,7 @@ Provide a highly thorough, detailed code review in the Russian language. Include
           {loading ? (
              <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-center">
                 <Loader2 className="w-10 h-10 animate-spin text-white mb-4" />
-                <p className="text-sm font-mono text-[#98989D]">ИИ-ментор генерирует материал...</p>
+                <p className="text-sm font-mono text-on-surface-variant">ИИ-ментор генерирует материал...</p>
              </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-center">
@@ -155,7 +155,7 @@ Provide a highly thorough, detailed code review in the Russian language. Include
 
               {/* Project Code Editor Pane */}
               {resource.type === 'project' && (
-                <div className="lg:w-1/2 flex flex-col gap-4 border-t lg:border-t-0 lg:border-l border-[rgba(255,255,255,0.08)] pt-6 lg:pt-0 lg:pl-8">
+                <div className="lg:w-1/2 flex flex-col gap-4 border-t lg:border-t-0 lg:border-l border-outline pt-6 lg:pt-0 lg:pl-8">
                   <div className="flex items-center gap-2 mb-2">
                     <Code2 className="w-5 h-5 text-indigo-400" />
                     <h3 className="text-sm font-bold text-white">Зона решения</h3>
@@ -165,7 +165,7 @@ Provide a highly thorough, detailed code review in the Russian language. Include
                     value={code}
                     onChange={(e) => setCode(e.target.value)}
                     placeholder="// Напишите ваш код здесь..."
-                    className="flex-1 w-full min-h-[250px] bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[12px] p-4 text-xs font-mono text-emerald-400 focus:outline-none focus:border-indigo-500 transition-colors custom-scrollbar"
+                    className="flex-1 w-full min-h-[250px] bg-surface border border-outline rounded-[12px] p-4 text-xs font-mono text-emerald-400 focus:outline-none focus:border-indigo-500 transition-colors custom-scrollbar"
                     style={{ tabSize: 2 }}
                   />
 
@@ -196,7 +196,7 @@ Provide a highly thorough, detailed code review in the Russian language. Include
         </div>
         
         {/* Mobile action bar */}
-        <div className="md:hidden p-4 border-t border-[rgba(255,255,255,0.08)] bg-[#1C1C1E]">
+        <div className="md:hidden p-4 border-t border-outline bg-surface">
           <button 
             onClick={handleGoToGraph}
             className="w-full flex justify-center items-center gap-2 px-4 py-3 bg-[rgba(255,255,255,0.05)] hover:bg-[rgba(255,255,255,0.1)] rounded-[12px] text-sm font-bold text-white transition-colors border border-[rgba(255,255,255,0.05)]"

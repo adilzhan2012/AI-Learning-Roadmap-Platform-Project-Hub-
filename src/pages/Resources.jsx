@@ -324,14 +324,14 @@ export default function Resources() {
             {/* Search + Tabs Bar */}
             <div className="space-y-4">
               {/* Borderless bottom line search field */}
-              <div className="relative border border-[rgba(255,255,255,0.08)] rounded-xl bg-[#1C1C1E] focus-within:border-white focus-within:bg-[#2C2C2E] transition-all py-3 px-4 shadow-sm flex items-center gap-3">
-                <Search className="w-4 h-4 text-[#98989D]" strokeWidth={1.5} />
+              <div className="relative border border-outline rounded-xl bg-surface focus-within:border-white focus-within:bg-surface-container-high transition-all py-3 px-4 shadow-sm flex items-center gap-3">
+                <Search className="w-4 h-4 text-on-surface-variant" strokeWidth={1.5} />
                 <input
                   type="text"
                   placeholder="Поиск ресурсов..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-transparent text-sm text-[#F5F5F7] placeholder:text-[#98989D] focus:outline-none"
+                  className="w-full bg-transparent text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none"
                 />
               </div>
 
@@ -393,7 +393,7 @@ export default function Resources() {
                 <div className="col-span-full flex justify-center mt-2 mb-4">
                   <button 
                     onClick={() => setVisibleCount(prev => prev + 10)}
-                    className="bg-[#2C2C2E] hover:bg-[#3C3C3E] text-white px-6 py-2.5 rounded-xl text-xs font-bold transition-colors border border-[rgba(255,255,255,0.08)] shadow-sm"
+                    className="bg-surface-container-high hover:bg-[#3C3C3E] text-white px-6 py-2.5 rounded-xl text-xs font-bold transition-colors border border-outline shadow-sm"
                   >
                     Показать остальные
                   </button>
