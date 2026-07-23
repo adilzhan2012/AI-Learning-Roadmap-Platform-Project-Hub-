@@ -934,7 +934,7 @@ Respond in Russian. Keep your reply concise and professional.`;
         </div>
 
         {/* Right Detail Sidebar Panel */}
-        <motion.div className="w-full lg:w-80 flex-shrink-0 flex flex-col">
+        <motion.div className="w-full lg:w-80 flex-shrink-0 flex flex-col sticky top-0 h-screen overflow-hidden">
           <AnimatePresence mode="wait">
             {selectedNode ? (
               <motion.div 

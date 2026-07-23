@@ -545,7 +545,7 @@ ${ultraInstruction}`;
               }}
               exit={{ opacity: 0, scale: 0.95, y: 30 }}
               transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="h-[100%] md:h-[620px] w-full max-w-[750px] bg-surface-container-high/95 md:border border-outline-variant rounded-none md:rounded-2xl flex flex-col shadow-2xl overflow-hidden backdrop-blur-md select-none font-sans text-on-surface relative animate-in fade-in zoom-in-95 duration-200"
+              className="h-[100%] md:h-[620px] w-full max-w-[750px] bg-surface-container-high/95 md:border border-outline-variant rounded-none md:rounded-2xl flex flex-col shadow-2xl overflow-y-auto backdrop-blur-md select-none font-sans text-on-surface relative animate-in fade-in zoom-in-95 duration-200"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}

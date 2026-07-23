@@ -159,7 +159,7 @@ export default function QuizHistoryModal({
         animate={{ scale: 1, y: 0, opacity: 1 }}
         exit={{ scale: 0.95, y: 30, opacity: 0 }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="w-full max-w-4xl bg-surface border border-outline rounded-[24px] shadow-[0_24px_80px_rgba(0,0,0,0.6)] relative z-10 flex flex-col max-h-[85vh] text-on-background overflow-hidden"
+        className="w-full max-w-4xl bg-surface border border-outline rounded-[24px] shadow-[0_24px_80px_rgba(0,0,0,0.6)] relative z-10 flex flex-col max-h-[85vh] text-on-background overflow-y-auto"
       >
         {/* Header */}
         <div className="p-6 border-b border-outline flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0 bg-surface">

@@ -98,7 +98,7 @@ Provide a highly thorough, detailed code review in the Russian language. Include
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] w-full max-w-4xl max-h-[90vh] rounded-[24px] shadow-2xl flex flex-col overflow-hidden"
+        className="relative bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] w-full max-w-4xl max-h-[90vh] rounded-[24px] shadow-2xl flex flex-col overflow-y-auto"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-[rgba(255,255,255,0.08)] bg-[#1C1C1E] shrink-0">

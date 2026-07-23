@@ -21,7 +21,7 @@ export default function UpgradeModal({ isOpen, onClose, onUpgrade }) {
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
-          className="relative bg-surface border border-outline-variant w-full max-w-4xl rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row z-10"
+          className="relative bg-surface border border-outline-variant w-full max-w-4xl rounded-[2rem] shadow-2xl overflow-y-auto flex flex-col md:flex-row z-10"
         >
           <button 
             onClick={onClose}

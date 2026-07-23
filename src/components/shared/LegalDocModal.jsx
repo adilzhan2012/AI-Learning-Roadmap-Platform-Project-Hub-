@@ -31,7 +31,7 @@ export default function LegalDocModal({ isOpen, onClose, docKey }) {
         animate={{ scale: 1, y: 0, opacity: 1 }}
         exit={{ scale: 0.95, y: 30, opacity: 0 }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="w-full max-w-3xl bg-surface border border-outline rounded-[24px] shadow-[0_24px_80px_rgba(0,0,0,0.6)] relative z-10 flex flex-col max-h-[85vh] text-on-background overflow-hidden font-sans"
+        className="w-full max-w-3xl bg-surface border border-outline rounded-[24px] shadow-[0_24px_80px_rgba(0,0,0,0.6)] relative z-10 flex flex-col max-h-[85vh] text-on-background overflow-y-auto font-sans"
       >
         {/* Header */}
         <div className="p-5 border-b border-outline flex items-center justify-between flex-shrink-0 bg-surface">
