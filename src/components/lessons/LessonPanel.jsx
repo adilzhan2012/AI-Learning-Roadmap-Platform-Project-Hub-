@@ -29,7 +29,14 @@ import SlideViewer from './SlideViewer.jsx';
 import DynamicImage from './DynamicImage.jsx';
 import SelectionPopover from '../shared/SelectionPopover.jsx';
 import { useTextSelection } from '../../hooks/useTextSelection.js';
-import { PlayCircle } from 'lucide-react';
+const cleanContentText = (text) => {
+  if (!text) return '';
+  return text
+    .replace(/---FLASHCARD---[\s\S]*?(?=(?:---FLASHCARD---|##|\n\s*\n\s*##|$))/gi, '')
+    .replace(/\n\s*---\s*$/g, '')
+    .replace(/\[IMAGE:.*?\]/gi, '')
+    .trim();
+};
 
 export default function LessonPanel({ 
   selectedCourse, 
@@ -234,7 +241,7 @@ Provide a code boilerplate template at the end.`;
 
   const handleExportNotion = () => {
     const header = `# ${selectedNode.label}\n\n`;
-    const cleanContent = selectedNode.content.replace(/---FLASHCARD---[\s\S]*?---/g, '').replace(/\[IMAGE:.*?\]/gi, '');
+    const cleanContent = cleanContentText(selectedNode.content);
     const blob = new Blob([header + cleanContent], { type: 'text/markdown;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -247,7 +254,7 @@ Provide a code boilerplate template at the end.`;
 
   const handleExportHomework = () => {
     const homeworkRegex = /##\s*(?:Практика|Домашнее задание|Homework)[\s\S]*/i;
-    const cleanContent = selectedNode.content.replace(/---FLASHCARD---[\s\S]*?---/g, '').replace(/\[IMAGE:.*?\]/gi, '');
+    const cleanContent = cleanContentText(selectedNode.content);
     const hwMatch = cleanContent.match(homeworkRegex);
     
     let hwText = hwMatch ? hwMatch[0] : "Практическое задание для этого урока не сгенерировано.";
@@ -348,13 +355,16 @@ Provide a code boilerplate template at the end.`;
 
   // Parse Flashcards
   let displayContent = isELI5 ? (selectedNode.eli5Content || '') : (selectedNode.content || '');
-  const flashcardRegex = /---FLASHCARD---\nTerm:\s*(.*?)\nDef:\s*(.*?)\n---/gs;
+  const flashcardRegex = /---FLASHCARD---\s*(?:Term|Термин)\s*:\s*(.*?)\s*(?:Def|Definition|Определение|Объяснение)\s*:\s*(.*?)(?=\s*---FLASHCARD---|\s*---|\s*##|\s*$)/gi;
   const flashcards = [];
   let match;
   while ((match = flashcardRegex.exec(displayContent)) !== null) {
-    flashcards.push({ term: match[1].trim(), definition: match[2].trim() });
+    const term = match[1].replace(/---+$/, '').trim();
+    const definition = match[2].replace(/---+$/, '').trim();
+    if (term && definition) {
+      flashcards.push({ term, definition });
+    }
   }
-  displayContent = displayContent.replace(flashcardRegex, '').trim();
 
   // Parse Images
   const imageRegex = /\[IMAGE:\s*(.*?)\]/gi;
@@ -363,7 +373,9 @@ Provide a code boilerplate template at the end.`;
   while ((imgMatch = imageRegex.exec(displayContent)) !== null) {
     images.push(imgMatch[1].trim());
   }
-  displayContent = displayContent.replace(imageRegex, '').trim();
+
+  // Reliably strip all raw tags and delimiters
+  displayContent = cleanContentText(displayContent);
 
   // Calculate Reading Time
   const wordCount = displayContent.split(/\s+/).length;
