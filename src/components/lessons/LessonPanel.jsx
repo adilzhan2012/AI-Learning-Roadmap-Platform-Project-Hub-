@@ -10,7 +10,8 @@ import {
   Maximize2,
   Minimize2,
   Baby,
-  Lightbulb
+  Lightbulb,
+  Clock
 } from 'lucide-react';
 import { t } from '../../i18n.js';
 import { useNavigate } from 'react-router-dom';
@@ -25,6 +26,7 @@ import Flashcard from './Flashcard.jsx';
 import ContextualMentor from './ContextualMentor.jsx';
 import { markdownToSlides } from '../../services/courseService.js';
 import SlideViewer from './SlideViewer.jsx';
+import DynamicImage from './DynamicImage.jsx';
 import SelectionPopover from '../shared/SelectionPopover.jsx';
 import { useTextSelection } from '../../hooks/useTextSelection.js';
 import { PlayCircle } from 'lucide-react';
@@ -227,12 +229,29 @@ Provide a code boilerplate template at the end.`;
 
   const handleExportNotion = () => {
     const header = `# ${selectedNode.label}\n\n`;
-    const cleanContent = selectedNode.content.replace(/---FLASHCARD---[\s\S]*?---/g, '');
+    const cleanContent = selectedNode.content.replace(/---FLASHCARD---[\s\S]*?---/g, '').replace(/\[IMAGE:.*?\]/gi, '');
     const blob = new Blob([header + cleanContent], { type: 'text/markdown;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', `${selectedNode.label.replace(/\s+/g, '_')}_notion.md`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportHomework = () => {
+    const homeworkRegex = /##\s*(?:Практика|Домашнее задание|Homework)[\s\S]*/i;
+    const cleanContent = selectedNode.content.replace(/---FLASHCARD---[\s\S]*?---/g, '').replace(/\[IMAGE:.*?\]/gi, '');
+    const hwMatch = cleanContent.match(homeworkRegex);
+    
+    let hwText = hwMatch ? hwMatch[0] : "Практическое задание для этого урока не сгенерировано.";
+    const header = `# Практика: ${selectedNode.label}\n\n`;
+    const blob = new Blob([header + hwText], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Practice_${selectedNode.label.replace(/\s+/g, '_')}.md`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -332,6 +351,19 @@ Provide a code boilerplate template at the end.`;
   }
   displayContent = displayContent.replace(flashcardRegex, '').trim();
 
+  // Parse Images
+  const imageRegex = /\[IMAGE:\s*(.*?)\]/gi;
+  const images = [];
+  let imgMatch;
+  while ((imgMatch = imageRegex.exec(displayContent)) !== null) {
+    images.push(imgMatch[1].trim());
+  }
+  displayContent = displayContent.replace(imageRegex, '').trim();
+
+  // Calculate Reading Time
+  const wordCount = displayContent.split(/\s+/).length;
+  const readingTime = Math.max(1, Math.ceil(wordCount / 200));
+
   const isCodingCourse = selectedCourse && (
     selectedCourse.title.toLowerCase().includes('go') ||
     selectedCourse.title.toLowerCase().includes('python') ||
@@ -346,8 +378,8 @@ Provide a code boilerplate template at the end.`;
   );
 
   return (
-    <div className="flex w-full h-full bg-background">
-      <div className="flex-1 border-l border-white/10 shadow-2xl flex flex-col relative h-full text-zinc-300 min-w-0">
+    <div className="flex w-full h-full bg-background overflow-hidden">
+      <div className="flex-1 border-l border-white/10 shadow-2xl flex flex-col relative h-full text-zinc-300 min-w-0 min-h-0 overflow-hidden">
         {/* Header */}
       <div className="flex items-center justify-between p-4 md:p-6 border-b border-white/10 bg-background flex-shrink-0">
         <div>
@@ -373,7 +405,13 @@ Provide a code boilerplate template at the end.`;
                       onClick={handleExportNotion}
                       className="w-full text-left px-4 py-2 hover:bg-on-surface/5 text-xs text-zinc-200 transition-colors"
                     >
-                      📓 Экспорт в Notion (.md)
+                      📓 Экспорт конспекта (.md)
+                    </button>
+                    <button 
+                      onClick={handleExportHomework}
+                      className="w-full text-left px-4 py-2 hover:bg-on-surface/5 text-xs text-emerald-400 font-bold transition-colors"
+                    >
+                      💻 Скачать ДЗ (.md)
                     </button>
                     {flashcards.length > 0 && (
                       <button 
@@ -437,7 +475,7 @@ Provide a code boilerplate template at the end.`;
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto relative custom-scrollbar bg-background text-left">
+      <div className="flex-1 min-h-0 overflow-y-auto relative custom-scrollbar bg-background text-left">
         {selectedNode.content ? (
           <div className="flex flex-col min-h-full">
             {adaptationBanner && (
@@ -463,6 +501,13 @@ Provide a code boilerplate template at the end.`;
             )}
 
             <div className={`p-8 md:p-12 flex-1 w-full mx-auto prose dark:prose-invert prose-primary prose-base md:prose-lg prose-p:text-zinc-300 prose-headings:text-zinc-100 prose-p:leading-[1.8] prose-li:leading-[1.8] prose-li:text-zinc-300 prose-strong:text-zinc-200 tracking-normal font-sans ${isZenMode ? 'max-w-2xl' : 'max-w-3xl'}`}>
+              <div className="flex items-center gap-2 mb-6 opacity-70 border-b border-white/10 pb-4">
+                <Clock className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium tracking-wide">Время на чтение: ~{readingTime} мин</span>
+              </div>
+              
+              {images.map((keyword, idx) => <DynamicImage key={idx} keyword={keyword} />)}
+
               <div ref={contentRef} className="relative">
                 <ReactMarkdown>{displayContent}</ReactMarkdown>
                 {selection && (
@@ -482,20 +527,6 @@ Provide a code boilerplate template at the end.`;
                   />
                 )}
               </div>
-              
-              {flashcards.length > 0 && (
-                <div className="mt-12 mb-8 not-prose">
-                  <div className="flex items-center gap-3 mb-6">
-                    <Sparkles className="w-6 h-6 text-primary" />
-                    <h3 className="text-2xl font-bold text-on-surface m-0">Карточки для запоминания</h3>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {flashcards.map((fc, i) => (
-                      <Flashcard key={i} term={fc.term} definition={fc.definition} />
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* ULTRA Code Practice and AI Code Review Workspace */}
@@ -603,7 +634,7 @@ Provide a code boilerplate template at the end.`;
                   ) : (
                     <BrainCircuit className="w-5 h-5" />
                   )}
-                  {selectedNode.status === 'completed' ? 'Тест сдан' : 'Проверить знания'}
+                  {selectedNode.status === 'completed' ? 'Материал закреплен' : 'Закрепить знания'}
                 </button>
               </div>
             </div>
@@ -650,6 +681,7 @@ Provide a code boilerplate template at the end.`;
         isOpen={quizOpen} 
         onClose={() => setQuizOpen(false)} 
         questions={quizData} 
+        flashcards={flashcards}
         onComplete={handleQuizComplete} 
         onAskMentor={(questionText, userAnswer, correctAnswer, explanation) => {
           setQuizOpen(false);

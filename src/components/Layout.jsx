@@ -124,7 +124,7 @@ export default function Layout() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.12, ease: 'easeInOut' }}
-            className="w-full flex flex-col flex-1"
+            className="w-full flex flex-col flex-1 min-h-0"
           >
             <Outlet />
           </motion.div>

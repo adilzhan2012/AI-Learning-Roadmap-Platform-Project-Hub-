@@ -280,7 +280,9 @@ Requirements:
 4. Use formatting (bolding, lists, blockquotes) to make it highly readable.
 5. End with a short summary.
 6. The output should be pure markdown, suitable for rendering in a React-Markdown component.
-7. CRITICAL: At the very end of the lesson, ${flashcardInstruction} for the most important key terms using EXACTLY this text format:
+7. CRITICAL: Add exactly ONE image placeholder right after the H1 title using this EXACT format: \`[IMAGE: English Keyword for Wikipedia Search]\` (e.g., \`[IMAGE: Python (programming language)]\` or \`[IMAGE: Arduino Uno]\`). Use highly specific nouns.
+8. CRITICAL: At the end of the lesson content, create a Practice section. Start it with an H2 heading "## Практика / Домашнее задание". Include 1-3 practical tasks.
+9. CRITICAL: At the very end of the file (after the homework), ${flashcardInstruction} for the most important key terms using EXACTLY this text format:
 ---FLASHCARD---
 Term: [Concept Name]
 Def: [A concise, 1-2 sentence definition]
@@ -380,7 +382,7 @@ export async function updateNodeStatus(courseId, nodeId, newStatus) {
   const userId = course.userId;
 
   if (newStatus === 'completed') {
-    const quizResultSnap = await getDoc(doc(db, 'quizResults', `${userId}_${nodeId}`));
+    const quizResultSnap = await getDoc(doc(db, 'users', userId, 'quizResults', String(nodeId)));
     if (!quizResultSnap.exists() || !quizResultSnap.data().passed) {
       throw new Error('Quiz must be passed before marking lesson complete');
     }

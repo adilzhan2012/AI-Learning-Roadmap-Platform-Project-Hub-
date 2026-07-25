@@ -100,7 +100,7 @@ INSTRUCTIONS:
   const isFree = plan === 'FREE';
 
   return (
-    <div className="w-full lg:w-[350px] xl:w-[400px] border-l border-white/10 bg-surface flex flex-col h-full shrink-0 relative overflow-hidden">
+    <div className="w-full lg:w-[350px] xl:w-[400px] border-l border-white/10 bg-surface flex flex-col h-full max-h-full shrink-0 relative overflow-hidden">
       {/* Header */}
       <div className="h-14 border-b border-white/10 flex items-center px-4 bg-background shrink-0 justify-between">
         <div className="flex items-center gap-2">
@@ -117,7 +117,7 @@ INSTRUCTIONS:
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 flex flex-col relative overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden">
         {/* FREE Plan Overlay Blur */}
         {isFree && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 text-center bg-surface/60 backdrop-blur-md">
@@ -137,7 +137,7 @@ INSTRUCTIONS:
           </div>
         )}
 
-        <div className={`flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar ${isFree ? 'opacity-30 pointer-events-none select-none filter blur-[3px]' : ''}`}>
+        <div className={`flex-1 min-h-0 overflow-y-auto p-4 space-y-4 custom-scrollbar ${isFree ? 'opacity-30 pointer-events-none select-none filter blur-[3px]' : ''}`}>
           {messages.map((msg) => (
             <div key={msg.id} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
               <div className={`max-w-[90%] rounded-2xl p-3 text-xs leading-relaxed ${
