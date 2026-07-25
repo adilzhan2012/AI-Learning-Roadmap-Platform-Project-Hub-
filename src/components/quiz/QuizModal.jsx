@@ -133,7 +133,7 @@ export default function QuizModal({ questions, flashcards = [], isOpen, onClose,
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="flex flex-col items-center justify-center py-4"
+                className="flex flex-col items-center justify-center py-2 w-full"
               >
                 <Flashcard 
                   term={flashcards[flashcardIndex].term || flashcards[flashcardIndex].front} 
