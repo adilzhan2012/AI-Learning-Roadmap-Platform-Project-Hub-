@@ -49,6 +49,8 @@ export default function LessonPanel({
   const { generateQuiz, saveQuizResult, checkCooldown, generating: quizGenerating, error: quizError } = useQuiz();
   const [quizOpen, setQuizOpen] = useState(false);
   const [quizData, setQuizData] = useState([]);
+  const [cooldownConfirmOpen, setCooldownConfirmOpen] = useState(false);
+  const [cooldownMinutes, setCooldownMinutes] = useState(0);
   
   // Plan limits
   const { plan, usage, checkLimit, incrementUsage, isUpgradeModalOpen, setUpgradeModalOpen } = usePlanLimits();
@@ -116,18 +118,21 @@ export default function LessonPanel({
     }
   };
 
-  const handleOpenQuiz = async () => {
+  const handleOpenQuiz = async (ignoreCooldown = false) => {
     if (!selectedNode?.content) return;
     
     if (!checkLimit('ai_question')) {
       return;
     }
 
-    const { allowed, cooldownUntil } = await checkCooldown(selectedNode.id);
-    if (!allowed) {
-      const minutesLeft = Math.ceil((cooldownUntil.getTime() - Date.now()) / 60000);
-      setGenError(`Повторная попытка будет доступна через ${minutesLeft} мин.`);
-      return;
+    if (!ignoreCooldown) {
+      const { allowed, cooldownUntil } = await checkCooldown(selectedNode.id);
+      if (!allowed) {
+        const minutesLeft = Math.ceil((cooldownUntil.getTime() - Date.now()) / 60000);
+        setCooldownMinutes(minutesLeft);
+        setCooldownConfirmOpen(true);
+        return;
+      }
     }
 
     const questions = await generateQuiz(selectedCourse.id, selectedNode.id, selectedNode.content);
@@ -683,6 +688,7 @@ Provide a code boilerplate template at the end.`;
         questions={quizData} 
         flashcards={flashcards}
         onComplete={handleQuizComplete} 
+        onForceRetry={() => handleOpenQuiz(true)}
         onAskMentor={(questionText, userAnswer, correctAnswer, explanation) => {
           setQuizOpen(false);
           onClose(); // Close lesson panel
@@ -693,6 +699,45 @@ Provide a code boilerplate template at the end.`;
           }));
         }}
       />
+
+      {/* Cooldown Override Confirmation Modal */}
+      {cooldownConfirmOpen && (
+        <div className="fixed inset-0 z-[210] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-surface border border-outline-variant rounded-3xl max-w-md w-full p-6 shadow-2xl relative text-left"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4 text-amber-400">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <h3 className="text-xl font-black text-white mb-2">Повторная попытка</h3>
+            <p className="text-sm text-zinc-300 mb-4 leading-relaxed">
+              Вы недавно допустили ошибки в тесте (осталось ждать <span className="text-amber-400 font-bold">{cooldownMinutes} мин.</span> до окончания стандартного перерыва).
+            </p>
+            <p className="text-sm text-zinc-400 mb-6 bg-white/5 p-3.5 rounded-2xl border border-white/5 leading-relaxed">
+              💡 <strong className="text-zinc-200">Совет:</strong> Рекомендуем еще раз перечитать теорию выше, чтобы закрепить материал. Но если вы уверены в своих силах, можете начать тест прямо сейчас!
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => setCooldownConfirmOpen(false)}
+                className="flex-1 px-4 py-3 rounded-xl border border-outline-variant hover:bg-surface-container font-bold text-sm text-zinc-300 transition-all text-center"
+              >
+                📖 Повторить теорию
+              </button>
+              <button
+                onClick={() => {
+                  setCooldownConfirmOpen(false);
+                  handleOpenQuiz(true);
+                }}
+                className="flex-1 px-4 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-zinc-950 font-black text-sm transition-all shadow-lg shadow-amber-500/20 text-center flex items-center justify-center gap-1.5"
+              >
+                🚀 Я уверен, начать
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       <UpgradeModal 
         isOpen={isUpgradeModalOpen} 

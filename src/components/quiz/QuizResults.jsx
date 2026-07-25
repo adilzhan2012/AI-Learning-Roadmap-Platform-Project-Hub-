@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, XCircle, RotateCcw, ArrowRight, Sparkles } from 'lucide-react';
 
-export default function QuizResults({ score, total, passed, explanations, onRetry, onContinue, onAskMentor }) {
+export default function QuizResults({ score, total, passed, explanations, onRetry, onContinue, onAskMentor, onForceRetry }) {
   const percentage = Math.round((score / total) * 100);
 
   return (
@@ -31,13 +31,16 @@ export default function QuizResults({ score, total, passed, explanations, onRetr
       <p className="text-on-surface-variant font-medium mb-4">
         Ваш результат: <span className={`font-bold ${passed ? 'text-green-500' : 'text-red-500'}`}>{percentage}%</span> ({score} из {total})
       </p>
-
       {!passed && (
-        <div className="bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl p-3 mb-6 flex flex-col items-center justify-center">
-          <p className="font-bold text-sm">Повторная попытка будет доступна через 10 минут</p>
+        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-xl p-3.5 mb-6 flex flex-col gap-1.5 items-center justify-center text-center">
+          <p className="font-bold text-sm text-amber-400 flex items-center gap-1.5">
+            ⚠️ Рекомендуем перечитать теорию перед повтором
+          </p>
+          <p className="text-xs text-amber-300/80">
+            Но если вы уверены в своих силах, вы можете попробовать пройти тест снова прямо сейчас!
+          </p>
         </div>
       )}
-
       <div className="space-y-4 mb-8 text-left max-h-60 overflow-y-auto pr-2 custom-scrollbar">
         {explanations.map((exp, i) => (
           <div key={i} className={`p-4 rounded-xl border ${exp.isCorrect ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
@@ -55,21 +58,29 @@ export default function QuizResults({ score, total, passed, explanations, onRetr
         ))}
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex flex-col sm:flex-row gap-3">
         <button 
           onClick={onRetry}
-          className="flex-1 bg-surface-container border border-outline-variant hover:bg-surface-container-high text-on-surface py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all"
+          className="flex-1 bg-surface-container border border-outline-variant hover:bg-surface-container-high text-on-surface py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all"
         >
-          <RotateCcw className="w-5 h-5" />
-          {passed ? 'Закрыть' : 'Повторить материал'}
+          <RotateCcw className="w-5 h-5 shrink-0" />
+          {passed ? 'Закрыть' : 'Повторить материал урока'}
         </button>
+        {!passed && onForceRetry && (
+          <button 
+            onClick={onForceRetry}
+            className="flex-1 bg-amber-500 hover:bg-amber-600 text-zinc-950 py-3 px-4 rounded-xl font-black flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-500/20 shrink-0"
+          >
+            🚀 Я уверен, начать снова
+          </button>
+        )}
         {passed && (
           <button 
             onClick={onContinue}
             className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-500 hover:shadow-lg hover:shadow-indigo-500/25 text-on-surface py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all"
           >
             Продолжить
-            <ArrowRight className="w-5 h-5" />
+            <ArrowRight className="w-5 h-5 shrink-0" />
           </button>
         )}
       </div>
