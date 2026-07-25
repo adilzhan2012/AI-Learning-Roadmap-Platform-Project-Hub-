@@ -465,19 +465,32 @@ export async function getUserStats(userId, additionalData = {}) {
       hoursLearned: 0,
       certificatesCount: 0,
       streakDays: 1,
-      lastActiveDate: new Date().toISOString()
+      lastActiveDate: new Date().toISOString(),
+      referralCode: userId, // Use uid as the unique referral code for simplicity
     };
     
     // Only write profile fields if they are explicitly provided in additionalData
     if (additionalData.firstName) defaultProfile.firstName = additionalData.firstName;
     if (additionalData.lastName) defaultProfile.lastName = additionalData.lastName;
     if (additionalData.username) defaultProfile.username = additionalData.username;
+    if (additionalData.referredBy) defaultProfile.referredBy = additionalData.referredBy;
+    if (additionalData.email) defaultProfile.email = additionalData.email;
+    
+    // Add default admin fields
+    defaultProfile.isPremium = false;
+    defaultProfile.isBanned = false;
     
     // Use merge to prevent overwriting concurrently created profiles
     await setDoc(userRef, defaultProfile, { merge: true });
     data = defaultProfile;
   } else {
     data = snap.data();
+    
+    // Ensure existing users have a referralCode
+    if (!data.referralCode) {
+      await updateDoc(userRef, { referralCode: userId });
+      data.referralCode = userId;
+    }
     
     // If the document already exists but additionalData was provided (e.g. from a concurrent registration call),
     // update the document to ensure the student's registration details are saved.
@@ -494,6 +507,10 @@ export async function getUserStats(userId, additionalData = {}) {
       if (additionalData.username && !data.username) {
         updates.username = additionalData.username;
         data.username = additionalData.username;
+      }
+      if (additionalData.email && !data.email) {
+        updates.email = additionalData.email;
+        data.email = additionalData.email;
       }
       if (Object.keys(updates).length > 0) {
         await updateDoc(userRef, updates);
@@ -719,3 +736,15 @@ CRITICAL INSTRUCTION: Respond entirely in ${languageName}.`;
   return { ...course, nodes: finalNodes, edges: updatedEdges };
 }
 
+// Get referrals count
+export async function getReferralsCount(userId) {
+  try {
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('referredBy', '==', userId));
+    const snapshot = await getDocs(q);
+    return snapshot.size;
+  } catch (error) {
+    console.error('Error fetching referrals count:', error);
+    return 0;
+  }
+}

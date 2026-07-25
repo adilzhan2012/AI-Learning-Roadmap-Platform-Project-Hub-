@@ -1,5 +1,5 @@
 import React from 'react';
-import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { HashRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import Layout from './components/Layout.jsx';
 import PageTransition from './components/PageTransition.jsx';
@@ -20,10 +20,30 @@ import MentorComponent from './pages/Mentor.jsx';
 import PricingComponent from './pages/Pricing.jsx';
 import LeaguesComponent from './pages/Leagues.jsx';
 
+// Admin Pages
+import AdminRoute from './components/admin/AdminRoute.jsx';
+import AdminLayout from './components/admin/AdminLayout.jsx';
+import DashboardAdmin from './pages/admin/Dashboard.jsx';
+import UsersAdmin from './pages/admin/UsersAdmin.jsx';
+import AnalyticsAdmin from './pages/admin/AnalyticsAdmin.jsx';
+import PaymentsAdmin from './pages/admin/PaymentsAdmin.jsx';
+import PromocodesAdmin from './pages/admin/PromocodesAdmin.jsx';
+import QuestionsAdmin from './pages/admin/QuestionsAdmin.jsx';
+import ErrorsAdmin from './pages/admin/ErrorsAdmin.jsx';
+import LogsAdmin from './pages/admin/LogsAdmin.jsx';
+import PoliciesAdmin from './pages/admin/PoliciesAdmin.jsx';
+
 import { auth } from './firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
+import { logPageView } from './lib/analytics.js';
 
 function AppRoutes() {
+  const location = useLocation();
+
+  React.useEffect(() => {
+    logPageView(location.pathname + location.search);
+  }, [location]);
+
   return (
     <Routes>
       <Route element={<Layout />}>
@@ -46,6 +66,22 @@ function AppRoutes() {
         
         {/* Catch-all 404 */}
         <Route path="*" element={<NotFound />} />
+      </Route>
+
+      {/* Admin Routes */}
+      <Route path="/admin" element={<AdminRoute />}>
+        <Route element={<AdminLayout />}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<DashboardAdmin />} />
+          <Route path="users" element={<UsersAdmin />} />
+          <Route path="analytics" element={<AnalyticsAdmin />} />
+          <Route path="payments" element={<PaymentsAdmin />} />
+          <Route path="promocodes" element={<PromocodesAdmin />} />
+          <Route path="questions" element={<QuestionsAdmin />} />
+          <Route path="errors" element={<ErrorsAdmin />} />
+          <Route path="logs" element={<LogsAdmin />} />
+          <Route path="policies" element={<PoliciesAdmin />} />
+        </Route>
       </Route>
     </Routes>
   );

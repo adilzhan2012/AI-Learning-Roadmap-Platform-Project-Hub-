@@ -2,14 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Topbar from './Topbar.jsx';
-import { auth } from '../firebase.js';
+import { auth, db } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
+import { doc, onSnapshot } from 'firebase/firestore';
 import CookieBanner from './shared/CookieBanner.jsx';
 import MentorWidget from './MentorWidget.jsx';
+import MaintenancePage from './shared/MaintenancePage.jsx';
+import BannedModal from './shared/BannedModal.jsx';
 
 export default function Layout() {
   const [user, setUser] = useState(auth.currentUser);
   const [loading, setLoading] = useState(true);
+  const [maintenance, setMaintenance] = useState({ isActive: false, endTime: null });
+  const [isBanned, setIsBanned] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
@@ -20,6 +25,41 @@ export default function Layout() {
     return () => unsubscribe();
   }, []);
 
+  // Listen to maintenance mode
+  useEffect(() => {
+    const docRef = doc(db, 'settings', 'maintenance');
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        // Only activate if endTime is in the future
+        if (data.isActive && data.endTime) {
+          const endTime = data.endTime.toDate ? data.endTime.toDate() : new Date(data.endTime);
+          if (endTime.getTime() > Date.now()) {
+            setMaintenance(data);
+            return;
+          }
+        }
+      }
+      setMaintenance({ isActive: false, endTime: null });
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Listen to user profile for ban status
+  useEffect(() => {
+    if (!user) {
+      setIsBanned(false);
+      return;
+    }
+    const docRef = doc(db, 'users', user.uid);
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setIsBanned(docSnap.data().isBanned === true);
+      }
+    });
+    return () => unsubscribe();
+  }, [user]);
+
   // Reset scroll to top on page navigation
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -29,6 +69,10 @@ export default function Layout() {
 
   if (loading) {
     return <div className="flex items-center justify-center h-screen bg-background text-on-background">Loading...</div>;
+  }
+
+  if (maintenance.isActive) {
+    return <MaintenancePage endTime={maintenance.endTime} />;
   }
 
   // Route protection
@@ -55,6 +99,7 @@ export default function Layout() {
           </motion.div>
         </AnimatePresence>
         <CookieBanner />
+        {isBanned && <BannedModal />}
       </div>
     );
   }
@@ -87,6 +132,7 @@ export default function Layout() {
       </main>
       <MentorWidget />
       <CookieBanner />
+      {isBanned && <BannedModal />}
     </div>
   );
 }

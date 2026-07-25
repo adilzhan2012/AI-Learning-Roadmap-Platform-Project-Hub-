@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, ArrowLeft, Loader2 } from 'lucide-react';
 import Logo from '../components/shared/Logo.jsx';
@@ -40,7 +40,9 @@ export default function Auth({ type }) {
   const locale = useLocale();
   const isLogin = type === 'login';
   const navigate = useNavigate();
-  
+  const [searchParams] = useSearchParams();
+  const referredBy = searchParams.get('ref');
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -76,7 +78,7 @@ export default function Auth({ type }) {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         // Initialize user profile in Firestore
-        await getUserStats(user.uid, { firstName, lastName, username });
+        await getUserStats(user.uid, { firstName, lastName, username, referredBy, email });
       }
       navigate('/dashboard');
     } catch (err) {

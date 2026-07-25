@@ -4,15 +4,52 @@ import { X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { LEGAL_DOCS } from '../../constants/legalDocs.js';
 import { useLocale } from '../../i18n.js';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../firebase.js';
 
 export default function LegalDocModal({ isOpen, onClose, docKey }) {
   const locale = useLocale();
+  const [content, setContent] = React.useState('');
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+    
+    let isMounted = true;
+    const fetchContent = async () => {
+      setLoading(true);
+      const lang = locale === 'ru' ? 'ru' : 'en';
+      
+      try {
+        const docSnap = await getDoc(doc(db, 'settings', 'legal'));
+        if (docSnap.exists() && isMounted) {
+          const data = docSnap.data();
+          const fieldKey = `${docKey}_${lang}`;
+          
+          if (data[fieldKey]) {
+            setContent(data[fieldKey]);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error("Error fetching legal docs from Firestore:", e);
+      }
+      
+      // Fallback to static if Firestore fails or doesn't have the field
+      if (isMounted) {
+        setContent(LEGAL_DOCS[lang]?.[docKey] || '');
+        setLoading(false);
+      }
+    };
+    
+    fetchContent();
+    return () => { isMounted = false; };
+  }, [isOpen, docKey, locale]);
 
   if (!isOpen) return null;
 
-  // Detect current language (default to 'en' for non-ru locales)
   const lang = locale === 'ru' ? 'ru' : 'en';
-  const markdownContent = LEGAL_DOCS[lang]?.[docKey] || '';
 
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
@@ -61,7 +98,13 @@ export default function LegalDocModal({ isOpen, onClose, docKey }) {
             prose-th:border-b prose-th:border-outline prose-th:pb-2 prose-th:text-[10px] prose-th:font-semibold prose-th:text-on-surface-variant prose-th:uppercase
             prose-td:border-b prose-td:border-outline-variant prose-td:py-3 prose-td:text-xs prose-td:text-[#E5E5EA]
           ">
-            <ReactMarkdown>{markdownContent}</ReactMarkdown>
+            {loading ? (
+              <div className="flex items-center justify-center h-48">
+                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : (
+              <ReactMarkdown>{content}</ReactMarkdown>
+            )}
           </div>
         </div>
 

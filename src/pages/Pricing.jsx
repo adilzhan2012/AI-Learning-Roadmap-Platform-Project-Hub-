@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Check, 
@@ -8,12 +8,16 @@ import {
   ChevronUp, 
   Crown,
   Loader2,
-  Sparkles
+  Sparkles,
+  Copy,
+  Share2,
+  CheckCircle2
 } from 'lucide-react';
 import { auth, db } from '../firebase.js';
 import { doc, setDoc } from 'firebase/firestore';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import { useNavigate } from 'react-router-dom';
+import { getUserStats, getReferralsCount } from '../services/courseService.js';
 
 export const LockIcon = ({ className }) => (
   <Lock className={className} strokeWidth={1.5} />
@@ -35,6 +39,37 @@ export default function Pricing() {
   const [cardCvc, setCardCvc] = useState('');
   const [checkoutStage, setCheckoutStage] = useState('input'); // 'input' | 'processing' | 'success'
   const [checkoutError, setCheckoutError] = useState('');
+
+  // Referral states
+  const [discountActive, setDiscountActive] = useState(false);
+  const [referralLink, setReferralLink] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!auth.currentUser) return;
+    const uid = auth.currentUser.uid;
+    const checkReferral = async () => {
+      try {
+        const [stats, count] = await Promise.all([
+          getUserStats(uid),
+          getReferralsCount(uid)
+        ]);
+        setReferralLink(`${window.location.origin}/register?ref=${stats.referralCode || uid}`);
+        if (stats.referredBy || count > 0) {
+          setDiscountActive(true);
+        }
+      } catch (e) {
+        console.error('Error fetching referrals:', e);
+      }
+    };
+    checkReferral();
+  }, []);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(referralLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   // Cancel subscription states
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
@@ -258,15 +293,37 @@ export default function Pricing() {
             </div>
 
             <div className="mb-8">
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-black font-clash tracking-tight text-on-surface font-mono tabular-nums">
-                  {billingPeriod === 'monthly' ? '$9.99' : '$7.50'}
-                </span>
-                <span className="text-xs text-on-surface-variant font-medium">/мес</span>
-              </div>
-              <span className="text-[10px] text-on-surface-variant block mt-1 font-sans">
-                {billingPeriod === 'monthly' ? 'Оплата ежемесячно ($9.99)' : 'Оплата ежегодно ($89.99)'}
-              </span>
+              {discountActive ? (
+                <>
+                  <div className="flex items-baseline gap-1 mb-1">
+                    <span className="text-4xl font-black font-clash tracking-tight text-on-surface font-mono tabular-nums">
+                      {billingPeriod === 'monthly' ? '$8.99' : '$6.75'}
+                    </span>
+                    <span className="text-xs text-on-surface-variant font-medium line-through mr-1">
+                      {billingPeriod === 'monthly' ? '$9.99' : '$7.50'}
+                    </span>
+                    <span className="text-xs text-on-surface-variant font-medium">/мес</span>
+                  </div>
+                  <div className="inline-block bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-500/30 mb-1">
+                    Скидка 10% на первый месяц
+                  </div>
+                  <span className="text-[10px] text-on-surface-variant block font-sans">
+                    {billingPeriod === 'monthly' ? 'Оплата ежемесячно ($8.99)' : 'Оплата ежегодно ($80.99)'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-black font-clash tracking-tight text-on-surface font-mono tabular-nums">
+                      {billingPeriod === 'monthly' ? '$9.99' : '$7.50'}
+                    </span>
+                    <span className="text-xs text-on-surface-variant font-medium">/мес</span>
+                  </div>
+                  <span className="text-[10px] text-on-surface-variant block mt-1 font-sans">
+                    {billingPeriod === 'monthly' ? 'Оплата ежемесячно ($9.99)' : 'Оплата ежегодно ($89.99)'}
+                  </span>
+                </>
+              )}
             </div>
 
             {/* Checklist */}
@@ -354,15 +411,37 @@ export default function Pricing() {
             </div>
 
             <div className="mb-8">
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-black font-clash tracking-tight text-on-surface font-mono tabular-nums">
-                  {billingPeriod === 'monthly' ? '$29.99' : '$20.83'}
-                </span>
-                <span className="text-xs text-on-surface-variant font-medium">/мес</span>
-              </div>
-              <span className="text-[10px] text-indigo-600 dark:text-indigo-300 block mt-1 font-sans">
-                {billingPeriod === 'monthly' ? 'Оплата ежемесячно ($29.99)' : 'Оплата ежегодно ($249.99)'}
-              </span>
+              {discountActive ? (
+                <>
+                  <div className="flex items-baseline gap-1 mb-1">
+                    <span className="text-4xl font-black font-clash tracking-tight text-on-surface font-mono tabular-nums">
+                      {billingPeriod === 'monthly' ? '$26.99' : '$18.75'}
+                    </span>
+                    <span className="text-xs text-indigo-300 font-medium line-through mr-1">
+                      {billingPeriod === 'monthly' ? '$29.99' : '$20.83'}
+                    </span>
+                    <span className="text-xs text-on-surface-variant font-medium">/мес</span>
+                  </div>
+                  <div className="inline-block bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-500/30 mb-1">
+                    Скидка 10% на первый месяц
+                  </div>
+                  <span className="text-[10px] text-indigo-600 dark:text-indigo-300 block font-sans">
+                    {billingPeriod === 'monthly' ? 'Оплата ежемесячно ($26.99)' : 'Оплата ежегодно ($224.99)'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-black font-clash tracking-tight text-on-surface font-mono tabular-nums">
+                      {billingPeriod === 'monthly' ? '$29.99' : '$20.83'}
+                    </span>
+                    <span className="text-xs text-on-surface-variant font-medium">/мес</span>
+                  </div>
+                  <span className="text-[10px] text-indigo-600 dark:text-indigo-300 block mt-1 font-sans">
+                    {billingPeriod === 'monthly' ? 'Оплата ежемесячно ($29.99)' : 'Оплата ежегодно ($249.99)'}
+                  </span>
+                </>
+              )}
             </div>
 
             {/* Checklist */}
@@ -435,6 +514,44 @@ export default function Pricing() {
           </div>
         </motion.div>
       </div>
+
+      {/* Referral Program Banner */}
+      {auth.currentUser && (
+        <div className="max-w-[900px] mx-auto mb-16">
+          <div className="p-6 md:p-8 bg-surface border border-amber-500/30 rounded-3xl relative overflow-hidden flex flex-col md:flex-row items-center gap-6 shadow-[0_0_50px_-20px_rgba(245,158,11,0.2)]">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 blur-[100px] rounded-full" />
+            
+            <div className="flex-1 relative z-10 text-center md:text-left">
+              <div className="inline-flex items-center gap-2 mb-3">
+                <Share2 className="w-5 h-5 text-amber-500" />
+                <h3 className="text-xl font-bold text-on-surface font-clash">Пригласи друга - получи скидку 10%!</h3>
+              </div>
+              <p className="text-on-surface-variant text-sm leading-relaxed mb-4">
+                Отправь эту ссылку другу. Когда он зарегистрируется, вы <strong className="text-amber-500">оба получите скидку 10%</strong> на первый месяц подписки PRO или ULTRA.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <input 
+                  type="text" 
+                  readOnly 
+                  value={referralLink} 
+                  className="w-full sm:flex-1 bg-surface-container/50 border border-outline-variant rounded-xl px-4 py-3 text-sm text-on-surface font-medium outline-none truncate focus:border-amber-500/50 transition-colors"
+                  placeholder="Загрузка ссылки..."
+                />
+                <button 
+                  onClick={handleCopy}
+                  disabled={!referralLink}
+                  className="w-full sm:w-auto px-6 py-3 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-50 whitespace-nowrap shadow-lg shadow-amber-500/20"
+                >
+                  {copied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copied ? 'Скопировано' : 'Копировать ссылку'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* Active Features Info Cards */}
       {(plan === 'PRO' || plan === 'ULTRA') && (

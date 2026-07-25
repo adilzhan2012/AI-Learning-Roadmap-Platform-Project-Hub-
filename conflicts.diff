@@ -1,0 +1,494 @@
+diff --cc src/components/MentorWidget.jsx
+index c3719f8,ba9266c..0000000
+--- a/src/components/MentorWidget.jsx
++++ b/src/components/MentorWidget.jsx
+@@@ -625,36 -604,16 +625,46 @@@ ${ultraInstruction}`
+                            className={`group w-full px-3 py-2.5 rounded-xl flex items-center justify-between cursor-pointer transition-colors border ${
+                              activeSessionId === s.id 
+                                ? 'bg-indigo-600/10 border-indigo-500/35 text-indigo-300' 
+-                               : 'hover:bg-white/5 border-transparent text-zinc-400 hover:text-white'
++                               : 'hover:bg-on-surface/5 border-transparent text-zinc-400 hover:text-on-surface'
+                            }`}
+                          >
+++<<<<<<< HEAD
+ +                          {editingSessionId === s.id ? (
+ +                            <input
+ +                              autoFocus
+ +                              value={editingTitle}
+ +                              onChange={e => setEditingTitle(e.target.value)}
+ +                              onBlur={() => handleRenameSubmit(s.id)}
+ +                              onKeyDown={e => { if(e.key === 'Enter') handleRenameSubmit(s.id); if(e.key === 'Escape') setEditingSessionId(null); }}
+ +                              onClick={e => e.stopPropagation()}
+ +                              className="text-xs bg-transparent border-b border-indigo-500 outline-none text-on-surface w-[110px]"
+ +                            />
+ +                          ) : (
+ +                            <span className="text-xs font-medium truncate max-w-[130px]">{s.title}</span>
+ +                          )}
+ +                          <div className="flex items-center opacity-0 group-hover:opacity-100 transition-all shrink-0">
+ +                            <button 
+ +                              onClick={(e) => { e.stopPropagation(); setEditingSessionId(s.id); setEditingTitle(s.title); }}
+ +                              className="p-1 hover:bg-surface-container rounded text-zinc-500 hover:text-indigo-400"
+ +                            >
+ +                              <Edit2 className="w-4 h-4" />
+ +                            </button>
+ +                            <button 
+ +                              onClick={(e) => handleDeleteSession(e, s.id)}
+ +                              className="p-1 hover:bg-surface-container rounded text-zinc-500 hover:text-rose-400"
+ +                            >
+ +                              <Trash2 className="w-4 h-4" />
+ +                            </button>
+ +                          </div>
+++=======
++                           <span className="text-xs font-medium truncate max-w-[130px]">{s.title}</span>
++                           <button 
++                             onClick={(e) => handleDeleteSession(e, s.id)}
++                             className="opacity-0 group-hover:opacity-100 p-1 hover:bg-surface-container rounded text-zinc-500 hover:text-rose-400 transition-all shrink-0"
++                           >
++                             <Trash2 className="w-4 h-4" />
++                           </button>
+++>>>>>>> origin/beta2
+                          </div>
+                        ))}
+                      </div>
+diff --cc src/components/Topbar.jsx
+index 54e39d1,ceb7c9a..0000000
+--- a/src/components/Topbar.jsx
++++ b/src/components/Topbar.jsx
+@@@ -169,11 -166,11 +166,16 @@@ export default function Topbar() 
+            
+            {/* Current League Emblem */}
+            <div 
+++<<<<<<< HEAD
+ +            onClick={() => navigate('/achievements')}
+ +            className="hidden sm:flex items-center gap-1.5 cursor-pointer text-[10px] font-semibold text-[#98989D] hover:text-white transition-colors border border-[rgba(255,255,255,0.08)] bg-[#1C1C1E] rounded-full px-2.5 py-1 select-none font-sans"
+++=======
++             onClick={() => navigate('/leagues')}
++             className="hidden sm:flex items-center gap-1.5 cursor-pointer text-[10px] font-semibold text-on-surface-variant hover:text-on-background transition-colors border border-outline bg-surface-container rounded-full px-2.5 py-1 select-none font-sans"
+++>>>>>>> origin/beta2
+              title="Лига соревнований"
+            >
+-             <LeagueIcon leagueId={currentLeague} className="w-3.5 h-3.5 text-[#98989D]" />
++             <LeagueIcon leagueId={currentLeague} className="w-3.5 h-3.5 text-on-surface-variant" />
+              <span>{LEAGUE_NAMES[currentLeague] || 'Кварц'}</span>
+            </div>
+  
+@@@ -312,20 -309,7 +314,24 @@@
+                      <ChevronRight className="w-3.5 h-3.5 text-[#636366]" strokeWidth={1.5} />
+                    </button>
+  
+++<<<<<<< HEAD
+ +                  <div className="py-2 border-b border-[rgba(255,255,255,0.08)]">
+ +            <button 
+ +              onClick={() => {
+ +                navigate('/achievements');
+ +                setShowProfileMenu(false);
+ +              }}
+ +              className="w-full text-left px-4 py-2 text-xs font-semibold text-[#F5F5F7] hover:bg-[#2C2C2E]/50 transition-colors flex items-center gap-2"
+ +            >
+ +              <Trophy className="w-3.5 h-3.5 text-[#98989D]" strokeWidth={1.5} />
+ +              Достижения
+ +            </button>
+ +          </div>
+ +
+ +                  <div className="border-t border-[rgba(255,255,255,0.08)] my-1"></div>
+++=======
++                   <div className="border-t border-outline my-1"></div>
+++>>>>>>> origin/beta2
+  
+                    {/* Logout/Sign Out Option */}
+                    <button 
+diff --cc src/components/gamification/AchievementsPage.jsx
+index fa724d7,7f7936d..0000000
+--- a/src/components/gamification/AchievementsPage.jsx
++++ b/src/components/gamification/AchievementsPage.jsx
+@@@ -271,8 -270,59 +271,64 @@@ export default function AchievementsPag
+        )}
+  
+        {activeMainTab === 'leagues' && (
+++<<<<<<< HEAD
+ +        <div className="mt-4 -mx-4 md:-mx-6">
+ +          <LeaguesComponent embedded={true} />
+++=======
++         <div className="space-y-6 max-w-2xl mx-auto">
++           <div className="text-center mb-8">
++             <h2 className="text-xl font-bold font-clash text-on-surface">Лиги обучения</h2>
++             <p className="text-on-surface-variant text-xs mt-1">Проходите уроки, зарабатывайте XP и продвигайтесь по лигам.</p>
++           </div>
++ 
++           <div className="space-y-4">
++             {[
++               { id: 'bronze', name: 'Бронзовая лига', desc: 'Начальная лига для всех участников. Стартовая площадка для вашего обучения.', xp: '0 XP', isPro: false },
++               { id: 'silver', name: 'Серебряная лига', desc: 'Лига для активных студентов. Требует регулярного закрепления знаний.', xp: '500 XP', isPro: false },
++               { id: 'gold', name: 'Золотая лига', desc: 'Высшая лига бесплатного плана. Требует глубокого погружения в темы.', xp: '1500 XP', isPro: false },
++               { id: 'diamond', name: 'Алмазная лига', desc: 'Элитная лига для профессионалов. Доступна только с Pro-подпиской.', xp: '5000 XP', isPro: true },
++               { id: 'master', name: 'Лига Магистров', desc: 'Легендарный уровень. Для настоящих мастеров своего дела с Pro-подпиской.', xp: '10000 XP', isPro: true },
++             ].map((lg) => {
++               const isLgLocked = lg.isPro && plan === 'FREE';
++               return (
++                 <div
++                   key={lg.id}
++                   onClick={() => {
++                     if (isLgLocked) {
++                       navigate('/pricing');
++                     }
++                   }}
++                   className={`bg-surface rounded-2xl p-6 flex items-center justify-between border ${
++                     isLgLocked 
++                       ? 'border-transparent opacity-40 hover:opacity-50 transition-opacity cursor-pointer' 
++                       : 'border-outline hover:border-outline transition-colors'
++                   }`}
++                 >
++                   <div className="flex-1 min-w-0 pr-4">
++                     <div className="flex items-center gap-2 mb-1.5">
++                       <h4 className="font-bold text-base text-on-surface">{lg.name}</h4>
++                       {lg.isPro && (
++                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-surface-container border border-outline text-on-surface uppercase tracking-wider">
++                           Pro
++                         </span>
++                       )}
++                     </div>
++                     <p className="text-xs text-on-surface-variant leading-relaxed max-w-md">{lg.desc}</p>
++                   </div>
++ 
++                   <div className="flex items-center gap-3">
++                     <span className="text-xs font-mono font-bold text-on-surface-variant bg-surface-container/40 border border-outline-variant px-2.5 py-1 rounded-[6px]">
++                       {lg.xp}
++                     </span>
++                     {isLgLocked && (
++                       <Lock className="w-4 h-4 text-on-surface-variant" strokeWidth={1.5} />
++                     )}
++                   </div>
++                 </div>
++               );
++             })}
++           </div>
+++>>>>>>> origin/beta2
+          </div>
+        )}
+      </div>
+diff --cc src/pages/Courses.jsx
+index ccd3794,b884fbc..0000000
+--- a/src/pages/Courses.jsx
++++ b/src/pages/Courses.jsx
+@@@ -87,55 -85,54 +87,100 @@@ function CourseCard({ course, onDelete
+          layout
+          variants={cardVariants}
+          onClick={handleOpenClick}
+++<<<<<<< HEAD
+ +        className="bg-white dark:bg-[#1A1A1C] rounded-[20px] shadow-sm dark:shadow-none border border-gray-100 dark:border-white/5 p-4 flex flex-col md:flex-row items-center gap-5 transition-all duration-300 hover:shadow-lg dark:hover:border-white/20 hover:-translate-y-1 cursor-pointer group"
+ +      >
+ +        <div className={`w-20 h-20 rounded-[14px] bg-gradient-to-br ${cardGradient} flex items-center justify-center overflow-hidden flex-shrink-0 relative shadow-inner`}>
+ +          <div className="absolute inset-0 bg-white/20 dark:bg-black/20 mix-blend-overlay"></div>
+ +          {isAi ? (
+ +            <Sparkles className="w-8 h-8 text-white drop-shadow-md relative z-10" strokeWidth={1.5} />
+ +          ) : (
+ +            <Brain className="w-8 h-8 text-white drop-shadow-md relative z-10" strokeWidth={1.5} />
+ +          )}
+ +        </div>
+ +        
+ +        <div className="flex-1 min-w-0 text-center md:text-left flex flex-col justify-center">
+ +          <div className="flex items-center gap-2 flex-wrap justify-center md:justify-start mb-1.5">
+ +            <span className={`text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full ${isAi ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400'}`}>
+ +              {course.category}
+ +            </span>
+ +            <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 px-2 py-1 rounded-full border border-gray-200 dark:border-white/10">
+ +              {t('level.' + (course.level || 'Beginner')).startsWith('level.') ? course.level : t('level.' + (course.level || 'Beginner'))}
+ +            </span>
+ +          </div>
+ +          <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate font-clash">
+++=======
++         className="bg-surface rounded-[16px] border border-outline p-4 flex flex-col md:flex-row items-center gap-4 transition-all duration-200 hover:border-[rgba(255,255,255,0.3)] cursor-pointer"
++       >
++         <div className="w-16 h-16 bg-surface-container/50 border border-outline rounded-[12px] flex items-center justify-center overflow-hidden flex-shrink-0 relative">
++           <svg className="absolute inset-0 w-full h-full text-on-surface opacity-10 stroke-current stroke-[0.5] fill-none" viewBox="0 0 40 40">
++             <line x1="0" y1="0" x2="40" y2="40" />
++             <circle cx="20" cy="20" r="10" />
++           </svg>
++           <Brain className="w-6 h-6 text-on-surface opacity-40 relative z-10" strokeWidth={1.5} />
++         </div>
++         
++         <div className="flex-1 min-w-0 text-center md:text-left">
++           <div className="flex items-center gap-2 flex-wrap justify-center md:justify-start">
++             <span className="text-[9px] font-mono font-bold text-on-surface-variant tracking-wider uppercase border border-outline px-1.5 py-0.5 rounded-[4px]">
++               {course.category}
++             </span>
++             <span className="text-[9px] font-mono text-on-surface-variant">
++               {t('level.' + (course.level || 'Beginner'))}
++             </span>
++           </div>
++           <h3 className="text-base font-bold text-on-surface mt-1.5 truncate font-clash">
+++>>>>>>> origin/beta2
+              {t(course.title)}
+            </h3>
+          </div>
+  
+++<<<<<<< HEAD
+ +        <div className="w-40 flex-shrink-0 flex flex-col justify-center px-4 md:px-0">
+ +          <div className="flex justify-between text-xs mb-2">
+ +            <span className="text-gray-500 dark:text-gray-400 font-medium">{isCompleted ? t('courses.completed') : t('courses.inProgress')}</span>
+ +            <span className="text-gray-900 dark:text-white font-bold">{course.progress || 0}%</span>
+ +          </div>
+ +          <div className="w-full h-2.5 bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden shadow-inner">
+ +            <div 
+ +              style={{ width: `${course.progress || 0}%` }}
+ +              className={`h-full bg-gradient-to-r ${cardGradient} rounded-full transition-all duration-1000`}
+++=======
++         <div className="w-32 flex-shrink-0">
++           <div className="flex justify-between text-[11px] font-mono mb-1 text-on-surface-variant">
++             <span>{isCompleted ? t('courses.completed') : t('courses.inProgress')}</span>
++             <span className="text-on-surface font-bold">{course.progress || 0}%</span>
++           </div>
++           <div className="w-full h-[2px] bg-surface-container border border-outline-variant rounded-sm overflow-hidden">
++             <div 
++               style={{ width: `${course.progress || 0}%` }}
++               className="h-full bg-on-surface"
+++>>>>>>> origin/beta2
+              />
+            </div>
+          </div>
+  
+++<<<<<<< HEAD
+ +        <div className="flex items-center gap-5 flex-shrink-0 text-sm text-gray-500 dark:text-gray-400 font-medium justify-center md:justify-end px-2">
+ +          <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-gray-400" strokeWidth={1.5} /> {course.hours || '0h'}</span>
+ +          <span className="flex items-center gap-1.5"><BookOpen className="w-4 h-4 text-gray-400" strokeWidth={1.5} /> {course.nodes?.length || 0}</span>
+++=======
++         <div className="flex items-center gap-4 flex-shrink-0 text-xs text-on-surface-variant font-mono">
++           <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" strokeWidth={1.5} /> {course.hours || '0h'}</span>
++           <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" strokeWidth={1.5} /> {course.nodes?.length || 0}</span>
+++>>>>>>> origin/beta2
+          </div>
+  
+          <button 
+            onClick={handleDelete}
+++<<<<<<< HEAD
+ +          className="absolute top-4 right-4 md:relative md:top-0 md:right-0 p-2.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all opacity-100 md:opacity-0 group-hover:opacity-100"
+++=======
++           className="p-2 bg-[#2C0D0E]/50 hover:bg-[#FF453A] border border-transparent hover:border-[#FF453A]/20 hover:text-on-surface text-[#FF453A] rounded-[8px] transition-colors md:opacity-0 group-hover:opacity-100"
+++>>>>>>> origin/beta2
+            title="Delete roadmap"
+          >
+ -          <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+ +          <Trash2 className="w-4 h-4" strokeWidth={2} />
+          </button>
+        </motion.div>
+      );
+@@@ -146,75 -143,48 +191,120 @@@
+        layout
+        variants={cardVariants}
+        onClick={handleOpenClick}
+++<<<<<<< HEAD
+ +      className="bg-white dark:bg-[#1A1A1C] rounded-[24px] shadow-sm dark:shadow-none border border-gray-100 dark:border-white/5 overflow-hidden transition-all duration-300 hover:shadow-xl dark:hover:border-white/20 hover:-translate-y-1.5 cursor-pointer flex flex-col h-full group"
+ +    >
+ +      <div className={`relative h-36 bg-gradient-to-br ${cardGradient} p-5 flex flex-col justify-between shrink-0 overflow-hidden`}>
+ +        {/* Abstract shapes for visual interest */}
+ +        <div className="absolute -top-12 -right-12 w-32 h-32 bg-white/20 dark:bg-black/20 rounded-full blur-2xl mix-blend-overlay"></div>
+ +        <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-white/20 dark:bg-black/20 rounded-full blur-xl mix-blend-overlay"></div>
+ +        
+ +        <div className="relative z-10 flex justify-between items-start">
+ +          <span className={`inline-flex items-center backdrop-blur-md bg-white/20 dark:bg-black/20 border border-white/20 text-[10px] font-bold text-white px-2.5 py-1 rounded-full tracking-wider uppercase shadow-sm`}>
+ +            {course.category}
+ +          </span>
+ +          <button 
+ +            onClick={handleDelete}
+ +            className="p-2 backdrop-blur-md bg-black/20 hover:bg-red-500/90 text-white rounded-xl transition-all opacity-100 md:opacity-0 group-hover:opacity-100 border border-white/10"
+ +            title="Delete roadmap"
+ +          >
+ +            <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />
+ +          </button>
+ +        </div>
+ +        
+ +        <div className="relative z-10 flex justify-between items-end mt-4">
+ +          <div className="p-2.5 bg-white/20 dark:bg-black/20 backdrop-blur-md rounded-2xl border border-white/20 shadow-lg">
+ +            {isAi ? (
+ +              <Sparkles className="w-6 h-6 text-white" strokeWidth={1.5} />
+ +            ) : (
+ +              <Brain className="w-6 h-6 text-white" strokeWidth={1.5} />
+ +            )}
+ +          </div>
+ +          <span className="text-[11px] font-medium text-white/90 bg-black/20 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
+ +            {t('level.' + (course.level || 'Beginner')).startsWith('level.') ? course.level : t('level.' + (course.level || 'Beginner'))}
+ +          </span>
+ +        </div>
+ +      </div>
+ +
+ +      <div className="p-6 flex-1 flex flex-col bg-white dark:bg-[#1A1A1C]">
+ +        <h3 className="text-xl font-bold text-gray-900 dark:text-white leading-snug mb-2 font-clash line-clamp-2">
+ +          {t(course.title)}
+ +        </h3>
+ +        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 line-clamp-2 leading-relaxed">
+ +          {course.description || ''}
+ +        </p>
+ +
+ +        <div className="mt-auto space-y-4">
+ +          <div>
+ +            <div className="flex items-center justify-between mb-2 text-xs font-medium">
+ +              <span className="text-gray-500 dark:text-gray-400">{isCompleted ? t('courses.completed') : t('courses.inProgress')}</span>
+ +              <span className="text-gray-900 dark:text-white font-bold">{course.progress || 0}%</span>
+ +            </div>
+ +            <div className="w-full h-2 bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden shadow-inner">
+ +              <div 
+ +                className={`h-full bg-gradient-to-r ${cardGradient} rounded-full transition-all duration-1000`}
+ +                style={{ width: `${course.progress || 0}%` }}
+ +              />
+ +            </div>
+ +          </div>
+ +          
+ +          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 font-medium border-t border-gray-100 dark:border-white/5 pt-4">
+ +            <span className="flex items-center gap-1.5">
+ +              <div className="p-1.5 bg-gray-50 dark:bg-white/5 rounded-lg">
+ +                <Clock className="w-3.5 h-3.5" strokeWidth={2} />
+ +              </div>
+ +              {course.hours || '0h'}
+ +            </span>
+ +            <span className="flex items-center gap-1.5">
+ +              <div className="p-1.5 bg-gray-50 dark:bg-white/5 rounded-lg">
+ +                <BookOpen className="w-3.5 h-3.5" strokeWidth={2} />
+ +              </div>
+ +              {course.nodes?.length || 0} {t('courses.lessons')}
+ +            </span>
+++=======
++       className="bg-surface rounded-[16px] border border-outline overflow-hidden transition-all duration-200 hover:border-[rgba(255,255,255,0.3)] cursor-pointer flex flex-col h-full group"
++     >
++       <div className="relative h-28 bg-surface-container/50 border-b border-outline flex items-center justify-center overflow-hidden shrink-0">
++         <svg className="absolute inset-0 w-full h-full text-on-surface opacity-10 stroke-current stroke-[0.5] fill-none" viewBox="0 0 100 40" preserveAspectRatio="none">
++           <line x1="0" y1="0" x2="100" y2="40" />
++           <line x1="0" y1="40" x2="100" y2="0" />
++           <circle cx="50" cy="20" r="10" />
++         </svg>
++         <Brain className="w-8 h-8 text-on-surface opacity-40 relative z-10" strokeWidth={1} />
++         
++         <span className="absolute top-3 left-3 bg-surface border border-outline text-[9px] font-mono font-bold text-on-surface-variant px-2 py-0.5 rounded-[4px] tracking-wider uppercase">
++           {course.category}
++         </span>
++         <button 
++           onClick={handleDelete}
++           className="absolute top-3 right-3 bg-[#2C0D0E]/50 hover:bg-[#FF453A] text-[#FF453A] hover:text-on-surface p-1.5 rounded-[8px] border border-transparent hover:border-[#FF453A]/20 transition-all opacity-100 md:opacity-0 group-hover:opacity-100"
++           title="Delete roadmap"
++         >
++           <Trash2 className="w-3.5 h-3.5" strokeWidth={1.5} />
++         </button>
++       </div>
++ 
++       <div className="p-5 flex-1 flex flex-col">
++         <h3 className="text-base font-bold text-on-surface leading-snug mb-2 font-clash line-clamp-2">
++           {t(course.title)}
++         </h3>
++         <p className="text-xs text-on-surface-variant mb-6 line-clamp-2">{course.description || ''}</p>
++ 
++         <div className="mt-auto">
++           <div className="flex items-center justify-between mb-1.5 text-[11px] font-mono text-on-surface-variant">
++             <span>{isCompleted ? t('courses.completed') : t('courses.inProgress')}</span>
++             <span className="text-on-surface font-bold">{course.progress || 0}%</span>
++           </div>
++           <div className="w-full h-[2px] bg-surface-container border border-outline-variant rounded-sm overflow-hidden mb-4">
++             <div 
++               className="h-full bg-on-surface"
++               style={{ width: `${course.progress || 0}%` }}
++             />
++           </div>
++           <div className="flex items-center justify-between text-[11px] text-on-surface-variant font-mono border-t border-outline-variant pt-3">
++             <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" strokeWidth={1.5} /> {course.hours || '0h'}</span>
++             <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" strokeWidth={1.5} /> {course.nodes?.length || 0} {t('courses.lessons')}</span>
+++>>>>>>> origin/beta2
+            </div>
+          </div>
+        </div>
+@@@ -391,7 -361,7 +481,11 @@@ export default function Courses() 
+                              )}
+                            </div>
+                          </div>
+++<<<<<<< HEAD
+ +                        <span className={`text-xs transition-colors truncate max-w-[120px] ${cat === '✨ Сгенерировано ИИ' ? 'bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-indigo-400 font-extrabold group-hover:opacity-80' : 'text-[#98989D] group-hover:text-[#F5F5F7]'}`}>{cat}</span>
+++=======
++                         <span className="text-xs text-on-surface-variant group-hover:text-on-background transition-colors truncate max-w-[120px]">{cat}</span>
+++>>>>>>> origin/beta2
+                        </label>
+                      ))
+                    )}
+diff --cc src/pages/Dashboard.jsx
+index f6f1ce9,1387d52..0000000
+--- a/src/pages/Dashboard.jsx
++++ b/src/pages/Dashboard.jsx
+@@@ -519,8 -519,8 +519,13 @@@ export default function Dashboard() 
+          {/* Leagues Teaser (1/3 width) */}
+          <motion.div 
+            variants={itemVariants} 
+++<<<<<<< HEAD
+ +          onClick={() => navigate('/achievements')}
+ +          className="lg:col-span-1 bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] hover:border-white/20 transition-all rounded-[16px] p-6 flex flex-col justify-between cursor-pointer group min-h-[360px]"
+++=======
++           onClick={() => navigate('/leagues')}
++           className="lg:col-span-1 bg-surface border border-outline hover:border-white/20 transition-all rounded-[16px] p-6 flex flex-col justify-between cursor-pointer group min-h-[360px]"
+++>>>>>>> origin/beta2
+          >
+            <div className="w-full">
+              <div className="flex items-center justify-between mb-4">
+diff --cc src/pages/Resources.jsx
+index 9266c3a,d7d7571..0000000
+--- a/src/pages/Resources.jsx
++++ b/src/pages/Resources.jsx
+@@@ -236,16 -218,11 +236,16 @@@ export default function Resources() 
+                setLockedModalOpen(true);
+                return;
+              }
+ -            localStorage.setItem('selected_course_id', resources[0].courseId);
+ -            navigate('/graph');
+ +            if (resources[0].type === 'video') {
+ +              window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(resources[0].tags[0] + ' ' + resources[0].title + ' tutorial')}`, '_blank');
+ +            } else if (resources[0].type === 'repository') {
+ +              window.open(`https://github.com/search?q=${encodeURIComponent(resources[0].title)}`, '_blank');
+ +            } else {
+ +              setActiveResource(resources[0]);
+ +            }
+            }}
+            variants={cardVariants} 
+-           className="bg-[#1C1C1E] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-6 md:p-8 mb-10 flex flex-col md:flex-row gap-8 items-center relative overflow-hidden group cursor-pointer hover:border-[rgba(255,255,255,0.3)] transition-colors"
++           className="bg-surface border border-outline rounded-[16px] p-6 md:p-8 mb-10 flex flex-col md:flex-row gap-8 items-center relative overflow-hidden group cursor-pointer hover:border-[rgba(255,255,255,0.3)] transition-colors"
+          >
+            {/* Featured resource is the first material and is unlocked */}
+            
+@@@ -324,14 -301,14 +324,23 @@@
+              {/* Search + Tabs Bar */}
+              <div className="space-y-4">
+                {/* Borderless bottom line search field */}
+++<<<<<<< HEAD
+ +              <div className="relative border border-[rgba(255,255,255,0.08)] rounded-xl bg-[#1C1C1E] focus-within:border-white focus-within:bg-[#2C2C2E] transition-all py-3 px-4 shadow-sm flex items-center gap-3">
+ +                <Search className="w-4 h-4 text-[#98989D]" strokeWidth={1.5} />
+++=======
++               <div className="relative border-b border-outline focus-within:border-[#FFFFFF] transition-colors py-2">
++                 <Search className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" strokeWidth={1.5} />
+++>>>>>>> origin/beta2
+                  <input
+                    type="text"
+                    placeholder="Поиск ресурсов..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+++<<<<<<< HEAD
+ +                  className="w-full bg-transparent text-sm text-[#F5F5F7] placeholder:text-[#98989D] focus:outline-none"
+++=======
++                   className="w-full bg-transparent pl-7 pr-3 text-xs text-on-background placeholder:text-on-surface-variant focus:outline-none"
+++>>>>>>> origin/beta2
+                  />
+                </div>
+  
+@@@ -389,19 -360,8 +398,19 @@@
+                  })()}
+                </AnimatePresence>
+                
+ +              {activeTab === 'All' && filteredResources.length > visibleCount && (
+ +                <div className="col-span-full flex justify-center mt-2 mb-4">
+ +                  <button 
+ +                    onClick={() => setVisibleCount(prev => prev + 10)}
+ +                    className="bg-[#2C2C2E] hover:bg-[#3C3C3E] text-white px-6 py-2.5 rounded-xl text-xs font-bold transition-colors border border-[rgba(255,255,255,0.08)] shadow-sm"
+ +                  >
+ +                    Показать остальные
+ +                  </button>
+ +                </div>
+ +              )}
+ +              
+                {!loading && filteredResources.length === 0 && (
+-                 <div className="col-span-full py-16 text-center text-[#98989D] font-sans">
++                 <div className="col-span-full py-16 text-center text-on-surface-variant font-sans">
+                    <Search className="w-8 h-8 mx-auto mb-3 opacity-20" strokeWidth={1.5} />
+                    <p className="text-xs font-semibold">Совпадений не найдено</p>
+                  </div>
