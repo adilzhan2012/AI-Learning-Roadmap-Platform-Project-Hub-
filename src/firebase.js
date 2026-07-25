@@ -6,7 +6,7 @@ import {
   signOut, 
   onAuthStateChanged 
 } from 'firebase/auth';
-import { getFirestore, initializeFirestore, persistentLocalCache } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
 
 const firebaseConfig = {
@@ -26,7 +26,11 @@ let functions;
 try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
-  db = initializeFirestore(app, { localCache: persistentLocalCache() });
+  db = initializeFirestore(app, { 
+    localCache: persistentLocalCache({ 
+      tabManager: persistentMultipleTabManager() 
+    }) 
+  });
   functions = getFunctions(app);
 } catch (error) {
   console.error("Firebase initialization error", error);

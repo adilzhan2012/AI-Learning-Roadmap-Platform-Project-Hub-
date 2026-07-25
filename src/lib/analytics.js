@@ -7,7 +7,7 @@ export const initGA = () => {
     ReactGA.initialize(measurementId);
     console.log('Google Analytics initialized.');
   } else {
-    console.warn('Google Analytics Measurement ID is missing.');
+    console.debug('[Analytics] Local dev mode: GA Measurement ID not set in .env');
   }
 };
 
@@ -29,6 +29,6 @@ export const initClarity = () => {
     })(window, document, "clarity", "script", projectId);
     console.log('Microsoft Clarity initialized.');
   } else {
-    console.warn('Microsoft Clarity Project ID is missing.');
+    console.debug('[Analytics] Local dev mode: Microsoft Clarity Project ID not set in .env');
   }
 };
