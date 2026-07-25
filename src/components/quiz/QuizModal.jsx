@@ -26,11 +26,19 @@ export default function QuizModal({ questions, flashcards = [], isOpen, onClose,
     }
   }, [isOpen, questions, flashcards]);
 
-  if (!isOpen || !questions || questions.length === 0) return null;
+  if (!isOpen || ((!questions || questions.length === 0) && (!flashcards || flashcards.length === 0))) return null;
 
-  const currentQuestion = questions[currentIndex];
+  const handleFlashcardRated = (quality) => {
+    if (flashcardIndex < flashcards.length - 1) {
+      setFlashcardIndex(prev => prev + 1);
+    } else {
+      setMode('intermission');
+    }
+  };
+
+  const currentQuestion = questions?.[currentIndex];
   const selectedOption = answers[currentIndex];
-  const isLast = currentIndex === questions.length - 1;
+  const isLast = !questions || currentIndex === questions.length - 1;
   const isLastFlashcard = flashcardIndex === flashcards.length - 1;
 
   const handleSelect = (index) => {
@@ -128,8 +136,9 @@ export default function QuizModal({ questions, flashcards = [], isOpen, onClose,
                 className="flex flex-col items-center justify-center py-4"
               >
                 <Flashcard 
-                  front={flashcards[flashcardIndex].front} 
-                  back={flashcards[flashcardIndex].back} 
+                  term={flashcards[flashcardIndex].term || flashcards[flashcardIndex].front} 
+                  definition={flashcards[flashcardIndex].definition || flashcards[flashcardIndex].back} 
+                  onRated={handleFlashcardRated}
                 />
                 
                 <div className="flex items-center gap-4 mt-8 w-full max-w-md">
