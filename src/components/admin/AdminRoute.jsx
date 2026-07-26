@@ -16,12 +16,8 @@ export default function AdminRoute() {
       }
       
       try {
-        const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
-        if (userDoc.exists() && userDoc.data().role === 'admin') {
-          setIsAdmin(true);
-        } else {
-          setIsAdmin(false);
-        }
+        const token = await auth.currentUser.getIdTokenResult(true);
+        setIsAdmin(token.claims.admin === true);
       } catch (error) {
         console.error("Error checking admin status:", error);
         setIsAdmin(false);

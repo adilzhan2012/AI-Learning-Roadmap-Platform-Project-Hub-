@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, collectionGroup, getDocs, query, orderBy, limit } from 'firebase/firestore';
-import { db } from '../../firebase.js';
+import { db, functions } from '../../firebase.js';
+import { httpsCallable } from 'firebase/functions';
 import AdminHeader from '../../components/admin/AdminHeader.jsx';
 import StatusBadge from '../../components/admin/ui/StatusBadge.jsx';
 import { Users, UserPlus, CreditCard, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react';
@@ -40,41 +41,13 @@ export default function Dashboard() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const usersSnap = await getDocs(collection(db, 'users'));
-        let onlineCount = 0;
-        let totalCount = 0;
-        let premiumCount = 0;
-        
-        const now = Date.now();
-        // 15 minutes in ms
-        const activeThreshold = 15 * 60 * 1000;
-
-        const monthCounts = {};
-
-        usersSnap.forEach(doc => {
-          totalCount++;
-          const data = doc.data();
-          if (data.isPremium) premiumCount++;
-          if (data.lastActiveDate) {
-            const lastActive = new Date(data.lastActiveDate).getTime();
-            if (now - lastActive <= activeThreshold) {
-              onlineCount++;
-            }
-          }
-          // Aggregate for growth chart (if user has a date, use it; otherwise just bunch them into 'Unknown' or current month)
-          const dateStr = data.createdAt || data.lastActiveDate || new Date().toISOString();
-          const monthStr = new Date(dateStr).toLocaleString('ru-RU', { month: 'short' });
-          monthCounts[monthStr] = (monthCounts[monthStr] || 0) + 1;
-        });
-
-        // Convert to array for Recharts
-        const growthChart = Object.keys(monthCounts).map(month => ({
-          name: month,
-          users: monthCounts[month]
-        }));
-        setUserGrowthData(growthChart);
-
-        setRealStats({ online: onlineCount, total: totalCount, premium: premiumCount });
+        const getAdminStatsFn = httpsCallable(functions, 'getAdminDashboardStats');
+        const res = await getAdminStatsFn();
+        if (res.data) {
+          const { total, premium, online, growthChart } = res.data;
+          setRealStats({ online, total, premium });
+          setUserGrowthData(growthChart);
+        }
       } catch (e) {
         console.error('Error fetching dashboard stats:', e);
       }

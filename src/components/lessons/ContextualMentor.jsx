@@ -71,7 +71,7 @@ INSTRUCTIONS:
       const isProSoftCapped = plan === 'PRO' && (usage.mentorMessagesUsed || 0) >= PLAN_LIMITS.PRO.aiMentorPerDay;
       const selectedModel = isProSoftCapped ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile';
 
-      const responseText = await callGroqWithRetry(null, fullPrompt, selectedModel);
+      const responseText = await callGroqWithRetry(null, fullPrompt, 'mentor_message', selectedModel);
 
       const assistantMessage = {
         id: (Date.now() + 1).toString(),

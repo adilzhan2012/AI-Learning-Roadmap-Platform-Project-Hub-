@@ -386,7 +386,7 @@ ${ultraInstruction}`;
       }).filter(Boolean).join('\n\n');
 
       const fullPrompt = `${systemPrompt}\n\nConversation History:\n${historyText || 'No previous history.'}\n\nUser Question: ${text}`;
-      const responseText = await callGroqWithRetry(null, fullPrompt, selectedModel);
+      const responseText = await callGroqWithRetry(null, fullPrompt, 'mentor_message', selectedModel);
 
       const parsedAction = parseJsonBlock(responseText);
       

@@ -22,10 +22,24 @@ import { getLocale } from '../i18n.js';
 
 // Retry helper with exponential backoff and model fallback for 503/429/404 errors
 // Call our secure Cloud Function proxy
-export async function callGroqWithRetry(apiKey, prompt, usageType) {
+export async function callGroqWithRetry(apiKey, prompt, usageType, modelName) {
   try {
     const aiProxy = httpsCallable(functions, 'aiProxy');
-    const response = await aiProxy({ prompt, usageType });
+    const payload = { prompt };
+    
+    const knownUsageTypes = ['roadmap', 'ai_question', 'mentor_message'];
+    if (usageType) {
+      if (knownUsageTypes.includes(usageType)) {
+        payload.usageType = usageType;
+      } else {
+        payload.modelName = usageType;
+      }
+    }
+    if (modelName) {
+      payload.modelName = modelName;
+    }
+    
+    const response = await aiProxy(payload);
     if (!response || !response.data || !response.data.result) {
       throw new Error('Empty response from AI Proxy');
     }
@@ -588,8 +602,15 @@ export async function updateUserStats(userId, statsUpdates) {
 }
 
 export async function updateUserProfile(userId, profileData) {
+  const ALLOWED_FIELDS = ['firstName', 'lastName', 'username', 'displayName', 'bio', 'avatarUrl', 'locale', 'theme'];
+  const sanitized = {};
+  for (const key of ALLOWED_FIELDS) {
+    if (profileData[key] !== undefined) {
+      sanitized[key] = profileData[key];
+    }
+  }
   const userRef = doc(db, 'users', userId);
-  await setDoc(userRef, profileData, { merge: true });
+  await setDoc(userRef, sanitized, { merge: true });
   try {
     await logActivity(userId, 'Updated profile settings', 'manage_accounts', 'text-purple-500');
   } catch (e) {

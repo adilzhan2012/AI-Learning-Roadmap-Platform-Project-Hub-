@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import AdminHeader from '../../components/admin/AdminHeader.jsx';
 import { Search, MoreVertical, ShieldBan, Crown, ShieldCheck, UserMinus, Loader2 } from 'lucide-react';
-import { collection, getDocs, doc, updateDoc, query, limit, startAfter, orderBy } from 'firebase/firestore';
-import { db } from '../../firebase.js';
+import { collection, getDocs, doc, query, limit, startAfter, orderBy } from 'firebase/firestore';
+import { db, functions } from '../../firebase.js';
+import { httpsCallable } from 'firebase/functions';
 
 export default function UsersAdmin() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -75,17 +76,22 @@ export default function UsersAdmin() {
     setIsUpdating(true);
     try {
       const isPremium = planName !== 'Базовый';
-      await updateDoc(doc(db, 'users', userId), { 
-        isPremium,
-        subscriptionPlan: planName === 'Базовый' ? null : planName
+      const subscriptionPlan = planName === 'Базовый' ? null : planName;
+      
+      const adminUpdateUserFn = httpsCallable(functions, 'adminUpdateUser');
+      await adminUpdateUserFn({
+        targetUserId: userId,
+        updates: { isPremium, subscriptionPlan }
       });
+      
       setUsers(users.map(u => u.id === userId ? { 
         ...u, 
         isPremium, 
-        subscriptionPlan: planName === 'Базовый' ? null : planName 
+        subscriptionPlan 
       } : u));
     } catch (e) {
       console.error("Error updating tariff:", e);
+      alert(e.message || "Не удалось обновить тариф");
     } finally {
       setIsUpdating(false);
       setOpenDropdownId(null);
@@ -96,10 +102,16 @@ export default function UsersAdmin() {
     if (isUpdating) return;
     setIsUpdating(true);
     try {
-      await updateDoc(doc(db, 'users', userId), { isBanned: !currentBanned });
+      const adminUpdateUserFn = httpsCallable(functions, 'adminUpdateUser');
+      await adminUpdateUserFn({
+        targetUserId: userId,
+        updates: { isBanned: !currentBanned }
+      });
+      
       setUsers(users.map(u => u.id === userId ? { ...u, isBanned: !currentBanned } : u));
     } catch (e) {
       console.error("Error toggling ban:", e);
+      alert(e.message || "Не удалось переключить статус бана");
     } finally {
       setIsUpdating(false);
       setOpenDropdownId(null);

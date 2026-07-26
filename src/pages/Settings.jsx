@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Bell, Shield, Paintbrush, LogOut, CheckCircle2, Loader2, Sparkles, Key, AlertTriangle, X, Globe, FileText, ChevronRight } from 'lucide-react';
-import { auth, signOut, db } from '../firebase.js';
+import { auth, signOut, db, functions } from '../firebase.js';
 import { onAuthStateChanged, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, deleteDoc } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { useNavigate } from 'react-router-dom';
 import { getUserStats, updateUserProfile } from '../services/courseService.js';
 import { t, useLocale, getAvailableLocales, setLocale } from '../i18n.js';
@@ -126,17 +127,14 @@ export default function Settings() {
     if (!user) return;
     try {
       setLoading(true);
-      await deleteDoc(doc(db, 'users', user.uid));
-      await user.delete();
+      const deleteUserDataFn = httpsCallable(functions, 'deleteUserData');
+      await deleteUserDataFn();
+      await signOut(auth);
       navigate('/');
     } catch (err) {
       console.error(err);
       setLoading(false);
-      if (err.code === 'auth/requires-recent-login') {
-        alert(locale === 'ru' ? 'Для удаления аккаунта необходимо недавно войти в систему. Пожалуйста, выйдите из аккаунта и зайдите снова.' : 'You must have logged in recently to delete your account. Please log out and log in again.');
-      } else {
-        alert((locale === 'ru' ? 'Ошибка при удалении аккаунта: ' : 'Error deleting account: ') + err.message);
-      }
+      alert((locale === 'ru' ? 'Ошибка при удалении аккаунта: ' : 'Error deleting account: ') + (err.message || err.code));
     }
   };
 

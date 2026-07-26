@@ -399,7 +399,7 @@ Use Markdown formatting.`;
         const feedback = await callGroqWithRetry(null, prompt, 'ai_question');
         setInterviewFeedback(feedback);
         setInterviewStage('results');
-        addXP(100, 'AI Mock Interview завершено');
+        await addXP(100, 'AI Mock Interview завершено', 'mock_interview_completed', { nodeId: selectedNode?.id || selectedCourse?.id || 'interview' });
       } else {
         const prompt = `You are a Team Lead Go backend developer and HR specialist conducting a mock interview.
 Here is the transcript of your interview so far for the course "${selectedCourse?.title}":

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../firebase.js';
-import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db, functions } from '../../firebase.js';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { Wrench, X, Clock, Play, Square, Loader2 } from 'lucide-react';
 
 export default function MaintenanceModal({ onClose }) {
@@ -33,14 +34,14 @@ export default function MaintenanceModal({ onClose }) {
       const endTimeMs = Date.now() + (durationValue * multiplier);
       const endTimeDate = new Date(endTimeMs);
 
-      await setDoc(doc(db, 'settings', 'maintenance'), {
+      const adminSetMaintenanceFn = httpsCallable(functions, 'adminSetMaintenance');
+      await adminSetMaintenanceFn({
         isActive: true,
-        endTime: endTimeDate, // Firestore will convert this to Timestamp
-        updatedAt: serverTimestamp()
+        endTime: endTimeDate.toISOString()
       });
     } catch (error) {
       console.error("Error starting maintenance", error);
-      alert("Не удалось включить технические работы.");
+      alert("Не удалось включить технические работы: " + error.message);
     } finally {
       setIsSaving(false);
     }
@@ -49,14 +50,13 @@ export default function MaintenanceModal({ onClose }) {
   const handleStop = async () => {
     setIsSaving(true);
     try {
-      await setDoc(doc(db, 'settings', 'maintenance'), {
-        isActive: false,
-        endTime: null,
-        updatedAt: serverTimestamp()
+      const adminSetMaintenanceFn = httpsCallable(functions, 'adminSetMaintenance');
+      await adminSetMaintenanceFn({
+        isActive: false
       });
     } catch (error) {
       console.error("Error stopping maintenance", error);
-      alert("Не удалось выключить технические работы.");
+      alert("Не удалось выключить технические работы: " + error.message);
     } finally {
       setIsSaving(false);
     }

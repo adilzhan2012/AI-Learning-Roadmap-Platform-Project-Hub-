@@ -14,8 +14,9 @@ import {
   Lock
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { auth, db } from '../firebase.js';
+import { auth, db, functions } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
+import { httpsCallable } from 'firebase/functions';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { callGroqWithRetry, getUserCourses, getUserStats } from '../services/courseService.js';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
@@ -186,7 +187,7 @@ INSTRUCTIONS:
         : (isComplexQuery ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant');
 
       const fullPrompt = `${systemPrompt}\n\nUser Question: ${text}`;
-      const responseText = await callGroqWithRetry(apiKey, fullPrompt, selectedModel);
+      const responseText = await callGroqWithRetry(apiKey, fullPrompt, 'mentor_message', selectedModel);
 
       const assistantMessage = {
         id: (Date.now() + 1).toString(),
@@ -583,10 +584,15 @@ INSTRUCTIONS:
           // Perform automatic PRO plan upgrade on button click in demo environment!
           const user = auth.currentUser;
           if (user) {
-            const ref = doc(db, 'users', user.uid, 'subscription', 'details');
-            await setDoc(ref, { plan: 'PRO' }, { merge: true });
-            setUpgradeModalOpen(false);
-            window.location.reload();
+            try {
+              const updateSubFn = httpsCallable(functions, 'updateSubscription');
+              await updateSubFn({ plan: 'PRO' });
+              setUpgradeModalOpen(false);
+              window.location.reload();
+            } catch (e) {
+              console.error(e);
+              alert(e.message || "Ошибка при обновлении подписки. Пожалуйста, убедитесь, что ваш email верифицирован.");
+            }
           }
         }} 
       />

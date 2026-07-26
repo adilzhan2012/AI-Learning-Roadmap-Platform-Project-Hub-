@@ -117,7 +117,7 @@ IMPORTANT: Return ONLY a valid JSON object without markdown tags or explanations
     }
   }, []);
 
-  const saveQuizResult = useCallback(async (roadmapId, nodeId, scorePercent, passed) => {
+  const saveQuizResult = useCallback(async (roadmapId, nodeId, score, total, passed) => {
     if (!auth.currentUser) return;
     try {
       const userId = auth.currentUser.uid;
@@ -132,7 +132,8 @@ IMPORTANT: Return ONLY a valid JSON object without markdown tags or explanations
 
       // Add new attempt
       attempts.push({
-        score: scorePercent,
+        score,
+        total,
         date: new Date().toISOString()
       });
 
@@ -141,8 +142,9 @@ IMPORTANT: Return ONLY a valid JSON object without markdown tags or explanations
         userId,
         roadmapId,
         nodeId: String(nodeId),
-        score: scorePercent,
-        attempts, // Array of [{score, date}]
+        score,
+        total,
+        attempts, // Array of [{score, total, date}]
         attemptsCount: attempts.length,
         lastAttemptAt: serverTimestamp(),
         passed

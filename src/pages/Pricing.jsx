@@ -13,7 +13,8 @@ import {
   Share2,
   CheckCircle2
 } from 'lucide-react';
-import { auth, db } from '../firebase.js';
+import { auth, db, functions } from '../firebase.js';
+import { httpsCallable } from 'firebase/functions';
 import { doc, setDoc } from 'firebase/firestore';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import { useNavigate } from 'react-router-dom';
@@ -89,15 +90,14 @@ export default function Pricing() {
   const handleCancelSubscription = async () => {
     setCancelling(true);
     try {
-      const ref = doc(db, 'users', auth.currentUser.uid, 'subscription', 'details');
-      await setDoc(ref, { plan: 'FREE' }, { merge: true });
-      setTimeout(() => {
-        setCancelling(false);
-        setIsCancelModalOpen(false);
-        window.location.reload();
-      }, 1000);
+      const updateSubFn = httpsCallable(functions, 'updateSubscription');
+      await updateSubFn({ plan: 'FREE' });
+      setCancelling(false);
+      setIsCancelModalOpen(false);
+      window.location.reload();
     } catch (e) {
       console.error(e);
+      alert(e.message || "Ошибка при отмене подписки");
       setCancelling(false);
     }
   };
@@ -119,23 +119,18 @@ export default function Pricing() {
   const handleDowngrade = async () => {
     setUpgrading(true);
     try {
-      const ref = doc(db, 'users', auth.currentUser.uid, 'subscription', 'details');
-      await setDoc(ref, { plan: 'FREE' }, { merge: true });
-      setTimeout(() => {
-        setUpgrading(false);
-        window.location.reload();
-      }, 800);
+      const updateSubFn = httpsCallable(functions, 'updateSubscription');
+      await updateSubFn({ plan: 'FREE' });
+      setUpgrading(false);
+      window.location.reload();
     } catch (e) {
       console.error(e);
+      alert(e.message || "Ошибка при переходе на базовый тариф");
       setUpgrading(false);
     }
   };
 
   const handleSubmitPayment = () => {
-    if (!cardHolder.trim() || !cardNumber || cardNumber.length < 19 || !cardExpiry || cardExpiry.length < 5 || !cardCvc || cardCvc.length < 3) {
-      setCheckoutError('Пожалуйста, заполните все реквизиты карты корректно.');
-      return;
-    }
     setCheckoutError('');
     setCheckoutStage('processing');
     
@@ -150,14 +145,13 @@ export default function Pricing() {
     setCheckoutStage('input');
     setUpgrading(true);
     try {
-      const ref = doc(db, 'users', auth.currentUser.uid, 'subscription', 'details');
-      await setDoc(ref, { plan: selectedUpgradePlan }, { merge: true });
-      setTimeout(() => {
-        setUpgrading(false);
-        window.location.reload();
-      }, 800);
+      const updateSubFn = httpsCallable(functions, 'updateSubscription');
+      await updateSubFn({ plan: selectedUpgradePlan });
+      setUpgrading(false);
+      window.location.reload();
     } catch (e) {
       console.error(e);
+      alert(e.message || "Ошибка при обновлении подписки. Пожалуйста, убедитесь, что ваш email верифицирован.");
       setUpgrading(false);
     }
   };
@@ -778,63 +772,9 @@ export default function Pricing() {
                     </div>
                   </div>
 
-                  <div className="space-y-4 text-left">
-                    <div>
-                      <label className="text-[10px] text-on-surface-variant uppercase tracking-wider block mb-1">Имя на карте</label>
-                      <input 
-                        type="text"
-                        placeholder="ALEXANDER SMIRNOV"
-                        value={cardHolder}
-                        onChange={(e) => setCardHolder(e.target.value.toUpperCase())}
-                        className="w-full bg-surface-container/40 border border-outline rounded-xl px-4 py-2.5 text-xs text-on-surface uppercase focus:outline-none focus:border-white transition-colors"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] text-on-surface-variant uppercase tracking-wider block mb-1">Номер карты</label>
-                      <input 
-                        type="text"
-                        placeholder="4000 1234 5678 9010"
-                        maxLength={19}
-                        value={cardNumber}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim();
-                          setCardNumber(val);
-                        }}
-                        className="w-full bg-surface-container/40 border border-outline rounded-xl px-4 py-2.5 text-xs font-mono text-on-surface focus:outline-none focus:border-white transition-colors"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-[10px] text-on-surface-variant uppercase tracking-wider block mb-1">Срок действия</label>
-                        <input 
-                          type="text"
-                          placeholder="MM/YY"
-                          maxLength={5}
-                          value={cardExpiry}
-                          onChange={(e) => {
-                            let val = e.target.value.replace(/\D/g, '');
-                            if (val.length > 2) {
-                              val = val.substring(0, 2) + '/' + val.substring(2, 4);
-                            }
-                            setCardExpiry(val);
-                          }}
-                          className="w-full bg-surface-container/40 border border-outline rounded-xl px-4 py-2.5 text-xs font-mono text-on-surface focus:outline-none focus:border-white transition-colors"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-on-surface-variant uppercase tracking-wider block mb-1">CVC-код</label>
-                        <input 
-                          type="password"
-                          placeholder="•••"
-                          maxLength={3}
-                          value={cardCvc}
-                          onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, ''))}
-                          className="w-full bg-surface-container/40 border border-outline rounded-xl px-4 py-2.5 text-xs font-mono text-on-surface focus:outline-none focus:border-white transition-colors"
-                        />
-                      </div>
-                    </div>
+                  <div className="bg-surface-container/20 border border-outline/5 rounded-xl p-4 text-left text-xs text-on-surface-variant mb-6">
+                    <p className="mb-2 text-on-surface font-semibold">🔒 Безопасный демо-платеж</p>
+                    <p>Это демонстрационная модель оформления подписки. Ввод банковских карт не требуется. Ваши реальные средства не будут списаны.</p>
                   </div>
 
                   {checkoutError && (

@@ -154,7 +154,6 @@ export const usePlanLimits = () => {
 
   const incrementUsage = useCallback(async (type, tokenCount = 0) => {
     if (!auth.currentUser) return;
-    const ref = doc(db, 'users', auth.currentUser.uid, 'subscription', 'details');
     const todayStr = new Date().toISOString().split('T')[0];
     const monthStr = todayStr.substring(0, 7);
     
@@ -173,8 +172,6 @@ export const usePlanLimits = () => {
           newUsage.ultraTokensUsed = (newUsage.ultraTokensUsed || 0) + tokenCount;
         }
       }
-      // Fire-and-forget sync to Firestore
-      setDoc(ref, newUsage, { merge: true }).catch(console.error);
       return newUsage;
     });
   }, [plan]);

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import AdminHeader from '../../components/admin/AdminHeader.jsx';
 import { FileText, Save, Loader2, CheckCircle2 } from 'lucide-react';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../../firebase.js';
+import { doc, getDoc } from 'firebase/firestore';
+import { db, functions } from '../../firebase.js';
+import { httpsCallable } from 'firebase/functions';
 
 export default function PoliciesAdmin() {
   const [loading, setLoading] = useState(true);
@@ -44,11 +45,13 @@ export default function PoliciesAdmin() {
     setSaving(true);
     setSuccess(false);
     try {
-      await setDoc(doc(db, 'settings', 'legal'), policies, { merge: true });
+      const adminSetPoliciesFn = httpsCallable(functions, 'adminSetPolicies');
+      await adminSetPoliciesFn(policies);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (e) {
       console.error("Error saving policies:", e);
+      alert(e.message || "Не удалось сохранить изменения");
     } finally {
       setSaving(false);
     }

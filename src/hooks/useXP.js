@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { doc, getDoc, updateDoc, arrayUnion, increment } from 'firebase/firestore';
-import { db, auth } from '../firebase.js';
+import { doc, getDoc } from 'firebase/firestore';
+import { db, auth, functions } from '../firebase.js';
+import { httpsCallable } from 'firebase/functions';
 import { calculateLevel } from '../constants/levels.js';
 import { useGamification } from '../context/GamificationContext.jsx';
 import { onAuthStateChanged } from 'firebase/auth';
+import { getLocale } from '../i18n.js';
 
 export const useXP = () => {
   const [userLevelData, setUserLevelData] = useState(null);
@@ -30,44 +32,26 @@ export const useXP = () => {
     return () => unsubscribe();
   }, []);
 
-  const addXP = useCallback(async (amount, reason) => {
+  const addXP = useCallback(async (amount, reason, activityType, details) => {
     if (!auth.currentUser) return;
-    const uid = auth.currentUser.uid;
-    const docRef = doc(db, 'users', uid);
-    
-    // Optimistic UI update
-    showXPToast(amount, reason);
     
     try {
-      const docSnap = await getDoc(docRef);
-      const currentXp = docSnap.exists() ? (docSnap.data().xp || 0) : 0;
-      const newXp = currentXp + amount;
+      const awardXPFn = httpsCallable(functions, 'awardXP');
+      const result = await awardXPFn({
+        userId: auth.currentUser.uid,
+        activityType,
+        details,
+        locale: getLocale()
+      });
       
-      const oldLevelCalc = calculateLevel(currentXp);
-      const newLevelCalc = calculateLevel(newXp);
-      
-      setUserLevelData(newLevelCalc);
-
-      const updates = {
-        xp: increment(amount),
-        weeklyXP: increment(amount),
-        totalXPEarned: increment(amount),
-        xpHistory: arrayUnion({
-          amount,
-          reason,
-          timestamp: new Date().toISOString()
-        })
-      };
-
-      if (newLevelCalc.current.level > oldLevelCalc.current.level) {
-        updates.level = newLevelCalc.current.level;
-        // Small delay so the LevelUp modal doesn't clash instantly with the XP toast
-        setTimeout(() => {
-          showLevelUp(oldLevelCalc.current, newLevelCalc.current);
-        }, 1000);
+      if (result.data.success) {
+        showXPToast(result.data.amountAwarded, reason);
+        setUserLevelData(result.data.userLevelData);
+        
+        if (result.data.newLevel.level > result.data.oldLevel.level) {
+          showLevelUp(result.data.oldLevel, result.data.newLevel);
+        }
       }
-
-      await updateDoc(docRef, updates);
     } catch (e) {
       console.error("Failed to add XP:", e);
     }

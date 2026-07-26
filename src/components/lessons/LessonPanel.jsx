@@ -153,16 +153,16 @@ export default function LessonPanel({
   const handleQuizComplete = async (score, total, passed) => {
     setQuizOpen(false);
     
-    await saveQuizResult(selectedCourse.id, selectedNode.id, score, passed);
+    await saveQuizResult(selectedCourse.id, selectedNode.id, score, total, passed);
     
     if (onQuizComplete) {
       onQuizComplete();
     }
     
     if (passed) {
-      addXP(25, 'Пройден квиз');
+      await addXP(25, 'Пройден квиз', 'quiz_passed', { nodeId: selectedNode.id });
       if (score === total) {
-        addXP(50, 'Идеальный результат');
+        await addXP(50, 'Идеальный результат', 'quiz_perfect', { nodeId: selectedNode.id });
       }
       
       if (selectedNode.status !== 'completed') {
@@ -215,7 +215,7 @@ Provide a highly thorough, detailed code review in the Russian language. Include
 4. **Вердикт**: Принят ли код (Пройдено / Не пройдено) и краткое резюме.`;
       const result = await callGroqWithRetry(null, prompt, 'ai_question');
       setCodeReviewResult(result);
-      addXP(40, 'AI Code Review пройден');
+      await addXP(40, 'AI Code Review пройден', 'code_review_passed', { nodeId: selectedNode.id });
     } catch (e) {
       console.error(e);
       setCodeReviewResult('❌ Не удалось сгенерировать рецензию ИИ. Пожалуйста, попробуйте еще раз.');

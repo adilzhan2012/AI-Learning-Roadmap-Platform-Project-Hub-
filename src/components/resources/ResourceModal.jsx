@@ -68,7 +68,7 @@ INSTRUCTIONS:
 Provide a highly thorough, detailed code review in the Russian language. Include sections for Correctness, Code Style, Security, and Final Verdict (Passed / Failed). Format using Markdown.`;
       const result = await callGroqWithRetry(null, prompt, 'ai_question');
       setReviewResult(result);
-      addXP(50, 'AI Проверка проекта пройдена');
+      await addXP(50, 'AI Проверка проекта пройдена', 'project_verified', { nodeId: resource.id || 'project_node' });
     } catch (e) {
       console.error(e);
       setReviewResult('❌ Не удалось сгенерировать рецензию ИИ.');

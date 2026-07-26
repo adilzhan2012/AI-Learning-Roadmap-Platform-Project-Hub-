@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { collection, doc, getDoc, setDoc, deleteDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '../firebase.js';
+import { collection, doc, getDoc, setDoc, deleteDoc, getDocs } from 'firebase/firestore';
+import { db, auth, functions } from '../firebase.js';
+import { httpsCallable } from 'firebase/functions';
 import { ACHIEVEMENTS } from '../constants/achievements.js';
 import { useGamification } from '../context/GamificationContext.jsx';
-import { useXP } from './useXP.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getUserCourses } from '../services/courseService.js';
 
@@ -11,7 +11,6 @@ export const useAchievements = () => {
   const [unlockedAchievements, setUnlockedAchievements] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const { showAchievementToast } = useGamification();
-  const { addXP } = useXP();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -64,79 +63,66 @@ export const useAchievements = () => {
                       passed: legacyData.passed || false,
                       attempts,
                       attemptsCount: 1,
-                      lastAttemptAt: legacyData.lastAttemptAt || serverTimestamp(),
+                      lastAttemptAt: legacyData.lastAttemptAt || new Date().toISOString(),
                       cooldownUntil: legacyData.cooldownUntil || null
                     });
-                    console.log(`Successfully migrated quiz results for node: ${node.id}`);
                   }
-                  
-                  // Delete legacy doc to prevent re-migration
-                  await deleteDoc(legacyRef);
-                  console.log(`Deleted legacy quiz results for node: ${node.id}`);
                 }
-              } catch (migErr) {
-                console.error(`Migration error for node ${node.id}:`, migErr);
+              } catch (e) {
+                console.warn("Could not migrate legacy quiz:", e);
               }
             }
           }
 
-          // 4. Fetch quiz results (now includes migrated results!)
+          // 4. Fetch quiz results
           const quizSnap = await getDocs(collection(db, 'users', user.uid, 'quizResults'));
           const quizResults = [];
           quizSnap.forEach(d => quizResults.push(d.data()));
           const quizzesCount = quizResults.length;
-          const perfectQuizzesCount = quizResults.filter(q => q.score === 100).length;
+          const perfectQuizzesCount = quizResults.filter(q => q.score !== undefined && q.total !== undefined && q.score === q.total).length;
 
-          // Helper function to check and unlock achievements locally and in Firestore
+          // Helper function to check and unlock achievements locally and in Firestore via Cloud Function
           const checkAndUnlock = async (id, condition) => {
             if (condition && !unlocked[id]) {
-              const docRef = doc(db, 'users', user.uid, 'achievements', id);
-              await setDoc(docRef, { unlockedAt: serverTimestamp() });
-              
-              unlocked[id] = { unlockedAt: new Date() };
-              setUnlockedAchievements(prev => ({ ...prev, [id]: { unlockedAt: new Date() } }));
-              
-              const def = ACHIEVEMENTS.find(a => a.id === id);
-              if (def) {
-                showAchievementToast(def);
-                setTimeout(() => {
-                  addXP(def.xpReward, `Достижение: ${def.title}`);
-                }, 1000);
+              try {
+                const unlockAchievementFn = httpsCallable(functions, 'unlockAchievement');
+                const res = await unlockAchievementFn({ achievementId: id });
+                if (res.data && res.data.success) {
+                  unlocked[id] = { unlockedAt: new Date() };
+                  setUnlockedAchievements(prev => ({ ...prev, [id]: { unlockedAt: new Date() } }));
+                  const def = ACHIEVEMENTS.find(a => a.id === id);
+                  if (def) {
+                    showAchievementToast(def);
+                  }
+                }
+              } catch (e) {
+                console.error(`Failed to unlock achievement ${id}:`, e);
               }
             }
           };
 
           // --- Automated Milestone Unlocking Rules ---
-          // 👋 First Step (always unlocks for logged in user)
           await checkAndUnlock('first_step', true);
-
-          // 🗺️ Explorer (First Roadmap) & Course Creator
           await checkAndUnlock('explorer_first', roadmapsCount >= 1);
           await checkAndUnlock('course_creator', roadmapsCount >= 1);
-          
-          // 🌱 Path Builder, Architect, Explorer Pro
           await checkAndUnlock('path_builder', roadmapsCount >= 5);
           await checkAndUnlock('architect', roadmapsCount >= 20);
           await checkAndUnlock('explorer_10', roadmapsCount >= 10);
           
-          // 📚 First Lesson, Student, Learner, Scholar, Master Student
           await checkAndUnlock('first_lesson', completedLessonsCount >= 1);
           await checkAndUnlock('student_5', completedLessonsCount >= 5);
           await checkAndUnlock('learner_25', completedLessonsCount >= 25);
           await checkAndUnlock('scholar_100', completedLessonsCount >= 100);
           await checkAndUnlock('master_student', completedLessonsCount >= 250);
           
-          // ✅ First Quiz, Quiz Rookie, Exam Solver, Quiz Champion
           await checkAndUnlock('first_quiz', quizzesCount >= 1);
           await checkAndUnlock('quiz_rookie', quizzesCount >= 5);
           await checkAndUnlock('exam_solver', quizzesCount >= 25);
           await checkAndUnlock('quiz_champion', quizzesCount >= 100);
           
-          // 💯 Perfect Score, Perfectionist
           await checkAndUnlock('perfect_score_first', perfectQuizzesCount >= 1);
           await checkAndUnlock('perfectionist_10', perfectQuizzesCount >= 10);
           
-          // ⭐ XP milestones
           await checkAndUnlock('xp_100', xp >= 100);
           await checkAndUnlock('xp_500', xp >= 500);
           await checkAndUnlock('xp_1000', xp >= 1000);
@@ -144,13 +130,11 @@ export const useAchievements = () => {
           await checkAndUnlock('xp_10000', xp >= 10000);
           await checkAndUnlock('xp_50000', xp >= 50000);
           
-          // 🏅 Level milestones
           await checkAndUnlock('level_5_ach', level >= 5);
           await checkAndUnlock('level_10', level >= 10);
           await checkAndUnlock('level_25', level >= 25);
           await checkAndUnlock('level_50', level >= 50);
           
-          // 🔥 Streak milestones
           await checkAndUnlock('streak_3', streak >= 3);
           await checkAndUnlock('streak_7_ach', streak >= 7);
           await checkAndUnlock('streak_14', streak >= 14);
@@ -169,7 +153,7 @@ export const useAchievements = () => {
       }
     });
     return () => unsubscribe();
-  }, [showAchievementToast, addXP]);
+  }, [showAchievementToast]);
 
   const unlockAchievement = useCallback(async (achievementId) => {
     if (!auth.currentUser) return;
@@ -179,20 +163,16 @@ export const useAchievements = () => {
     if (!achievementDef) return;
 
     try {
-      const docRef = doc(db, 'users', auth.currentUser.uid, 'achievements', achievementId);
-      await setDoc(docRef, { unlockedAt: serverTimestamp() });
-      
-      setUnlockedAchievements(prev => ({ ...prev, [achievementId]: { unlockedAt: new Date() } }));
-      
-      showAchievementToast(achievementDef);
-      setTimeout(() => {
-        addXP(achievementDef.xpReward, `Достижение: ${achievementDef.title}`);
-      }, 1000);
-      
+      const unlockAchievementFn = httpsCallable(functions, 'unlockAchievement');
+      const res = await unlockAchievementFn({ achievementId });
+      if (res.data && res.data.success) {
+        setUnlockedAchievements(prev => ({ ...prev, [achievementId]: { unlockedAt: new Date() } }));
+        showAchievementToast(achievementDef);
+      }
     } catch (e) {
       console.error("Failed to unlock achievement:", e);
     }
-  }, [unlockedAchievements, showAchievementToast, addXP]);
+  }, [unlockedAchievements, showAchievementToast]);
 
   return { unlockedAchievements, unlockAchievement, isLoading };
 };
