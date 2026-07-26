@@ -40,8 +40,16 @@ export default function Topbar() {
   const navigate = useNavigate();
   const locale = useLocale();
 
+  const getCachedProfile = () => {
+    try {
+      const cached = localStorage.getItem('cached_profile');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return { firstName: 'User' };
+  };
+
   const [user, setUser] = useState(auth.currentUser);
-  const [profile, setProfile] = useState({ firstName: 'User' });
+  const [profile, setProfile] = useState(getCachedProfile);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -76,6 +84,7 @@ export default function Topbar() {
         try {
           const stats = await getUserStats(currentUser.uid);
           setProfile(stats);
+          localStorage.setItem('cached_profile', JSON.stringify(stats));
         } catch (e) {
           console.error("Error loading user stats in Topbar:", e);
         }

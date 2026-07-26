@@ -93,16 +93,24 @@ export default function Dashboard() {
   const locale = useLocale();
   const { plan, loading: planLoading } = usePlanLimits();
   const [user, setUser] = useState(auth.currentUser);
-  const [stats, setStats] = useState({
-    activeCoursesCount: 0,
-    hoursLearned: 0,
-    certificatesCount: 0,
-    streakDays: 1,
-    firstName: '',
-    lastName: '',
-    currentLeague: 'quartz',
-    weeklyXP: 0
-  });
+  const getCachedStats = () => {
+    try {
+      const cached = localStorage.getItem('cached_stats');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return {
+      activeCoursesCount: 0,
+      hoursLearned: 0,
+      certificatesCount: 0,
+      streakDays: 1,
+      firstName: '',
+      lastName: '',
+      currentLeague: 'quartz',
+      weeklyXP: 0
+    };
+  };
+
+  const [stats, setStats] = useState(getCachedStats);
   const [timeLeft, setTimeLeft] = useState('');
   const [courses, setCourses] = useState([]);
   const [activities, setActivities] = useState([]);
@@ -118,6 +126,8 @@ export default function Dashboard() {
         try {
           const fetchedStats = await getUserStats(currentUser.uid);
           setStats(fetchedStats);
+          localStorage.setItem('cached_stats', JSON.stringify(fetchedStats));
+          localStorage.setItem('cached_profile', JSON.stringify(fetchedStats));
 
           const fetchedCourses = await getUserCourses(currentUser.uid);
           setCourses(fetchedCourses);

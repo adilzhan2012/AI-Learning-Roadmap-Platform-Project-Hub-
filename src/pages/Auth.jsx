@@ -255,6 +255,12 @@ export default function Auth({ type }) {
             <ArrowLeft className="w-4 h-4" /> {t('auth.backHome')}
           </Link>
         </p>
+        
+        <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-800 text-center">
+          <div className="text-[10px] uppercase tracking-widest font-mono text-gray-400 dark:text-gray-500">
+            Designed & Developed by<br/>Ivakin Daniil & Dutpayev Adilzhan
+          </div>
+        </div>
       </motion.div>
 
       <AnimatePresence>

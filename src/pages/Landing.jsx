@@ -203,16 +203,166 @@ export default function Landing() {
 
         </motion.div>
       </main>
+
+      {/* Overview & Vision Section */}
+      <section className="relative py-24 px-6 z-10 bg-black/60 border-t border-white/10">
+        <div className="max-w-7xl mx-auto flex flex-col gap-24">
+          <div className="text-center max-w-4xl mx-auto">
+            <motion.h2 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-4xl md:text-6xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-indigo-400"
+            >
+              Обзор Платформы
+            </motion.h2>
+            <motion.p 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="text-neutral-300 text-lg md:text-2xl font-light leading-relaxed"
+            >
+              Мы создали этот проект, чтобы решить проблему хаотичного самообразования. С помощью ИИ-сгенерированных дорожных карт мы помогаем учащимся легко осваивать сложные технические дисциплины, избегая "tutorial hell" (ада туториалов). 
+            </motion.p>
+          </div>
+
+          {/* Interactive Feature Cards */}
+          <div className="grid md:grid-cols-2 gap-8 w-full">
+            {[
+              {
+                title: "Интерактивный Граф Знаний",
+                desc: "Визуализируйте свой путь обучения. Наш динамичный граф показывает зависимости и связи между курсами для идеального понимания структуры.",
+                icon: "🕸️",
+                color: "from-emerald-500/20 to-teal-500/20",
+                borderColor: "group-hover:border-emerald-500/50"
+              },
+              {
+                title: "Уроки от ИИ (Groq)",
+                desc: "Платформа генерирует подробные, актуальные и интерактивные уроки на лету с помощью высокопроизводительных ИИ-моделей.",
+                icon: "🧠",
+                color: "from-blue-500/20 to-indigo-500/20",
+                borderColor: "group-hover:border-blue-500/50"
+              },
+              {
+                title: "Языковая Поддержка",
+                desc: "В данный момент платформа полностью доступна на русском языке. В ближайшем будущем планируется масштабное обновление с поддержкой английского языка.",
+                icon: "🌍",
+                color: "from-purple-500/20 to-fuchsia-500/20",
+                borderColor: "group-hover:border-purple-500/50"
+              },
+              {
+                title: "Геймификация и Прогресс",
+                desc: "Следите за своими ежедневными сериями, получайте достижения и соревнуйтесь в лигах для поддержания мотивации.",
+                icon: "🏆",
+                color: "from-orange-500/20 to-amber-500/20",
+                borderColor: "group-hover:border-orange-500/50"
+              }
+            ].map((feature, idx) => (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.1 }}
+                whileHover={{ scale: 1.02, y: -5 }}
+                className={`group relative overflow-hidden rounded-[2rem] bg-on-surface/5 backdrop-blur-xl border border-white/10 p-8 transition-all duration-300 ${feature.borderColor}`}
+              >
+                <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+                <div className="relative z-10 flex flex-col h-full">
+                  <div className="text-5xl mb-6 transform group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300 origin-left">{feature.icon}</div>
+                  <h3 className="text-2xl font-bold text-white mb-4 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-white/70 transition-all">{feature.title}</h3>
+                  <p className="text-neutral-400 text-lg leading-relaxed flex-1">{feature.desc}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+          
+          {/* Founders Section */}
+          <div className="mt-12 text-center">
+             <motion.h2 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-4xl md:text-5xl font-bold mb-12 text-on-surface"
+            >
+              Команда Проекта
+            </motion.h2>
+            <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto w-full">
+              <motion.div 
+                initial={{ opacity: 0, x: -50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                whileHover={{ scale: 1.03 }}
+                className="group bg-on-surface/5 border border-white/10 rounded-[2rem] p-10 text-left relative overflow-hidden backdrop-blur-xl transition-all duration-500 hover:shadow-[0_0_40px_rgba(59,130,246,0.2)] hover:border-blue-500/40"
+              >
+                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px] -mr-32 -mt-32 transition-opacity group-hover:opacity-100 opacity-50" />
+                <div className="flex items-center gap-6 mb-8 relative z-10">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center text-3xl font-bold text-white shadow-lg group-hover:shadow-blue-500/50 transition-shadow">
+                    DI
+                  </div>
+                  <div>
+                    <h3 className="text-3xl font-bold text-white mb-1">Ивакин Даниил</h3>
+                    <p className="text-blue-400 font-mono tracking-widest uppercase text-sm font-semibold">Co-Founder & CEO</p>
+                  </div>
+                </div>
+                <div className="relative z-10">
+                  <h4 className="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-blue-400" /> Выполненная работа:
+                  </h4>
+                  <ul className="space-y-4 text-neutral-300 font-light text-[17px]">
+                    <li className="flex items-start gap-3"><div className="mt-2 w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" /> Проектирование архитектуры платформы и концепции продукта.</li>
+                    <li className="flex items-start gap-3"><div className="mt-2 w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" /> Интеграция высокоскоростной ИИ логики (Groq API) для генерации курсов.</li>
+                    <li className="flex items-start gap-3"><div className="mt-2 w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" /> Разработка UI/UX дизайна, глассморфизм-интерфейса и анимаций (Framer Motion).</li>
+                  </ul>
+                </div>
+              </motion.div>
+              
+              <motion.div 
+                initial={{ opacity: 0, x: 50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                whileHover={{ scale: 1.03 }}
+                className="group bg-on-surface/5 border border-white/10 rounded-[2rem] p-10 text-left relative overflow-hidden backdrop-blur-xl transition-all duration-500 hover:shadow-[0_0_40px_rgba(168,85,247,0.2)] hover:border-purple-500/40"
+              >
+                <div className="absolute top-0 left-0 w-64 h-64 bg-purple-500/10 rounded-full blur-[80px] -ml-32 -mt-32 transition-opacity group-hover:opacity-100 opacity-50" />
+                <div className="flex items-center gap-6 mb-8 relative z-10 sm:flex-row-reverse sm:text-right">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-bl from-purple-400 to-fuchsia-600 flex items-center justify-center text-3xl font-bold text-white shadow-lg group-hover:shadow-purple-500/50 transition-shadow">
+                    AD
+                  </div>
+                  <div>
+                    <h3 className="text-3xl font-bold text-white mb-1">Дутпаев Адильжан</h3>
+                    <p className="text-purple-400 font-mono tracking-widest uppercase text-sm font-semibold">Co-Founder & CTO</p>
+                  </div>
+                </div>
+                <div className="relative z-10 sm:text-right">
+                  <h4 className="text-white font-semibold text-lg mb-4 flex items-center gap-2 sm:justify-end">
+                    Выполненная работа: <Terminal className="w-5 h-5 text-purple-400 hidden sm:block" />
+                  </h4>
+                  <ul className="space-y-4 text-neutral-300 font-light text-[17px]">
+                    <li className="flex items-start gap-3 sm:justify-end"><span className="sm:text-right">Масштабирование инфраструктуры и интеграция Firebase (Auth, Firestore).</span> <div className="mt-2 w-2 h-2 rounded-full bg-purple-500 flex-shrink-0" /></li>
+                    <li className="flex items-start gap-3 sm:justify-end"><span className="sm:text-right">Разработка сложного интерактивного графа знаний на базе Vis-Network.</span> <div className="mt-2 w-2 h-2 rounded-full bg-purple-500 flex-shrink-0" /></li>
+                    <li className="flex items-start gap-3 sm:justify-end"><span className="sm:text-right">Настройка роутинга, локализации (i18n) и логики работы клиентской части.</span> <div className="mt-2 w-2 h-2 rounded-full bg-purple-500 flex-shrink-0" /></li>
+                  </ul>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </div>
+      </section>
       
       {/* Footer */}
-      <footer className="border-t border-white/10 py-12 px-6 bg-black/50 backdrop-blur-md relative z-10">
+      <footer className="py-12 px-6 bg-black/50 backdrop-blur-md relative z-10">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-2 font-semibold text-lg tracking-tight text-on-surface/80">
             <Sparkles className="w-5 h-5 text-on-surface/80" />
             yourway.co
           </div>
-          <div className="text-sm text-neutral-500 font-medium">
-            &copy; 2026 yourway.co. All rights reserved.
+          <div className="text-sm text-neutral-500 font-medium text-right">
+            <div>&copy; 2026 yourway.co. All rights reserved.</div>
+            <div className="mt-2 text-[10px] uppercase tracking-widest font-mono text-neutral-600">
+              Designed & Developed by Ivakin Daniil & Dutpayev Adilzhan
+            </div>
           </div>
         </div>
       </footer>
