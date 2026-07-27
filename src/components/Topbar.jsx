@@ -19,8 +19,9 @@ import { t, useLocale } from '../i18n.js';
 import { useXP } from '../hooks/useXP.js';
 import { useGamification } from '../context/GamificationContext.jsx';
 import { toggleTheme } from '../theme.js';
-import { auth, signOut } from '../firebase.js';
+import { auth, signOut, db } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { getUserStats } from '../services/courseService.js';
 import Logo from './shared/Logo.jsx';
 import { LeagueIcon } from '../pages/Leagues.jsx';
@@ -54,6 +55,7 @@ export default function Topbar() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(document.documentElement.classList.contains('dark'));
+  const [hasUnreadTickets, setHasUnreadTickets] = useState(false);
 
   const { userLevelData } = useXP();
   const { 
@@ -92,6 +94,26 @@ export default function Topbar() {
     });
     return () => unsubscribe();
   }, []);
+
+  // Listen for unread support tickets
+  useEffect(() => {
+    if (!user) {
+      setHasUnreadTickets(false);
+      return;
+    }
+    const q = query(
+      collection(db, 'support_tickets'),
+      where('userId', '==', user.uid)
+    );
+    const unsubscribe = onSnapshot(q, (snap) => {
+      let unread = false;
+      snap.forEach(doc => {
+        if (doc.data().unreadUser) unread = true;
+      });
+      setHasUnreadTickets(unread);
+    });
+    return () => unsubscribe();
+  }, [user]);
 
   // Sync dark mode state with system theme changes
   useEffect(() => {
@@ -263,9 +285,12 @@ export default function Topbar() {
           <div className="relative">
             <button 
               onClick={() => { setShowProfileMenu(!showProfileMenu); setShowNotifications(false); }}
-              className="w-7 h-7 rounded-full bg-surface-container border border-outline flex items-center justify-center text-on-surface font-semibold text-xs font-mono hover:border-[rgba(255,255,255,0.3)] transition-colors select-none"
+              className="w-7 h-7 rounded-full bg-surface-container border border-outline flex items-center justify-center text-on-surface font-semibold text-xs font-mono hover:border-[rgba(255,255,255,0.3)] transition-colors select-none relative"
             >
               {userInitial}
+              {hasUnreadTickets && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-primary rounded-full border-[2px] border-background" />
+              )}
             </button>
 
             {/* Profile Dropdown panel */}
@@ -301,7 +326,7 @@ export default function Topbar() {
                     className="flex items-center justify-between w-full px-4 py-2.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container/40 transition-colors text-left"
                   >
                     <span className="flex items-center gap-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 relative" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="12" cy="12" r="10"></circle>
                         <circle cx="12" cy="12" r="4"></circle>
                         <line x1="4.93" y1="4.93" x2="9.17" y2="9.17"></line>
@@ -312,7 +337,10 @@ export default function Topbar() {
                       </svg>
                       <span>Поддержка</span>
                     </span>
-                    <ChevronRight className="w-3.5 h-3.5 text-[#636366]" strokeWidth={1.5} />
+                    <div className="flex items-center gap-2">
+                      {hasUnreadTickets && <span className="text-[9px] bg-primary text-on-primary px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Ответ</span>}
+                      <ChevronRight className="w-3.5 h-3.5 text-[#636366]" strokeWidth={1.5} />
+                    </div>
                   </button>
 
                   {/* Settings Page option */}

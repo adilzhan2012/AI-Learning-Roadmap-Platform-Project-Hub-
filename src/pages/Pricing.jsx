@@ -16,6 +16,7 @@ import {
 import { auth, db, functions } from '../firebase.js';
 import { httpsCallable } from 'firebase/functions';
 import { doc, setDoc } from 'firebase/firestore';
+import { sendEmailVerification } from 'firebase/auth';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import { useNavigate } from 'react-router-dom';
 import { getUserStats, getReferralsCount } from '../services/courseService.js';
@@ -31,6 +32,20 @@ export default function Pricing() {
   const [showFullComparison, setShowFullComparison] = useState(false);
   const [upgrading, setUpgrading] = useState(false);
   const [selectedUpgradePlan, setSelectedUpgradePlan] = useState('PRO'); // 'PRO' | 'ULTRA'
+
+  // Email verification state
+  const [verificationSent, setVerificationSent] = useState(false);
+
+  const handleSendVerification = async () => {
+    if (auth.currentUser) {
+      try {
+        await sendEmailVerification(auth.currentUser);
+        setVerificationSent(true);
+      } catch (e) {
+        alert("Ошибка: " + e.message);
+      }
+    }
+  };
 
   // Simulated payment state
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -179,6 +194,26 @@ export default function Pricing() {
         <p className="text-xs text-on-surface-variant leading-relaxed">
           Выберите подходящий уровень для достижения ваших целей обучения. Сгенерируйте индивидуальные курсы с использованием ИИ.
         </p>
+
+        {auth.currentUser && !auth.currentUser.emailVerified && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-6 bg-[#FF453A]/10 border border-[#FF453A]/20 p-4 rounded-[16px] flex flex-col sm:flex-row items-center justify-between gap-4 text-left"
+          >
+            <div>
+              <h4 className="font-bold text-[#FF453A] text-sm">Email не подтвержден!</h4>
+              <p className="text-xs text-[#FF453A]/80 mt-1">Для оформления подписки вам необходимо подтвердить почту.</p>
+            </div>
+            <button 
+              onClick={handleSendVerification} 
+              disabled={verificationSent} 
+              className="px-4 py-2 w-full sm:w-auto bg-[#FF453A]/20 hover:bg-[#FF453A]/30 text-[#FF453A] rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap"
+            >
+              {verificationSent ? 'Письмо отправлено' : 'Отправить письмо'}
+            </button>
+          </motion.div>
+        )}
 
         {/* Toggle Billing Period */}
         <div className="inline-flex bg-surface p-1 rounded-xl border border-outline mt-8">

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, ArrowLeft, Loader2 } from 'lucide-react';
 import Logo from '../components/shared/Logo.jsx';
 import { auth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from '../firebase.js';
+import { sendEmailVerification } from 'firebase/auth';
 import { getUserStats } from '../services/courseService.js';
 import { t, useLocale } from '../i18n.js';
 import LegalDocModal from '../components/shared/LegalDocModal.jsx';
@@ -79,6 +80,16 @@ export default function Auth({ type }) {
         const user = userCredential.user;
         // Initialize user profile in Firestore
         await getUserStats(user.uid, { firstName, lastName, username, referredBy, email });
+        
+        // Автоматически отправляем письмо для подтверждения
+        try {
+          await sendEmailVerification(user);
+          alert(locale === 'ru' 
+            ? 'Регистрация успешна! На вашу почту отправлено письмо для подтверждения.' 
+            : 'Registration successful! A verification email has been sent.');
+        } catch (e) {
+          console.error("Ошибка при отправке письма подтверждения:", e);
+        }
       }
       navigate('/dashboard');
     } catch (err) {
