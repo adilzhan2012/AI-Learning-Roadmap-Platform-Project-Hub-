@@ -14,6 +14,7 @@ import GraphComponent from './pages/Graph.jsx';
 import ResourcesComponent from './pages/Resources.jsx';
 import InsightsComponent from './pages/Insights.jsx';
 import SettingsComponent from './pages/Settings.jsx';
+import SupportComponent from './pages/Support.jsx';
 import NotFound from './pages/NotFound.jsx';
 import AchievementsPage from './components/gamification/AchievementsPage.jsx';
 import MentorComponent from './pages/Mentor.jsx';
@@ -32,6 +33,7 @@ import QuestionsAdmin from './pages/admin/QuestionsAdmin.jsx';
 import ErrorsAdmin from './pages/admin/ErrorsAdmin.jsx';
 import LogsAdmin from './pages/admin/LogsAdmin.jsx';
 import PoliciesAdmin from './pages/admin/PoliciesAdmin.jsx';
+import NewslettersAdmin from './pages/admin/NewslettersAdmin.jsx';
 
 import { auth } from './firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -59,6 +61,7 @@ function AppRoutes() {
         <Route path="/resources" element={<ResourcesComponent />} />
         <Route path="/insights" element={<InsightsComponent />} />
         <Route path="/settings" element={<SettingsComponent />} />
+        <Route path="/support" element={<SupportComponent />} />
         <Route path="/achievements" element={<AchievementsPage />} />
         <Route path="/mentor" element={<MentorComponent />} />
         <Route path="/pricing" element={<PricingComponent />} />
@@ -78,6 +81,7 @@ function AppRoutes() {
           <Route path="payments" element={<PaymentsAdmin />} />
           <Route path="promocodes" element={<PromocodesAdmin />} />
           <Route path="questions" element={<QuestionsAdmin />} />
+          <Route path="newsletters" element={<NewslettersAdmin />} />
           <Route path="errors" element={<ErrorsAdmin />} />
           <Route path="logs" element={<LogsAdmin />} />
           <Route path="policies" element={<PoliciesAdmin />} />

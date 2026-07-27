@@ -1,9 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar.jsx';
+import { initTheme } from '../../theme.js';
 
 export default function AdminLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // Force dark mode for admin panel, since it's designed only for dark mode
+  useEffect(() => {
+    const html = document.documentElement;
+    html.classList.remove('light');
+    html.classList.add('dark');
+    
+    return () => {
+      // Restore user's preferred theme on unmount
+      initTheme();
+    };
+  }, []);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 

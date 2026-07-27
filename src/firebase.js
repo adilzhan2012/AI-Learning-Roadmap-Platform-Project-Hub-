@@ -8,6 +8,7 @@ import {
 } from 'firebase/auth';
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -22,6 +23,7 @@ let app;
 let auth;
 let db;
 let functions;
+let storage;
 
 try {
   app = initializeApp(firebaseConfig);
@@ -32,6 +34,7 @@ try {
     }) 
   });
   functions = getFunctions(app);
+  storage = getStorage(app);
 } catch (error) {
   console.error("Firebase initialization error", error);
 }
@@ -41,6 +44,7 @@ export {
   auth, 
   db,
   functions,
+  storage,
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   signOut, 

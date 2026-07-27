@@ -212,7 +212,9 @@ export default function UsersAdmin() {
                     )}
                   </td>
                   <td className="px-6 py-4 text-zinc-400">
-                    {user.lastActiveDate ? new Date(user.lastActiveDate).toLocaleDateString() : 'Неизвестно'}
+                    {user.createdAt 
+                      ? (typeof user.createdAt.toDate === 'function' ? user.createdAt.toDate() : new Date(user.createdAt)).toLocaleDateString() 
+                      : 'Неизвестно'}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="relative inline-block text-left dropdown-container">

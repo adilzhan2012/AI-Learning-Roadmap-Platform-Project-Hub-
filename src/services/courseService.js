@@ -482,6 +482,7 @@ export async function getUserStats(userId, additionalData = {}) {
       certificatesCount: 0,
       streakDays: 1,
       lastActiveDate: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
       referralCode: userId, // Use uid as the unique referral code for simplicity
     };
     

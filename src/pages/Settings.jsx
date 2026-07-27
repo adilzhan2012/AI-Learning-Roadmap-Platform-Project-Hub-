@@ -291,31 +291,27 @@ export default function Settings() {
                     <p className="text-on-surface-variant mt-1">{t('settings.notifications.subtitle') || 'Manage how and when you receive updates.'}</p>
                   </div>
                   <div className="p-4 sm:p-6 md:p-8 space-y-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-semibold text-on-surface text-sm">{t('settings.notifications.course') || 'Course Updates'}</h4>
-                        <p className="text-xs text-on-surface-variant">{t('settings.notifications.courseDesc') || 'Get notified when enrolled courses add new content.'}</p>
+                    <div className="flex items-start gap-4 p-4 rounded-xl border border-outline-variant/40 bg-surface-container/20">
+                      <div className="pt-1">
+                        <label className="relative flex cursor-pointer items-center rounded-full p-1" htmlFor="checkbox-marketing">
+                          <input 
+                            type="checkbox" 
+                            className="peer cursor-pointer appearance-none rounded-md border-2 border-on-surface/40 hover:border-primary bg-surface transition-all checked:border-primary checked:bg-primary w-5 h-5"
+                            id="checkbox-marketing"
+                            checked={marketing}
+                            onChange={(e) => setMarketing(e.target.checked)}
+                          />
+                          <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-on-primary opacity-0 transition-opacity peer-checked:opacity-100">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" stroke="currentColor" strokeWidth="1">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                            </svg>
+                          </div>
+                        </label>
                       </div>
-                      <button 
-                        type="button"
-                        onClick={() => setNotifications(!notifications)} 
-                        className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out ${notifications ? 'bg-primary' : 'bg-surface-container-high'}`}
-                      >
-                        <div className={`w-4 h-4 rounded-full bg-on-surface shadow-sm transition-transform duration-200 ${notifications ? 'translate-x-6' : 'translate-x-0'}`} />
-                      </button>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-semibold text-on-surface text-sm">{t('settings.notifications.marketing') || 'Marketing Emails'}</h4>
-                        <p className="text-xs text-on-surface-variant">{t('settings.notifications.marketingDesc') || 'Receive weekly newsletters and feature updates.'}</p>
+                      <div className="flex-1 cursor-pointer" onClick={() => setMarketing(!marketing)}>
+                        <h4 className="font-semibold text-on-surface text-base mb-1">{t('settings.notifications.marketing') || 'Marketing Emails'}</h4>
+                        <p className="text-sm text-on-surface-variant leading-relaxed">{t('settings.notifications.marketingDesc') || 'Receive weekly newsletters and feature updates.'}</p>
                       </div>
-                      <button 
-                        type="button"
-                        onClick={() => setMarketing(!marketing)} 
-                        className={`w-12 h-6 rounded-full p-1 transition-colors duration-300 ease-in-out ${marketing ? 'bg-primary' : 'bg-surface-container-high'}`}
-                      >
-                        <div className={`w-4 h-4 rounded-full bg-on-surface shadow-sm transition-transform duration-200 ${marketing ? 'translate-x-6' : 'translate-x-0'}`} />
-                      </button>
                     </div>
                   </div>
                 </>

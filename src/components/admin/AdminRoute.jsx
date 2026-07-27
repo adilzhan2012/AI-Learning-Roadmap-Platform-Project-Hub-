@@ -16,8 +16,22 @@ export default function AdminRoute() {
       }
       
       try {
+        // Проверяем кастомный claim (тот, что ставится через Cloud Functions)
         const token = await auth.currentUser.getIdTokenResult(true);
-        setIsAdmin(token.claims.admin === true);
+        let hasAdminAccess = token.claims.admin === true;
+
+        // Если claim'а нет, проверяем документ пользователя в Firestore (для удобства разработки)
+        if (!hasAdminAccess) {
+          const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            if (data.role === 'admin' || data.isAdmin === true) {
+              hasAdminAccess = true;
+            }
+          }
+        }
+
+        setIsAdmin(hasAdminAccess);
       } catch (error) {
         console.error("Error checking admin status:", error);
         setIsAdmin(false);

@@ -10,7 +10,8 @@ import {
   AlertTriangle, 
   Terminal,
   LogOut,
-  Sparkles
+  Sparkles,
+  Mail
 } from 'lucide-react';
 import { auth } from '../../firebase.js';
 import { signOut } from 'firebase/auth';
@@ -22,7 +23,8 @@ export default function Sidebar({ onLogoClick }) {
     { name: 'Analytics', path: '/admin/analytics', icon: LineChart },
     { name: 'Payments', path: '/admin/payments', icon: CreditCard },
     { name: 'Promocodes', path: '/admin/promocodes', icon: Ticket },
-    { name: 'Questions', path: '/admin/questions', icon: MessageSquare },
+    { name: 'Поддержка (Тикеты)', path: '/admin/questions', icon: MessageSquare },
+    { name: 'Newsletters', path: '/admin/newsletters', icon: Mail },
     { name: 'Errors (Sentry)', path: '/admin/errors', icon: AlertTriangle },
     { name: 'Logs', path: '/admin/logs', icon: Terminal },
   ];
