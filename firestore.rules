@@ -87,6 +87,14 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     
+    // --- Promocodes ---
+    match /promocodes/{promoCodeId} {
+      // Anyone authenticated can read a specific promocode to validate it
+      allow read: if isAuth();
+      // Only admins can create, update, or delete promocodes
+      allow write: if isAdmin();
+    }
+    
     // --- Legacy quizResults root collection ---
     match /quizResults/{docId} {
       allow read, delete: if isAuth() && resource.data.userId == request.auth.uid;
