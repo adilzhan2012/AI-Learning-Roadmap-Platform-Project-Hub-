@@ -30,8 +30,8 @@ export default function ErrorsAdmin() {
   return (
     <div>
       <AdminHeader 
-        title="Ошибки (Sentry)" 
-        description="Мониторинг исключений и системных сбоев в реальном времени." 
+        title="Системные ошибки" 
+        description="Мониторинг исключений и системных сбоев в базе данных в реальном времени." 
       />
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">

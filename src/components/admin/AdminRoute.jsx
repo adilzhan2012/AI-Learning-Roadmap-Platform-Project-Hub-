@@ -16,9 +16,15 @@ export default function AdminRoute() {
       }
       
       try {
-        // Проверяем кастомный claim (тот, что ставится через Cloud Functions)
-        const token = await auth.currentUser.getIdTokenResult(true);
-        let hasAdminAccess = token.claims.admin === true;
+        let hasAdminAccess = false;
+        
+        try {
+          // Проверяем кастомный claim (тот, что ставится через Cloud Functions)
+          const token = await auth.currentUser.getIdTokenResult(true);
+          hasAdminAccess = token.claims.admin === true;
+        } catch (tokenError) {
+          console.warn("Failed to get fresh token, falling back to Firestore:", tokenError);
+        }
 
         // Если claim'а нет, проверяем документ пользователя в Firestore (для удобства разработки)
         if (!hasAdminAccess) {
@@ -33,7 +39,7 @@ export default function AdminRoute() {
 
         setIsAdmin(hasAdminAccess);
       } catch (error) {
-        console.error("Error checking admin status:", error);
+        console.error("Critical error checking admin status:", error);
         setIsAdmin(false);
       } finally {
         setLoading(false);
