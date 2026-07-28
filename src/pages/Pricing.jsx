@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { auth, db, functions } from '../firebase.js';
 import { httpsCallable } from 'firebase/functions';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { sendEmailVerification } from 'firebase/auth';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import { useNavigate } from 'react-router-dom';
@@ -49,10 +49,7 @@ export default function Pricing() {
 
   // Simulated payment state
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [cardHolder, setCardHolder] = useState('');
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCvc, setCardCvc] = useState('');
+  const [promoCode, setPromoCode] = useState('');
   const [checkoutStage, setCheckoutStage] = useState('input'); // 'input' | 'processing' | 'success'
   const [checkoutError, setCheckoutError] = useState('');
 
@@ -145,14 +142,29 @@ export default function Pricing() {
     }
   };
 
-  const handleSubmitPayment = () => {
+  const handleSubmitPayment = async () => {
     setCheckoutError('');
+    if (!promoCode) {
+      setCheckoutError('Введите инвайт-код.');
+      return;
+    }
+
     setCheckoutStage('processing');
-    
-    // Simulate premium payment processing
-    setTimeout(() => {
+
+    try {
+      const codeSnap = await getDoc(doc(db, 'promocodes', promoCode));
+      if (!codeSnap.exists() || !codeSnap.data().active) {
+        setCheckoutStage('input');
+        setCheckoutError('Недействительный или отключенный инвайт-код.');
+        return;
+      }
+      
+      // Код валиден
       setCheckoutStage('success');
-    }, 2500);
+    } catch (e) {
+      setCheckoutStage('input');
+      setCheckoutError('Ошибка проверки кода: ' + e.message);
+    }
   };
 
   const handleFinishUpgrade = async () => {
@@ -773,43 +785,20 @@ export default function Pricing() {
                     Тариф: {selectedUpgradePlan} ({billingPeriod === 'monthly' ? `Ежемесячный - $${selectedUpgradePlan === 'ULTRA' ? '29.99' : '9.99'}/мес` : `Ежегодный - $${selectedUpgradePlan === 'ULTRA' ? '249.99' : '89.99'}/год`})
                   </p>
 
-                  <div className="w-full aspect-[1.586/1] bg-gradient-to-br from-[#2C2C2E] to-[#1C1C1E] rounded-2xl p-6 text-left border border-white/10 relative overflow-hidden mb-6 shadow-inner select-none">
-                    <svg className="absolute inset-0 w-full h-full text-on-surface opacity-[0.03] stroke-current stroke-[0.5] fill-none" viewBox="0 0 100 60" preserveAspectRatio="none">
-                      <circle cx="50" cy="30" r="25" />
-                      <circle cx="50" cy="30" r="15" />
-                    </svg>
-                    
-                    <div className="flex justify-between items-start mb-6">
-                      <span className="text-[10px] font-mono tracking-widest text-on-surface-variant uppercase">YourWay {selectedUpgradePlan}</span>
-                      <svg className="w-8 h-8 text-on-surface opacity-40 fill-current" viewBox="0 0 24 24">
-                        <circle cx="8" cy="12" r="6" />
-                        <circle cx="16" cy="12" r="6" />
-                      </svg>
-                    </div>
-
-                    <div className="text-base md:text-lg font-mono tracking-wider tabular-nums text-on-surface mb-6">
-                      {cardNumber || '•••• •••• •••• ••••'}
-                    </div>
-
-                    <div className="flex justify-between items-end">
-                      <div>
-                        <span className="text-[8px] text-on-surface-variant uppercase block">Cardholder</span>
-                        <span className="text-xs font-mono text-on-surface truncate max-w-[150px] inline-block uppercase">
-                          {cardHolder || 'ALEXANDER SMIRNOV'}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-[8px] text-on-surface-variant uppercase block">Expires</span>
-                        <span className="text-xs font-mono text-on-surface tabular-nums">
-                          {cardExpiry || 'MM/YY'}
-                        </span>
-                      </div>
-                    </div>
+                  <div className="bg-surface-container/20 border border-outline/5 rounded-xl p-4 text-left text-xs text-on-surface-variant mb-6">
+                    <p className="mb-2 text-on-surface font-semibold">🔒 Бета-тестирование</p>
+                    <p>Сейчас платформа находится на стадии закрытого бета-теста. Для активации платного тарифа введите специальный инвайт-код.</p>
                   </div>
 
-                  <div className="bg-surface-container/20 border border-outline/5 rounded-xl p-4 text-left text-xs text-on-surface-variant mb-6">
-                    <p className="mb-2 text-on-surface font-semibold">🔒 Безопасный демо-платеж</p>
-                    <p>Это демонстрационная модель оформления подписки. Ввод банковских карт не требуется. Ваши реальные средства не будут списаны.</p>
+                  <div className="text-left mb-6">
+                    <label className="block text-xs font-bold text-on-surface mb-2">Промокод / Инвайт-код</label>
+                    <input 
+                      type="text"
+                      value={promoCode}
+                      onChange={(e) => setPromoCode(e.target.value.trim().toUpperCase())}
+                      placeholder="Например, BETA_ULTRA_2026"
+                      className="w-full bg-surface-container/50 border border-outline rounded-xl px-4 py-3 text-sm text-on-surface font-mono outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all uppercase"
+                    />
                   </div>
 
                   {checkoutError && (
@@ -827,7 +816,7 @@ export default function Pricing() {
                       onClick={handleSubmitPayment}
                       className="flex-1 py-3 rounded-xl bg-on-surface text-black hover:bg-surface-container transition-colors text-xs font-bold"
                     >
-                      Оплатить {selectedUpgradePlan === 'ULTRA' ? (billingPeriod === 'monthly' ? '$29.99' : '$249.99') : (billingPeriod === 'monthly' ? '$9.99' : '$89.99')}
+                      Активировать тариф
                     </button>
                   </div>
                 </>
