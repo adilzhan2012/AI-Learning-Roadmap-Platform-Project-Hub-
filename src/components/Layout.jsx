@@ -80,9 +80,6 @@ export default function Layout() {
   if (!user && !isPublicRoute) {
     return <Navigate to="/login" replace />;
   }
-  if (user && (location.pathname === '/login' || location.pathname === '/register')) {
-    return <Navigate to="/dashboard" replace />;
-  }
 
   if (isPublicRoute && location.pathname !== '/dashboard') {
     return (

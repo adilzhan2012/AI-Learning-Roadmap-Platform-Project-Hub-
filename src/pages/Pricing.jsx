@@ -796,7 +796,7 @@ export default function Pricing() {
                       type="text"
                       value={promoCode}
                       onChange={(e) => setPromoCode(e.target.value.trim().toUpperCase())}
-                      placeholder="Например, BETA_ULTRA_2026"
+                      placeholder="Введите промокод"
                       className="w-full bg-surface-container/50 border border-outline rounded-xl px-4 py-3 text-sm text-on-surface font-mono outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all uppercase"
                     />
                   </div>

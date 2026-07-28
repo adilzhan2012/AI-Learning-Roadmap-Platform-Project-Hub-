@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, ArrowLeft, Loader2, Mail, CheckCircle2, X } from 'lucide-react';
 import Logo from '../components/shared/Logo.jsx';
 import { auth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from '../firebase.js';
-import { sendEmailVerification, updateProfile, sendPasswordResetEmail } from 'firebase/auth';
+import { sendEmailVerification, updateProfile, sendPasswordResetEmail, onAuthStateChanged } from 'firebase/auth';
 import { getUserStats } from '../services/courseService.js';
 import { t, useLocale } from '../i18n.js';
 import LegalDocModal from '../components/shared/LegalDocModal.jsx';
@@ -57,6 +57,15 @@ export default function Auth({ type }) {
   // UI States for Modals
   const [showRegSuccess, setShowRegSuccess] = useState(false);
   
+  React.useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser && !loading && !showRegSuccess) {
+        navigate('/dashboard');
+      }
+    });
+    return () => unsubscribe();
+  }, [loading, showRegSuccess, navigate]);
+
   // Password Reset States
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
