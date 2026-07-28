@@ -66,10 +66,10 @@ export default function Auth({ type }) {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) return locale === 'ru' ? 'Доброе утро, приступим?' : 'Good morning, let\\'s start';
-    if (hour >= 12 && hour < 18) return locale === 'ru' ? 'Добрый день, приступим?' : 'Good afternoon, let\\'s start';
-    if (hour >= 18 && hour < 23) return locale === 'ru' ? 'Добрый вечер, приступим?' : 'Good evening, let\\'s start';
-    return locale === 'ru' ? 'Доброй ночи, приступим?' : 'Good night, let\\'s start';
+    if (hour >= 5 && hour < 12) return locale === 'ru' ? 'Доброе утро, приступим?' : "Good morning, let's start";
+    if (hour >= 12 && hour < 18) return locale === 'ru' ? 'Добрый день, приступим?' : "Good afternoon, let's start";
+    if (hour >= 18 && hour < 23) return locale === 'ru' ? 'Добрый вечер, приступим?' : "Good evening, let's start";
+    return locale === 'ru' ? 'Доброй ночи, приступим?' : "Good night, let's start";
   };
 
   const title = isLogin ? getGreeting() : t('auth.createAccount');
