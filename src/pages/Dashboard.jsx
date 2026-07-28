@@ -175,7 +175,7 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-background text-on-background gap-4 font-sans">
+      <div className="flex flex-col items-center justify-center h-screen bg-background text-on-background gap-4 font-sans w-full">
         <Loader2 className="w-8 h-8 animate-spin text-on-surface" />
         <p className="text-sm font-medium">{t('insights.loading')}</p>
       </div>

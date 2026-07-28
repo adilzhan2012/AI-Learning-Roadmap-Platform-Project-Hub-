@@ -140,7 +140,7 @@ export default function Settings() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full min-h-screen">
+      <div className="flex items-center justify-center h-full min-h-screen w-full">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );

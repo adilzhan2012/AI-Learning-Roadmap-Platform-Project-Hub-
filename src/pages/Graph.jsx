@@ -571,7 +571,7 @@ Respond in Russian. Keep your reply concise and professional.`;
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-[#07080a] text-zinc-100 gap-4">
+      <div className="flex flex-col items-center justify-center h-screen bg-[#07080a] text-zinc-100 gap-4 w-full">
         <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
         <p className="text-sm font-semibold tracking-wide font-clash">{t('graph.loading')}</p>
       </div>

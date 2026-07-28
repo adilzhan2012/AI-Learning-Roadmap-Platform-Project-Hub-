@@ -97,7 +97,7 @@ export default function Landing() {
       </motion.nav>
 
       {/* Hero Interactive Dashboard Wrapper */}
-      <main className="relative pt-24 pb-12 md:pt-40 md:pb-32 px-4 sm:px-6 flex flex-col items-center justify-center text-center z-10 min-h-screen">
+      <main className="relative pt-24 pb-12 md:pt-40 md:pb-32 px-4 sm:px-6 flex flex-col items-center justify-center text-center z-10 min-h-screen w-full">
         
         <motion.div 
           variants={staggerContainer}

@@ -68,7 +68,11 @@ export default function Layout() {
   }, [location.pathname]);
 
   if (loading) {
-    return <div className="flex items-center justify-center h-screen bg-background text-on-background">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center h-screen w-full bg-background text-on-background">
+        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
   }
 
   if (maintenance.isActive) {

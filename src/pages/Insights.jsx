@@ -191,7 +191,7 @@ export default function Insights() {
 
   if (loading || planLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-background text-on-background gap-4">
+      <div className="flex flex-col items-center justify-center h-screen bg-background text-on-background gap-4 w-full">
         <Loader2 className="w-8 h-8 animate-spin text-on-surface" />
         <p className="text-sm font-medium tracking-wide font-clash">{t('insights.loading')}</p>
       </div>
