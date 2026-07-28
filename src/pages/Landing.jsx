@@ -108,9 +108,9 @@ export default function Landing() {
         >
           {/* Left Text & Action Area */}
           <div className="flex-1 flex flex-col items-center lg:items-start text-center lg:text-left">
-            <motion.h1 variants={fadeUpVariants} className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-tight">
+            <motion.h1 variants={fadeUpVariants} className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight mb-4 md:mb-6 leading-tight">
               <span className="text-on-surface">
-                yourway.co
+                yourwayy.co
               </span>
             </motion.h1>
             <motion.p variants={fadeUpVariants} className="text-xl md:text-2xl text-on-surface-variant max-w-2xl mb-10 font-light">
@@ -352,14 +352,30 @@ export default function Landing() {
       
       {/* Footer */}
       <footer className="py-12 px-6 bg-surface-container-highest backdrop-blur-md relative z-10">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2 font-semibold text-lg tracking-tight text-on-surface">
-            <Sparkles className="w-5 h-5 text-on-surface" />
-            yourway.co
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center md:items-start gap-10 md:gap-6 text-center md:text-left">
+          <div className="flex flex-col items-center md:items-start gap-3">
+            <div className="flex items-center gap-2 font-semibold text-lg tracking-tight text-on-surface">
+              <Sparkles className="w-5 h-5 text-primary" />
+              yourwayy.co
+            </div>
+            <p className="text-sm text-on-surface-variant font-medium max-w-xs">
+              An intelligent, immersive environment to track, learn, and master your technical roadmap.
+            </p>
           </div>
-          <div className="text-sm text-on-surface-variant font-medium text-right">
-            <div>&copy; 2026 yourway.co. All rights reserved.</div>
-            <div className="mt-2 text-[10px] uppercase tracking-widest font-mono opacity-70">
+
+          <div className="flex flex-col items-center md:items-start gap-2 text-sm text-on-surface-variant">
+            <h4 className="font-semibold text-on-surface mb-2">Свяжитесь с нами</h4>
+            <a href="mailto:support@yourwayy.co" className="hover:text-primary transition-colors flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-primary/50"></span> support@yourwayy.co
+            </a>
+            <a href="mailto:info@yourwayy.co" className="hover:text-primary transition-colors flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-purple-500/50"></span> info@yourwayy.co
+            </a>
+          </div>
+
+          <div className="text-sm text-on-surface-variant font-medium text-center md:text-right flex flex-col items-center md:items-end justify-between h-full pt-1">
+            <div>&copy; 2026 yourwayy.co. All rights reserved.</div>
+            <div className="mt-4 md:mt-6 text-[10px] uppercase tracking-widest font-mono opacity-70">
               Designed & Developed by Ivakin Daniil & Dutpayev Adilzhan
             </div>
           </div>

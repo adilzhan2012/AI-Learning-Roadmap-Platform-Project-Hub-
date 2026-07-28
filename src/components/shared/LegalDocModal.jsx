@@ -86,8 +86,8 @@ export default function LegalDocModal({ isOpen, onClose, docKey }) {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-[#111112] custom-scrollbar">
-          <div className="prose prose-invert prose-sm max-w-none text-[#E5E5EA] 
+        <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-surface custom-scrollbar">
+          <div className="prose prose-sm max-w-none text-on-surface-variant dark:prose-invert
             prose-headings:text-on-surface prose-headings:font-clash prose-headings:font-bold
             prose-h1:text-2xl prose-h1:mb-6
             prose-h2:text-lg prose-h2:mt-6 prose-h2:mb-3
@@ -96,7 +96,7 @@ export default function LegalDocModal({ isOpen, onClose, docKey }) {
             prose-li:text-xs prose-li:text-on-surface-variant prose-li:mb-2 prose-ul:list-disc prose-ul:pl-5
             prose-table:w-full prose-table:text-left prose-table:border-collapse prose-table:my-6
             prose-th:border-b prose-th:border-outline prose-th:pb-2 prose-th:text-[10px] prose-th:font-semibold prose-th:text-on-surface-variant prose-th:uppercase
-            prose-td:border-b prose-td:border-outline-variant prose-td:py-3 prose-td:text-xs prose-td:text-[#E5E5EA]
+            prose-td:border-b prose-td:border-outline-variant prose-td:py-3 prose-td:text-xs prose-td:text-on-surface
           ">
             {loading ? (
               <div className="flex items-center justify-center h-48">
