@@ -132,7 +132,7 @@ function CourseCard({ course, onDelete, viewMode }) {
 
         <button 
           onClick={handleDelete}
-          className="absolute top-4 right-4 md:relative md:top-0 md:right-0 p-2.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all opacity-100 md:opacity-0 group-hover:opacity-100"
+          className="absolute top-4 right-4 md:relative md:top-0 md:right-0 p-2.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all opacity-100"
           title="Delete roadmap"
         >
           <Trash2 className="w-4 h-4" strokeWidth={2} />
@@ -159,7 +159,7 @@ function CourseCard({ course, onDelete, viewMode }) {
           </span>
           <button 
             onClick={handleDelete}
-            className="p-2 backdrop-blur-md bg-black/20 hover:bg-red-500/90 text-white rounded-xl transition-all opacity-100 md:opacity-0 group-hover:opacity-100 border border-white/10"
+            className="p-2 backdrop-blur-md bg-black/20 hover:bg-red-500/90 text-white rounded-xl transition-all opacity-100 border border-white/10"
             title="Delete roadmap"
           >
             <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />

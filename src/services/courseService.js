@@ -200,24 +200,40 @@ The response must be a valid JSON object matching this schema:
     throw new Error('Invalid course structure returned by AI. Missing nodes. Please try again.');
   }
 
-  // Normalize nodes and edges to ensure integer IDs
+  // Normalize nodes and edges to ensure unique IDs across the entire app
+  const courseIdPrefix = Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 4) + '-';
+  const idMap = new Map();
+  
+  courseData.nodes.forEach(node => {
+    const oldId = parseInt(node.id, 10);
+    if (!isNaN(oldId) && !idMap.has(oldId)) {
+      idMap.set(oldId, courseIdPrefix + oldId);
+    }
+  });
+
   const nodes = courseData.nodes.map((node) => {
-    const nodeId = parseInt(node.id, 10);
-    // Find if this node has any prerequisites pointing to it
-    const hasPrereq = (courseData.edges || []).some(e => parseInt(e.to, 10) === nodeId);
+    const oldId = parseInt(node.id, 10);
+    const newId = idMap.get(oldId) || (courseIdPrefix + oldId);
+    // Find if this node has any prerequisites pointing to it (using old IDs from AI)
+    const hasPrereq = (courseData.edges || []).some(e => parseInt(e.to, 10) === oldId);
     return {
       ...node,
-      id: nodeId,
+      id: newId,
       status: hasPrereq ? 'locked' : 'active'
     };
   });
 
   const edges = (courseData.edges || [])
-    .map(e => ({
-      from: parseInt(e.from, 10),
-      to: parseInt(e.to, 10)
-    }))
-    .filter(e => !isNaN(e.from) && !isNaN(e.to));
+    .map(e => {
+      const oldFrom = parseInt(e.from, 10);
+      const oldTo = parseInt(e.to, 10);
+      if (isNaN(oldFrom) || isNaN(oldTo)) return null;
+      return {
+        from: idMap.get(oldFrom) || (courseIdPrefix + oldFrom),
+        to: idMap.get(oldTo) || (courseIdPrefix + oldTo)
+      };
+    })
+    .filter(Boolean);
 
   // Create course object for Firestore
   const newCourse = {

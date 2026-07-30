@@ -571,7 +571,7 @@ Respond in Russian. Keep your reply concise and professional.`;
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-[#07080a] text-zinc-100 gap-4 w-full">
+      <div className={`flex flex-col items-center justify-center h-screen ${isLightTheme ? 'bg-zinc-50 text-zinc-900' : 'bg-[#07080a] text-zinc-100'} gap-4 w-full`}>
         <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
         <p className="text-sm font-semibold tracking-wide font-clash">{t('graph.loading')}</p>
       </div>
@@ -580,7 +580,7 @@ Respond in Russian. Keep your reply concise and professional.`;
 
   if (courses.length === 0) {
     return (
-      <div className="p-8 max-w-7xl mx-auto h-[calc(100vh-4rem)] flex flex-col justify-center items-center text-center bg-[#07080a]">
+      <div className={`p-8 max-w-7xl mx-auto h-[calc(100vh-4rem)] flex flex-col justify-center items-center text-center ${isLightTheme ? 'bg-zinc-50' : 'bg-[#07080a]'}`}>
         <Network className="w-16 h-16 text-zinc-600 mb-4 opacity-30 animate-pulse" />
         <h2 className="text-xl font-bold text-on-surface mb-2 font-clash">{t('graph.noRoadmaps')}</h2>
         <p className="text-xs text-zinc-400 max-w-md mb-6">{t('graph.noRoadmapsDesc')}</p>
@@ -1010,12 +1010,18 @@ Respond in Russian. Keep your reply concise and professional.`;
                 key="course"
                 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
                 transition={{ duration: 0.15 }}
-                className="w-full border border-white/10 bg-slate-900/50 backdrop-blur-xl flex flex-col overflow-hidden flex-shrink-0 rounded-[20px] h-full font-sans shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]"
+                className={`w-full border flex flex-col overflow-hidden flex-shrink-0 rounded-[20px] h-full font-sans shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] ${
+                  isLightTheme 
+                    ? 'bg-zinc-50 border-zinc-200' 
+                    : 'bg-slate-900/50 border-white/10 backdrop-blur-xl'
+                }`}
               >
                 {/* Header */}
-                <div className="p-4 border-b border-white/10 bg-on-surface/5">
+                <div className={`p-4 border-b ${isLightTheme ? 'border-zinc-200 bg-zinc-100/50' : 'border-white/10 bg-on-surface/5'}`}>
                   {/* Level Badge */}
-                  <span className="inline-flex items-center text-[9px] font-mono font-bold px-2 py-0.5 rounded-[6px] bg-violet-500/20 text-violet-300 border border-violet-500/30 mb-2 uppercase tracking-wider">
+                  <span className={`inline-flex items-center text-[9px] font-mono font-bold px-2 py-0.5 rounded-[6px] border mb-2 uppercase tracking-wider ${
+                    isLightTheme ? 'bg-violet-100 text-violet-700 border-violet-200' : 'bg-violet-500/20 text-violet-300 border-violet-500/30'
+                  }`}>
                     {selectedNode.level || 'Intermediate'}
                   </span>
                   
@@ -1034,13 +1040,13 @@ Respond in Russian. Keep your reply concise and professional.`;
                 <div className="flex-1 min-h-0 overflow-y-auto p-4 flex flex-col gap-4 custom-scrollbar">
                   {/* Meta stats */}
                   <div className="flex gap-2">
-                    <div className="flex-1 bg-zinc-950/40 border border-white/5 rounded-[12px] p-2.5">
-                      <p className="text-[10px] text-zinc-400 mb-0.5 font-sans">⏱ Время</p>
-                      <p className="text-xs font-bold text-zinc-100 font-mono">~{selectedNode.hours || selectedNode.estimatedTime || '2'} ч</p>
+                    <div className={`flex-1 border rounded-[12px] p-2.5 ${isLightTheme ? 'bg-zinc-100/80 border-zinc-200' : 'bg-zinc-950/40 border-white/5'}`}>
+                      <p className={`text-[10px] mb-0.5 font-sans ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>⏱ Время</p>
+                      <p className={`text-xs font-bold font-mono ${isLightTheme ? 'text-zinc-900' : 'text-zinc-100'}`}>~{selectedNode.hours || selectedNode.estimatedTime || '2'} ч</p>
                     </div>
-                    <div className="flex-1 bg-zinc-950/40 border border-white/5 rounded-[12px] p-2.5">
-                      <p className="text-[10px] text-zinc-400 mb-0.5 font-sans">📄 Уроков</p>
-                      <p className="text-xs font-bold text-zinc-100 font-mono">{selectedNode.lessons || selectedNode.lessonsCount || '1'}</p>
+                    <div className={`flex-1 border rounded-[12px] p-2.5 ${isLightTheme ? 'bg-zinc-100/80 border-zinc-200' : 'bg-zinc-950/40 border-white/5'}`}>
+                      <p className={`text-[10px] mb-0.5 font-sans ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>📄 Уроков</p>
+                      <p className={`text-xs font-bold font-mono ${isLightTheme ? 'text-zinc-900' : 'text-zinc-100'}`}>{selectedNode.lessons || selectedNode.lessonsCount || '1'}</p>
                     </div>
                   </div>
 
@@ -1063,7 +1069,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                   {/* Prerequisites */}
                   {selectedCourse && selectedCourse.edges.filter(e => String(e.to) === String(selectedNode.id)).length > 0 && (
                     <div>
-                      <p className="text-[10px] text-zinc-400 mb-1.5 font-sans font-semibold">Требует завершить</p>
+                      <p className={`text-[10px] mb-1.5 font-sans font-semibold ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>Требует завершить</p>
                       {selectedCourse.edges.filter(e => String(e.to) === String(selectedNode.id)).map(e => {
                         const preId = e.from;
                         const preNode = selectedCourse.nodes.find(n => String(n.id) === String(preId));
@@ -1071,8 +1077,8 @@ Respond in Russian. Keep your reply concise and professional.`;
                         return (
                           <div key={preId} className={`flex items-center gap-2 p-2 rounded-[10px] border text-xs mb-1 font-sans ${
                             isDone
-                              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
-                              : 'bg-zinc-950/20 border-white/5 text-zinc-400'
+                              ? (isLightTheme ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300')
+                              : (isLightTheme ? 'bg-zinc-100 border-zinc-200 text-zinc-500' : 'bg-zinc-950/20 border-white/5 text-zinc-400')
                           }`}>
                             <span className="font-bold">{isDone ? '✓' : '🔒'}</span>
                             <span className="truncate">{t(preNode?.label || preNode?.title || preId)}</span>
@@ -1085,13 +1091,15 @@ Respond in Russian. Keep your reply concise and professional.`;
                   {/* Opens items */}
                   {selectedCourse && selectedCourse.edges.filter(e => String(e.from) === String(selectedNode.id)).length > 0 && (
                     <div>
-                      <p className="text-[10px] text-zinc-400 mb-1.5 font-sans font-semibold">Открывает доступ к</p>
+                      <p className={`text-[10px] mb-1.5 font-sans font-semibold ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>Открывает доступ к</p>
                       {selectedCourse.edges.filter(e => String(e.from) === String(selectedNode.id)).map(e => {
                         const nextId = e.to;
                         const nextNode = selectedCourse.nodes.find(n => String(n.id) === String(nextId));
                         return (
-                          <div key={nextId} className="flex items-center gap-2 p-2 rounded-[10px] border border-white/5 bg-zinc-950/40 text-xs text-zinc-400 mb-1 font-sans">
-                            <span className="text-violet-400 font-bold">→</span>
+                          <div key={nextId} className={`flex items-center gap-2 p-2 rounded-[10px] border text-xs mb-1 font-sans ${
+                            isLightTheme ? 'border-zinc-200 bg-zinc-100/80 text-zinc-500' : 'border-white/5 bg-zinc-950/40 text-zinc-400'
+                          }`}>
+                            <span className="text-violet-500 font-bold">→</span>
                             <span className="truncate">{t(nextNode?.label || nextNode?.title || nextId)}</span>
                           </div>
                         );
@@ -1101,16 +1109,16 @@ Respond in Russian. Keep your reply concise and professional.`;
                 </div>
 
                 {/* Start Button & AI CTA */}
-                <div className="p-3 border-t border-white/10 bg-on-surface/5 flex flex-col gap-2.5">
+                <div className={`p-3 border-t flex flex-col gap-2.5 ${isLightTheme ? 'border-zinc-200 bg-zinc-100/50' : 'border-white/10 bg-on-surface/5'}`}>
                   <button
                     onClick={() => setIsStudying(true)}
                     disabled={selectedNode.status === 'locked'}
                     className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-[12px] text-xs font-bold transition-all transform active:scale-95 duration-150 font-sans ${
                       selectedNode.status === 'locked'
-                        ? 'bg-zinc-800/40 border border-white/5 text-zinc-500 cursor-not-allowed'
+                        ? (isLightTheme ? 'bg-zinc-200 border-zinc-300 text-zinc-400 cursor-not-allowed' : 'bg-zinc-800/40 border border-white/5 text-zinc-500 cursor-not-allowed')
                         : selectedNode.status === 'completed'
-                        ? 'bg-transparent border border-white/20 text-on-surface hover:bg-on-surface/5 hover:border-white'
-                        : 'bg-on-surface text-black hover:bg-zinc-200'
+                        ? (isLightTheme ? 'bg-transparent border border-zinc-300 text-zinc-900 hover:bg-zinc-200' : 'bg-transparent border border-white/20 text-on-surface hover:bg-on-surface/5 hover:border-white')
+                        : (isLightTheme ? 'bg-zinc-900 text-white hover:bg-zinc-800' : 'bg-on-surface text-black hover:bg-zinc-200')
                     }`}
                   >
                     {selectedNode.status === 'locked' && <Lock className="w-3.5 h-3.5" />}
@@ -1125,10 +1133,10 @@ Respond in Russian. Keep your reply concise and professional.`;
               <motion.div 
                 key="placeholder"
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-[20px] p-6 h-full flex flex-col items-center justify-center text-center text-zinc-400 font-sans shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] animate-fade-in-up"
+                className={`${isLightTheme ? 'bg-zinc-50 border-zinc-200 text-zinc-500' : 'bg-slate-900/50 border-white/10 text-zinc-400 backdrop-blur-xl'} border rounded-[20px] p-6 h-full flex flex-col items-center justify-center text-center font-sans shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] animate-fade-in-up`}
               >
-                <div className="w-16 h-16 bg-zinc-950/40 border border-white/5 rounded-[16px] flex items-center justify-center mb-6">
-                  <Pointer className="w-6 h-6 text-on-surface opacity-40" strokeWidth={1.5} />
+                <div className={`w-16 h-16 border rounded-[16px] flex items-center justify-center mb-6 ${isLightTheme ? 'bg-zinc-100 border-zinc-200' : 'bg-zinc-950/40 border-white/5'}`}>
+                  <Pointer className="w-6 h-6 opacity-40" strokeWidth={1.5} />
                 </div>
                 <p className="text-sm font-semibold">{t('graph.details.placeholder') || 'Выберите тему на карте, чтобы увидеть детали'}</p>
                 

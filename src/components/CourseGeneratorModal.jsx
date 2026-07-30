@@ -32,17 +32,17 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
   const [prerequisites, setPrerequisites] = useState('');
 
   // Step 3: Goal & Need
-  const [goal, setGoal] = useState('General'); // Interview, Project, General
+  const [goal, setGoal] = useState('Interview'); // Interview, Project, General
   const [customGoal, setCustomGoal] = useState('');
 
   // Step 4: Depth & Time
-  const [duration, setDuration] = useState('Standard'); // Express, Standard, Deep Dive
-  const [dailyTime, setDailyTime] = useState('30m'); // '15m' | '30m' | '60m'
+  const [duration, setDuration] = useState('Express'); // Express, Standard, Deep Dive
+  const [dailyTime, setDailyTime] = useState('15m'); // '15m' | '30m' | '60m'
 
   // Step 5: Focus & Retention
   const [focus, setFocus] = useState('Theory'); // Theory, Practice, Code
   const [tone, setTone] = useState('Academic'); // Academic, Friendly, Gamified
-  const [flashcardCount, setFlashcardCount] = useState('5'); // '3' | '5' | '8'
+  const [flashcardCount, setFlashcardCount] = useState('3'); // '3' | '5' | '8'
 
   const { plan, checkLimit, incrementUsage, isUpgradeModalOpen, setUpgradeModalOpen } = usePlanLimits();
   const [upgradeReason, setUpgradeReason] = useState(null);
@@ -254,19 +254,23 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
           { id: 'Interview', title: 'Подготовка к собеседованию', desc: 'Упор на теорию, частые вопросы и алгоритмы.', icon: <Briefcase className="w-4 h-4" /> },
           { id: 'Project', title: 'Создание продукта / Решение задачи', desc: 'Упор на практику, архитектуру и реальный код.', icon: <Target className="w-4 h-4" /> },
           { id: 'General', title: 'Общее развитие / Академический интерес', desc: 'Сбалансированное фундаментальное понимание.', icon: <Compass className="w-4 h-4" /> }
-        ].map(g => (
+        ].map((g, idx) => {
+          const isLocked = plan === 'FREE' && idx > 0;
+          return (
           <div 
             key={g.id} 
-            onClick={() => setGoal(g.id)}
+            onClick={() => { if (isLocked) { setUpgradeReason('goal'); setUpgradeModalOpen(true); } else setGoal(g.id); }}
             className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center gap-3 ${goal === g.id ? 'bg-primary/10 border-primary' : 'bg-surface-container border-outline-variant hover:bg-surface-container-high'}`}
           >
             <div className={`p-2 rounded-lg ${goal === g.id ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-on-surface-variant'}`}>{g.icon}</div>
             <div>
-              <h5 className="font-bold text-sm text-on-surface">{g.title}</h5>
+              <h5 className="font-bold text-sm text-on-surface flex items-center gap-2">
+                {g.title} {isLocked && <Lock className="w-3.5 h-3.5 text-on-surface-variant/60" />}
+              </h5>
               <p className="text-[11px] text-on-surface-variant mt-0.5">{g.desc}</p>
             </div>
           </div>
-        ))}
+        )})}
       </div>
 
       <div className="pt-2">
@@ -290,29 +294,36 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
             { id: 'Express', title: 'Экспресс-погружение', desc: 'Только суть. 3-5 самых важных тем.' },
             { id: 'Standard', title: 'Стандартный трек', desc: 'Сбалансированный курс. 6-10 тем.' },
             { id: 'Deep Dive', title: 'Мастер-класс (Deep Dive)', desc: 'Глубокий разбор с механикой под капотом. 12-15 тем.' }
-          ].map(d => (
+          ].map((d, idx) => {
+            const isLocked = plan === 'FREE' && idx > 0;
+            return (
              <div 
-               key={d.id} onClick={() => setDuration(d.id)}
+               key={d.id} onClick={() => { if (isLocked) { setUpgradeReason('duration'); setUpgradeModalOpen(true); } else setDuration(d.id); }}
                className={`p-3 rounded-xl border cursor-pointer transition-all ${duration === d.id ? 'bg-primary/10 border-primary shadow-sm' : 'bg-surface-container border-outline-variant hover:bg-surface-container-high'}`}
              >
-               <h5 className="font-bold text-sm text-on-surface">{d.title}</h5>
+               <h5 className="font-bold text-sm text-on-surface flex items-center gap-2">
+                 {d.title} {isLocked && <Lock className="w-3.5 h-3.5 text-on-surface-variant/60" />}
+               </h5>
                <p className="text-[11px] text-on-surface-variant">{d.desc}</p>
              </div>
-          ))}
+          )})}
         </div>
       </div>
 
       <div className="pt-2">
         <label className="block text-xs font-bold text-on-surface-variant mb-2 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> Дневная норма времени</label>
         <div className="grid grid-cols-3 gap-2">
-          {['15m', '30m', '60m'].map(t => (
+          {['15m', '30m', '60m'].map((t, idx) => {
+            const isLocked = plan === 'FREE' && idx > 0;
+            return (
             <button
-              key={t} type="button" onClick={() => setDailyTime(t)}
-              className={`py-2.5 rounded-lg text-xs font-bold border transition-all ${dailyTime === t ? 'bg-primary/10 border-primary text-primary' : 'bg-surface-container border-outline-variant text-on-surface-variant hover:text-on-surface'}`}
+              key={t} type="button" onClick={() => { if (isLocked) { setUpgradeReason('time'); setUpgradeModalOpen(true); } else setDailyTime(t); }}
+              className={`py-2.5 flex items-center justify-center gap-1 rounded-lg text-xs font-bold border transition-all ${dailyTime === t ? 'bg-primary/10 border-primary text-primary' : 'bg-surface-container border-outline-variant text-on-surface-variant hover:text-on-surface'}`}
             >
               {t === '60m' ? '1 час' : t + 'ин'} / день
+              {isLocked && <Lock className="w-3 h-3 opacity-60" />}
             </button>
-          ))}
+          )})}
         </div>
       </div>
     </motion.div>
@@ -332,11 +343,14 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
              { id: 'Theory', label: 'Теория и концепции' },
              { id: 'Practice', label: 'Практика и задачи' },
              { id: 'Code', label: 'Только код и кейсы' }
-           ].map(f => (
-             <button key={f.id} type="button" onClick={() => setFocus(f.id)} className={`py-2.5 px-3 rounded-lg text-xs font-bold border transition-all ${focus === f.id ? 'bg-primary/10 border-primary text-primary' : 'bg-surface-container border-outline-variant text-on-surface-variant hover:text-on-surface'}`}>
+           ].map((f, idx) => {
+             const isLocked = plan === 'FREE' && idx > 1;
+             return (
+             <button key={f.id} type="button" onClick={() => { if (isLocked) { setUpgradeReason('focus'); setUpgradeModalOpen(true); } else setFocus(f.id); }} className={`py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1 border transition-all ${focus === f.id ? 'bg-primary/10 border-primary text-primary' : 'bg-surface-container border-outline-variant text-on-surface-variant hover:text-on-surface'}`}>
                {f.label}
+               {isLocked && <Lock className="w-3 h-3 opacity-60" />}
              </button>
-           ))}
+           )})}
         </div>
       </div>
 
@@ -347,19 +361,22 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
              { id: 'Academic', label: 'Строгий' },
              { id: 'Friendly', label: 'Дружелюбный' },
              { id: 'Gamified', label: 'Игровой' }
-           ].map(t => (
-             <button key={t.id} type="button" onClick={() => setTone(t.id)} className={`py-2.5 rounded-lg text-xs font-bold border transition-all ${tone === t.id ? 'bg-primary/10 border-primary text-primary' : 'bg-surface-container border-outline-variant text-on-surface-variant hover:text-on-surface'}`}>
+           ].map((t, idx) => {
+             const isLocked = false;
+             return (
+             <button key={t.id} type="button" onClick={() => { if (isLocked) { setUpgradeReason('tone'); setUpgradeModalOpen(true); } else setTone(t.id); }} className={`py-2.5 flex items-center justify-center gap-1 rounded-lg text-xs font-bold border transition-all ${tone === t.id ? 'bg-primary/10 border-primary text-primary' : 'bg-surface-container border-outline-variant text-on-surface-variant hover:text-on-surface'}`}>
                {t.label}
+               {isLocked && <Lock className="w-3 h-3 opacity-60" />}
              </button>
-           ))}
+           )})}
         </div>
       </div>
 
       <div>
         <label className="block text-xs font-bold text-on-surface-variant mb-2">Сколько карточек (Anki) генерировать на урок?</label>
         <div className="grid grid-cols-3 gap-2">
-          {['3', '5', '8'].map(c => {
-            const isLocked = plan === 'FREE' && c === '8';
+          {['3', '5', '8'].map((c, idx) => {
+            const isLocked = plan === 'FREE' && idx > 0;
             return (
               <button
                 key={c} type="button" 
@@ -491,10 +508,10 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
                   <p className="text-xs text-on-surface-variant mb-6">Средний уровень доступен на тарифе PRO и выше.</p>
                 </>
               )}
-              {upgradeReason === 'cards' && (
+              {['goal', 'duration', 'time', 'focus', 'tone', 'cards'].includes(upgradeReason) && (
                 <>
                   <h3 className="text-lg font-bold text-on-surface mb-2">Доступно на тарифе PRO</h3>
-                  <p className="text-xs text-on-surface-variant mb-6">8 карточек на урок доступно только на тарифе PRO.</p>
+                  <p className="text-xs text-on-surface-variant mb-6">Расширенные настройки курса доступны только пользователям с PRO подпиской.</p>
                 </>
               )}
               {upgradeReason === 'limit' && (
