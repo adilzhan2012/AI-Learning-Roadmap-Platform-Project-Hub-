@@ -131,6 +131,7 @@ export default function Dashboard() {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
+        try {
           const fetchedStats = await getUserStats(currentUser.uid);
           setStats(fetchedStats);
           localStorage.setItem('cached_stats', JSON.stringify(fetchedStats));
