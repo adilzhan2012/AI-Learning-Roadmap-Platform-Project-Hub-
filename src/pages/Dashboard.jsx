@@ -131,14 +131,6 @@ export default function Dashboard() {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        try {
-          // --- TEMPORARY UPGRADE SCRIPT FOR TESTING ---
-          const { doc, setDoc, updateDoc } = await import('firebase/firestore');
-          const { db } = await import('../firebase.js');
-          await setDoc(doc(db, 'users', currentUser.uid, 'subscription', 'details'), { plan: 'ULTRA' }, { merge: true });
-          await updateDoc(doc(db, 'users', currentUser.uid), { isPremium: true, subscriptionPlan: 'ULTRA' });
-          // --- END TEMPORARY SCRIPT ---
-
           const fetchedStats = await getUserStats(currentUser.uid);
           setStats(fetchedStats);
           localStorage.setItem('cached_stats', JSON.stringify(fetchedStats));
