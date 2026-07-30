@@ -1,4 +1,5 @@
 import { initializeApp } from 'firebase/app';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import { 
   getAuth, 
   createUserWithEmailAndPassword, 
@@ -27,6 +28,22 @@ let storage;
 
 try {
   app = initializeApp(firebaseConfig);
+  
+  // App Check initialization
+  if (import.meta.env.DEV) {
+    self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+  }
+  
+  const recaptchaKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+  if (recaptchaKey) {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(recaptchaKey),
+      isTokenAutoRefreshEnabled: true
+    });
+  } else {
+    console.warn("VITE_RECAPTCHA_SITE_KEY is missing. App Check will not function properly.");
+  }
+
   auth = getAuth(app);
   db = initializeFirestore(app, { 
     localCache: persistentLocalCache({ 
