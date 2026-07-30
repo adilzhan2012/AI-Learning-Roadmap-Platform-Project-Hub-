@@ -1109,7 +1109,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                 </div>
 
                 {/* Start Button & AI CTA */}
-                <div className={`p-3 border-t flex flex-col gap-2.5 ${isLightTheme ? 'border-zinc-200 bg-zinc-100/50' : 'border-white/10 bg-on-surface/5'}`}>
+                <div className={`p-3 border-t flex flex-col gap-2.5 ${isLightTheme ? 'border-zinc-200 bg-zinc-100/50' : 'border-white/10 bg-zinc-800/20'}`}>
                   <button
                     onClick={() => setIsStudying(true)}
                     disabled={selectedNode.status === 'locked'}
@@ -1117,8 +1117,8 @@ Respond in Russian. Keep your reply concise and professional.`;
                       selectedNode.status === 'locked'
                         ? (isLightTheme ? 'bg-zinc-200 border-zinc-300 text-zinc-400 cursor-not-allowed' : 'bg-zinc-800/40 border border-white/5 text-zinc-500 cursor-not-allowed')
                         : selectedNode.status === 'completed'
-                        ? (isLightTheme ? 'bg-transparent border border-zinc-300 text-zinc-900 hover:bg-zinc-200' : 'bg-transparent border border-white/20 text-on-surface hover:bg-on-surface/5 hover:border-white')
-                        : (isLightTheme ? 'bg-zinc-900 text-white hover:bg-zinc-800' : 'bg-on-surface text-black hover:bg-zinc-200')
+                        ? (isLightTheme ? 'bg-transparent border border-zinc-300 text-zinc-900 hover:bg-zinc-200' : 'bg-transparent border border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-500')
+                        : (isLightTheme ? 'bg-zinc-900 text-white hover:bg-zinc-800' : 'bg-zinc-100 text-zinc-900 hover:bg-white')
                     }`}
                   >
                     {selectedNode.status === 'locked' && <Lock className="w-3.5 h-3.5" />}
@@ -1158,7 +1158,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                       onClick={() => {
                         setMockInterviewOpen(true);
                       }}
-                      className="w-full py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-on-surface text-[10px] font-bold rounded-[8px] transition-all flex items-center justify-center gap-1 shadow-[0_4px_12px_rgba(139,92,246,0.2)]"
+                      className="w-full py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-[10px] font-bold rounded-[8px] transition-all flex items-center justify-center gap-1 shadow-[0_4px_12px_rgba(139,92,246,0.2)]"
                     >
                       Запустить собеседование
                     </button>
@@ -1230,7 +1230,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                       </p>
                       <button
                         onClick={handleStartInterview}
-                        className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-on-surface font-bold rounded-xl shadow-lg transition-all text-xs font-sans"
+                        className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg transition-all text-xs font-sans"
                       >
                         Начать собеседование
                       </button>
@@ -1278,7 +1278,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                       <button
                         onClick={handleSendInterviewAnswer}
                         disabled={!interviewInput.trim() || interviewGenerating}
-                        className="px-5 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-on-surface text-xs font-bold rounded-xl transition-all font-sans"
+                        className="px-5 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-all font-sans"
                       >
                         Ответить
                       </button>
