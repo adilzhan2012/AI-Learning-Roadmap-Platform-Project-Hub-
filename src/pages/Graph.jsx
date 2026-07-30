@@ -654,7 +654,7 @@ Respond in Russian. Keep your reply concise and professional.`;
       <div 
         className={`mb-5 flex-shrink-0 flex flex-col gap-4 p-5 md:p-6 border rounded-[24px] font-sans transition-all ${
           isLightTheme 
-            ? 'bg-on-surface border-zinc-200 text-zinc-900 shadow-md' 
+            ? 'bg-white border-zinc-200 text-zinc-900 shadow-md' 
             : 'bg-[#141417]/80 backdrop-blur-xl border-zinc-800/80 text-zinc-100 shadow-[0_8px_30px_rgb(0,0,0,0.2)]'
         }`}
       >
@@ -711,7 +711,7 @@ Respond in Russian. Keep your reply concise and professional.`;
               }`}
             >
               {courses.map(c => (
-                <option key={c.id} value={c.id} className={isLightTheme ? 'bg-on-surface text-zinc-900' : 'bg-zinc-950 text-zinc-100'}>{t(c.title)}</option>
+                <option key={c.id} value={c.id} className={isLightTheme ? 'bg-white text-zinc-900' : 'bg-zinc-950 text-zinc-100'}>{t(c.title)}</option>
               ))}
             </select>
           </div>
@@ -828,7 +828,7 @@ Respond in Russian. Keep your reply concise and professional.`;
         <div 
           className={`flex-1 min-h-0 skill-tree-grid ${
             isLightTheme 
-              ? 'bg-on-surface border-zinc-200 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]' 
+              ? 'bg-zinc-50 border-zinc-200 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]' 
               : 'bg-[#0f172a] border-outline'
           } border rounded-[20px] overflow-y-auto overflow-x-auto relative flex flex-col p-8 items-center custom-scrollbar`}
           ref={containerRef}
