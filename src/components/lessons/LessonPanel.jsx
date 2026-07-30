@@ -518,7 +518,7 @@ Provide a code boilerplate template at the end.`;
               </motion.div>
             )}
 
-            <div className={`p-8 md:p-12 flex-1 w-full mx-auto prose dark:prose-invert prose-primary prose-base md:prose-lg prose-p:text-zinc-300 prose-headings:text-zinc-100 prose-p:leading-[1.8] prose-li:leading-[1.8] prose-li:text-zinc-300 prose-strong:text-zinc-200 tracking-normal font-sans ${isZenMode ? 'max-w-2xl' : 'max-w-3xl'}`}>
+            <div className={`p-8 md:p-12 flex-1 w-full mx-auto prose dark:prose-invert prose-primary prose-base md:prose-lg prose-p:leading-[1.8] prose-li:leading-[1.8] tracking-normal font-sans ${isZenMode ? 'max-w-2xl' : 'max-w-3xl'}`}>
               <div className="flex items-center gap-2 mb-6 opacity-70 border-b border-white/10 pb-4">
                 <Clock className="w-4 h-4 text-primary" />
                 <span className="text-sm font-medium tracking-wide">Время на чтение: ~{readingTime} мин</span>
