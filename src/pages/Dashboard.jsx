@@ -88,6 +88,14 @@ function AnimatedNumber({ value }) {
   return <span className="font-mono">{count}</span>;
 }
 
+const getGreetingKey = () => {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return 'dashboard.welcome.morning';
+  if (hour >= 12 && hour < 18) return 'dashboard.welcome.afternoon';
+  if (hour >= 18 && hour < 23) return 'dashboard.welcome.evening';
+  return 'dashboard.welcome.night';
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const locale = useLocale();
@@ -204,7 +212,7 @@ export default function Dashboard() {
               transition={{ delay: 0.1 }}
               className="text-4xl md:text-[56px] font-bold text-on-surface mb-4 tracking-tight leading-none font-clash"
             >
-              {t('dashboard.welcome', { name: stats.firstName || 'Learner' })}
+              {t(getGreetingKey(), { name: stats.firstName || 'Learner', defaultValue: t('dashboard.welcome', { name: stats.firstName || 'Learner' }) })}
             </motion.h1>
             <p className="text-sm text-on-surface-variant mb-8 leading-relaxed">
               {t('dashboard.streakDesc', { streak: stats.streakDays || 1 })}
