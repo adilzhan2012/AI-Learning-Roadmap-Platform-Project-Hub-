@@ -134,6 +134,7 @@ export default function Dashboard() {
         try {
           // --- TEMPORARY UPGRADE SCRIPT FOR TESTING ---
           const { doc, setDoc, updateDoc } = await import('firebase/firestore');
+          const { db } = await import('../firebase.js');
           await setDoc(doc(db, 'users', currentUser.uid, 'subscription', 'details'), { plan: 'ULTRA' }, { merge: true });
           await updateDoc(doc(db, 'users', currentUser.uid), { isPremium: true, subscriptionPlan: 'ULTRA' });
           // --- END TEMPORARY SCRIPT ---
