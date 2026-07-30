@@ -1118,7 +1118,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                         ? (isLightTheme ? 'bg-zinc-200 border-zinc-300 text-zinc-400 cursor-not-allowed' : 'bg-zinc-800/40 border border-white/5 text-zinc-500 cursor-not-allowed')
                         : selectedNode.status === 'completed'
                         ? (isLightTheme ? 'bg-transparent border border-zinc-300 text-zinc-900 hover:bg-zinc-200' : 'bg-transparent border border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-500')
-                        : (isLightTheme ? 'bg-zinc-900 text-white hover:bg-zinc-800' : 'bg-zinc-100 text-zinc-900 hover:bg-white')
+                        : 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-md'
                     }`}
                   >
                     {selectedNode.status === 'locked' && <Lock className="w-3.5 h-3.5" />}
