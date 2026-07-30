@@ -104,7 +104,7 @@ function CourseCard({ course, onDelete, viewMode }) {
               {course.category}
             </span>
             <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 px-2 py-1 rounded-full border border-gray-200 dark:border-white/10">
-              {t('level.' + (course.level || 'Beginner')).startsWith('level.') ? course.level : t('level.' + (course.level || 'Beginner'))}
+              {t('level.' + ((course.level ? (course.level.charAt(0).toUpperCase() + course.level.slice(1).toLowerCase()) : 'Beginner'))).startsWith('level.') ? course.level : t('level.' + ((course.level ? (course.level.charAt(0).toUpperCase() + course.level.slice(1).toLowerCase()) : 'Beginner')))}
             </span>
           </div>
           <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate font-clash">
@@ -175,7 +175,7 @@ function CourseCard({ course, onDelete, viewMode }) {
             )}
           </div>
           <span className="text-[11px] font-medium text-white/90 bg-black/20 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
-            {t('level.' + (course.level || 'Beginner')).startsWith('level.') ? course.level : t('level.' + (course.level || 'Beginner'))}
+            {t('level.' + ((course.level ? (course.level.charAt(0).toUpperCase() + course.level.slice(1).toLowerCase()) : 'Beginner'))).startsWith('level.') ? course.level : t('level.' + ((course.level ? (course.level.charAt(0).toUpperCase() + course.level.slice(1).toLowerCase()) : 'Beginner')))}
           </span>
         </div>
       </div>
@@ -305,7 +305,7 @@ export default function Courses() {
     else if (statusTab === 'completed') matchesStatus = course.progress === 100;
 
     const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(course.category);
-    const matchesLevel = selectedLevels.length === 0 || selectedLevels.includes(course.level || 'Beginner');
+    const matchesLevel = selectedLevels.length === 0 || selectedLevels.includes((course.level ? (course.level.charAt(0).toUpperCase() + course.level.slice(1).toLowerCase()) : 'Beginner'));
 
     return matchesSearch && matchesStatus && matchesCategory && matchesLevel;
   });
