@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  CheckCircle, 
+  CheckCircle,
+  PlayCircle, 
   Loader2, 
   Sparkles, 
   AlertCircle, 
@@ -403,7 +404,7 @@ Provide a code boilerplate template at the end.`;
           <span className="text-xs font-bold px-2 py-1 bg-primary/10 text-primary rounded-md mb-2 inline-block">
             {t(selectedCourse.title)}
           </span>
-          <h2 className="text-xl md:text-2xl font-bold text-on-surface line-clamp-1">{t(selectedNode.label)}</h2>
+          <h2 className="text-xl md:text-2xl font-bold text-zinc-900 dark:text-zinc-100 line-clamp-1">{t(selectedNode.label)}</h2>
         </div>
         <div className="flex items-center gap-2">
           {selectedNode.content && (
@@ -420,20 +421,20 @@ Provide a code boilerplate template at the end.`;
                   <div className="absolute right-0 mt-2 w-48 bg-surface border border-white/10 rounded-xl py-1.5 shadow-xl hidden group-hover:block z-50 text-left">
                     <button 
                       onClick={handleExportNotion}
-                      className="w-full text-left px-4 py-2 hover:bg-on-surface/5 text-xs text-zinc-200 transition-colors"
+                      className="w-full text-left px-4 py-2 hover:bg-zinc-100 dark:bg-zinc-800 text-xs text-zinc-200 transition-colors"
                     >
                       📓 Экспорт конспекта (.md)
                     </button>
                     <button 
                       onClick={handleExportHomework}
-                      className="w-full text-left px-4 py-2 hover:bg-on-surface/5 text-xs text-emerald-400 font-bold transition-colors"
+                      className="w-full text-left px-4 py-2 hover:bg-zinc-100 dark:bg-zinc-800 text-xs text-emerald-400 font-bold transition-colors"
                     >
                       💻 Скачать ДЗ (.md)
                     </button>
                     {flashcards.length > 0 && (
                       <button 
                         onClick={handleExportAnki}
-                        className="w-full text-left px-4 py-2 hover:bg-on-surface/5 text-xs text-zinc-200 transition-colors"
+                        className="w-full text-left px-4 py-2 hover:bg-zinc-100 dark:bg-zinc-800 text-xs text-zinc-200 transition-colors"
                       >
                         📇 Карточки в Anki (.csv)
                       </button>
@@ -463,7 +464,7 @@ Provide a code boilerplate template at the end.`;
 
               <button 
                 onClick={() => alert('В разработке! Слайды скоро будут добавлены.')}
-                className="flex items-center gap-2 px-3 py-1.5 hover:bg-surface-container rounded-full transition-colors font-medium text-sm border border-outline-variant text-on-surface-variant opacity-70"
+                className="flex items-center gap-2 px-3 py-1.5 hover:bg-zinc-100 dark:bg-zinc-800 rounded-full transition-colors font-medium text-sm border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 opacity-70"
                 title="Слайды (В разработке)"
               >
                 <PlayCircle className="w-4 h-4" />
@@ -475,7 +476,7 @@ Provide a code boilerplate template at the end.`;
           {toggleZenMode && (
             <button 
               onClick={toggleZenMode}
-              className="p-2 hover:bg-surface-container rounded-full text-on-surface-variant transition-colors flex-shrink-0"
+              className="p-2 hover:bg-zinc-100 dark:bg-zinc-800 rounded-full text-zinc-500 dark:text-zinc-400 transition-colors flex-shrink-0"
               title={isZenMode ? "Свернуть" : "На весь экран"}
             >
               {isZenMode ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
@@ -483,7 +484,7 @@ Provide a code boilerplate template at the end.`;
           )}
           <button 
             onClick={onClose}
-            className="p-2 hover:bg-surface-container rounded-full text-on-surface-variant transition-colors flex-shrink-0"
+            className="p-2 hover:bg-zinc-100 dark:bg-zinc-800 rounded-full text-zinc-500 dark:text-zinc-400 transition-colors flex-shrink-0"
             title="Закрыть"
           >
             <X className="w-6 h-6" />
@@ -498,7 +499,7 @@ Provide a code boilerplate template at the end.`;
             {adaptationBanner && (
               <div className="mx-6 md:mx-10 mt-6 p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex gap-3 items-center text-xs text-indigo-300">
                 <span>🧬 <strong>AI-Наставник:</strong> Обнаружены пробелы по теме. Граф знаний перестроен, добавлен микро-модуль для закрытия пробелов.</span>
-                <button onClick={() => setAdaptationBanner(false)} className="ml-auto text-indigo-400 hover:text-on-surface">✕</button>
+                <button onClick={() => setAdaptationBanner(false)} className="ml-auto text-indigo-400 hover:text-zinc-900 dark:text-zinc-100">✕</button>
               </div>
             )}
 
@@ -552,7 +553,7 @@ Provide a code boilerplate template at the end.`;
                 <div className="flex items-center justify-between mb-4 border-b border-indigo-500/10 pb-3">
                   <div className="flex items-center gap-2">
                     <span className="text-xl">💻</span>
-                    <h3 className="text-sm font-bold text-on-surface m-0">Практическая зона: AI Code Review</h3>
+                    <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 m-0">Практическая зона: AI Code Review</h3>
                   </div>
                   <button
                     type="button"
@@ -597,7 +598,7 @@ Provide a code boilerplate template at the end.`;
                         type="button"
                         disabled={reviewingCode || generatingAssignment}
                         onClick={handleRunCodeReview}
-                        className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-on-surface font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5"
+                        className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5"
                       >
                         {reviewingCode ? (
                           <>
@@ -607,7 +608,7 @@ Provide a code boilerplate template at the end.`;
                         ) : (
                           <>
                             <span>Отправить на AI Code Review</span>
-                            <Sparkles className="w-3.5 h-3.5 text-on-surface" />
+                            <Sparkles className="w-3.5 h-3.5 text-white" />
                           </>
                         )}
                       </button>
@@ -633,8 +634,8 @@ Provide a code boilerplate template at the end.`;
             {/* Footer actions */}
             <div className="p-6 md:p-8 mt-auto border-t border-white/10 bg-background flex flex-col md:flex-row justify-between items-center gap-6">
               <div>
-                <p className="text-base font-bold text-on-surface mb-1">Завершили изучение материала?</p>
-                <p className="text-sm text-on-surface-variant">Пройдите тест, чтобы закрепить знания и разблокировать следующие уроки.</p>
+                <p className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-1">Завершили изучение материала?</p>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">Пройдите тест, чтобы закрепить знания и разблокировать следующие уроки.</p>
                 {quizError && <p className="text-sm text-red-500 mt-2">{quizError}</p>}
                 {genError && <p className="text-sm text-red-500 mt-2">{genError}</p>}
               </div>
@@ -642,7 +643,7 @@ Provide a code boilerplate template at the end.`;
                 <button
                   onClick={handleOpenQuiz}
                   disabled={quizGenerating || selectedNode.status === 'completed'}
-                  className="bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-on-surface px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/25 whitespace-nowrap"
+                  className="bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/25 whitespace-nowrap"
                 >
                   {quizGenerating ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
@@ -658,7 +659,7 @@ Provide a code boilerplate template at the end.`;
           </div>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center p-6 text-center">
-            <div className="max-w-md w-full bg-surface-container-lowest border border-outline-variant p-8 rounded-3xl shadow-xl flex flex-col items-center">
+            <div className="max-w-md w-full bg-zinc-100 dark:bg-zinc-800-lowest border border-zinc-200 dark:border-zinc-700 p-8 rounded-3xl shadow-xl flex flex-col items-center">
               <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 border border-primary/20">
                 {generating ? (
                   <Loader2 className="w-10 h-10 text-primary animate-spin" />
@@ -666,8 +667,8 @@ Provide a code boilerplate template at the end.`;
                   <Sparkles className="w-10 h-10 text-primary" />
                 )}
               </div>
-              <h3 className="text-2xl font-bold text-on-surface mb-3">{t(selectedNode.label)}</h3>
-              <p className="text-on-surface-variant mb-8 text-sm leading-relaxed">
+              <h3 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mb-3">{t(selectedNode.label)}</h3>
+              <p className="text-zinc-500 dark:text-zinc-400 mb-8 text-sm leading-relaxed">
                 {t(selectedNode.desc)}
                 <br/><br/>
                 {generating ? 'Создаем персональный урок для вас...' : 'ИИ-ментор готовит материал...'}
@@ -718,7 +719,7 @@ Provide a code boilerplate template at the end.`;
           <motion.div 
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="bg-surface border border-outline-variant rounded-3xl max-w-md w-full p-6 shadow-2xl relative text-left"
+            className="bg-surface border border-zinc-200 dark:border-zinc-700 rounded-3xl max-w-md w-full p-6 shadow-2xl relative text-left"
           >
             <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4 text-amber-400">
               <AlertCircle className="w-6 h-6" />
@@ -733,7 +734,7 @@ Provide a code boilerplate template at the end.`;
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => setCooldownConfirmOpen(false)}
-                className="flex-1 px-4 py-3 rounded-xl border border-outline-variant hover:bg-surface-container font-bold text-sm text-zinc-300 transition-all text-center"
+                className="flex-1 px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 font-bold text-sm text-zinc-300 transition-all text-center"
               >
                 📖 Повторить теорию
               </button>
