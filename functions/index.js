@@ -235,7 +235,6 @@ exports.aiProxy = onCall(
               model: modelNameStr,
               messages: [{ role: "user", content: prompt }],
               temperature: 0.2,
-              presence_penalty: 0.1,
             }),
           });
 
