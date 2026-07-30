@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://beta.yourwayy.co/sitemap.xml
