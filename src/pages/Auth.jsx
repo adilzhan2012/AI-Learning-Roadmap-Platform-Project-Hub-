@@ -115,6 +115,7 @@ export default function Auth({ type }) {
         
         // Автоматически отправляем письмо для подтверждения
         try {
+          auth.languageCode = locale === 'ru' ? 'ru' : 'en';
           await sendEmailVerification(user);
         } catch (e) {
           console.error("Ошибка при отправке письма подтверждения:", e);
@@ -140,6 +141,7 @@ export default function Auth({ type }) {
     }
     setResetLoading(true);
     try {
+      auth.languageCode = locale === 'ru' ? 'ru' : 'en';
       await sendPasswordResetEmail(auth, resetEmail);
       setResetSuccess(true);
     } catch (err) {
