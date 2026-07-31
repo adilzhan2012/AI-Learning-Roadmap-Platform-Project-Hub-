@@ -8,6 +8,7 @@ import { GamificationProvider } from './context/GamificationContext.jsx';
 // Import fully rewritten React pages
 import Landing from './pages/Landing.jsx';
 import Auth from './pages/Auth.jsx';
+import AuthAction from './pages/AuthAction.jsx';
 import DashboardComponent from './pages/Dashboard.jsx';
 import CoursesComponent from './pages/Courses.jsx';
 import GraphComponent from './pages/Graph.jsx';
@@ -53,6 +54,7 @@ function AppRoutes() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Auth type="login" />} />
         <Route path="/register" element={<Auth type="register" />} />
+        <Route path="/auth/action" element={<AuthAction />} />
         
         {/* Protected Dashboard Routes */}
         <Route path="/dashboard" element={<DashboardComponent />} />
