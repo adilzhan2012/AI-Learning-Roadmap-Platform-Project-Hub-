@@ -268,52 +268,80 @@ export default function Insights() {
     return String(Math.min(365, estimatedDays));
   }, [courses.length, overallCourseProgress, dayCounts]);
 
-  // Build Heatmap grid (168 days = 24 weeks x 7 days) mapped to real activity timestamps
-  const { heatmapGrid, monthHeaders } = useMemo(() => {
-    const grid = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Map timestamps to YYYY-MM-DD count dictionary
+  // Build Heatmap grid (weeks x 7 days) mapped strictly to real activity timestamps
+  const { weeksGrid, monthHeaders } = useMemo(() => {
+    // 1. Map timestamps to YYYY-MM-DD count dictionary
     const activityMap = {};
     activities.forEach(act => {
       if (!act.timestamp) return;
-      const dateStr = act.timestamp.split('T')[0];
+      // Handle JS Date objects, ISO strings, or timestamp strings accurately in local date
+      const d = new Date(act.timestamp);
+      if (isNaN(d.getTime())) return;
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       activityMap[dateStr] = (activityMap[dateStr] || 0) + 1;
     });
 
-    const months = [];
-    let currentMonth = -1;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    // Build 168 days backwards from today
-    for (let i = 167; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      const count = activityMap[dateStr] || 0;
+    // Calculate end of current week (Sunday)
+    const endOfWeek = new Date(today);
+    const dayOfWeek = today.getDay(); // 0 = Sun, 1 = Mon ... 6 = Sat
+    const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+    endOfWeek.setDate(today.getDate() + daysUntilSunday);
 
-      let level = 0;
-      if (count >= 5) level = 4;
-      else if (count >= 3) level = 3;
-      else if (count >= 2) level = 2;
-      else if (count >= 1) level = 1;
+    const WEEKS_COUNT = 36;
+    const totalDays = WEEKS_COUNT * 7;
 
-      grid.push({
-        dateStr,
-        date: d,
-        count,
-        level
-      });
+    // Start date is Monday 36 weeks ago
+    const startDate = new Date(endOfWeek);
+    startDate.setDate(endOfWeek.getDate() - totalDays + 1);
 
-      const m = d.getMonth();
-      if (m !== currentMonth) {
-        currentMonth = m;
-        const monthLabel = d.toLocaleString('ru-RU', { month: 'short' });
-        months.push({ label: monthLabel, index: 167 - i });
+    const weeks = [];
+    const monthsMap = new Map(); // monthLabel -> weekIndex
+
+    let currentDay = new Date(startDate);
+
+    for (let w = 0; w < WEEKS_COUNT; w++) {
+      const weekDays = [];
+      for (let d = 0; d < 7; d++) {
+        const year = currentDay.getFullYear();
+        const month = String(currentDay.getMonth() + 1).padStart(2, '0');
+        const dayNum = String(currentDay.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${dayNum}`;
+        const count = activityMap[dateStr] || 0;
+
+        let level = 0;
+        if (count >= 5) level = 4;
+        else if (count >= 3) level = 3;
+        else if (count >= 2) level = 2;
+        else if (count >= 1) level = 1;
+
+        weekDays.push({
+          dateStr,
+          date: new Date(currentDay),
+          count,
+          level,
+          isFuture: currentDay > today
+        });
+
+        // Track first week of each month for headers
+        const monthLabel = currentDay.toLocaleString('ru-RU', { month: 'short' });
+        if (!monthsMap.has(monthLabel) && currentDay.getDate() <= 7) {
+          monthsMap.set(monthLabel, w);
+        }
+
+        currentDay.setDate(currentDay.getDate() + 1);
       }
+      weeks.push(weekDays);
     }
 
-    return { heatmapGrid: grid, monthHeaders: months };
+    const monthHeadersList = Array.from(monthsMap.entries()).map(([label, weekIdx]) => ({
+      label: label.charAt(0).toUpperCase() + label.slice(1),
+      weekIdx
+    }));
+
+    return { weeksGrid: weeks, monthHeaders: monthHeadersList };
   }, [activities]);
 
   // Dynamic Chart Points & Labels based on selected time range
@@ -599,55 +627,76 @@ export default function Insights() {
               <span className="text-xs text-on-surface-variant font-mono">Всего зафиксировано: {activities.length} действий</span>
             </div>
 
-            <div className="flex flex-col overflow-x-auto pb-2 scrollbar-thin">
-              {/* Months Headers Row */}
-              <div className="flex text-[10px] font-mono text-on-surface-variant mb-1.5 pl-8 min-w-[700px] gap-8">
-                {monthHeaders.map((mh, idx) => (
-                  <span key={idx} className="capitalize">{mh.label}</span>
-                ))}
-              </div>
-
-              <div className="flex items-start gap-2 min-w-[700px]">
-                {/* Day of Week Labels (Mon, Wed, Fri) */}
-                <div className="flex flex-col justify-between h-[98px] text-[9px] font-mono text-on-surface-variant py-0.5 select-none w-6 flex-shrink-0">
-                  <span>Пн</span>
-                  <span>Ср</span>
-                  <span>Пт</span>
+            {/* Centered Scrollable Wrapper */}
+            <div className="flex justify-center w-full overflow-x-auto pb-2 scrollbar-thin">
+              <div className="inline-flex items-start gap-3 min-w-max my-2">
+                {/* Day of Week Labels - Perfectly Aligned to 10px cells with 4px gaps */}
+                <div className="relative w-6 h-[94px] text-[10px] font-mono text-on-surface-variant select-none flex-shrink-0 mt-5">
+                  {/* Mon = Row 0 (0px) */}
+                  <span className="absolute top-[0px] left-0 leading-[10px]">Пн</span>
+                  {/* Wed = Row 2 (28px) */}
+                  <span className="absolute top-[28px] left-0 leading-[10px]">Ср</span>
+                  {/* Fri = Row 4 (56px) */}
+                  <span className="absolute top-[56px] left-0 leading-[10px]">Пт</span>
                 </div>
 
-                {/* 24 Weeks Heatmap Grid */}
-                <div className="grid grid-flow-col grid-rows-7 gap-1.5 flex-1">
-                  {heatmapGrid.map((day, idx) => {
-                    // Distinct, high-contrast colors for light & dark themes with borders
-                    let colorClass = 'bg-surface border border-outline-variant/60';
-                    if (day.level === 1) colorClass = 'bg-primary/20 border border-primary/30';
-                    if (day.level === 2) colorClass = 'bg-primary/45 border border-primary/50';
-                    if (day.level === 3) colorClass = 'bg-primary/75 border border-primary/80';
-                    if (day.level === 4) colorClass = 'bg-primary border border-primary';
-
-                    return (
-                      <div 
+                <div className="flex flex-col">
+                  {/* Months Headers Row */}
+                  <div className="relative h-4 text-[10px] font-mono text-on-surface-variant mb-1 select-none w-full">
+                    {monthHeaders.map((mh, idx) => (
+                      <span 
                         key={idx} 
-                        className={`w-3 h-3 rounded-[3px] transition-all hover:scale-125 hover:z-10 ${colorClass}`}
-                        title={`${day.dateStr}: ${day.count} действий`}
-                      />
-                    );
-                  })}
+                        className="absolute font-semibold text-on-surface-variant capitalize"
+                        style={{ left: `${mh.weekIdx * 14}px` }}
+                      >
+                        {mh.label}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Compact GitHub-style Cells Grid (36 Weeks x 7 Days) */}
+                  <div className="flex gap-[4px]">
+                    {weeksGrid.map((week, wIdx) => (
+                      <div key={wIdx} className="flex flex-col gap-[4px]">
+                        {week.map((day, dIdx) => {
+                          // High contrast colors with GitHub green palette
+                          let colorClass = 'bg-surface border border-outline-variant/60';
+                          if (day.level === 1) colorClass = 'bg-[#0e4429] border border-[#0e4429]';
+                          if (day.level === 2) colorClass = 'bg-[#006d32] border border-[#006d32]';
+                          if (day.level === 3) colorClass = 'bg-[#26a641] border border-[#26a641]';
+                          if (day.level === 4) colorClass = 'bg-[#39d353] border border-[#39d353] shadow-sm';
+
+                          return (
+                            <div 
+                              key={dIdx} 
+                              className={`w-[10px] h-[10px] rounded-[2px] transition-all hover:scale-150 hover:z-20 ${colorClass} ${
+                                day.isFuture ? 'opacity-20' : ''
+                              }`}
+                              title={`${day.dateStr}: ${day.count} ${day.count === 1 ? 'действие' : 'действий'}`}
+                            />
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
             
-            {/* Heatmap Legend */}
-            <div className="flex items-center gap-1.5 text-[10px] text-on-surface-variant mt-4 font-sans justify-end select-none">
+            {/* GitHub Style Heatmap Legend */}
+            <div className="flex items-center gap-2 text-[10px] font-mono text-on-surface-variant mt-4 justify-center sm:justify-end select-none">
               <span>Меньше</span>
-              <div className="w-3 h-3 rounded-[3px] bg-surface border border-outline-variant/60" />
-              <div className="w-3 h-3 rounded-[3px] bg-primary/20 border border-primary/30" />
-              <div className="w-3 h-3 rounded-[3px] bg-primary/45 border border-primary/50" />
-              <div className="w-3 h-3 rounded-[3px] bg-primary/75 border border-primary/80" />
-              <div className="w-3 h-3 rounded-[3px] bg-primary border border-primary" />
+              <div className="flex items-center gap-[3px]">
+                <div className="w-[10px] h-[10px] rounded-[2px] bg-surface border border-outline-variant/60" title="0 действий" />
+                <div className="w-[10px] h-[10px] rounded-[2px] bg-[#0e4429] border border-[#0e4429]" title="1-2 действия" />
+                <div className="w-[10px] h-[10px] rounded-[2px] bg-[#006d32] border border-[#006d32]" title="3-4 действия" />
+                <div className="w-[10px] h-[10px] rounded-[2px] bg-[#26a641] border border-[#26a641]" title="5-6 действий" />
+                <div className="w-[10px] h-[10px] rounded-[2px] bg-[#39d353] border border-[#39d353]" title="7+ действий" />
+              </div>
               <span>Больше</span>
             </div>
           </div>
+
         </motion.div>
 
         {/* 4-Column Metrics Grid */}
