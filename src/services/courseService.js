@@ -647,6 +647,12 @@ export async function logActivity(userId, title, iconName, colorClass) {
   });
 }
 
+export async function getUserActivityLogs(userId) {
+  const activitiesCol = collection(db, 'users', userId, 'activities');
+  const snap = await getDocs(activitiesCol);
+  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
 // 7. Get Recent Activities
 export async function getRecentActivities(userId, maxLimit = 5) {
   const activitiesCol = collection(db, 'users', userId, 'activities');
