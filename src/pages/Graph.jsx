@@ -586,7 +586,7 @@ Respond in Russian. Keep your reply concise and professional.`;
         <p className="text-xs text-zinc-400 max-w-md mb-6">{t('graph.noRoadmapsDesc')}</p>
         <button 
           onClick={() => navigate('/dashboard')}
-          className="bg-on-surface hover:bg-zinc-200 text-black px-6 py-3 rounded-[12px] font-bold text-xs uppercase tracking-wider transition-all"
+          className="bg-zinc-900 !text-white hover:bg-zinc-800 dark:bg-white dark:!text-zinc-900 dark:hover:bg-zinc-200 px-6 py-3 rounded-[12px] font-bold text-xs uppercase tracking-wider transition-all"
         >
           {t('lessons.goDashboard')}
         </button>

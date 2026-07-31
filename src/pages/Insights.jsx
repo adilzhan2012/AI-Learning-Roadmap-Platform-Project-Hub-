@@ -246,8 +246,8 @@ export default function Insights() {
     <div className="relative min-h-[calc(100vh-4.5rem)] bg-background">
       {plan === 'FREE' && (
         <div className="absolute inset-0 z-[40] flex items-center justify-center p-4 bg-background/65">
-          <div className="bg-surface border border-outline rounded-[2rem] p-8 max-w-sm w-full text-center shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-outline">
-            <div className="w-12 h-12 bg-on-surface/5 border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <div className="bg-surface border border-outline rounded-[2rem] p-8 max-w-sm w-full text-center shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+            <div className="w-12 h-12 bg-on-surface/5 border border-outline rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Lock className="w-5 h-5 text-on-surface" strokeWidth={1.5} />
             </div>
             <h3 className="text-lg font-bold text-on-surface mb-2">Аналитика доступна в Pro</h3>
@@ -256,7 +256,7 @@ export default function Insights() {
             </p>
             <button
               onClick={() => navigate('/pricing')}
-              className="w-full py-3.5 rounded-xl font-bold bg-on-surface text-inverse-on-surface hover:bg-[#F5F5F7] transition-all text-xs"
+              className="w-full py-3.5 rounded-xl font-bold bg-zinc-900 !text-white hover:bg-zinc-800 dark:bg-white dark:!text-zinc-900 dark:hover:bg-zinc-200 transition-all text-xs"
             >
               Открыть Pro
             </button>

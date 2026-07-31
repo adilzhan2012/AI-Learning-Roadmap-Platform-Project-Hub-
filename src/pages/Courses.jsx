@@ -334,9 +334,9 @@ export default function Courses() {
         </div>
         <button
           onClick={() => setShowGenModal(true)}
-          className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-100 dark:bg-zinc-800 text-white dark:text-zinc-900 px-6 py-3 rounded-[12px] font-bold text-xs transition-colors whitespace-nowrap flex items-center gap-2 font-sans"
+          className="bg-zinc-900 !text-white hover:bg-zinc-800 dark:bg-white dark:!text-zinc-900 dark:hover:bg-zinc-200 px-6 py-3 rounded-[12px] font-bold text-xs transition-colors whitespace-nowrap flex items-center gap-2 font-sans"
         >
-          <Sparkles className="w-4 h-4 fill-current text-white dark:text-zinc-900" />
+          <Sparkles className="w-4 h-4 fill-current" />
           {t('dashboard.generateCourse')}
         </button>
       </motion.div>
@@ -354,7 +354,7 @@ export default function Courses() {
           </p>
           <button
             onClick={() => setShowGenModal(true)}
-            className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-100 dark:bg-zinc-800 text-white dark:text-zinc-900 px-8 py-3.5 rounded-[12px] font-bold text-xs transition-all flex items-center gap-2 font-sans"
+            className="bg-zinc-900 !text-white hover:bg-zinc-800 dark:bg-white dark:!text-zinc-900 dark:hover:bg-zinc-200 px-8 py-3.5 rounded-[12px] font-bold text-xs transition-all flex items-center gap-2 font-sans"
           >
             <Sparkles className="w-4 h-4 fill-current" />
             {t('dashboard.generateFirst')}
@@ -469,14 +469,14 @@ export default function Courses() {
                 <div className="flex bg-white dark:bg-[#1A1A1C] rounded-[10px] p-0.5 border border-zinc-200 dark:border-white/10">
                   <button 
                     onClick={() => setViewMode('grid')}
-                    className={`p-1.5 rounded-[8px] transition-colors ${viewMode === 'grid' ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-white dark:text-zinc-900' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:text-white'}`}
+                    className={`p-1.5 rounded-[8px] transition-colors ${viewMode === 'grid' ? 'bg-zinc-900 dark:bg-white !text-white dark:!text-zinc-900' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
                     title="Сетка"
                   >
                     <Grid className="w-4 h-4" strokeWidth={1.5} />
                   </button>
                   <button 
                     onClick={() => setViewMode('list')}
-                    className={`p-1.5 rounded-[8px] transition-colors ${viewMode === 'list' ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-white dark:text-zinc-900' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:text-white'}`}
+                    className={`p-1.5 rounded-[8px] transition-colors ${viewMode === 'list' ? 'bg-zinc-900 dark:bg-white !text-white dark:!text-zinc-900' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
                     title="Список"
                   >
                     <ListIcon className="w-4 h-4" strokeWidth={1.5} />
