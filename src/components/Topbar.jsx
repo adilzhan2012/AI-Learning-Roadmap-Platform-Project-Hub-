@@ -111,6 +111,8 @@ export default function Topbar() {
         if (doc.data().unreadUser) unread = true;
       });
       setHasUnreadTickets(unread);
+    }, (err) => {
+      // Catch transient permission error gracefully
     });
     return () => unsubscribe();
   }, [user]);

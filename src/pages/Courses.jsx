@@ -10,12 +10,15 @@ import {
   Network,
   Trash2,
   Grid,
-  List as ListIcon
+  List as ListIcon,
+  Award,
+  Download,
+  ExternalLink
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
-import { getUserCourses, deleteCourse } from '../services/courseService.js';
+import { getUserCourses, deleteCourse, requestCourseCertificate, getCourseCertificate } from '../services/courseService.js';
 import { t } from '../i18n.js';
 import CourseGeneratorModal from '../components/CourseGeneratorModal.jsx';
 
@@ -80,6 +83,33 @@ function CourseCard({ course, onDelete, viewMode }) {
   const isCompleted = course.progress === 100;
   const cardGradient = course.gradient || 'from-indigo-500 to-purple-600';
   const isAi = course.category === '✨ Сгенерировано ИИ';
+
+  const [cert, setCert] = useState(null);
+  const [certLoading, setCertLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isCompleted || !auth.currentUser) return;
+    async function loadCert() {
+      const existing = await getCourseCertificate(auth.currentUser.uid, course.id);
+      if (existing) setCert(existing);
+    }
+    loadCert();
+  }, [isCompleted, course.id]);
+
+  const handleGetCert = async (e) => {
+    e.stopPropagation();
+    try {
+      setCertLoading(true);
+      const res = await requestCourseCertificate(course.id);
+      if (res && res.fileUrl) {
+        setCert({ fileUrl: res.fileUrl, certId: res.certId });
+      }
+    } catch (err) {
+      console.error('Certificate error:', err);
+    } finally {
+      setCertLoading(false);
+    }
+  };
 
   if (viewMode === 'list') {
     return (
@@ -216,6 +246,47 @@ function CourseCard({ course, onDelete, viewMode }) {
               {course.nodes?.length || 0} {t('courses.lessons')}
             </span>
           </div>
+
+          {isCompleted && (
+            <div className="pt-2" onClick={e => e.stopPropagation()}>
+              {certLoading ? (
+                <div className="flex items-center justify-center gap-2 py-2 bg-indigo-500/10 rounded-xl text-xs font-semibold text-indigo-400">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Генерация...</span>
+                </div>
+              ) : cert?.fileUrl ? (
+                <div className="flex items-center gap-2">
+                  <a
+                    href={cert.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Скачать PDF</span>
+                  </a>
+                  <a
+                    href={`#/verify/${cert.certId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-white rounded-xl"
+                    title="Проверить"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleGetCert}
+                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white font-bold text-xs rounded-xl transition-all shadow-md active:scale-98"
+                >
+                  <Award className="w-4 h-4 text-amber-200" />
+                  <span>Получить сертификат</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </motion.div>

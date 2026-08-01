@@ -41,6 +41,8 @@ export default function Layout() {
         }
       }
       setMaintenance({ isActive: false, endTime: null });
+    }, (err) => {
+      // Catch transient permission errors
     });
     return () => unsubscribe();
   }, []);
@@ -56,6 +58,8 @@ export default function Layout() {
       if (docSnap.exists()) {
         setIsBanned(docSnap.data().isBanned === true);
       }
+    }, (err) => {
+      // Catch transient permission errors
     });
     return () => unsubscribe();
   }, [user]);

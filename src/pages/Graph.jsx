@@ -2,13 +2,13 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Network, Loader2, BookOpen, Clock, Brain, Pointer, ZoomIn, ZoomOut, RotateCcw, Lock,
-  Code, Terminal, Layers, Database, Cpu, Settings, Shield, Sliders, Globe, Star, Sparkles, Check, Flame, Trophy, Award, X
+  Code, Terminal, Layers, Database, Cpu, Settings, Shield, Sliders, Globe, Star, Sparkles, Check, Flame, Trophy, Award, X, Download, ExternalLink, ShieldCheck
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
-import { getUserCourses, callGroqWithRetry } from '../services/courseService.js';
+import { collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { getUserCourses, callGroqWithRetry, requestCourseCertificate, getCourseCertificate } from '../services/courseService.js';
 import { t } from '../i18n.js';
 import LessonPanel from '../components/lessons/LessonPanel.jsx';
 import MasteryBlock from '../components/shared/MasteryBlock.jsx';
@@ -258,6 +258,55 @@ export default function Graph() {
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [historyModalFilterNodeId, setHistoryModalFilterNodeId] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
+
+  // Certificate states
+  const [certData, setCertData] = useState(null);
+  const [certLoading, setCertLoading] = useState(false);
+  const [certError, setCertError] = useState(null);
+  const [isCertModalOpen, setIsCertModalOpen] = useState(false);
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user || !selectedCourse) {
+      setCertData(null);
+      return;
+    }
+
+    async function fetchCert() {
+      try {
+        const cert = await getCourseCertificate(user.uid, selectedCourse.id);
+        if (cert) {
+          setCertData(cert);
+        }
+      } catch (err) {
+        console.error("Error fetching course certificate:", err);
+      }
+    }
+
+    fetchCert();
+  }, [selectedCourse]);
+
+
+
+  const handleGetCertificate = async () => {
+    if (!selectedCourse) return;
+    try {
+      setCertLoading(true);
+      setCertError(null);
+      const res = await requestCourseCertificate(selectedCourse.id);
+      if (res && res.fileUrl) {
+        setCertData({
+          fileUrl: res.fileUrl,
+          certId: res.certId
+        });
+      }
+    } catch (err) {
+      console.error("Certificate generation error:", err);
+      setCertError(err.message || 'Не удалось сгенерировать сертификат');
+    } finally {
+      setCertLoading(false);
+    }
+  };
 
   // Layout view container ref
   const containerRef = useRef(null);
@@ -742,6 +791,60 @@ Respond in Russian. Keep your reply concise and professional.`;
                 {completedNodesCount} из {totalNodesCount} тем пройдено
               </p>
             </div>
+
+            {courseProgressPct === 100 && (
+              <div className="mt-2 pt-2 border-t border-indigo-500/20">
+                {certLoading ? (
+                  <div className="flex items-center justify-center gap-2 py-1 text-xs text-indigo-400 font-medium">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Генерация PDF...</span>
+                  </div>
+                ) : certData ? (
+                  <div className="flex items-center gap-1.5 justify-between">
+                    {certData.fileUrl ? (
+                      <a
+                        href={certData.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[11px] font-bold transition-all shadow-sm"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Скачать PDF</span>
+                      </a>
+                    ) : (
+                      <a
+                        href={`#/verify/${certData.certId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[11px] font-bold transition-all shadow-sm"
+                      >
+                        <Award className="w-3.5 h-3.5" />
+                        <span>Посмотреть сертификат</span>
+                      </a>
+                    )}
+                    <a
+                      href={`#/verify/${certData.certId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 rounded-lg flex items-center justify-center"
+                      title="Проверить подлинность"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleGetCertificate}
+                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white font-bold text-xs rounded-lg transition-all shadow-md active:scale-95"
+                  >
+                    <Award className="w-4 h-4 text-amber-200" />
+                    <span>Получить сертификат</span>
+                  </button>
+                )}
+                {certError && <p className="text-[10px] text-rose-400 mt-1 text-center">{certError}</p>}
+              </div>
+            )}
           </div>
 
           {/* Stat 2: Estimated Hours */}

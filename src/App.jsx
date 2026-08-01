@@ -40,6 +40,8 @@ import { auth } from './firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { logPageView } from './lib/analytics.js';
 
+import VerifyCertificate from './pages/VerifyCertificate.jsx';
+
 function AppRoutes() {
   const location = useLocation();
 
@@ -49,6 +51,7 @@ function AppRoutes() {
 
   return (
     <Routes>
+      <Route path="/verify/:certId" element={<VerifyCertificate />} />
       <Route element={<Layout />}>
         {/* Public Routes */}
         <Route path="/" element={<Landing />} />

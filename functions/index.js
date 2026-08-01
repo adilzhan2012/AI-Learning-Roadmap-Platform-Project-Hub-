@@ -824,3 +824,217 @@ exports.getAdminDashboardStats = onCall(async (request) => {
     growthChart
   };
 });
+
+const QRCode = require("qrcode");
+const puppeteer = require("puppeteer");
+const { renderCertificateHtml } = require("./certificateTemplate.js");
+
+exports.generateCertificate = onCall(
+  {
+    cors: true,
+    memory: "1GiB",
+    timeoutSeconds: 120,
+    maxInstances: 10,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError(
+        "unauthenticated",
+        "Пользователь должен быть авторизован для получения сертификата."
+      );
+    }
+
+    const userId = request.auth.uid;
+    const { courseId } = request.data || {};
+
+    if (!courseId) {
+      throw new HttpsError(
+        "invalid-argument",
+        "Необходимо указать courseId."
+      );
+    }
+
+    // 1. Check if certificate already generated for (userId, courseId)
+    const existingSnap = await db
+      .collection("certificates")
+      .where("userId", "==", userId)
+      .where("courseId", "==", courseId)
+      .limit(1)
+      .get();
+
+    if (!existingSnap.empty) {
+      const existingDoc = existingSnap.docs[0].data();
+      return {
+        success: true,
+        fileUrl: existingDoc.fileUrl,
+        certId: existingDoc.certId,
+        alreadyExisted: true,
+      };
+    }
+
+    // 2. Fetch course data & user progress
+    let courseSnap = await db.collection("users").doc(userId).collection("courses").doc(courseId).get();
+    if (!courseSnap.exists) {
+      courseSnap = await db.collection("courses").doc(courseId).get();
+    }
+
+    if (!courseSnap.exists) {
+      throw new HttpsError("not-found", "Курс не найден.");
+    }
+
+    const courseData = courseSnap.data();
+    const progress = Number(courseData.progress || 0);
+
+    if (progress < 100) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Сертификат выдается только после 100% прохождения курса."
+      );
+    }
+
+    // 3. Gather student profile info
+    const userSnap = await db.collection("users").doc(userId).get();
+    const userData = userSnap.exists ? userSnap.data() : {};
+    const userName = userData.displayName || userData.name || userData.email?.split("@")[0] || "Студент YourWay";
+    const userXp = Number(userData.stats?.xp || userData.xp || 0);
+    const userLevelInfo = calculateLevel(userXp);
+    const userLevel = userLevelInfo.current.level;
+
+    const courseTitle = courseData.title || courseData.name || "Интерактивный курс";
+    const modulesCount = Array.isArray(courseData.modules)
+      ? courseData.modules.length
+      : Number(courseData.modulesCount || 1);
+    const hoursLearned = Number(courseData.estimatedHours || courseData.hoursLearned || Math.ceil(modulesCount * 1.5));
+
+    // 4. Generate certId YW-YYYY-XXXXX
+    const year = new Date().getFullYear();
+    const randomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
+    const certId = `YW-${year}-${randomCode}`;
+
+    // 5. Generate QR Code
+    const verifyUrl = `https://beta.yourwayy.co/verify/${certId}`;
+    const qrCodeDataUrl = await QRCode.toDataURL(verifyUrl, {
+      margin: 1,
+      width: 240,
+      color: {
+        dark: "#000000",
+        light: "#FFFFFF",
+      },
+    });
+
+    // 6. Render HTML
+    const formattedDate = new Date().toLocaleDateString("ru-RU", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+
+    const htmlContent = renderCertificateHtml({
+      userName,
+      courseName: courseTitle,
+      modulesCount,
+      hoursLearned,
+      userLevel,
+      certId,
+      issuedAt: formattedDate,
+      qrCodeDataUrl,
+    });
+
+    // 7. Render PDF with Puppeteer
+    let pdfBuffer;
+    let browser;
+    try {
+      const fs = require('fs');
+      const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH ||
+        (fs.existsSync('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome')
+          ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+          : undefined);
+
+      browser = await puppeteer.launch({
+        ...(executablePath ? { executablePath } : {}),
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-accelerated-2d-canvas",
+          "--no-first-run",
+          "--no-zygote",
+          "--single-process",
+          "--disable-gpu",
+        ],
+        headless: true,
+      });
+
+      const page = await browser.newPage();
+      await page.setViewport({ width: 1473, height: 1079 });
+      await page.setContent(htmlContent, { waitUntil: "networkidle0" });
+      pdfBuffer = await page.pdf({
+        format: "A4",
+        landscape: true,
+        printBackground: true,
+        margin: { top: 0, right: 0, bottom: 0, left: 0 },
+      });
+    } finally {
+      if (browser) {
+        await browser.close();
+      }
+    }
+
+    // 8. Upload to Firebase Storage
+    const bucket = admin.storage().bucket();
+    const filePath = `certificates/${certId}.pdf`;
+    const fileRef = bucket.file(filePath);
+
+    await fileRef.save(pdfBuffer, {
+      metadata: {
+        contentType: "application/pdf",
+        metadata: {
+          certId,
+          userId,
+          courseId,
+        },
+      },
+      public: true,
+    });
+
+    try {
+      await fileRef.makePublic();
+    } catch (e) {
+      console.warn("Storage makePublic warning:", e.message);
+    }
+    const fileUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
+
+    // 9. Save document to Firestore
+    const certDoc = {
+      certId,
+      userId,
+      courseId,
+      userName,
+      courseName: courseTitle,
+      modulesCount,
+      hoursLearned,
+      userLevel,
+      issuedAt: admin.firestore.FieldValue.serverTimestamp(),
+      fileUrl,
+    };
+
+    await db.collection("certificates").doc(certId).set(certDoc);
+
+    // 10. Increment user stats certificatesCount
+    await db.collection("users").doc(userId).set(
+      {
+        stats: {
+          certificatesCount: admin.firestore.FieldValue.increment(1),
+        },
+      },
+      { merge: true }
+    );
+
+    return {
+      success: true,
+      fileUrl,
+      certId,
+    };
+  }
+);
+

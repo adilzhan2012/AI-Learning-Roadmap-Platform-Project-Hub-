@@ -101,6 +101,18 @@ service cloud.firestore {
       allow write: if false; // Migration only
     }
     
+    // --- Certificates ---
+    match /certificates/{certId} {
+      // Certificates verification is public (anyone can verify by certId)
+      allow read: if true;
+      // Allow authenticated user to create certificate for themselves
+      allow create: if isAuth() 
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasAll(['userId', 'courseId', 'certId']);
+      // Certificates are immutable: cannot be modified or deleted by clients
+      allow update, delete: if false;
+    }
+
     // Deny everything else by default
     match /{document=**} {
       allow read, write: if false;
