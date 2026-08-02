@@ -833,14 +833,21 @@ Respond in Russian. Keep your reply concise and professional.`;
                     </a>
                   </div>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={handleGetCertificate}
-                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white font-bold text-xs rounded-lg transition-all shadow-md active:scale-95"
-                  >
-                    <Award className="w-4 h-4 text-amber-200" />
-                    <span>Получить сертификат</span>
-                  </button>
+                  <div className="flex flex-col items-center gap-1 w-full">
+                    <button
+                      type="button"
+                      onClick={handleGetCertificate}
+                      className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white font-bold text-xs rounded-lg transition-all shadow-md active:scale-95"
+                    >
+                      <Award className="w-4 h-4 text-amber-200" />
+                      <span>Получить сертификат</span>
+                    </button>
+                    {plan === 'FREE' && (
+                      <span className="text-[9px] text-zinc-500 dark:text-zinc-400 text-center leading-tight mt-1">
+                        Upgrade to Pro для QR-верификации и PDF
+                      </span>
+                    )}
+                  </div>
                 )}
                 {certError && <p className="text-[10px] text-rose-400 mt-1 text-center">{certError}</p>}
               </div>

@@ -21,6 +21,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { getUserCourses, deleteCourse, requestCourseCertificate, getCourseCertificate } from '../services/courseService.js';
 import { t } from '../i18n.js';
 import CourseGeneratorModal from '../components/CourseGeneratorModal.jsx';
+import { usePlanLimits } from '../hooks/usePlanLimits.js';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -67,7 +68,7 @@ function DeleteConfirmModal({ isOpen, onClose, onConfirm, isDeleting }) {
   );
 }
 
-function CourseCard({ course, onDelete, viewMode }) {
+function CourseCard({ course, onDelete, viewMode, plan }) {
   const navigate = useNavigate();
 
   const handleOpenClick = () => {
@@ -276,14 +277,21 @@ function CourseCard({ course, onDelete, viewMode }) {
                   </a>
                 </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={handleGetCert}
-                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white font-bold text-xs rounded-xl transition-all shadow-md active:scale-98"
-                >
-                  <Award className="w-4 h-4 text-amber-200" />
-                  <span>Получить сертификат</span>
-                </button>
+                <div className="flex flex-col items-center gap-1 w-full">
+                  <button
+                    type="button"
+                    onClick={handleGetCert}
+                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white font-bold text-xs rounded-xl transition-all shadow-md active:scale-98"
+                  >
+                    <Award className="w-4 h-4 text-amber-200" />
+                    <span>Получить сертификат</span>
+                  </button>
+                  {plan === 'FREE' && (
+                    <span className="text-[9px] text-zinc-500 dark:text-zinc-400 text-center leading-tight mt-1">
+                      Upgrade to Pro для QR-верификации и PDF
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -294,6 +302,7 @@ function CourseCard({ course, onDelete, viewMode }) {
 }
 
 export default function Courses() {
+  const { plan } = usePlanLimits();
   const [user, setUser] = useState(auth.currentUser);
   const [userCourses, setUserCourses] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -568,6 +577,7 @@ export default function Courses() {
                     course={course} 
                     onDelete={setCourseToDelete}
                     viewMode={viewMode}
+                    plan={plan}
                   />
                 ))}
               </AnimatePresence>

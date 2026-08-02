@@ -140,6 +140,7 @@ export default function VerifyCertificate() {
   const hoursLearned = certificate.hoursLearned || 40;
   const userLevel = certificate.userLevel || 3;
   const issuedAtDate = formatDate(certificate.issuedAt);
+  const isFree = certificate.tier === 'FREE';
 
   return (
     <div className="fixed inset-0 z-[9999] overflow-y-auto bg-[#E5E5E5] text-zinc-900 flex flex-col items-center py-8 px-4 font-sans select-none">
@@ -157,6 +158,11 @@ export default function VerifyCertificate() {
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider font-clash">Подлинность подтверждена</span>
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              {!isFree && (
+                <span className="ml-2 px-2 py-0.5 bg-gradient-to-r from-amber-500 to-indigo-600 text-white text-[10px] font-bold rounded-md uppercase tracking-wider">
+                  Pro Certificate ✓
+                </span>
+              )}
             </div>
             <p className="text-xs text-zinc-400 font-mono">Реестр YourWay AI &bull; CERTIFICATE No. {certificate.certId || certId}</p>
           </div>
@@ -171,7 +177,7 @@ export default function VerifyCertificate() {
               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center gap-2 transition-all shadow-md active:scale-95"
             >
               <Download className="w-4 h-4" />
-              <span>Скачать PDF</span>
+              <span>{isFree ? 'Скачать изображение' : 'Скачать PDF'}</span>
             </a>
           )}
 
@@ -202,68 +208,81 @@ export default function VerifyCertificate() {
         className="w-full max-w-[1240px] flex justify-center py-2 shrink-0 pb-12"
       >
         {/* Certificate Card replicating reference exactly */}
-        <div className="w-full max-w-[1200px] min-h-[820px] bg-white text-black p-10 sm:p-14 rounded-[24px] border-2 border-zinc-900 shadow-2xl flex flex-col justify-between relative font-sans">
+        <div className={`w-full max-w-[1200px] min-h-[820px] bg-white p-10 sm:p-14 rounded-[24px] border-2 shadow-2xl flex flex-col justify-between relative font-sans overflow-hidden ${isFree ? 'text-[#666666] border-[#8E8E93]' : 'text-black border-zinc-900'}`}>
+          {isFree && (
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-45 text-[120px] font-black text-[#969696]/15 whitespace-nowrap pointer-events-none z-0">
+              YOURWAY FREE
+            </div>
+          )}
           
           {/* Header */}
           <div className="flex items-start justify-between">
-            <img src={DARK_LOGO_BASE64} alt="YourWay Logo" className="h-16 sm:h-20 object-contain" />
-            <div className="text-sm font-bold font-mono uppercase tracking-wider text-zinc-950 pt-2">
+            <img src={DARK_LOGO_BASE64} alt="YourWay Logo" className="h-16 sm:h-20 object-contain z-10" style={{ filter: isFree ? 'invert(0.5)' : 'none' }} />
+            <div className={`text-sm font-bold font-mono uppercase tracking-wider pt-2 z-10 ${isFree ? 'text-[#666666]' : 'text-zinc-950'}`}>
               CERTIFICATE No. {certificate.certId || certId}
             </div>
           </div>
 
           {/* Center Main Content */}
-          <div className="text-center my-8">
+          <div className="text-center my-8 z-10 relative">
             <div className="text-sm font-bold uppercase tracking-[0.25em] text-zinc-400 mb-3 font-sans">
               СЕРТИФИКАТ О ЗАВЕРШЕНИИ КУРСА
             </div>
-            <div className="w-16 h-[2.5px] bg-zinc-900 mx-auto mb-6"></div>
+            <div className={`w-16 h-[2.5px] mx-auto mb-6 ${isFree ? 'bg-[#666666]' : 'bg-zinc-900'}`}></div>
 
-            <div className="text-sm font-semibold text-zinc-800 mb-3">
+            <div className={`text-sm font-semibold mb-3 ${isFree ? 'text-[#666666]' : 'text-zinc-800'}`}>
               Этот сертификат вручается
             </div>
 
-            <div className="text-4xl sm:text-5xl font-extrabold text-zinc-950 font-clash mb-4 tracking-tight">
+            <div className={`text-4xl sm:text-5xl font-extrabold font-clash mb-4 tracking-tight ${isFree ? 'text-[#666666]' : 'text-zinc-950'}`}>
               {resolvedUserName}
             </div>
 
-            <div className="text-sm font-semibold text-zinc-800 mb-3">
+            <div className={`text-sm font-semibold mb-3 ${isFree ? 'text-[#666666]' : 'text-zinc-800'}`}>
               за успешное завершение курса
             </div>
 
-            <div className="text-2xl sm:text-3xl font-extrabold text-zinc-950 max-w-4xl mx-auto mb-5 leading-snug font-clash">
+            <div className={`text-2xl sm:text-3xl font-extrabold max-w-4xl mx-auto mb-5 leading-snug font-clash ${isFree ? 'text-[#666666]' : 'text-zinc-950'}`}>
               «{cleanCourseName}»
             </div>
 
             <div className="text-sm font-semibold text-zinc-400 tracking-wide">
-              Пройдено модулей: {modulesCount} &middot; Общее время обучения: {hoursLearned} часа &middot; Уровень: LVL {userLevel}
+              Пройдено модулей: {modulesCount} {isFree ? '' : `· Общее время обучения: ${hoursLearned} часа `} &middot; Уровень: LVL {userLevel}
             </div>
           </div>
 
           {/* Bottom 3 Columns */}
-          <div className="grid grid-cols-3 items-end pb-2 border-t border-zinc-100 pt-6">
+          <div className="grid grid-cols-3 items-end pb-2 border-t border-zinc-100 pt-6 z-10 relative">
             {/* Left */}
             <div className="text-left">
-              <div className="text-sm font-bold text-zinc-950 border-b-2 border-zinc-950 inline-block pb-0.5 mb-1.5">
+              <div className={`text-sm font-bold border-b-2 inline-block pb-0.5 mb-1.5 ${isFree ? 'text-[#666666] border-[#666666]' : 'text-zinc-950 border-zinc-950'}`}>
                 Методология и сборка:
               </div>
-              <div className="text-sm font-bold text-zinc-800">
+              <div className={`text-sm font-bold ${isFree ? 'text-[#666666]' : 'text-zinc-800'}`}>
                 AI-assisted (Grok AI)
               </div>
             </div>
 
             {/* Center QR */}
-            <div className="flex flex-col items-center">
-              <div className="text-[11px] text-zinc-400 mb-1">qr-code 1</div>
-              <div className="w-28 h-28 border border-zinc-950 p-1.5 bg-white">
-                {qrCodeDataUrl && <img src={qrCodeDataUrl} alt="QR Code" className="w-full h-full object-contain" />}
+            {isFree ? (
+              <div className="flex flex-col items-center max-w-[250px] mx-auto text-center">
+                <div className="text-[14px] font-semibold text-[#8E8E93] leading-tight">
+                  QR-верификация и высокое качество PDF доступны в YourWay Pro
+                </div>
               </div>
-              <div className="text-xs font-semibold text-zinc-400 mt-1.5">Проверка подлинности</div>
-            </div>
+            ) : (
+              <div className="flex flex-col items-center">
+                <div className="text-[11px] text-zinc-400 mb-1">qr-code 1</div>
+                <div className="w-28 h-28 border border-zinc-950 p-1.5 bg-white">
+                  {qrCodeDataUrl && <img src={qrCodeDataUrl} alt="QR Code" className="w-full h-full object-contain" />}
+                </div>
+                <div className="text-xs font-semibold text-zinc-400 mt-1.5">Проверка подлинности</div>
+              </div>
+            )}
 
             {/* Right Date */}
             <div className="text-right">
-              <div className="text-sm font-bold text-zinc-950 border-b-2 border-zinc-950 inline-block pb-0.5 mb-1.5">
+              <div className={`text-sm font-bold border-b-2 inline-block pb-0.5 mb-1.5 ${isFree ? 'text-[#666666] border-[#666666]' : 'text-zinc-950 border-zinc-950'}`}>
                 {issuedAtDate}
               </div>
               <div className="text-sm font-semibold text-zinc-400">Дата выдачи</div>

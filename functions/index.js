@@ -828,6 +828,7 @@ exports.getAdminDashboardStats = onCall(async (request) => {
 const QRCode = require("qrcode");
 const puppeteer = require("puppeteer");
 const { renderCertificateHtml } = require("./certificateTemplate.js");
+const { renderCertificateHtml: renderCertificateHtmlFree } = require("./certificateTemplateFree.js");
 
 exports.generateCertificate = onCall(
   {
@@ -895,6 +896,9 @@ exports.generateCertificate = onCall(
     // 3. Gather student profile info
     const userSnap = await db.collection("users").doc(userId).get();
     const userData = userSnap.exists ? userSnap.data() : {};
+    const subSnap = await db.collection("users").doc(userId).collection("subscription").doc("details").get();
+    const plan = subSnap.exists ? (subSnap.data().plan || "FREE") : "FREE";
+    const isFree = plan === "FREE";
     const userName = userData.displayName || userData.name || userData.email?.split("@")[0] || "Студент YourWay";
     const userXp = Number(userData.stats?.xp || userData.xp || 0);
     const userLevelInfo = calculateLevel(userXp);
@@ -929,7 +933,8 @@ exports.generateCertificate = onCall(
       year: "numeric",
     });
 
-    const htmlContent = renderCertificateHtml({
+    const renderFunc = isFree ? renderCertificateHtmlFree : renderCertificateHtml;
+    const htmlContent = renderFunc({
       userName,
       courseName: courseTitle,
       modulesCount,
@@ -968,12 +973,19 @@ exports.generateCertificate = onCall(
       const page = await browser.newPage();
       await page.setViewport({ width: 1473, height: 1079 });
       await page.setContent(htmlContent, { waitUntil: "networkidle0" });
-      pdfBuffer = await page.pdf({
-        format: "A4",
-        landscape: true,
-        printBackground: true,
-        margin: { top: 0, right: 0, bottom: 0, left: 0 },
-      });
+      if (isFree) {
+        pdfBuffer = await page.screenshot({
+          type: "png",
+          fullPage: true,
+        });
+      } else {
+        pdfBuffer = await page.pdf({
+          format: "A4",
+          landscape: true,
+          printBackground: true,
+          margin: { top: 0, right: 0, bottom: 0, left: 0 },
+        });
+      }
     } finally {
       if (browser) {
         await browser.close();
@@ -982,16 +994,19 @@ exports.generateCertificate = onCall(
 
     // 8. Upload to Firebase Storage
     const bucket = admin.storage().bucket();
-    const filePath = `certificates/${certId}.pdf`;
+    const fileExt = isFree ? "png" : "pdf";
+    const contentType = isFree ? "image/png" : "application/pdf";
+    const filePath = `certificates/${certId}.${fileExt}`;
     const fileRef = bucket.file(filePath);
 
     await fileRef.save(pdfBuffer, {
       metadata: {
-        contentType: "application/pdf",
+        contentType: contentType,
         metadata: {
           certId,
           userId,
           courseId,
+          tier: plan,
         },
       },
       public: true,
@@ -1016,6 +1031,7 @@ exports.generateCertificate = onCall(
       userLevel,
       issuedAt: admin.firestore.FieldValue.serverTimestamp(),
       fileUrl,
+      tier: plan,
     };
 
     await db.collection("certificates").doc(certId).set(certDoc);
