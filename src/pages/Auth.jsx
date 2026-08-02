@@ -126,6 +126,9 @@ export default function Auth({ type }) {
 
   const title = isLogin ? getGreeting() : t('auth.createAccount');
   const subtitle = isLogin ? t('auth.loginSubtitle') : t('auth.registerSubtitle');
+  const altText = isLogin ? t('auth.noAccount') : t('auth.haveAccount');
+  const altLink = isLogin ? '/register' : '/login';
+  const altLinkText = isLogin ? t('auth.signUp') : t('auth.signIn');
 
   const handleNextStep = () => {
     setError('');
