@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import UserAvatar from './UserAvatar.jsx';
 import { 
   Bell, 
   Settings, 
@@ -92,7 +93,19 @@ export default function Topbar() {
         }
       }
     });
-    return () => unsubscribe();
+    
+    const handleProfileUpdated = (e) => {
+      if (e.detail) {
+        setProfile(e.detail);
+      }
+    };
+    
+    window.addEventListener('profileUpdated', handleProfileUpdated);
+    
+    return () => {
+      unsubscribe();
+      window.removeEventListener('profileUpdated', handleProfileUpdated);
+    };
   }, []);
 
   // Listen for unread support tickets
@@ -287,11 +300,18 @@ export default function Topbar() {
           <div className="relative">
             <button 
               onClick={() => { setShowProfileMenu(!showProfileMenu); setShowNotifications(false); }}
-              className="w-7 h-7 rounded-full bg-surface-container border border-outline flex items-center justify-center text-on-surface font-semibold text-xs font-mono hover:border-[rgba(255,255,255,0.3)] transition-colors select-none relative"
+              className="relative rounded-full hover:opacity-80 transition-opacity"
             >
-              {userInitial}
+              <UserAvatar 
+                photoURL={profile?.photoURL}
+                firstName={profile?.firstName}
+                lastName={profile?.lastName}
+                email={userEmail}
+                avatarColor={profile?.avatarColor}
+                className="w-8 h-8 text-xs border border-outline hover:border-primary/50"
+              />
               {hasUnreadTickets && (
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-primary rounded-full border-[2px] border-background" />
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-primary rounded-full border-[2px] border-background z-10" />
               )}
             </button>
 

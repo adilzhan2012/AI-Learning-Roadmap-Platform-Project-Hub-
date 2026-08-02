@@ -22,6 +22,7 @@ import { callGroqWithRetry, getUserCourses, getUserStats } from '../services/cou
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import { PLAN_LIMITS } from '../constants/planLimits.js';
 import ReactMarkdown from 'react-markdown';
+import UserAvatar from '../components/UserAvatar.jsx';
 import UpgradeModal from '../components/shared/UpgradeModal.jsx';
 import { t } from '../i18n.js';
 
@@ -460,9 +461,20 @@ INSTRUCTIONS:
                 className={`flex gap-4 max-w-[85%] ${msg.role === 'user' ? 'ml-auto flex-row-reverse' : ''}`}
               >
                 {/* Avatar */}
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm ${msg.role === 'user' ? 'bg-primary text-on-primary' : 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-500'}`}>
-                  {msg.role === 'user' ? <User className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
-                </div>
+                {msg.role === 'user' ? (
+                  <UserAvatar 
+                    photoURL={profile.photoURL}
+                    firstName={profile.firstName}
+                    lastName={profile.lastName}
+                    email={user?.email}
+                    avatarColor={profile.avatarColor}
+                    className="w-8 h-8 shadow-sm text-xs"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm bg-indigo-500/10 border border-indigo-500/20 text-indigo-500">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                )}
 
                 {/* Bubble */}
                 <div className={`p-4 rounded-2xl text-sm leading-relaxed border ${msg.role === 'user' ? 'bg-primary text-on-primary border-primary rounded-tr-none' : 'bg-surface border-outline-variant/60 rounded-tl-none text-on-surface shadow-sm'}`}>

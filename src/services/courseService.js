@@ -619,7 +619,7 @@ export async function updateUserStats(userId, statsUpdates) {
 }
 
 export async function updateUserProfile(userId, profileData) {
-  const ALLOWED_FIELDS = ['firstName', 'lastName', 'username', 'displayName', 'bio', 'avatarUrl', 'locale', 'theme'];
+  const ALLOWED_FIELDS = ['firstName', 'lastName', 'username', 'displayName', 'bio', 'avatarUrl', 'photoURL', 'avatarColor', 'locale', 'theme'];
   const sanitized = {};
   for (const key of ALLOWED_FIELDS) {
     if (profileData[key] !== undefined) {

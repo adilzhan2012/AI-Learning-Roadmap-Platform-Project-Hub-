@@ -116,6 +116,8 @@ export default function Leagues({ embedded = false }) {
                 id: docSnap.id,
                 name: data.username || data.firstName || 'Learner',
                 avatar: (data.username || data.firstName || 'L').charAt(0).toUpperCase(),
+                photoURL: data.photoURL,
+                avatarColor: data.avatarColor,
                 weeklyXP: data.weeklyXP || 0,
                 currentLeague: data.currentLeague || 'silicon',
                 isCurrentUser: false
@@ -209,6 +211,8 @@ export default function Leagues({ embedded = false }) {
         id: 'current-user',
         name: stats?.username || stats?.firstName || 'Learner',
         avatar: (stats?.username || stats?.firstName || 'L').charAt(0).toUpperCase(),
+        photoURL: stats?.photoURL,
+        avatarColor: stats?.avatarColor,
         weeklyXP: stats?.weeklyXP || 0,
         currentLeague: activeUserLeague,
         isCurrentUser: true
@@ -336,13 +340,16 @@ export default function Leagues({ embedded = false }) {
                           </span>
 
                           {/* Avatar */}
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border ${
-                            item.isCurrentUser
-                              ? 'bg-primary text-on-primary border-primary'
-                              : 'bg-surface-container-high text-on-surface border-outline'
-                          }`}>
-                            {item.avatar}
-                          </div>
+                          <UserAvatar 
+                            photoURL={item.photoURL}
+                            firstName={item.name}
+                            avatarColor={item.avatarColor}
+                            className={`w-8 h-8 text-xs font-bold border ${
+                              item.isCurrentUser
+                                ? 'border-primary shadow-[0_0_10px_rgba(var(--primary),0.3)]'
+                                : 'border-outline'
+                            }`}
+                          />
 
                           {/* Name */}
                           <span className={`text-xs ${

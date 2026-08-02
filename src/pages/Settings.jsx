@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Bell, Shield, Paintbrush, LogOut, CheckCircle2, Loader2, Sparkles, Key, AlertTriangle, X, Globe, FileText, ChevronRight } from 'lucide-react';
-import { auth, signOut, db, functions } from '../firebase.js';
+import { auth, signOut, db, functions, storage } from '../firebase.js';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import UserAvatar from '../components/UserAvatar.jsx';
 import { onAuthStateChanged, sendPasswordResetEmail } from 'firebase/auth';
 import { doc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
@@ -33,6 +35,9 @@ export default function Settings() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [username, setUsername] = useState('');
+  const [photoURL, setPhotoURL] = useState('');
+  const [avatarColor, setAvatarColor] = useState('');
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   
   // App State
   const [notifications, setNotifications] = useState(() => localStorage.getItem('prefs_notifications') !== 'false');
@@ -65,6 +70,8 @@ export default function Settings() {
           setFirstName(stats.firstName || '');
           setLastName(stats.lastName || '');
           setUsername(stats.username || '');
+          setPhotoURL(stats.photoURL || '');
+          setAvatarColor(stats.avatarColor || '');
         } catch (e) {
           console.error("Error loading profile:", e);
         } finally {
@@ -77,6 +84,83 @@ export default function Settings() {
     return () => unsubscribe();
   }, [navigate]);
 
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setUploadingAvatar(true);
+    setErrorMsg('');
+    try {
+      const bitmap = await createImageBitmap(file);
+      
+      const MAX_SIZE = 500;
+      const scale = Math.min(MAX_SIZE / bitmap.width, MAX_SIZE / bitmap.height, 1);
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width * scale;
+      canvas.height = bitmap.height * scale;
+      
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      
+      const blob = await new Promise((resolve) => {
+        canvas.toBlob(resolve, 'image/jpeg', 0.8);
+      });
+      
+      const avatarRef = ref(storage, `avatars/${user.uid}.jpg`);
+      await uploadBytes(avatarRef, blob);
+      const url = await getDownloadURL(avatarRef);
+      
+      setPhotoURL(url);
+      
+      // Notify Topbar
+      const cached = JSON.parse(localStorage.getItem('cached_profile') || '{}');
+      const updatedProfile = { ...cached, photoURL: url };
+      localStorage.setItem('cached_profile', JSON.stringify(updatedProfile));
+      window.dispatchEvent(new CustomEvent('profileUpdated', { detail: updatedProfile }));
+      
+      setSuccessMsg(t('settings.profile.saved') || 'Profile saved successfully!');
+    } catch (err) {
+      console.error(err);
+      setErrorMsg('Failed to upload image. Please try again.');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+  
+  const handleRemoveAvatar = async () => {
+    if (!photoURL) return;
+    setUploadingAvatar(true);
+    try {
+      const avatarRef = ref(storage, `avatars/${user.uid}.jpg`);
+      await deleteObject(avatarRef).catch(e => console.log('Ignore if not exists', e));
+      setPhotoURL('');
+      
+      // Notify Topbar
+      const cached = JSON.parse(localStorage.getItem('cached_profile') || '{}');
+      const updatedProfile = { ...cached, photoURL: '' };
+      localStorage.setItem('cached_profile', JSON.stringify(updatedProfile));
+      window.dispatchEvent(new CustomEvent('profileUpdated', { detail: updatedProfile }));
+      
+      setSuccessMsg('Avatar removed');
+    } catch(e) {
+      console.error(e);
+      setErrorMsg('Failed to remove avatar');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const AVATAR_COLORS = [
+    'bg-gradient-to-br from-indigo-500 to-purple-600',
+    'bg-gradient-to-br from-emerald-500 to-teal-600',
+    'bg-gradient-to-br from-rose-500 to-pink-600',
+    'bg-gradient-to-br from-amber-500 to-orange-600',
+    'bg-gradient-to-br from-blue-500 to-cyan-600',
+    'bg-gradient-to-br from-fuchsia-500 to-violet-600',
+    '#252525',
+    '#18181b',
+  ];
+
   const handleSaveChanges = async (e) => {
     e.preventDefault();
     if (!user) return;
@@ -85,7 +169,14 @@ export default function Settings() {
     setSuccessMsg('');
 
     try {
-      await updateUserProfile(user.uid, { firstName, lastName, username });
+      await updateUserProfile(user.uid, { firstName, lastName, username, photoURL, avatarColor });
+      
+      // Update local storage and dispatch event to notify Topbar
+      const cached = JSON.parse(localStorage.getItem('cached_profile') || '{}');
+      const updatedProfile = { ...cached, firstName, lastName, username, photoURL, avatarColor };
+      localStorage.setItem('cached_profile', JSON.stringify(updatedProfile));
+      window.dispatchEvent(new CustomEvent('profileUpdated', { detail: updatedProfile }));
+      
       setSuccessMsg(t('settings.profile.saved'));
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err) {
@@ -225,13 +316,57 @@ export default function Settings() {
                       )}
                     </AnimatePresence>
 
-                    <div className="flex items-center gap-4 md:gap-6">
-                      <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-on-surface text-xl md:text-2xl font-bold shadow-lg shrink-0">
-                        {userInitial}{lastName ? lastName.charAt(0).toUpperCase() : ''}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-6 mb-8 p-6 bg-surface-container rounded-2xl border border-outline/50">
+                      <div className="relative group shrink-0">
+                        <UserAvatar 
+                          photoURL={photoURL}
+                          firstName={firstName}
+                          lastName={lastName}
+                          email={user?.email}
+                          avatarColor={avatarColor}
+                          className="w-24 h-24 text-3xl shadow-xl"
+                        />
+                        {uploadingAvatar && (
+                          <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center backdrop-blur-sm">
+                            <Loader2 className="w-6 h-6 text-white animate-spin" />
+                          </div>
+                        )}
+                        <label className="absolute bottom-0 right-0 p-2 bg-primary text-on-primary rounded-full cursor-pointer hover:scale-105 transition-transform shadow-lg z-10" title="Upload Photo">
+                          <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploadingAvatar} />
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        </label>
                       </div>
-                      <div>
-                        <span className="text-sm font-bold text-on-surface-variant block">{t('settings.profile.avatarTitle') || 'Profile Initial Avatar'}</span>
-                        <p className="text-xs text-on-surface-variant mt-1">{t('settings.profile.avatarDesc') || 'Generated dynamically from your first and last name.'}</p>
+                      <div className="flex-1">
+                        <h3 className="text-sm font-bold text-on-surface mb-1">Ваш Аватар</h3>
+                        <p className="text-xs text-on-surface-variant mb-4 max-w-sm">
+                          Загрузите фото, чтобы персонализировать профиль. Максимальный размер 2MB. Если фото не загружено, выберите цвет фона для инициалов.
+                        </p>
+                        
+                        <div className="flex flex-wrap items-center gap-3">
+                          {photoURL ? (
+                            <button 
+                              type="button" 
+                              onClick={handleRemoveAvatar}
+                              disabled={uploadingAvatar}
+                              className="text-xs font-semibold px-4 py-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-xl transition-colors"
+                            >
+                              Удалить фото
+                            </button>
+                          ) : (
+                            <div className="flex flex-wrap gap-2">
+                              {AVATAR_COLORS.map((color, i) => (
+                                <button
+                                  key={i}
+                                  type="button"
+                                  onClick={() => setAvatarColor(color)}
+                                  className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${color.startsWith('#') ? '' : color} ${avatarColor === color || (!avatarColor && i === 0) ? 'border-primary scale-110' : 'border-transparent'}`}
+                                  style={color.startsWith('#') ? { backgroundColor: color } : {}}
+                                  title="Change avatar color"
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
 
