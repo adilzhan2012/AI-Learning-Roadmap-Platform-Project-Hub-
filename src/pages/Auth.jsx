@@ -582,9 +582,9 @@ export default function Auth({ type }) {
                     <input type="checkbox" id="terms" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800" />
                     <label htmlFor="terms" className="text-xs text-gray-600 dark:text-gray-400 leading-tight">
                       {locale === 'ru' ? 'Создавая аккаунт, вы соглашаетесь с нашими ' : 'By creating an account, you agree to our '}
-                      <button type="button" onClick={() => setActiveModal('terms')} className="text-blue-600 hover:underline">{locale === 'ru' ? 'Условиями обслуживания' : 'Terms of Service'}</button>,{' '}
-                      <button type="button" onClick={() => setActiveModal('privacy')} className="text-blue-600 hover:underline">{locale === 'ru' ? 'Политикой конфиденциальности' : 'Privacy Policy'}</button>{locale === 'ru' ? ' и ' : ' and '}
-                      <button type="button" onClick={() => setActiveModal('cookie')} className="text-blue-600 hover:underline">{locale === 'ru' ? 'Политикой использования файлов cookie' : 'Cookie Policy'}</button>.
+                      <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModal('terms'); }} className="text-blue-600 hover:underline">{locale === 'ru' ? 'Условиями обслуживания' : 'Terms of Service'}</button>,{' '}
+                      <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModal('privacy'); }} className="text-blue-600 hover:underline">{locale === 'ru' ? 'Политикой конфиденциальности' : 'Privacy Policy'}</button>{locale === 'ru' ? ' и ' : ' and '}
+                      <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModal('cookie'); }} className="text-blue-600 hover:underline">{locale === 'ru' ? 'Политикой использования файлов cookie' : 'Cookie Policy'}</button>.
                     </label>
                   </div>
 
@@ -766,7 +766,7 @@ export default function Auth({ type }) {
       <LegalDocModal 
         isOpen={!!activeModal} 
         onClose={() => setActiveModal(null)} 
-        type={activeModal || 'terms'} 
+        docKey={activeModal || 'terms'} 
       />
     </div>
   );

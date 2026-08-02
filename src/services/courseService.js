@@ -509,10 +509,6 @@ export async function getUserStats(userId, additionalData = {}) {
     if (additionalData.referredBy) defaultProfile.referredBy = additionalData.referredBy;
     if (additionalData.email) defaultProfile.email = additionalData.email;
     
-    // Add default admin fields
-    defaultProfile.isPremium = false;
-    defaultProfile.isBanned = false;
-    
     // Use merge to prevent overwriting concurrently created profiles
     await setDoc(userRef, defaultProfile, { merge: true });
     data = defaultProfile;
@@ -551,22 +547,17 @@ export async function getUserStats(userId, additionalData = {}) {
     }
   }
   
-  // Ensure default values are populated in the returned object for UI stability
   if (data) {
     if (!data.firstName) data.firstName = 'Learner';
     if (!data.lastName) data.lastName = '';
     if (!data.username) data.username = '';
-  }
-  
-  // Backfill missing fields for old users
-  let needsUpdate = false;
-  const updates = {};
-  if (data.xp === undefined) { updates.xp = 0; needsUpdate = true; data.xp = 0; }
-  if (data.level === undefined) { updates.level = 1; needsUpdate = true; data.level = 1; }
-  if (data.totalXPEarned === undefined) { updates.totalXPEarned = 0; needsUpdate = true; data.totalXPEarned = 0; }
-  
-  if (needsUpdate) {
-    await updateDoc(userRef, updates);
+    
+    // Provide default values in memory (since we can't write these to Firestore from client)
+    if (data.xp === undefined) data.xp = 0;
+    if (data.level === undefined) data.level = 1;
+    if (data.totalXPEarned === undefined) data.totalXPEarned = 0;
+    if (data.isPremium === undefined) data.isPremium = false;
+    if (data.isBanned === undefined) data.isBanned = false;
   }
 
   // Timezone-aware streak calculator logic
@@ -594,8 +585,11 @@ export async function getUserStats(userId, additionalData = {}) {
       await updateDoc(userRef, { streakDays: increment(1), lastActiveDate: now.toISOString() });
       data.streakDays += 1;
     } else {
-      // Active again on the same calendar day; update timestamp but keep streak
-      await updateDoc(userRef, { lastActiveDate: now.toISOString() });
+      // Active again on the same calendar day; update timestamp only if last activity was > 1 hour ago
+      // This saves Firebase write costs if the user refreshes the page multiple times
+      if (now - lastActive > 60 * 60 * 1000) {
+        await updateDoc(userRef, { lastActiveDate: now.toISOString() });
+      }
     }
   } else {
     await updateDoc(userRef, { lastActiveDate: now.toISOString(), streakDays: 1 });
