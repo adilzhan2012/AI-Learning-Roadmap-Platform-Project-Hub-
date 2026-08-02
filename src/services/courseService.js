@@ -541,6 +541,17 @@ export async function getUserStats(userId, additionalData = {}) {
         updates.email = additionalData.email;
         data.email = additionalData.email;
       }
+      
+      // Update avatar details if provided (even if they already exist, they might be overwriting default Google avatar)
+      if (additionalData.avatarColor !== undefined) {
+        updates.avatarColor = additionalData.avatarColor;
+        data.avatarColor = additionalData.avatarColor;
+      }
+      if (additionalData.photoURL !== undefined) {
+        updates.photoURL = additionalData.photoURL;
+        data.photoURL = additionalData.photoURL;
+      }
+
       if (Object.keys(updates).length > 0) {
         await updateDoc(userRef, updates);
       }

@@ -4,6 +4,7 @@ import { User, Bell, Shield, Paintbrush, LogOut, CheckCircle2, Loader2, Sparkles
 import { auth, signOut, db, functions, storage } from '../firebase.js';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import UserAvatar from '../components/UserAvatar.jsx';
+import ImageCropperModal from '../components/shared/ImageCropperModal.jsx';
 import { onAuthStateChanged, sendPasswordResetEmail } from 'firebase/auth';
 import { doc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
@@ -37,6 +38,10 @@ export default function Settings() {
   const [username, setUsername] = useState('');
   const [photoURL, setPhotoURL] = useState('');
   const [avatarColor, setAvatarColor] = useState('');
+  
+  // Cropper State
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [rawImageSrc, setRawImageSrc] = useState(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   
   // App State
@@ -88,26 +93,22 @@ export default function Settings() {
     const file = e.target.files?.[0];
     if (!file) return;
     
+    // Clear the input value so selecting the same file again triggers onChange
+    e.target.value = null;
+    
+    const objectUrl = URL.createObjectURL(file);
+    setRawImageSrc(objectUrl);
+    setCropperOpen(true);
+  };
+  
+  const handleCropComplete = async (croppedBlob) => {
+    setCropperOpen(false);
+    setRawImageSrc(null);
     setUploadingAvatar(true);
     setErrorMsg('');
     try {
-      const bitmap = await createImageBitmap(file);
-      
-      const MAX_SIZE = 500;
-      const scale = Math.min(MAX_SIZE / bitmap.width, MAX_SIZE / bitmap.height, 1);
-      const canvas = document.createElement('canvas');
-      canvas.width = bitmap.width * scale;
-      canvas.height = bitmap.height * scale;
-      
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-      
-      const blob = await new Promise((resolve) => {
-        canvas.toBlob(resolve, 'image/jpeg', 0.8);
-      });
-      
       const avatarRef = ref(storage, `avatars/${user.uid}.jpg`);
-      await uploadBytes(avatarRef, blob);
+      await uploadBytes(avatarRef, croppedBlob);
       const url = await getDownloadURL(avatarRef);
       
       setPhotoURL(url);
@@ -605,6 +606,13 @@ export default function Settings() {
           )}
         </form>
       </div>
+
+      <ImageCropperModal
+        isOpen={cropperOpen}
+        onClose={() => { setCropperOpen(false); setRawImageSrc(null); }}
+        imageSrc={rawImageSrc}
+        onCropComplete={handleCropComplete}
+      />
 
       <AnimatePresence>
         {activeModal && (

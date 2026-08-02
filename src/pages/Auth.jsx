@@ -19,6 +19,7 @@ import { getUserStats } from '../services/courseService.js';
 import { t, useLocale } from '../i18n.js';
 import LegalDocModal from '../components/shared/LegalDocModal.jsx';
 import UserAvatar from '../components/UserAvatar.jsx';
+import ImageCropperModal from '../components/shared/ImageCropperModal.jsx';
 
 const AVATAR_COLORS = [
   'bg-gradient-to-br from-indigo-500 to-purple-600',
@@ -81,6 +82,8 @@ export default function Auth({ type }) {
   const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0]);
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [rawImageSrc, setRawImageSrc] = useState(null);
   
   const [authMethod, setAuthMethod] = useState('email'); // 'email' | 'google'
   const [googleUser, setGoogleUser] = useState(null);
@@ -172,9 +175,17 @@ export default function Auth({ type }) {
   const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setAvatarFile(file);
     const objectUrl = URL.createObjectURL(file);
-    setAvatarPreview(objectUrl);
+    setRawImageSrc(objectUrl);
+    setCropperOpen(true);
+  };
+
+  const handleCropComplete = (croppedBlob) => {
+    setAvatarFile(croppedBlob);
+    const previewUrl = URL.createObjectURL(croppedBlob);
+    setAvatarPreview(previewUrl);
+    setCropperOpen(false);
+    setRawImageSrc(null);
   };
 
   const finishRegistration = async (userObj) => {
@@ -767,6 +778,12 @@ export default function Auth({ type }) {
         isOpen={!!activeModal} 
         onClose={() => setActiveModal(null)} 
         docKey={activeModal || 'terms'} 
+      />
+      <ImageCropperModal
+        isOpen={cropperOpen}
+        onClose={() => { setCropperOpen(false); setRawImageSrc(null); }}
+        imageSrc={rawImageSrc}
+        onCropComplete={handleCropComplete}
       />
     </div>
   );
