@@ -1,13 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, ArrowLeft, Loader2, Mail, CheckCircle2, X } from 'lucide-react';
+import { ArrowLeft, Loader2, Mail, CheckCircle2, X, Eye, EyeOff, Upload, User, ArrowRight } from 'lucide-react';
 import Logo from '../components/shared/Logo.jsx';
-import { auth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from '../firebase.js';
-import { sendEmailVerification, updateProfile, sendPasswordResetEmail, onAuthStateChanged } from 'firebase/auth';
+import { 
+  auth, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  GoogleAuthProvider, 
+  signInWithPopup,
+  db,
+  storage
+} from '../firebase.js';
+import { sendEmailVerification, updateProfile, sendPasswordResetEmail, onAuthStateChanged, getAdditionalUserInfo } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getUserStats } from '../services/courseService.js';
 import { t, useLocale } from '../i18n.js';
 import LegalDocModal from '../components/shared/LegalDocModal.jsx';
+import UserAvatar from '../components/UserAvatar.jsx';
+
+const AVATAR_COLORS = [
+  'bg-gradient-to-br from-indigo-500 to-purple-600',
+  'bg-gradient-to-br from-emerald-500 to-teal-600',
+  'bg-gradient-to-br from-rose-500 to-pink-600',
+  'bg-gradient-to-br from-amber-500 to-orange-600',
+  'bg-gradient-to-br from-blue-500 to-cyan-600',
+  'bg-gradient-to-br from-fuchsia-500 to-violet-600',
+  '#252525',
+  '#18181b',
+];
 
 function getFriendlyErrorMessage(code) {
   switch (code) {
@@ -26,7 +48,7 @@ function getFriendlyErrorMessage(code) {
     case 'auth/operation-not-allowed':
       return t('auth.error.operationNotAllowed');
     default:
-      return t('auth.error.default');
+      return t('auth.error.default') || 'An error occurred. Please try again.';
   }
 }
 
@@ -44,27 +66,30 @@ export default function Auth({ type }) {
   const [searchParams] = useSearchParams();
   const referredBy = searchParams.get('ref');
 
+  // Form States
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [username, setUsername] = useState('');
+  
+  // Registration Wizard States
+  const [step, setStep] = useState(1);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0]);
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  
+  const [authMethod, setAuthMethod] = useState('email'); // 'email' | 'google'
+  const [googleUser, setGoogleUser] = useState(null);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [activeModal, setActiveModal] = useState(null); // 'terms' | 'privacy' | 'cookie' | null
-
-  // UI States for Modals
   const [showRegSuccess, setShowRegSuccess] = useState(false);
-  
-  React.useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (currentUser && !loading && !showRegSuccess) {
-        navigate('/dashboard');
-      }
-    });
-    return () => unsubscribe();
-  }, [loading, showRegSuccess, navigate]);
 
   // Password Reset States
   const [showResetModal, setShowResetModal] = useState(false);
@@ -72,6 +97,24 @@ export default function Auth({ type }) {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetError, setResetError] = useState('');
   const [resetSuccess, setResetSuccess] = useState(false);
+
+  useEffect(() => {
+    // Only auto-redirect if they are not in the middle of Google Registration
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser && !loading && !showRegSuccess && authMethod !== 'google') {
+        // Double check if user actually has a profile (to prevent redirecting new google users who refreshed)
+        try {
+          const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+          if (userDoc.exists()) {
+            navigate('/dashboard');
+          }
+        } catch(e) {
+          console.error(e);
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, [loading, showRegSuccess, authMethod, navigate]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -83,51 +126,175 @@ export default function Auth({ type }) {
 
   const title = isLogin ? getGreeting() : t('auth.createAccount');
   const subtitle = isLogin ? t('auth.loginSubtitle') : t('auth.registerSubtitle');
-  const submitText = isLogin ? t('auth.signIn') : t('auth.signUp');
-  const altText = isLogin ? t('auth.noAccount') : t('auth.haveAccount');
-  const altLink = isLogin ? '/register' : '/login';
-  const altLinkText = isLogin ? t('auth.signUp') : t('auth.signIn');
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleNextStep = () => {
     setError('');
-    
-    if (!isLogin && !agreed) {
-      setError(locale === 'ru' ? 'Вы должны согласиться с политиками для продолжения.' : 'You must agree to the policies to continue.');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
-        navigate('/dashboard');
-      } else {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-        
-        // Immediately update Firebase profile so UI doesn't show "Learner" and "L"
-        await updateProfile(user, { displayName: firstName.trim() });
-        
-        // Initialize user profile in Firestore
-        await getUserStats(user.uid, { firstName, lastName, username, referredBy, email });
-        
-        // Автоматически отправляем письмо для подтверждения
-        try {
-          auth.languageCode = locale === 'ru' ? 'ru' : 'en';
-          await sendEmailVerification(user);
-        } catch (e) {
-          console.error("Ошибка при отправке письма подтверждения:", e);
-        }
-        
-        // Показываем красивое модальное окно вместо alert
-        setShowRegSuccess(true);
+    if (step === 1) {
+      if (!firstName.trim() || !lastName.trim()) {
+        setError(locale === 'ru' ? 'Введите имя и фамилию' : 'Enter first and last name');
+        return;
       }
+      setStep(2);
+    } else if (step === 2) {
+      if (!email.trim() || !username.trim()) {
+        setError(locale === 'ru' ? 'Введите email и никнейм' : 'Enter email and username');
+        return;
+      }
+      if (!email.includes('@')) {
+        setError(locale === 'ru' ? 'Неверный формат email' : 'Invalid email format');
+        return;
+      }
+      setStep(3);
+    } else if (step === 3) {
+      if (!password) {
+        setError(locale === 'ru' ? 'Введите пароль' : 'Enter password');
+        return;
+      }
+      if (password !== confirmPassword) {
+        setError(locale === 'ru' ? 'Пароли не совпадают' : 'Passwords do not match');
+        return;
+      }
+      if (password.length < 6) {
+        setError(locale === 'ru' ? 'Пароль должен содержать минимум 6 символов' : 'Password must be at least 6 characters');
+        return;
+      }
+      if (!agreed) {
+        setError(locale === 'ru' ? 'Вы должны согласиться с политиками' : 'You must agree to the policies');
+        return;
+      }
+      setStep(4);
+    }
+  };
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarFile(file);
+    const objectUrl = URL.createObjectURL(file);
+    setAvatarPreview(objectUrl);
+  };
+
+  const finishRegistration = async (userObj) => {
+    try {
+      let finalPhotoUrl = '';
+      
+      if (avatarFile && userObj) {
+        const bitmap = await createImageBitmap(avatarFile);
+        const MAX_SIZE = 500;
+        const scale = Math.min(MAX_SIZE / bitmap.width, MAX_SIZE / bitmap.height, 1);
+        const canvas = document.createElement('canvas');
+        canvas.width = bitmap.width * scale;
+        canvas.height = bitmap.height * scale;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+        const avatarRef = ref(storage, `avatars/${userObj.uid}.jpg`);
+        await uploadBytes(avatarRef, blob);
+        finalPhotoUrl = await getDownloadURL(avatarRef);
+      }
+
+      await updateProfile(userObj, { displayName: firstName.trim() });
+      
+      await getUserStats(userObj.uid, { 
+        firstName, 
+        lastName, 
+        username, 
+        referredBy, 
+        email,
+        avatarColor: finalPhotoUrl ? '' : avatarColor,
+        photoURL: finalPhotoUrl
+      });
+      
+      if (authMethod === 'email') {
+        auth.languageCode = locale === 'ru' ? 'ru' : 'en';
+        await sendEmailVerification(userObj).catch(e => console.error(e));
+      }
+
+      setShowRegSuccess(true);
     } catch (err) {
       console.error(err);
       setError(getFriendlyErrorMessage(err.code));
-    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault();
+    setError('');
+    
+    if (isLogin) {
+      setLoading(true);
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        navigate('/dashboard');
+      } catch (err) {
+        console.error(err);
+        setError(getFriendlyErrorMessage(err.code));
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Email Registration Final Submit
+    setLoading(true);
+    try {
+      let userObj = googleUser;
+      if (authMethod === 'email') {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        userObj = userCredential.user;
+      }
+      await finishRegistration(userObj);
+    } catch (err) {
+      console.error(err);
+      setError(getFriendlyErrorMessage(err.code));
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleAuth = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const { isNewUser } = getAdditionalUserInfo(result);
+      
+      if (isNewUser) {
+        // User created, but we need extra info (username & avatar)
+        setGoogleUser(result.user);
+        setAuthMethod('google');
+        
+        const nameParts = (result.user.displayName || '').split(' ');
+        setFirstName(nameParts[0] || '');
+        setLastName(nameParts.slice(1).join(' ') || '');
+        setEmail(result.user.email || '');
+        
+        // Skip steps 1, 2, 3 and ask for username and avatar in a special step 4
+        setStep(4); 
+        setLoading(false);
+      } else {
+        // Ensure user doc exists
+        const userDoc = await getDoc(doc(db, 'users', result.user.uid));
+        if (!userDoc.exists()) {
+          // Edge case: Auth exists but Firestore profile failed during previous registration
+          setGoogleUser(result.user);
+          setAuthMethod('google');
+          const nameParts = (result.user.displayName || '').split(' ');
+          setFirstName(nameParts[0] || '');
+          setLastName(nameParts.slice(1).join(' ') || '');
+          setEmail(result.user.email || '');
+          setStep(4);
+          setLoading(false);
+        } else {
+          navigate('/dashboard');
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
+        setError(getFriendlyErrorMessage(err.code));
+      }
       setLoading(false);
     }
   };
@@ -150,7 +317,6 @@ export default function Auth({ type }) {
       setResetLoading(false);
     }
   };
-
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 dark:bg-background p-6 relative overflow-hidden">
@@ -185,7 +351,7 @@ export default function Auth({ type }) {
         <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-on-surface mb-2">{title}</h2>
         <p className="text-center text-gray-500 dark:text-gray-400 mb-8">{subtitle}</p>
         
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={isLogin ? handleSubmit : (e) => e.preventDefault()} className="space-y-5">
           <AnimatePresence mode="wait">
             {error && (
               <motion.div 
@@ -199,177 +365,339 @@ export default function Auth({ type }) {
             )}
           </AnimatePresence>
           
-          {!isLogin && (
-            <div className="grid grid-cols-2 gap-4">
+          {isLogin ? (
+            <>
               <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('settings.profile.firstName')}</label>
-                <input type="text" id="firstName" required={!isLogin}
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
+                <label test-id="email-label" htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('auth.emailLabel')}</label>
+                <input type="email" id="email" required 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                  placeholder={locale === 'ru' ? 'Иван' : 'John'} />
+                  placeholder="you@example.com" />
               </div>
+              
               <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('settings.profile.lastName')}</label>
-                <input type="text" id="lastName" required={!isLogin}
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                  placeholder={locale === 'ru' ? 'Иванов' : 'Doe'} />
+                <div className="flex items-center justify-between mb-1">
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('auth.passwordLabel')}</label>
+                  <button 
+                    type="button" 
+                    onClick={() => setShowResetModal(true)}
+                    className="text-xs font-medium text-blue-600 hover:text-blue-500 transition-colors"
+                  >
+                    {t('auth.forgotPassword')}
+                  </button>
+                </div>
+                <div className="relative">
+                  <input 
+                    type={showPassword ? "text" : "password"}
+                    id="password" required 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all pr-12"
+                    placeholder="••••••••" 
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
-          
-          {!isLogin && (
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('settings.profile.username')}</label>
-              <input type="text" id="username" required={!isLogin}
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                placeholder="ivan_cool" />
-            </div>
-          )}
+              
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="w-full py-3.5 px-4 bg-primary hover:bg-primary/90 text-on-primary rounded-xl font-bold transition-all shadow-lg shadow-primary/30 hover:shadow-primary/40 active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none flex justify-center items-center h-[52px]"
+              >
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : t('auth.signIn')}
+              </button>
 
-          <div>
-            <label test-id="email-label" htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('auth.emailLabel')}</label>
-            <input type="email" id="email" required 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-              placeholder="you@example.com" />
-          </div>
-          
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('auth.passwordLabel')}</label>
-              {isLogin && (
-                <button 
-                  type="button" 
-                  onClick={() => setShowResetModal(true)}
-                  className="text-xs font-medium text-blue-600 hover:text-blue-500 transition-colors"
-                >
-                  {locale === 'ru' ? 'Забыли пароль?' : 'Forgot password?'}
-                </button>
+              <div className="flex items-center my-6">
+                <div className="flex-1 border-t border-gray-300 dark:border-gray-700"></div>
+                <span className="px-4 text-xs text-gray-500 uppercase tracking-widest">{locale === 'ru' ? 'Или' : 'Or'}</span>
+                <div className="flex-1 border-t border-gray-300 dark:border-gray-700"></div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleGoogleAuth}
+                disabled={loading}
+                className="w-full py-3.5 px-4 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-white rounded-xl font-medium transition-all shadow-sm active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none flex justify-center items-center gap-3 h-[52px]"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+                {locale === 'ru' ? 'Войти через Google' : 'Continue with Google'}
+              </button>
+            </>
+          ) : (
+            // REGISTRATION WIZARD
+            <div className="space-y-4">
+              {/* Progress Steps */}
+              <div className="flex items-center justify-between mb-6">
+                {[1, 2, 3, 4].map(s => (
+                  <div key={s} className={`h-2 flex-1 mx-1 rounded-full ${s <= step ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-800'} transition-colors duration-300`} />
+                ))}
+              </div>
+
+              {step === 1 && (
+                <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="space-y-4">
+                  <div>
+                    <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('settings.profile.firstName')}</label>
+                    <input type="text" id="firstName" 
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      placeholder={locale === 'ru' ? 'Иван' : 'John'} 
+                      onKeyDown={(e) => e.key === 'Enter' && handleNextStep()}
+                      autoFocus
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('settings.profile.lastName')}</label>
+                    <input type="text" id="lastName"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      placeholder={locale === 'ru' ? 'Иванов' : 'Doe'} 
+                      onKeyDown={(e) => e.key === 'Enter' && handleNextStep()}
+                    />
+                  </div>
+                  
+                  <button 
+                    type="button" 
+                    onClick={handleNextStep}
+                    className="w-full py-3.5 px-4 bg-primary hover:bg-primary/90 text-on-primary rounded-xl font-bold transition-all shadow-lg shadow-primary/30 active:scale-[0.98] flex justify-center items-center h-[52px] mt-4"
+                  >
+                    {locale === 'ru' ? 'Далее' : 'Next'} <ArrowRight className="w-5 h-5 ml-2" />
+                  </button>
+
+                  <div className="flex items-center my-6">
+                    <div className="flex-1 border-t border-gray-300 dark:border-gray-700"></div>
+                    <span className="px-4 text-xs text-gray-500 uppercase tracking-widest">{locale === 'ru' ? 'Или' : 'Or'}</span>
+                    <div className="flex-1 border-t border-gray-300 dark:border-gray-700"></div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleGoogleAuth}
+                    disabled={loading}
+                    className="w-full py-3.5 px-4 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-white rounded-xl font-medium transition-all shadow-sm active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none flex justify-center items-center gap-3 h-[52px]"
+                  >
+                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                      <>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                        </svg>
+                        {locale === 'ru' ? 'Продолжить с Google' : 'Continue with Google'}
+                      </>
+                    )}
+                  </button>
+                </motion.div>
+              )}
+
+              {step === 2 && (
+                <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="space-y-4">
+                  <div>
+                    <label test-id="email-label" htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('auth.emailLabel')}</label>
+                    <input type="email" id="email" 
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      placeholder="you@example.com" 
+                      onKeyDown={(e) => e.key === 'Enter' && handleNextStep()}
+                      autoFocus
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('settings.profile.username')}</label>
+                    <input type="text" id="username" 
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      placeholder="ivan_cool" 
+                      onKeyDown={(e) => e.key === 'Enter' && handleNextStep()}
+                    />
+                  </div>
+                  <div className="flex gap-3 pt-4">
+                    <button type="button" onClick={() => setStep(1)} className="py-3.5 px-4 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl font-medium transition-all active:scale-[0.98]">
+                      {locale === 'ru' ? 'Назад' : 'Back'}
+                    </button>
+                    <button type="button" onClick={handleNextStep} className="flex-1 py-3.5 px-4 bg-primary hover:bg-primary/90 text-on-primary rounded-xl font-bold transition-all shadow-lg active:scale-[0.98] flex justify-center items-center">
+                      {locale === 'ru' ? 'Далее' : 'Next'} <ArrowRight className="w-5 h-5 ml-2" />
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
+              {step === 3 && (
+                <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="space-y-4">
+                  <div>
+                    <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('auth.passwordLabel')}</label>
+                    <div className="relative">
+                      <input 
+                        type={showPassword ? "text" : "password"}
+                        id="password" 
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all pr-12"
+                        placeholder="••••••••" 
+                        autoFocus
+                      />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{locale === 'ru' ? 'Повторите пароль' : 'Confirm Password'}</label>
+                    <div className="relative">
+                      <input 
+                        type={showConfirmPassword ? "text" : "password"}
+                        id="confirmPassword" 
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all pr-12"
+                        placeholder="••••••••" 
+                        onKeyDown={(e) => e.key === 'Enter' && handleNextStep()}
+                      />
+                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 mt-4">
+                    <input type="checkbox" id="terms" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800" />
+                    <label htmlFor="terms" className="text-xs text-gray-600 dark:text-gray-400 leading-tight">
+                      {locale === 'ru' ? 'Создавая аккаунт, вы соглашаетесь с нашими ' : 'By creating an account, you agree to our '}
+                      <button type="button" onClick={() => setActiveModal('terms')} className="text-blue-600 hover:underline">{locale === 'ru' ? 'Условиями обслуживания' : 'Terms of Service'}</button>,{' '}
+                      <button type="button" onClick={() => setActiveModal('privacy')} className="text-blue-600 hover:underline">{locale === 'ru' ? 'Политикой конфиденциальности' : 'Privacy Policy'}</button>{locale === 'ru' ? ' и ' : ' and '}
+                      <button type="button" onClick={() => setActiveModal('cookie')} className="text-blue-600 hover:underline">{locale === 'ru' ? 'Политикой использования файлов cookie' : 'Cookie Policy'}</button>.
+                    </label>
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <button type="button" onClick={() => setStep(2)} className="py-3.5 px-4 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl font-medium transition-all active:scale-[0.98]">
+                      {locale === 'ru' ? 'Назад' : 'Back'}
+                    </button>
+                    <button type="button" onClick={handleNextStep} className="flex-1 py-3.5 px-4 bg-primary hover:bg-primary/90 text-on-primary rounded-xl font-bold transition-all shadow-lg active:scale-[0.98] flex justify-center items-center">
+                      {locale === 'ru' ? 'Далее' : 'Next'} <ArrowRight className="w-5 h-5 ml-2" />
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
+              {step === 4 && (
+                <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="space-y-6">
+                  {/* Additional field for Google Users that skipped step 2 */}
+                  {authMethod === 'google' && (
+                    <div className="mb-6">
+                      <label htmlFor="usernameGoogle" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('settings.profile.username')}</label>
+                      <input type="text" id="usernameGoogle" 
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                        placeholder="ivan_cool" 
+                        autoFocus
+                      />
+                    </div>
+                  )}
+
+                  <div className="text-center">
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2">{locale === 'ru' ? 'Настройте аватар' : 'Setup your avatar'}</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-6">{locale === 'ru' ? 'Загрузите фото или выберите цвет для фона инициалов' : 'Upload a photo or pick a background color'}</p>
+                  </div>
+                  
+                  <div className="flex flex-col items-center justify-center mb-6">
+                    <div className="relative group shrink-0">
+                      <UserAvatar 
+                        photoURL={avatarPreview}
+                        firstName={firstName}
+                        lastName={lastName}
+                        email={email}
+                        avatarColor={avatarColor}
+                        className="w-24 h-24 text-3xl shadow-xl border border-gray-200 dark:border-gray-700"
+                      />
+                      <label className="absolute bottom-0 right-0 p-2 bg-primary text-on-primary rounded-full cursor-pointer hover:scale-105 transition-transform shadow-lg z-10" title="Upload Photo">
+                        <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+                        <Upload className="w-4 h-4" />
+                      </label>
+                    </div>
+                  </div>
+
+                  {!avatarFile && (
+                    <div className="flex flex-wrap justify-center gap-3">
+                      {AVATAR_COLORS.map((color, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setAvatarColor(color)}
+                          className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${color.startsWith('#') ? '' : color} ${avatarColor === color || (!avatarColor && i === 0) ? 'border-primary scale-110' : 'border-transparent'}`}
+                          style={color.startsWith('#') ? { backgroundColor: color } : {}}
+                          title="Change avatar color"
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 pt-6">
+                    {authMethod === 'email' && (
+                      <button type="button" onClick={() => setStep(3)} className="py-3.5 px-4 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl font-medium transition-all active:scale-[0.98]">
+                        {locale === 'ru' ? 'Назад' : 'Back'}
+                      </button>
+                    )}
+                    <button type="button" onClick={handleSubmit} disabled={loading || (authMethod === 'google' && !username.trim())} className="flex-1 py-3.5 px-4 bg-primary hover:bg-primary/90 text-on-primary rounded-xl font-bold transition-all shadow-lg active:scale-[0.98] flex justify-center items-center">
+                      {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (locale === 'ru' ? 'Завершить' : 'Finish')}
+                    </button>
+                  </div>
+                </motion.div>
               )}
             </div>
-            <input type="password" id="password" required minLength="6"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-              placeholder="••••••••" />
-          </div>
-          
-          {!isLogin && (
-            <div className="flex items-start gap-2.5 mt-2">
-              <input 
-                type="checkbox" 
-                id="agreePolicies" 
-                required 
-                checked={agreed}
-                onChange={(e) => setAgreed(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-gray-300 dark:border-gray-700 text-blue-600 focus:ring-blue-500 bg-on-surface dark:bg-black cursor-pointer"
-              />
-              <label htmlFor="agreePolicies" className="text-xs text-gray-500 dark:text-gray-400 leading-normal select-none">
-                {locale === 'ru' ? (
-                  <>
-                    Я соглашаюсь с{' '}
-                    <button type="button" onClick={() => setActiveModal('terms')} className="text-blue-600 hover:text-blue-500 underline font-medium">
-                      Условиями использования
-                    </button>
-                    ,{' '}
-                    <button type="button" onClick={() => setActiveModal('privacy')} className="text-blue-600 hover:text-blue-500 underline font-medium">
-                      Политикой конфиденциальности
-                    </button>{' '}
-                    и{' '}
-                    <button type="button" onClick={() => setActiveModal('cookie')} className="text-blue-600 hover:text-blue-500 underline font-medium">
-                      Политикой Cookie
-                    </button>
-                    .
-                  </>
-                ) : (
-                  <>
-                    I agree to the{' '}
-                    <button type="button" onClick={() => setActiveModal('terms')} className="text-blue-600 hover:text-blue-500 underline font-medium">
-                      Terms of Service
-                    </button>
-                    ,{' '}
-                    <button type="button" onClick={() => setActiveModal('privacy')} className="text-blue-600 hover:text-blue-500 underline font-medium">
-                      Privacy Policy
-                    </button>{' '}
-                    and{' '}
-                    <button type="button" onClick={() => setActiveModal('cookie')} className="text-blue-600 hover:text-blue-500 underline font-medium">
-                      Cookie Policy
-                    </button>
-                    .
-                  </>
-                )}
-              </label>
-            </div>
           )}
-          
-          <motion.button 
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            type="submit" disabled={loading || (!isLogin && !agreed)}
-            className="w-full py-3 rounded-xl bg-black dark:bg-on-surface text-on-surface dark:text-black font-medium text-lg shadow-lg flex justify-center items-center gap-2 disabled:opacity-70"
-          >
-            {loading ? (
-              <Loader2 className="w-6 h-6 animate-spin" />
-            ) : submitText}
-          </motion.button>
         </form>
         
-        <p className="mt-8 text-center text-gray-600 dark:text-gray-400">
-          {altText} <Link to={altLink} className="text-blue-600 hover:text-blue-500 font-medium ml-1">{altLinkText}</Link>
-        </p>
-        <p className="mt-4 flex justify-center">
-          <Link to="/" className="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-on-surface transition-colors flex items-center gap-1">
-            <ArrowLeft className="w-4 h-4" /> {t('auth.backHome')}
+        <p className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
+          {altText}{' '}
+          <Link to={altLink} className="font-semibold text-primary hover:text-primary/80 transition-colors">
+            {altLinkText}
           </Link>
         </p>
-        
-        <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-800 text-center">
-          <div className="text-[10px] uppercase tracking-widest font-mono text-gray-400 dark:text-gray-500">
-            Designed & Developed by<br/>Ivakin Daniil & Dutpayev Adilzhan
-          </div>
-        </div>
       </motion.div>
 
-      {/* Registration Success Modal */}
+      {/* Success Modal */}
       <AnimatePresence>
         {showRegSuccess && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-              onClick={() => {}}
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-white dark:bg-[#18181B] border border-gray-200 dark:border-white/10 rounded-3xl p-8 w-full max-w-sm shadow-2xl flex flex-col items-center text-center"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white dark:bg-gray-900 rounded-3xl p-8 max-w-md w-full shadow-2xl text-center relative border border-gray-200 dark:border-gray-800"
             >
-              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center mb-6">
-                <Mail className="w-8 h-8" />
+              <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CheckCircle2 className="w-10 h-10 text-green-500" />
               </div>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                {locale === 'ru' ? 'Добро пожаловать!' : 'Welcome!'}
+                {locale === 'ru' ? 'Регистрация успешна!' : 'Registration successful!'}
               </h3>
-              <p className="text-gray-600 dark:text-zinc-400 mb-8 leading-relaxed">
+              <p className="text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
                 {locale === 'ru' 
-                  ? 'Ваш аккаунт успешно создан. Мы отправили письмо на вашу почту для её подтверждения. Пожалуйста, проверьте папку "Входящие" и "Спам".'
-                  : 'Your account has been created successfully. We have sent a verification link to your email. Please check your inbox and spam folder.'}
+                  ? 'Мы отправили письмо с подтверждением на ваш email. Пожалуйста, проверьте почту и перейдите по ссылке.'
+                  : 'We sent a verification email to your address. Please check your inbox and click the link.'}
               </p>
               <button 
-                onClick={() => {
-                  setShowRegSuccess(false);
-                  navigate('/dashboard');
-                }}
-                className="w-full py-3.5 rounded-xl font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                onClick={() => navigate('/dashboard')}
+                className="w-full py-4 bg-primary hover:bg-primary/90 text-on-primary font-bold rounded-xl transition-all shadow-lg shadow-primary/30 active:scale-[0.98]"
               >
-                {locale === 'ru' ? 'Перейти в Dashboard' : 'Go to Dashboard'}
+                {locale === 'ru' ? 'Перейти в платформу' : 'Go to platform'}
               </button>
             </motion.div>
           </div>
@@ -379,76 +707,51 @@ export default function Auth({ type }) {
       {/* Password Reset Modal */}
       <AnimatePresence>
         {showResetModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-              onClick={() => setShowResetModal(false)}
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-white dark:bg-[#18181B] border border-gray-200 dark:border-white/10 rounded-3xl p-6 w-full max-w-sm shadow-2xl"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-gray-900 rounded-3xl p-8 max-w-md w-full shadow-2xl relative border border-gray-200 dark:border-gray-800"
             >
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                  {locale === 'ru' ? 'Восстановление пароля' : 'Reset Password'}
-                </h3>
-                <button 
-                  onClick={() => setShowResetModal(false)} 
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+              <button 
+                onClick={() => setShowResetModal(false)}
+                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              
+              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-6">
+                <Mail className="w-6 h-6 text-blue-500" />
               </div>
-
+              
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{t('auth.resetTitle')}</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{t('auth.resetSubtitle')}</p>
+              
               {resetSuccess ? (
-                <div className="flex flex-col items-center text-center py-4">
-                  <div className="w-14 h-14 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mb-4">
-                    <CheckCircle2 className="w-7 h-7" />
-                  </div>
-                  <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
-                    {locale === 'ru' ? 'Письмо отправлено!' : 'Email Sent!'}
-                  </h4>
-                  <p className="text-gray-600 dark:text-zinc-400 text-sm mb-6">
-                    {locale === 'ru' 
-                      ? 'Инструкция по сбросу пароля отправлена на указанный email. Проверьте папку "Спам", если письмо не пришло.' 
-                      : 'Password reset instructions have been sent to your email. Check your spam folder if you don\'t see it.'}
-                  </p>
-                  <button 
-                    onClick={() => setShowResetModal(false)}
-                    className="w-full py-3 rounded-xl font-medium bg-gray-100 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10 text-gray-900 dark:text-white transition-colors"
-                  >
-                    {locale === 'ru' ? 'Закрыть' : 'Close'}
-                  </button>
+                <div className="bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 p-4 rounded-xl border border-green-200 dark:border-green-900/50 flex items-start gap-3">
+                  <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
+                  <p className="text-sm leading-relaxed">{t('settings.security.resetSent')} <strong>{resetEmail}</strong></p>
                 </div>
               ) : (
                 <form onSubmit={handleResetPassword} className="space-y-4">
                   {resetError && (
-                    <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg border border-red-200">
-                      {resetError}
-                    </div>
+                    <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg border border-red-200">{resetError}</div>
                   )}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
-                      {t('auth.emailLabel')}
-                    </label>
-                    <input 
-                      type="email" 
-                      required 
+                    <label htmlFor="resetEmail" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('auth.emailLabel')}</label>
+                    <input type="email" id="resetEmail" required 
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                      placeholder="you@example.com" 
-                    />
+                      className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      placeholder="you@example.com" />
                   </div>
                   <button 
                     type="submit" 
                     disabled={resetLoading}
-                    className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-lg flex justify-center items-center gap-2 disabled:opacity-70 transition-colors mt-2"
+                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all shadow-md active:scale-[0.98] disabled:opacity-70 flex justify-center items-center h-[50px]"
                   >
-                    {resetLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (locale === 'ru' ? 'Сбросить пароль' : 'Reset Password')}
+                    {resetLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : t('auth.resetButton')}
                   </button>
                 </form>
               )}
@@ -457,15 +760,11 @@ export default function Auth({ type }) {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {activeModal && (
-          <LegalDocModal 
-            isOpen={!!activeModal} 
-            onClose={() => setActiveModal(null)} 
-            docKey={activeModal} 
-          />
-        )}
-      </AnimatePresence>
+      <LegalDocModal 
+        isOpen={!!activeModal} 
+        onClose={() => setActiveModal(null)} 
+        type={activeModal || 'terms'} 
+      />
     </div>
   );
 }

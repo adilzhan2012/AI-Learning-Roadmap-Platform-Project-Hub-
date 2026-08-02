@@ -638,13 +638,17 @@ export async function updateUserProfile(userId, profileData) {
 
 // 6. User Activity Logging
 export async function logActivity(userId, title, iconName, colorClass) {
-  const activitiesCol = collection(db, 'users', userId, 'activities');
-  await addDoc(activitiesCol, {
-    title,
-    icon: iconName,
-    color: colorClass,
-    timestamp: new Date().toISOString()
-  });
+  try {
+    const activitiesCol = collection(db, 'users', userId, 'activities');
+    await addDoc(activitiesCol, {
+      title,
+      icon: iconName,
+      color: colorClass,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    console.warn("Could not log activity:", e);
+  }
 }
 
 export async function getUserActivityLogs(userId) {
