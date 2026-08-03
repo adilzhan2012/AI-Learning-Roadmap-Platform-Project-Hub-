@@ -7,6 +7,8 @@ import {
   signOut, 
   onAuthStateChanged,
   GoogleAuthProvider,
+  GithubAuthProvider,
+  OAuthProvider,
   signInWithPopup
 } from 'firebase/auth';
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
@@ -69,6 +71,8 @@ export {
   signOut, 
   onAuthStateChanged,
   GoogleAuthProvider,
+  GithubAuthProvider,
+  OAuthProvider,
   signInWithPopup
 };
 

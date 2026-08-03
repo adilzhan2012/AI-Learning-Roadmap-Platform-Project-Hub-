@@ -82,7 +82,8 @@ export const usePlanLimits = () => {
             lastMentorDate: todayStr,
             mentorMonthStart: monthStr
           };
-          await setDoc(ref, initData);
+          // Document doesn't exist yet, which means user is on FREE plan by default.
+          // DO NOT write to Firestore here because security rules block client writes to /subscription.
           setPlan('FREE');
           setDbBillingPeriod('monthly');
           setUsage(initData);
