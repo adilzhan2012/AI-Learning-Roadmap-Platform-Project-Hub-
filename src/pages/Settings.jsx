@@ -252,7 +252,7 @@ export default function Settings() {
   return (
     <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row gap-8">
       {/* Sidebar Navigation */}
-      <div className="w-full md:w-64 shrink-0 select-none flex flex-col h-[calc(100vh-100px)] justify-between">
+      <div className="w-full md:w-64 shrink-0 select-none flex flex-col md:sticky md:top-24 self-start">
         <div>
           <h1 className="text-3xl font-bold text-on-surface mb-2">{t('settings.title')}</h1>
           <p className="text-sm text-on-surface-variant mb-6">{t('settings.subtitle')}</p>
