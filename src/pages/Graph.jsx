@@ -4,11 +4,11 @@ import {
   Network, Loader2, BookOpen, Clock, Brain, Pointer, ZoomIn, ZoomOut, RotateCcw, Lock,
   Code, Terminal, Layers, Database, Cpu, Settings, Shield, Sliders, Globe, Star, Sparkles, Check, Flame, Trophy, Award, X, Download, ExternalLink, ShieldCheck
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { auth, db } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
-import { getUserCourses, callGroqWithRetry, requestCourseCertificate, getCourseCertificate } from '../services/courseService.js';
+import { getUserCourses, callGroqWithRetry, requestCourseCertificate, getCourseCertificate, generateCourseAndSave } from '../services/courseService.js';
 import { t } from '../i18n.js';
 import LessonPanel from '../components/lessons/LessonPanel.jsx';
 import MasteryBlock from '../components/shared/MasteryBlock.jsx';
@@ -17,6 +17,7 @@ import QuizHistoryModal from '../components/quiz/QuizHistoryModal.jsx';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import { useXP } from '../hooks/useXP.js';
 import ReactMarkdown from 'react-markdown';
+import CourseGraphThinking from '../components/CourseGraphThinking.jsx';
 
 // Simple vis-network map icons fallback
 const iconMap = {
@@ -230,13 +231,79 @@ const BackgroundParticles = () => {
 
 export default function Graph() {
   const navigate = useNavigate();
-  const { plan } = usePlanLimits();
+  const location = useLocation();
+  const { plan, incrementUsage } = usePlanLimits();
   const { userLevelData, addXP } = useXP();
   
   const [courses, setCourses] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedNode, setSelectedNode] = useState(null);
+
+  // Dynamic course generation state on graph page
+  const [generatingCourseState, setGeneratingCourseState] = useState(() => {
+    if (location.state?.isGenerating && location.state?.topic) {
+      return {
+        topic: location.state.topic,
+        level: location.state.level,
+        preferences: location.state.preferences,
+        userUid: location.state.userUid
+      };
+    }
+    return null;
+  });
+
+  const [generatedNodes, setGeneratedNodes] = useState(null);
+  const [generatedCourseResult, setGeneratedCourseResult] = useState(null);
+  const [generationError, setGenerationError] = useState('');
+  const hasTriggeredGenRef = useRef(false);
+
+  // Handle graph generation API call (guarded to run exactly once)
+  useEffect(() => {
+    if (!generatingCourseState || hasTriggeredGenRef.current) return;
+    hasTriggeredGenRef.current = true;
+
+    let isMounted = true;
+    async function runGeneration() {
+      try {
+        const { topic, level, preferences, userUid } = generatingCourseState;
+        const uid = userUid || auth.currentUser?.uid;
+        if (!uid) return;
+
+        const generated = await generateCourseAndSave(uid, topic, level, preferences);
+        if (incrementUsage) {
+          await incrementUsage('roadmap');
+        }
+
+        if (isMounted) {
+          setGeneratedNodes(generated.nodes || []);
+          setGeneratedCourseResult(generated);
+          localStorage.setItem('selected_course_id', generated.id);
+          setSelectedCourse(generated);
+          setCourses(prev => [generated, ...prev.filter(c => c.id !== generated.id)]);
+        }
+      } catch (err) {
+        console.error("Error generating course on graph page:", err);
+        if (isMounted) {
+          setGenerationError(err.message || 'Ошибка генерации курса. Попробуйте еще раз.');
+        }
+      }
+    }
+
+    runGeneration();
+    return () => { isMounted = false; };
+  }, [generatingCourseState]);
+
+  const handleGenerationAnimationComplete = () => {
+    if (generatedCourseResult) {
+      localStorage.setItem('selected_course_id', generatedCourseResult.id);
+      setSelectedCourse(generatedCourseResult);
+    }
+    setGeneratingCourseState(null);
+    setGeneratedNodes(null);
+    setGeneratedCourseResult(null);
+    setGenerationError('');
+  };
 
   // Draggable node states
   const [draggedOffsets, setDraggedOffsets] = useState({});
@@ -339,30 +406,58 @@ export default function Graph() {
 
   // Load courses
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        try {
-          let fetched = await getUserCourses(user.uid);
-          if (plan === 'FREE') {
-            fetched = fetched.length > 0 ? [fetched[0]] : [];
-          }
-          setCourses(fetched);
-          
-          const savedCourseId = localStorage.getItem('selected_course_id');
-          const course = fetched.find(c => c.id === savedCourseId) || fetched[0];
-          setSelectedCourse(course || null);
-        } catch (e) {
-          console.error(e);
-        } finally {
-          setLoading(false);
-        }
-      } else {
-        setLoading(false);
+    let isMounted = true;
+
+    async function loadData(user) {
+      if (!user) {
+        if (isMounted) setLoading(false);
+        return;
       }
+      try {
+        const fetched = await getUserCourses(user.uid);
+        if (isMounted) {
+          const savedCourseId = localStorage.getItem('selected_course_id');
+          let activeCourse = fetched.find(c => c.id === savedCourseId);
+
+          // Preserve newly generated course if Firestore write hasn't propagated yet
+          if (!activeCourse && selectedCourse && selectedCourse.id === savedCourseId) {
+            activeCourse = selectedCourse;
+          }
+
+          if (activeCourse) {
+            const merged = fetched.some(c => c.id === activeCourse.id) 
+              ? fetched 
+              : [activeCourse, ...fetched];
+            setCourses(merged);
+            setSelectedCourse(activeCourse);
+          } else if (fetched.length > 0) {
+            setCourses(fetched);
+            setSelectedCourse(fetched[0]);
+            localStorage.setItem('selected_course_id', fetched[0].id);
+          } else {
+            setCourses([]);
+          }
+        }
+      } catch (e) {
+        console.error("Error loading courses on Graph page:", e);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+
+    if (auth.currentUser) {
+      loadData(auth.currentUser);
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      loadData(user);
     });
 
-    return () => unsubscribe();
-  }, [plan]);
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, [location.key]);
 
   // Load quiz results
   useEffect(() => {
@@ -618,6 +713,8 @@ Respond in Russian. Keep your reply concise and professional.`;
     });
   };
 
+
+
   if (loading) {
     return (
       <div className={`flex flex-col items-center justify-center h-screen ${isLightTheme ? 'bg-zinc-50 text-zinc-900' : 'bg-[#07080a] text-zinc-100'} gap-4 w-full`}>
@@ -627,7 +724,7 @@ Respond in Russian. Keep your reply concise and professional.`;
     );
   }
 
-  if (courses.length === 0) {
+  if (courses.length === 0 && !selectedCourse) {
     return (
       <div className={`p-8 max-w-7xl mx-auto h-[calc(100vh-4rem)] flex flex-col justify-center items-center text-center ${isLightTheme ? 'bg-zinc-50' : 'bg-[#07080a]'}`}>
         <Network className="w-16 h-16 text-zinc-600 mb-4 opacity-30 animate-pulse" />
@@ -1007,9 +1104,9 @@ Respond in Russian. Keep your reply concise and professional.`;
               const hasChildren = selectedCourse.edges.some(e => String(e.from) === String(node.id));
               const isFolded = foldedNodes.has(node.id);
               
-              // Dynamic card widths/heights in style:
-              const cardWidth = 200;
-              const cardHeight = 55;
+              // Dynamic card widths/heights matching animation dimensions:
+              const cardWidth = 620;
+              const cardHeight = 56;
 
               const isSelected = selectedNode?.id === node.id;
               const isCheckpoint = (node.label || node.title || '').toLowerCase().includes('checkpoint') || 
@@ -1066,15 +1163,15 @@ Respond in Russian. Keep your reply concise and professional.`;
                   }}
                 >
                   <div 
-                    className={`relative w-full min-h-[55px] h-full rounded-[8px] p-2 flex flex-col items-center justify-center overflow-visible transition-all duration-300 ${
-                      !isDragging ? 'transform hover:scale-[1.03]' : ''
+                    className={`relative w-full min-h-[56px] h-full rounded-[14px] px-6 py-2.5 flex flex-col items-center justify-center overflow-visible transition-all duration-300 shadow-md ${
+                      !isDragging ? 'transform hover:scale-[1.02]' : ''
                     } ${cardBg} ${cardBorder} ${cardText} ${cardShadow}`}
                   >
                     {/* Inner content: centered text with status icons */}
-                    <div className="flex items-center justify-center gap-1.5 px-1.5 w-full text-center">
+                    <div className="flex items-center justify-center gap-2 px-2 w-full text-center">
                       {isCompleted && <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[3]" />}
                       {isLocked && <Lock className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
-                      <span className="text-[12px] leading-tight select-none pointer-events-none break-words whitespace-pre-wrap">
+                      <span className="text-[14px] font-bold leading-tight select-none pointer-events-none break-words whitespace-pre-wrap">
                         {t(node.label || node.title)}
                       </span>
                     </div>
@@ -1462,6 +1559,43 @@ Respond in Russian. Keep your reply concise and professional.`;
                 setSelectedNode(updatedNode);
               }}
             />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Full-Screen Dynamic AI Thinking Animation Overlay (Fades out seamlessly) */}
+      <AnimatePresence>
+        {generatingCourseState && (
+          <motion.div
+            key="thinking-modal-overlay"
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, filter: 'blur(10px)', transition: { duration: 0.65, ease: 'easeInOut' } }}
+            className="fixed inset-0 z-[200] bg-[#070913] overflow-hidden flex flex-col items-center justify-center"
+          >
+            <CourseGraphThinking
+              topic={generatingCourseState.topic}
+              level={generatingCourseState.level}
+              preferences={generatingCourseState.preferences}
+              nodes={generatedNodes}
+              isGenerating={!generatedCourseResult && !generationError}
+              onComplete={handleGenerationAnimationComplete}
+            />
+            {generationError && (
+              <div className="mt-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold text-center w-full max-w-md relative z-30">
+                {generationError}
+                <button 
+                  onClick={() => {
+                    setGeneratingCourseState(null);
+                    setGenerationError('');
+                    navigate('/graph', { replace: true, state: {} });
+                  }}
+                  className="block mx-auto mt-3 px-4 py-2 rounded-xl bg-red-500/20 text-red-300 font-bold hover:bg-red-500/30 transition-all text-xs"
+                >
+                  Вернуться к графам
+                </button>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

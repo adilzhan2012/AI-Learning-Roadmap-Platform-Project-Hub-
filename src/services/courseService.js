@@ -59,10 +59,47 @@ export async function callGroqWithRetry(apiKey, prompt, usageType, modelName) {
   }
 }
 
+const inFlightGenerations = new Map();
+
 // 1. Generate Course using Gemini API (or Groq)
 export async function generateCourseAndSave(userId, topic, level, preferences = {}) {
   const normalizedTopic = topic.toLowerCase().trim();
-  const coursesCol = collection(db, 'courses');
+  const lockKey = `${userId}_${normalizedTopic}_${level}`;
+
+  if (inFlightGenerations.has(lockKey)) {
+    console.log("Reusing in-flight course generation promise for:", lockKey);
+    return inFlightGenerations.get(lockKey);
+  }
+
+  const genPromise = (async () => {
+    try {
+      const coursesCol = collection(db, 'courses');
+
+      // 1. Deduplication check: 10-second burst window to prevent double-click duplicates
+      try {
+        const userRecentQuery = query(
+          coursesCol,
+          where('userId', '==', userId)
+        );
+        const userRecentSnap = await getDocs(userRecentQuery);
+        if (!userRecentSnap.empty) {
+          const now = Date.now();
+          const recentDoc = userRecentSnap.docs.find(d => {
+            const data = d.data();
+            const createdTime = new Date(data.createdAt || 0).getTime();
+            const isWithin10s = (now - createdTime) < 10000;
+            const normExisting = (data.normalizedTopic || '').toLowerCase();
+            const normNew = normalizedTopic.toLowerCase();
+            return isWithin10s && normExisting === normNew;
+          });
+          if (recentDoc) {
+            console.log("Deduplicated 10s burst request:", recentDoc.id);
+            return { id: recentDoc.id, ...recentDoc.data() };
+          }
+        }
+      } catch (dedupErr) {
+        console.warn("Deduplication check warning:", dedupErr);
+      }
 
   const isCustomized = Object.keys(preferences).length > 0 && Object.values(preferences).some(val => {
     return val && 
@@ -264,6 +301,13 @@ The response must be a valid JSON object matching this schema:
   await logActivity(userId, `Created course: ${newCourse.title}`, 'school', 'text-blue-500');
 
   return { id: docRef.id, ...newCourse };
+    } finally {
+      inFlightGenerations.delete(lockKey);
+    }
+  })();
+
+  inFlightGenerations.set(lockKey, genPromise);
+  return genPromise;
 }
 
 // 1.5 Generate Lesson Content
@@ -367,6 +411,17 @@ export async function deleteCourse(courseId, userId) {
   }
 
   await logActivity(userId, `Deleted course: ${courseData.title}`, 'school', 'text-red-500');
+}
+
+// 2.6 Pin / Unpin Course
+export async function toggleCoursePin(courseId, userId, isPinned) {
+  const courseRef = doc(db, 'courses', courseId);
+  const snap = await getDoc(courseRef);
+  if (!snap.exists()) throw new Error('Course not found');
+  const courseData = snap.data();
+  if (courseData.userId !== userId) throw new Error('Unauthorized');
+
+  await updateDoc(courseRef, { isPinned: !!isPinned });
 }
 
 

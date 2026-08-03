@@ -13,12 +13,17 @@ import {
   List as ListIcon,
   Award,
   Download,
-  ExternalLink
+  ExternalLink,
+  Pin,
+  CheckSquare,
+  Square,
+  Check,
+  X
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
-import { getUserCourses, deleteCourse, requestCourseCertificate, getCourseCertificate } from '../services/courseService.js';
+import { getUserCourses, deleteCourse, toggleCoursePin, requestCourseCertificate, getCourseCertificate } from '../services/courseService.js';
 import { t } from '../i18n.js';
 import CourseGeneratorModal from '../components/CourseGeneratorModal.jsx';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
@@ -34,7 +39,7 @@ const cardVariants = {
   exit: { opacity: 0, y: 10, transition: { duration: 0.15 } }
 };
 
-function DeleteConfirmModal({ isOpen, onClose, onConfirm, isDeleting }) {
+function DeleteConfirmModal({ isOpen, onClose, onConfirm, isDeleting, count = 1 }) {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -42,7 +47,7 @@ function DeleteConfirmModal({ isOpen, onClose, onConfirm, isDeleting }) {
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={!isDeleting ? onClose : undefined}
-            className="absolute inset-0 bg-black/80"
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
           />
           <motion.div 
             initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
@@ -51,13 +56,19 @@ function DeleteConfirmModal({ isOpen, onClose, onConfirm, isDeleting }) {
             <div className="w-12 h-12 bg-[#2C0D0E]/50 border border-[#FF453A]/20 rounded-[12px] flex items-center justify-center mx-auto mb-4">
               <Trash2 className="w-6 h-6 text-[#FF453A]" strokeWidth={1.5} />
             </div>
-            <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">{t('courses.confirmDeleteTitle') || 'Удалить курс?'}</h3>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6">{t('courses.confirmDeleteSubtitle') || 'Вы уверены, что хотите удалить этот курс? Это действие необратимо.'}</p>
+            <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">
+              {count > 1 ? `Удалить выбранные курсы (${count})?` : (t('courses.confirmDeleteTitle') || 'Удалить курс?')}
+            </h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6">
+              {count > 1 
+                ? `Вы уверены, что хотите полностью удалить ${count} выбранных курсов? Они будут окончательно сотрете из базы данных.` 
+                : (t('courses.confirmDeleteSubtitle') || 'Вы уверены, что хотите удалить этот курс? Это действие необратимо.')}
+            </p>
             <div className="flex gap-3">
               <button disabled={isDeleting} onClick={onClose} className="flex-1 py-2.5 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-white/10 rounded-[12px] text-xs font-bold text-zinc-900 dark:text-white hover:bg-[#3A3A3C] transition-colors">
                 {t('courses.cancel') || 'Отмена'}
               </button>
-              <button disabled={isDeleting} onClick={onConfirm} className="flex-1 py-2.5 bg-[#FF453A] text-zinc-900 dark:text-white rounded-[12px] text-xs font-bold hover:bg-[#FF453A]/90 transition-colors flex justify-center items-center">
+              <button disabled={isDeleting} onClick={onConfirm} className="flex-1 py-2.5 bg-[#FF453A] text-white rounded-[12px] text-xs font-bold hover:bg-[#FF453A]/90 transition-colors flex justify-center items-center">
                 {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : (t('courses.delete') || 'Удалить')}
               </button>
             </div>
@@ -68,10 +79,24 @@ function DeleteConfirmModal({ isOpen, onClose, onConfirm, isDeleting }) {
   );
 }
 
-function CourseCard({ course, onDelete, viewMode, plan }) {
+function CourseCard({ 
+  course, 
+  onDelete, 
+  onTogglePin, 
+  viewMode, 
+  plan,
+  isSelectionMode,
+  isSelected,
+  onSelectToggle
+}) {
   const navigate = useNavigate();
 
-  const handleOpenClick = () => {
+  const handleCardClick = (e) => {
+    if (isSelectionMode) {
+      e.stopPropagation();
+      onSelectToggle(course.id);
+      return;
+    }
     localStorage.setItem('selected_course_id', course.id);
     navigate('/graph');
   };
@@ -79,6 +104,11 @@ function CourseCard({ course, onDelete, viewMode, plan }) {
   const handleDelete = (e) => {
     e.stopPropagation();
     onDelete(course.id);
+  };
+
+  const handlePin = (e) => {
+    e.stopPropagation();
+    onTogglePin(course.id, !course.isPinned);
   };
 
   const isCompleted = course.progress === 100;
@@ -117,10 +147,25 @@ function CourseCard({ course, onDelete, viewMode, plan }) {
       <motion.div
         layout
         variants={cardVariants}
-        onClick={handleOpenClick}
-        className="bg-white dark:bg-[#1A1A1C] rounded-[20px] shadow-sm dark:shadow-none border border-gray-100 dark:border-white/5 p-4 flex flex-col md:flex-row items-center gap-5 transition-all duration-300 hover:shadow-lg dark:hover:border-white/20 hover:-translate-y-1 cursor-pointer group"
+        onClick={handleCardClick}
+        className={`relative bg-white dark:bg-[#1A1A1C] rounded-[20px] shadow-sm dark:shadow-none border p-4 flex flex-col md:flex-row items-center gap-5 transition-all duration-300 hover:shadow-lg cursor-pointer group ${
+          isSelected 
+            ? 'border-indigo-500 ring-2 ring-indigo-500 bg-indigo-500/5 dark:bg-indigo-500/10' 
+            : course.isPinned
+            ? 'border-amber-400/60 dark:border-amber-400/40 bg-amber-500/5'
+            : 'border-gray-100 dark:border-white/5 hover:border-zinc-300 dark:hover:border-white/20'
+        }`}
       >
-        <div className={`w-20 h-20 rounded-[14px] bg-gradient-to-br ${cardGradient} flex items-center justify-center overflow-hidden flex-shrink-0 relative shadow-inner`}>
+        {/* Selection Checkbox Overlay */}
+        {isSelectionMode && (
+          <div className="absolute top-4 left-4 z-20">
+            <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-black/30 border-white/40 text-transparent'}`}>
+              <Check className="w-3.5 h-3.5 stroke-[3]" />
+            </div>
+          </div>
+        )}
+
+        <div className={`w-20 h-20 rounded-[14px] bg-gradient-to-br ${cardGradient} flex items-center justify-center overflow-hidden flex-shrink-0 relative shadow-inner ${isSelectionMode ? 'ml-6' : ''}`}>
           <div className="absolute inset-0 bg-white/20 dark:bg-black/20 mix-blend-overlay"></div>
           {isAi ? (
             <Sparkles className="w-8 h-8 text-white drop-shadow-md relative z-10" strokeWidth={1.5} />
@@ -131,6 +176,12 @@ function CourseCard({ course, onDelete, viewMode, plan }) {
         
         <div className="flex-1 min-w-0 text-center md:text-left flex flex-col justify-center">
           <div className="flex items-center gap-2 flex-wrap justify-center md:justify-start mb-1.5">
+            {course.isPinned && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                <Pin className="w-3 h-3 fill-amber-500" />
+                Закреплен
+              </span>
+            )}
             <span className={`text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full ${isAi ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400'}`}>
               {course.category}
             </span>
@@ -161,13 +212,22 @@ function CourseCard({ course, onDelete, viewMode, plan }) {
           <span className="flex items-center gap-1.5"><BookOpen className="w-4 h-4 text-gray-400" strokeWidth={1.5} /> {course.nodes?.length || 0}</span>
         </div>
 
-        <button 
-          onClick={handleDelete}
-          className="absolute top-4 right-4 md:relative md:top-0 md:right-0 p-2.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all opacity-100"
-          title="Delete roadmap"
-        >
-          <Trash2 className="w-4 h-4" strokeWidth={2} />
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button 
+            onClick={handlePin}
+            className={`p-2.5 rounded-xl transition-all ${course.isPinned ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : 'bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-400 hover:text-amber-400'}`}
+            title={course.isPinned ? "Открепить" : "Закрепить"}
+          >
+            <Pin className={`w-4 h-4 ${course.isPinned ? 'fill-amber-500' : ''}`} strokeWidth={2} />
+          </button>
+          <button 
+            onClick={handleDelete}
+            className="p-2.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all"
+            title="Удалить курс"
+          >
+            <Trash2 className="w-4 h-4" strokeWidth={2} />
+          </button>
+        </div>
       </motion.div>
     );
   }
@@ -176,25 +236,56 @@ function CourseCard({ course, onDelete, viewMode, plan }) {
     <motion.div
       layout
       variants={cardVariants}
-      onClick={handleOpenClick}
-      className="bg-white dark:bg-[#1A1A1C] rounded-[24px] shadow-sm dark:shadow-none border border-gray-100 dark:border-white/5 overflow-hidden transition-all duration-300 hover:shadow-xl dark:hover:border-white/20 hover:-translate-y-1.5 cursor-pointer flex flex-col h-full group"
+      onClick={handleCardClick}
+      className={`relative bg-white dark:bg-[#1A1A1C] rounded-[24px] shadow-sm dark:shadow-none border overflow-hidden transition-all duration-300 hover:shadow-xl cursor-pointer flex flex-col h-full group ${
+        isSelected 
+          ? 'border-indigo-500 ring-2 ring-indigo-500 bg-indigo-500/5' 
+          : course.isPinned
+          ? 'border-amber-400/60 dark:border-amber-400/30'
+          : 'border-gray-100 dark:border-white/5 hover:border-zinc-300 dark:hover:border-white/20'
+      }`}
     >
       <div className={`relative h-36 bg-gradient-to-br ${cardGradient} p-5 flex flex-col justify-between shrink-0 overflow-hidden`}>
-        {/* Abstract shapes for visual interest */}
+        {/* Abstract shapes */}
         <div className="absolute -top-12 -right-12 w-32 h-32 bg-white/20 dark:bg-black/20 rounded-full blur-2xl mix-blend-overlay"></div>
         <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-white/20 dark:bg-black/20 rounded-full blur-xl mix-blend-overlay"></div>
         
+        {/* Header Controls */}
         <div className="relative z-10 flex justify-between items-start">
-          <span className={`inline-flex items-center backdrop-blur-md bg-white/20 dark:bg-black/20 border border-white/20 text-[10px] font-bold text-white px-2.5 py-1 rounded-full tracking-wider uppercase shadow-sm`}>
-            {course.category}
-          </span>
-          <button 
-            onClick={handleDelete}
-            className="p-2 backdrop-blur-md bg-black/20 hover:bg-red-500/90 text-white rounded-xl transition-all opacity-100 border border-white/10"
-            title="Delete roadmap"
-          >
-            <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {isSelectionMode ? (
+              <div className={`w-6 h-6 rounded-lg border flex items-center justify-center backdrop-blur-md transition-all ${isSelected ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-black/30 border-white/40 text-transparent'}`}>
+                <Check className="w-4 h-4 stroke-[3]" />
+              </div>
+            ) : (
+              <span className={`inline-flex items-center backdrop-blur-md bg-white/20 dark:bg-black/20 border border-white/20 text-[10px] font-bold text-white px-2.5 py-1 rounded-full tracking-wider uppercase shadow-sm`}>
+                {course.category}
+              </span>
+            )}
+            {course.isPinned && (
+              <span className="inline-flex items-center gap-1 backdrop-blur-md bg-amber-500/30 border border-amber-300/40 text-amber-200 text-[10px] font-bold px-2.5 py-1 rounded-full">
+                <Pin className="w-3 h-3 fill-amber-300" />
+                Закреплен
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button 
+              onClick={handlePin}
+              className={`p-2 backdrop-blur-md rounded-xl transition-all border ${course.isPinned ? 'bg-amber-500/40 border-amber-300 text-amber-200' : 'bg-black/20 hover:bg-black/40 border-white/10 text-white/80 hover:text-white'}`}
+              title={course.isPinned ? "Открепить" : "Закрепить"}
+            >
+              <Pin className={`w-3.5 h-3.5 ${course.isPinned ? 'fill-amber-300' : ''}`} strokeWidth={2} />
+            </button>
+            <button 
+              onClick={handleDelete}
+              className="p-2 backdrop-blur-md bg-black/20 hover:bg-red-500/90 text-white rounded-xl transition-all border border-white/10"
+              title="Удалить курс"
+            >
+              <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />
+            </button>
+          </div>
         </div>
         
         <div className="relative z-10 flex justify-between items-end mt-4">
@@ -308,7 +399,12 @@ export default function Courses() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [showGenModal, setShowGenModal] = useState(false);
+
+  // Gallery multi-selection & pin states
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedCourseIds, setSelectedCourseIds] = useState(new Set());
   const [courseToDelete, setCourseToDelete] = useState(null);
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Filters & layout modes matching Apple style
@@ -347,18 +443,89 @@ export default function Courses() {
     }
   };
 
-  const confirmDelete = async () => {
+  const confirmSingleDelete = async () => {
     if (!user || !courseToDelete) return;
     setIsDeleting(true);
     try {
       await deleteCourse(courseToDelete, user.uid);
       setUserCourses(prev => prev.filter(c => c.id !== courseToDelete));
+      setSelectedCourseIds(prev => {
+        const next = new Set(prev);
+        next.delete(courseToDelete);
+        return next;
+      });
       setCourseToDelete(null);
     } catch (e) {
       console.error("Failed to delete course:", e);
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const confirmBulkDelete = async () => {
+    if (!user || selectedCourseIds.size === 0) return;
+    setIsDeleting(true);
+    try {
+      for (const id of selectedCourseIds) {
+        await deleteCourse(id, user.uid);
+      }
+      setUserCourses(prev => prev.filter(c => !selectedCourseIds.has(c.id)));
+      setSelectedCourseIds(new Set());
+      setIsSelectionMode(false);
+      setIsBulkDeleteModalOpen(false);
+    } catch (e) {
+      console.error("Failed bulk delete:", e);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleTogglePin = async (courseId, isPinned) => {
+    if (!user) return;
+    try {
+      await toggleCoursePin(courseId, user.uid, isPinned);
+      setUserCourses(prev => prev.map(c => c.id === courseId ? { ...c, isPinned } : c));
+    } catch (e) {
+      console.error("Failed to toggle pin:", e);
+    }
+  };
+
+  const handleBulkPinToggle = async () => {
+    if (!user || selectedCourseIds.size === 0) return;
+    const selectedCourses = userCourses.filter(c => selectedCourseIds.has(c.id));
+    const allPinned = selectedCourses.every(c => c.isPinned);
+    const targetPinned = !allPinned;
+
+    try {
+      for (const id of selectedCourseIds) {
+        await toggleCoursePin(id, user.uid, targetPinned);
+      }
+      setUserCourses(prev => prev.map(c => selectedCourseIds.has(c.id) ? { ...c, isPinned: targetPinned } : c));
+    } catch (e) {
+      console.error("Failed bulk pin toggle:", e);
+    }
+  };
+
+  const toggleSelectCourse = (id) => {
+    setSelectedCourseIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedCourseIds.size === sortedFilteredCourses.length) {
+      setSelectedCourseIds(new Set());
+    } else {
+      setSelectedCourseIds(new Set(sortedFilteredCourses.map(c => c.id)));
+    }
+  };
+
+  const exitSelectionMode = () => {
+    setIsSelectionMode(false);
+    setSelectedCourseIds(new Set());
   };
 
   // Dynamic filter values
@@ -390,6 +557,16 @@ export default function Courses() {
     return matchesSearch && matchesStatus && matchesCategory && matchesLevel;
   });
 
+  // Sort pinned courses to the very top of the list
+  const sortedFilteredCourses = [...filteredCourses].sort((a, b) => {
+    if (a.isPinned && !b.isPinned) return -1;
+    if (!a.isPinned && b.isPinned) return 1;
+    return 0;
+  });
+
+  const selectedList = userCourses.filter(c => selectedCourseIds.has(c.id));
+  const allSelectedArePinned = selectedList.length > 0 && selectedList.every(c => c.isPinned);
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-background text-zinc-900 dark:text-white gap-4 w-full">
@@ -404,7 +581,7 @@ export default function Courses() {
       initial="hidden"
       animate="show"
       variants={containerVariants}
-      className="max-w-[2000px] mx-auto text-zinc-900 dark:text-white font-sans"
+      className="max-w-[2000px] mx-auto text-zinc-900 dark:text-white font-sans pb-24 relative"
     >
       {/* Top Header */}
       <motion.div variants={cardVariants} className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -412,13 +589,34 @@ export default function Courses() {
           <h1 className="text-4xl font-bold font-clash text-zinc-900 dark:text-white mb-2 tracking-tight">Курсы</h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm max-w-xl">{t('courses.subtitle')}</p>
         </div>
-        <button
-          onClick={() => setShowGenModal(true)}
-          className="bg-zinc-900 !text-white hover:bg-zinc-800 dark:bg-white dark:!text-zinc-900 dark:hover:bg-zinc-200 px-6 py-3 rounded-[12px] font-bold text-xs transition-colors whitespace-nowrap flex items-center gap-2 font-sans"
-        >
-          <Sparkles className="w-4 h-4 fill-current" />
-          {t('dashboard.generateCourse')}
-        </button>
+        <div className="flex items-center gap-3">
+          {userCourses.length > 0 && (
+            <button
+              onClick={() => {
+                if (isSelectionMode) {
+                  exitSelectionMode();
+                } else {
+                  setIsSelectionMode(true);
+                }
+              }}
+              className={`px-4 py-3 rounded-[12px] font-bold text-xs transition-all flex items-center gap-2 font-sans border ${
+                isSelectionMode 
+                  ? 'bg-indigo-600 border-indigo-500 text-white shadow-md' 
+                  : 'bg-white dark:bg-[#1A1A1C] border-zinc-200 dark:border-white/10 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/10'
+              }`}
+            >
+              <CheckSquare className="w-4 h-4" />
+              {isSelectionMode ? 'Отмена выбора' : 'Выбрать элементы'}
+            </button>
+          )}
+          <button
+            onClick={() => setShowGenModal(true)}
+            className="bg-zinc-900 !text-white hover:bg-zinc-800 dark:bg-white dark:!text-zinc-900 dark:hover:bg-zinc-200 px-6 py-3 rounded-[12px] font-bold text-xs transition-colors whitespace-nowrap flex items-center gap-2 font-sans"
+          >
+            <Sparkles className="w-4 h-4 fill-current" />
+            {t('dashboard.generateCourse')}
+          </button>
+        </div>
       </motion.div>
 
       {userCourses.length === 0 ? (
@@ -462,7 +660,6 @@ export default function Courses() {
                             onChange={() => toggleCategory(cat)} 
                             className="sr-only" 
                           />
-                          {/* iOS-style Checkbox checkbox (6px rounding) */}
                           <div className={`w-4 h-4 border rounded-[6px] transition-all flex items-center justify-center ${selectedCategories.includes(cat) ? "bg-indigo-600 border-indigo-600 text-white" : "border-zinc-300 dark:border-zinc-600 group-hover:border-indigo-400 bg-transparent"}`}>
                             {selectedCategories.includes(cat) && (
                               <svg viewBox="0 0 10 10" className="w-2 h-2 stroke-current stroke-[2] fill-none">
@@ -491,7 +688,6 @@ export default function Courses() {
                           onChange={() => toggleLevel(lvl)} 
                           className="sr-only" 
                         />
-                        {/* iOS-style Checkbox checkbox (6px rounding) */}
                         <div className={`w-4 h-4 border rounded-[6px] transition-all flex items-center justify-center ${selectedLevels.includes(lvl) ? "bg-indigo-600 border-indigo-600 text-white" : "border-zinc-300 dark:border-zinc-600 group-hover:border-indigo-400 bg-transparent"}`}>
                           {selectedLevels.includes(lvl) && (
                             <svg viewBox="0 0 10 10" className="w-2 h-2 stroke-current stroke-[2] fill-none">
@@ -571,18 +767,22 @@ export default function Courses() {
               className={viewMode === 'list' ? 'flex flex-col gap-4 pb-8' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-8'}
             >
               <AnimatePresence mode="popLayout">
-                {filteredCourses.map((course) => (
+                {sortedFilteredCourses.map((course) => (
                   <CourseCard 
                     key={course.id} 
                     course={course} 
                     onDelete={setCourseToDelete}
+                    onTogglePin={handleTogglePin}
                     viewMode={viewMode}
                     plan={plan}
+                    isSelectionMode={isSelectionMode}
+                    isSelected={selectedCourseIds.has(course.id)}
+                    onSelectToggle={toggleSelectCourse}
                   />
                 ))}
               </AnimatePresence>
               
-              {filteredCourses.length === 0 && (
+              {sortedFilteredCourses.length === 0 && (
                 <motion.div 
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                   className="col-span-full py-20 flex flex-col items-center justify-center text-zinc-500 dark:text-zinc-400"
@@ -596,6 +796,56 @@ export default function Courses() {
         </div>
       )}
 
+      {/* Floating Gallery Bulk Action Bar */}
+      <AnimatePresence>
+        {(isSelectionMode || selectedCourseIds.size > 0) && (
+          <motion.div 
+            initial={{ y: 60, opacity: 0, scale: 0.95 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 60, opacity: 0, scale: 0.95 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[90] bg-zinc-900/95 dark:bg-[#1A1A1C]/95 backdrop-blur-xl border border-zinc-700 dark:border-white/15 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-4 text-xs font-bold font-sans"
+          >
+            <div className="flex items-center gap-2 pr-3 border-r border-white/15">
+              <CheckSquare className="w-4 h-4 text-indigo-400" />
+              <span>Выбрано: {selectedCourseIds.size}</span>
+            </div>
+
+            <button
+              onClick={handleBulkPinToggle}
+              disabled={selectedCourseIds.size === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 disabled:opacity-50 rounded-xl transition-all"
+            >
+              <Pin className={`w-3.5 h-3.5 ${allSelectedArePinned ? 'fill-amber-400 text-amber-400' : 'text-amber-300'}`} />
+              <span>{allSelectedArePinned ? 'Открепить выбранные' : 'Закрепить выбранные'}</span>
+            </button>
+
+            <button
+              onClick={() => setIsBulkDeleteModalOpen(true)}
+              disabled={selectedCourseIds.size === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 disabled:opacity-50 rounded-xl transition-all"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Удалить ({selectedCourseIds.size})</span>
+            </button>
+
+            <button
+              onClick={toggleSelectAll}
+              className="px-3 py-1.5 text-zinc-400 hover:text-white transition-all"
+            >
+              {selectedCourseIds.size === sortedFilteredCourses.length ? 'Снять выделение' : 'Выбрать все'}
+            </button>
+
+            <button
+              onClick={exitSelectionMode}
+              className="p-1.5 hover:bg-white/10 rounded-lg text-zinc-400 hover:text-white transition-all ml-1"
+              title="Закрыть выбор"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <CourseGeneratorModal 
         isOpen={showGenModal} 
         onClose={() => setShowGenModal(false)} 
@@ -603,11 +853,22 @@ export default function Courses() {
         onCourseGenerated={refreshCourses}
       />
 
+      {/* Single Delete Modal */}
       <DeleteConfirmModal 
         isOpen={!!courseToDelete}
         onClose={() => setCourseToDelete(null)}
-        onConfirm={confirmDelete}
+        onConfirm={confirmSingleDelete}
         isDeleting={isDeleting}
+        count={1}
+      />
+
+      {/* Bulk Delete Modal */}
+      <DeleteConfirmModal 
+        isOpen={isBulkDeleteModalOpen}
+        onClose={() => setIsBulkDeleteModalOpen(false)}
+        onConfirm={confirmBulkDelete}
+        isDeleting={isDeleting}
+        count={selectedCourseIds.size}
       />
     </motion.main>
   );

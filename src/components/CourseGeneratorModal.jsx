@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { generateCourseAndSave } from '../services/courseService.js';
+import CourseGraphThinking from './CourseGraphThinking.jsx';
 import { t, useLocale } from '../i18n.js';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 
@@ -16,8 +17,8 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
   const [step, setStep] = useState(1);
   const totalSteps = 5;
 
-  const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState('');
+  const [generating, setGenerating] = useState(false);
 
   // Step 1: Topic & RAG
   const [generationMode, setGenerationMode] = useState('topic'); // 'topic' | 'rag'
@@ -85,7 +86,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
     if (step > 1) setStep(s => s - 1);
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     let finalTopic = topic.trim();
     
     if (plan === 'ULTRA' && generationMode === 'rag') {
@@ -103,43 +104,36 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
     }
 
     setGenError('');
-    setGenerating(true);
-
-    try {
-      const actualGoal = customGoal.trim() ? customGoal.trim() : goal;
+    const actualGoal = customGoal.trim() ? customGoal.trim() : goal;
+    
+    const preferences = {
+      duration, focus, goal: actualGoal, tone, prerequisites,
+      dailyTime, flashcardCount, courseStyle: tone
+    };
       
-      const preferences = {
-        duration, focus, goal: actualGoal, tone, prerequisites,
-        dailyTime, flashcardCount, courseStyle: tone
-      };
-        
-      if (plan === 'ULTRA' && generationMode === 'rag') {
-        preferences.ragMode = true;
-        preferences.ragType = ragType;
-        preferences.source = ragType === 'pdf' ? uploadedFileName : youtubeUrl;
-      }
-
-      const generated = await generateCourseAndSave(userUid, finalTopic, level, preferences);
-      await incrementUsage('roadmap');
-      
-      // Reset state
-      setTopic(''); setLevel('Beginner'); setStep(1); setUploadedFileName(''); setYoutubeUrl('');
-      
-      onClose();
-      localStorage.setItem('selected_course_id', generated.id);
-      navigate('/graph');
-    } catch (err) {
-      console.error(err);
-      if (err.message === 'MISSING_API_KEY') {
-        setGenError(t('settings.profile.apiKeyMissing'));
-      } else if (err.message === 'API_OVERLOADED') {
-        setGenError('The Groq API is currently experiencing extremely high demand. Please try again in a few minutes.');
-      } else {
-        setGenError(err.message || 'Failed to generate course. Please try again.');
-      }
-    } finally {
-      setGenerating(false);
+    if (plan === 'ULTRA' && generationMode === 'rag') {
+      preferences.ragMode = true;
+      preferences.ragType = ragType;
+      preferences.source = ragType === 'pdf' ? uploadedFileName : youtubeUrl;
     }
+
+    const topicToGen = finalTopic;
+    const levelToGen = level;
+
+    // Reset wizard state and close modal
+    setTopic(''); setLevel('Beginner'); setStep(1); setUploadedFileName(''); setYoutubeUrl('');
+    onClose();
+
+    // Navigate to /graph page to run the course creation animation directly on the graph canvas!
+    navigate('/graph', {
+      state: {
+        isGenerating: true,
+        topic: topicToGen,
+        level: levelToGen,
+        preferences,
+        userUid
+      }
+    });
   };
 
   const handleDrop = (e) => {
@@ -398,7 +392,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
       <AnimatePresence>
         {isOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => !generating && onClose()} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             
             <motion.div 
               initial={{ scale: 0.95, y: 20, opacity: 0 }}
@@ -407,19 +401,6 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
               transition={{ type: 'spring', damping: 25, stiffness: 250 }}
               className="w-full max-w-lg bg-surface border border-outline-variant rounded-3xl overflow-hidden shadow-2xl relative z-10 flex flex-col text-on-surface"
             >
-              {generating && (
-                <div className="absolute inset-0 bg-surface/95 backdrop-blur-md z-20 flex flex-col items-center justify-center p-6 text-center">
-                  <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 4, ease: "linear" }} className="mb-6">
-                    <Brain className="w-16 h-16 text-primary" />
-                  </motion.div>
-                  <h3 className="text-xl font-bold text-on-surface mb-2">Архитектура курса создается...</h3>
-                  <p className="text-sm text-on-surface-variant max-w-sm">
-                    Анализируем ваши потребности, подбираем оптимальную глубину и формируем индивидуальный путь.
-                  </p>
-                  <Loader2 className="w-6 h-6 animate-spin text-primary mt-6" />
-                </div>
-              )}
-
               {/* Header */}
               <div className="p-6 border-b border-outline-variant bg-surface-container-lowest flex justify-between items-center shrink-0">
                 <div className="w-full pr-4">
@@ -433,7 +414,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
                     ))}
                   </div>
                 </div>
-                <button disabled={generating} onClick={onClose} className="p-2 rounded-full hover:bg-surface-container-high text-on-surface-variant transition-colors self-start -mt-2 -mr-2">
+                <button onClick={onClose} className="p-2 rounded-full hover:bg-surface-container-high text-on-surface-variant transition-colors self-start -mt-2 -mr-2">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -458,7 +439,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
               {/* Footer */}
               <div className="p-4 border-t border-outline-variant bg-surface-container-lowest flex justify-between items-center shrink-0">
                 <button 
-                  type="button" disabled={generating || step === 1} onClick={handleBack}
+                  type="button" disabled={step === 1} onClick={handleBack}
                   className={`px-4 py-2.5 rounded-xl font-bold flex items-center gap-1 transition-all ${step === 1 ? 'opacity-0 pointer-events-none' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'}`}
                 >
                   <ChevronLeft className="w-4 h-4" /> Назад
@@ -473,7 +454,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
                   </button>
                 ) : (
                   <button 
-                    type="button" onClick={handleGenerate} disabled={generating || !hasApiKey}
+                    type="button" onClick={handleGenerate} disabled={!hasApiKey}
                     className="px-6 py-2.5 rounded-xl text-sm font-bold bg-primary text-on-primary shadow-lg shadow-primary/20 hover:bg-primary/95 transition-all flex items-center gap-1.5"
                   >
                     Создать <Sparkles className="w-4 h-4 fill-white" />

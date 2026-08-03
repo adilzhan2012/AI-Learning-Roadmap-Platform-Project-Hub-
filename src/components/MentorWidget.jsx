@@ -431,40 +431,18 @@ ${ultraInstruction}`;
     }
   };
 
-  const triggerCourseGeneration = async (topic, level, preferences) => {
-    setCourseGenerating(true);
-    try {
-      const generated = await generateCourseAndSave(user.uid, topic, level, preferences);
-      await incrementUsage('roadmap');
-      
-      const userCourses = await getUserCourses(user.uid);
-      setCourses(userCourses);
-      setGeneratedTopics(prev => new Set([...prev, topic]));
-
-      setMessages(prev => {
-        const next = [...prev, {
-          id: Date.now().toString(),
-          role: 'assistant',
-          content: `🎉 **Курс "${topic}" успешно сгенерирован!**\nМы настроили расписание под ваш темп обучения и исключили основы программирования.\n\n[Перейти к графу знаний]`
-        }];
-        if (user && activeSessionId) {
-          const docRef = doc(db, 'users', user.uid, 'mentorSessions', activeSessionId);
-          setDoc(docRef, { messages: next }, { merge: true }).catch(console.error);
-        }
-        return next;
-      });
-
-      localStorage.setItem('selected_course_id', generated.id);
-    } catch (err) {
-      console.error("Failed to generate course from briefing:", err);
-      setMessages(prev => [...prev, {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: `❌ Произошла ошибка при автоматической генерации курса: ${err.message}`
-      }]);
-    } finally {
-      setCourseGenerating(false);
-    }
+  const triggerCourseGeneration = (topic, level, preferences) => {
+    if (!user) return;
+    setGeneratedTopics(prev => new Set([...prev, topic]));
+    navigate('/graph', {
+      state: {
+        isGenerating: true,
+        topic,
+        level,
+        preferences,
+        userUid: user.uid
+      }
+    });
   };
 
   const handleClearHistory = async () => {
