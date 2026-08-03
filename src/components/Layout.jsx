@@ -9,6 +9,7 @@ import CookieBanner from './shared/CookieBanner.jsx';
 import MentorWidget from './MentorWidget.jsx';
 import MaintenancePage from './shared/MaintenancePage.jsx';
 import BannedModal from './shared/BannedModal.jsx';
+import Footer from './shared/Footer.jsx';
 
 export default function Layout() {
   const [user, setUser] = useState(auth.currentUser);
@@ -103,6 +104,7 @@ export default function Layout() {
             <Outlet />
           </motion.div>
         </AnimatePresence>
+        <Footer />
         <CookieBanner />
         {isBanned && <BannedModal />}
       </div>
@@ -134,6 +136,7 @@ export default function Layout() {
             <Outlet />
           </motion.div>
         </AnimatePresence>
+        {!isGraphPage && <Footer />}
       </main>
       <MentorWidget />
       <CookieBanner />
