@@ -6,10 +6,9 @@ import Logo from '../components/shared/Logo.jsx';
 import { 
   auth, 
   createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
+  signInWithEmailAndPassword,
   GoogleAuthProvider, 
   GithubAuthProvider,
-  OAuthProvider,
   signInWithPopup,
   db,
   storage
@@ -210,9 +209,13 @@ export default function Auth({ type }) {
         finalPhotoUrl = await getDownloadURL(avatarRef);
       }
 
-      await updateProfile(userObj, { displayName: firstName.trim() });
+      const fullName = `${firstName} ${lastName}`.trim();
+      await updateProfile(userObj, { 
+        displayName: fullName,
+        photoURL: finalPhotoUrl || userObj.photoURL || ''
+      });
       
-      await getUserStats(userObj.uid, { 
+      const stats = await getUserStats(userObj.uid, { 
         firstName, 
         lastName, 
         username, 
@@ -221,6 +224,8 @@ export default function Auth({ type }) {
         avatarColor: finalPhotoUrl ? '' : avatarColor,
         photoURL: finalPhotoUrl
       });
+      
+      window.dispatchEvent(new CustomEvent('profileUpdated', { detail: stats }));
       
       if (authMethod === 'email') {
         auth.languageCode = locale === 'ru' ? 'ru' : 'en';
@@ -358,50 +363,7 @@ export default function Auth({ type }) {
     }
   };
 
-  const handleAppleAuth = async () => {
-    setError('');
-    setLoading(true);
-    try {
-      const provider = new OAuthProvider('apple.com');
-      provider.addScope('email');
-      provider.addScope('name');
-      const result = await signInWithPopup(auth, provider);
-      const { isNewUser } = getAdditionalUserInfo(result);
-      
-      if (isNewUser) {
-        setProviderUser(result.user);
-        setAuthMethod('apple');
-        
-        const nameParts = (result.user.displayName || '').split(' ');
-        setFirstName(nameParts[0] || '');
-        setLastName(nameParts.slice(1).join(' ') || '');
-        setEmail(result.user.email || '');
-        
-        setStep(4); 
-        setLoading(false);
-      } else {
-        const userDoc = await getDoc(doc(db, 'users', result.user.uid));
-        if (!userDoc.exists()) {
-          setProviderUser(result.user);
-          setAuthMethod('apple');
-          const nameParts = (result.user.displayName || '').split(' ');
-          setFirstName(nameParts[0] || '');
-          setLastName(nameParts.slice(1).join(' ') || '');
-          setEmail(result.user.email || '');
-          setStep(4);
-          setLoading(false);
-        } else {
-          navigate('/dashboard');
-        }
-      }
-    } catch (err) {
-      console.error(err);
-      if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
-        setError(getFriendlyErrorMessage(err.code));
-      }
-      setLoading(false);
-    }
-  };
+
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
@@ -552,18 +514,6 @@ export default function Auth({ type }) {
                   {locale === 'ru' ? 'Войти через GitHub' : 'Continue with GitHub'}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={handleAppleAuth}
-                  disabled={loading}
-                  className="w-full py-3.5 px-4 bg-black hover:bg-gray-900 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-black rounded-xl font-medium transition-all shadow-sm active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none flex justify-center items-center gap-3 h-[52px]"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M17.05 13.926c-.033-2.585 2.106-3.834 2.198-3.892-1.203-1.758-3.076-1.996-3.754-2.025-1.591-.161-3.109.938-3.925.938-.813 0-2.062-.919-3.376-.893-1.716.026-3.303.997-4.184 2.531-1.79 3.097-.457 7.682 1.288 10.203.856 1.233 1.866 2.62 3.167 2.569 1.248-.053 1.727-.811 3.238-.811 1.511 0 1.948.811 3.264.786 1.341-.027 2.203-1.258 3.053-2.498 1.01-1.47 1.424-2.894 1.442-2.969-.033-.014-2.779-1.066-2.811-3.94z"/>
-                    <path d="M14.996 5.372c.683-.827 1.144-1.979 1.018-3.13-.984.04-2.176.656-2.885 1.514-.633.766-1.192 1.954-1.042 3.078 1.092.085 2.222-.635 2.909-1.462z"/>
-                  </svg>
-                  {locale === 'ru' ? 'Войти через Apple' : 'Continue with Apple'}
-                </button>
               </div>
             </>
           ) : (
@@ -650,22 +600,6 @@ export default function Auth({ type }) {
                       )}
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={handleAppleAuth}
-                      disabled={loading}
-                      className="w-full py-3.5 px-4 bg-black hover:bg-gray-900 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-black rounded-xl font-medium transition-all shadow-sm active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none flex justify-center items-center gap-3 h-[52px]"
-                    >
-                      {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                        <>
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M17.05 13.926c-.033-2.585 2.106-3.834 2.198-3.892-1.203-1.758-3.076-1.996-3.754-2.025-1.591-.161-3.109.938-3.925.938-.813 0-2.062-.919-3.376-.893-1.716.026-3.303.997-4.184 2.531-1.79 3.097-.457 7.682 1.288 10.203.856 1.233 1.866 2.62 3.167 2.569 1.248-.053 1.727-.811 3.238-.811 1.511 0 1.948.811 3.264.786 1.341-.027 2.203-1.258 3.053-2.498 1.01-1.47 1.424-2.894 1.442-2.969-.033-.014-2.779-1.066-2.811-3.94z"/>
-                            <path d="M14.996 5.372c.683-.827 1.144-1.979 1.018-3.13-.984.04-2.176.656-2.885 1.514-.633.766-1.192 1.954-1.042 3.078 1.092.085 2.222-.635 2.909-1.462z"/>
-                          </svg>
-                          {locale === 'ru' ? 'Продолжить с Apple' : 'Continue with Apple'}
-                        </>
-                      )}
-                    </button>
                   </div>
                 </motion.div>
               )}
@@ -764,9 +698,30 @@ export default function Auth({ type }) {
 
               {step === 4 && (
                 <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="space-y-6">
-                  {/* Additional field for Social Auth Users that skipped step 2 */}
+                  {/* Additional fields for Social Auth Users that skipped step 2 */}
                   {authMethod !== 'email' && (
-                    <div className="mb-6">
+                    <div className="space-y-4 mb-6">
+                      <div className="flex gap-4">
+                        <div className="flex-1">
+                          <label htmlFor="firstNameSocial" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('settings.profile.firstName')}</label>
+                          <input type="text" id="firstNameSocial" 
+                            value={firstName}
+                            onChange={(e) => setFirstName(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                            placeholder={locale === 'ru' ? 'Иван' : 'John'} 
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label htmlFor="lastNameSocial" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('settings.profile.lastName')}</label>
+                          <input type="text" id="lastNameSocial" 
+                            value={lastName}
+                            onChange={(e) => setLastName(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                            placeholder={locale === 'ru' ? 'Иванов' : 'Doe'} 
+                          />
+                        </div>
+                      </div>
+                      <div>
                       <label htmlFor="usernameSocial" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('settings.profile.username')}</label>
                       <input type="text" id="usernameSocial" 
                         value={username}
@@ -776,6 +731,7 @@ export default function Auth({ type }) {
                         autoFocus
                       />
                     </div>
+                  </div>
                   )}
 
                   <div className="text-center">

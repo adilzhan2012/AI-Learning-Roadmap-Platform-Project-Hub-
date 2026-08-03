@@ -508,6 +508,8 @@ export async function getUserStats(userId, additionalData = {}) {
     if (additionalData.username) defaultProfile.username = additionalData.username;
     if (additionalData.referredBy) defaultProfile.referredBy = additionalData.referredBy;
     if (additionalData.email) defaultProfile.email = additionalData.email;
+    if (additionalData.photoURL !== undefined) defaultProfile.photoURL = additionalData.photoURL;
+    if (additionalData.avatarColor !== undefined) defaultProfile.avatarColor = additionalData.avatarColor;
     
     // Use merge to prevent overwriting concurrently created profiles
     await setDoc(userRef, defaultProfile, { merge: true });

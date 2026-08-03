@@ -167,7 +167,7 @@ export default function ImageCropperModal({ isOpen, onClose, imageSrc, onCropCom
                 step={0.1}
                 aria-labelledby="Zoom"
                 onChange={(e) => setZoom(e.target.value)}
-                className="w-full h-2 bg-surface-container rounded-lg appearance-none cursor-pointer accent-primary"
+                className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary"
               />
             </div>
             

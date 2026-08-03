@@ -278,6 +278,7 @@
   "auth.backHome": "На главную",
   "auth.emailLabel": "Электронная почта",
   "auth.passwordLabel": "Пароль",
+  "auth.forgotPassword": "Забыли пароль?",
   "auth.error.emailInUse": "Этот адрес электронной почты уже зарегистрирован. Пожалуйста, войдите.",
   "auth.error.invalidCredential": "Неверный адрес электронной почты или пароль.",
   "auth.error.weakPassword": "Пароль должен состоять минимум из 6 символов.",

@@ -240,36 +240,51 @@ export default function Settings() {
 
   const userInitial = firstName ? firstName.charAt(0).toUpperCase() : (user?.email ? user.email.charAt(0).toUpperCase() : '?');
 
+  const getProviderName = () => {
+    if (!user || !user.providerData || user.providerData.length === 0) return locale === 'ru' ? 'Email/Пароль' : 'Email/Password';
+    const providerId = user.providerData[0].providerId;
+    if (providerId === 'google.com') return 'Google';
+    if (providerId === 'github.com') return 'GitHub';
+    if (providerId === 'apple.com') return 'Apple';
+    return locale === 'ru' ? 'Email/Пароль' : 'Email/Password';
+  };
+
   return (
     <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row gap-8">
       {/* Sidebar Navigation */}
-      <div className="w-full md:w-64 shrink-0 select-none">
-        <h1 className="text-3xl font-bold text-on-surface mb-2">{t('settings.title')}</h1>
-        <p className="text-sm text-on-surface-variant mb-6">{t('settings.subtitle')}</p>
+      <div className="w-full md:w-64 shrink-0 select-none flex flex-col h-[calc(100vh-100px)] justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-on-surface mb-2">{t('settings.title')}</h1>
+          <p className="text-sm text-on-surface-variant mb-6">{t('settings.subtitle')}</p>
 
-        <div className="flex flex-col gap-1">
-          {SECTIONS.map((section) => (
-            <button
-              key={section.id}
-              type="button"
-              onClick={() => setActiveSection(section.id)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors text-left border ${
-                activeSection === section.id 
-                  ? 'text-on-surface bg-surface border-outline-variant shadow-sm' 
-                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container border-transparent'
-              }`}
-            >
-              <section.icon className={`w-5 h-5 shrink-0 ${activeSection === section.id ? 'text-primary' : ''}`} />
-              <span className="truncate">{section.label}</span>
+          <div className="flex flex-col gap-1">
+            {SECTIONS.map((section) => (
+              <button
+                key={section.id}
+                type="button"
+                onClick={() => setActiveSection(section.id)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors text-left border ${
+                  activeSection === section.id 
+                    ? 'text-on-surface bg-surface border-outline-variant shadow-sm' 
+                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container border-transparent'
+                }`}
+              >
+                <section.icon className={`w-5 h-5 shrink-0 ${activeSection === section.id ? 'text-primary' : ''}`} />
+                <span className="truncate">{section.label}</span>
+              </button>
+            ))}
+            
+            <div className="my-4 border-t border-outline-variant/50"></div>
+            
+            <button type="button" onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm text-error hover:bg-error/10 transition-colors text-left group">
+              <LogOut className="w-5 h-5 shrink-0 group-hover:-translate-x-1 transition-transform" />
+              <span>{t('settings.nav.logout') || 'Log Out'}</span>
             </button>
-          ))}
-          
-          <div className="my-4 border-t border-outline-variant/50"></div>
-          
-          <button type="button" onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm text-error hover:bg-error/10 transition-colors text-left group">
-            <LogOut className="w-5 h-5 shrink-0 group-hover:-translate-x-1 transition-transform" />
-            <span>{t('settings.nav.logout') || 'Log Out'}</span>
-          </button>
+          </div>
+        </div>
+
+        <div className="mt-8 text-xs text-on-surface-variant/60">
+          <p>&copy; {new Date().getFullYear()} {locale === 'ru' ? 'Все права защищены.' : 'All rights reserved.'}</p>
         </div>
       </div>
 
@@ -413,7 +428,9 @@ export default function Settings() {
                           disabled 
                           className="w-full bg-surface-container-low border border-outline-variant rounded-xl px-4 py-3 text-on-surface-variant opacity-70 cursor-not-allowed" 
                         />
-                        <p className="text-xs text-on-surface-variant mt-1">{t('settings.profile.emailDesc') || 'Logged in via Firebase Email/Password provider.'}</p>
+                        <p className="text-xs text-on-surface-variant mt-1">
+                          {locale === 'ru' ? `Вход выполнен через ${getProviderName()}` : `Logged in via ${getProviderName()}`}
+                        </p>
                       </div>
                     </div>
                   </div>
