@@ -213,7 +213,7 @@ export default function Topbar() {
           
           {/* Current League Emblem */}
           <div 
-            onClick={() => navigate('/achievements')}
+            onClick={() => navigate('/leagues')}
             className="hidden sm:flex items-center gap-1.5 cursor-pointer text-[10px] font-semibold text-on-surface-variant hover:text-white transition-colors border border-outline bg-surface rounded-full px-2.5 py-1 select-none font-sans"
             title="Лига соревнований"
           >

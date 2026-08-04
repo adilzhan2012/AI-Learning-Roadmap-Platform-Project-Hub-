@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Sparkles, ArrowRight, Activity, Terminal } from 'lucide-react';
 import Logo from '../components/shared/Logo.jsx';
 import { auth } from '../firebase.js';
+import { t, useLocale, setLocale } from '../i18n.js';
 
 const floatVariants = {
   animate: {
@@ -37,6 +38,11 @@ const staggerContainer = {
 
 export default function Landing() {
   const isLoggedIn = !!auth.currentUser;
+  const locale = useLocale();
+  const toggleLocale = () => {
+    const nextLocale = locale === 'ru' ? 'en' : 'ru';
+    setLocale(nextLocale);
+  };
 
   return (
     <div className="dark min-h-screen bg-background text-on-background font-sans overflow-x-hidden selection:bg-primary-container w-full relative">
@@ -67,7 +73,15 @@ export default function Landing() {
           <Link to="/">
             <Logo variant="full" className="h-8" />
           </Link>
-          <div>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={toggleLocale}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant hover:border-primary/50 bg-surface-container-high/45 hover:bg-surface-container-high/80 text-xs font-semibold tracking-wide transition-all shadow-sm duration-200 select-none text-on-surface"
+              title={locale === 'ru' ? 'Switch to English' : 'Переключить на русский'}
+            >
+              <span>{locale === 'ru' ? 'RU' : 'EN'}</span>
+            </button>
+
             {isLoggedIn ? (
               <Link to="/dashboard">
                 <motion.button 
@@ -75,19 +89,19 @@ export default function Landing() {
                   whileTap={{ scale: 0.95 }}
                   className="text-sm font-medium bg-primary text-on-primary px-4 py-2 rounded-full inline-block shadow-lg"
                 >
-                  Go to Dashboard
+                  {t('landing.nav.dashboard')}
                 </motion.button>
               </Link>
             ) : (
               <div className="flex items-center gap-4">
-                <Link to="/login" className="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">Log in</Link>
+                <Link to="/login" className="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">{t('landing.nav.login')}</Link>
                 <Link to="/register">
                   <motion.button 
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className="text-sm font-medium bg-primary text-on-primary px-4 py-2 rounded-full inline-block shadow-lg"
                   >
-                    Sign up
+                    {t('landing.nav.signup')}
                   </motion.button>
                 </Link>
               </div>
@@ -114,7 +128,7 @@ export default function Landing() {
               </span>
             </motion.h1>
             <motion.p variants={fadeUpVariants} className="text-lg sm:text-xl md:text-2xl text-on-surface-variant max-w-2xl mb-8 md:mb-10 font-light">
-              An intelligent, immersive environment to track, learn, and master your technical roadmap.
+              {t('landing.hero.subtitle')}
             </motion.p>
             
             <motion.div variants={fadeUpVariants} className="flex flex-col sm:flex-row items-center gap-4 mb-8 w-full sm:w-auto">
@@ -125,7 +139,7 @@ export default function Landing() {
                     whileTap={{ scale: 0.95 }}
                     className="w-full sm:w-auto justify-center px-8 py-4 rounded-full bg-primary text-on-primary font-semibold text-lg shadow-xl flex items-center gap-2"
                   >
-                    Enter Workspace <ArrowRight className="w-5 h-5" />
+                    {t('landing.hero.enterWorkspace')} <ArrowRight className="w-5 h-5" />
                   </motion.button>
                 </Link>
               ) : (
@@ -135,7 +149,7 @@ export default function Landing() {
                     whileTap={{ scale: 0.95 }}
                     className="w-full sm:w-auto justify-center px-8 py-4 rounded-full bg-primary text-on-primary font-semibold text-lg shadow-xl flex items-center gap-2"
                   >
-                    Start Learning Now <Activity className="w-5 h-5" />
+                    {t('landing.hero.startLearning')} <Activity className="w-5 h-5" />
                   </motion.button>
                 </Link>
               )}
@@ -183,7 +197,7 @@ export default function Landing() {
                    >
                      <Terminal className="w-16 h-16 text-primary/30 group-hover:text-primary/60 transition-colors duration-500" />
                    </motion.div>
-                   <p className="text-on-surface-variant font-medium tracking-wide uppercase text-sm">Interactive Knowledge Graph Interface</p>
+                   <p className="text-on-surface-variant font-medium tracking-wide uppercase text-sm">{t('landing.hero.graphInterface')}</p>
                 </div>
               </div>
             </div>
@@ -195,7 +209,7 @@ export default function Landing() {
                 whileInView={{ y: 0 }}
                 className="px-6 py-3 rounded-full bg-primary text-on-primary font-semibold shadow-xl flex items-center gap-2"
               >
-                Launch Environment <ArrowRight className="w-4 h-4" />
+                {t('landing.hero.launchEnv')} <ArrowRight className="w-4 h-4" />
               </motion.span>
             </Link>
           </motion.div>
@@ -222,11 +236,11 @@ export default function Landing() {
               <div className="text-center sm:text-left flex-1">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-wider mb-3">
                   <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                  Public Beta Live
+                  {t('landing.beta.badge')}
                 </div>
-                <h3 className="text-xl md:text-2xl font-bold text-on-surface mb-2">Добро пожаловать в бета-версию!</h3>
+                <h3 className="text-xl md:text-2xl font-bold text-on-surface mb-2">{t('landing.beta.title')}</h3>
                 <p className="text-on-surface-variant text-sm md:text-base leading-relaxed">
-                  Мы запустили публичную бету платформы. Сейчас доступен базовый функционал, генерация курсов и граф знаний. Возможны небольшие баги, но мы активно работаем над их устранением.
+                  {t('landing.beta.desc')}
                 </p>
               </div>
             </div>
@@ -239,7 +253,7 @@ export default function Landing() {
               viewport={{ once: true }}
               className="text-3xl sm:text-4xl md:text-6xl font-bold mb-6 md:mb-8 text-primary"
             >
-              Обзор Платформы
+              {t('landing.overview.title')}
             </motion.h2>
             <motion.p 
               initial={{ opacity: 0, y: 20 }}
@@ -248,7 +262,7 @@ export default function Landing() {
               transition={{ delay: 0.1 }}
               className="text-on-surface-variant text-base sm:text-lg md:text-2xl font-light leading-relaxed px-2"
             >
-              Мы создали этот проект, чтобы решить проблему хаотичного самообразования. С помощью ИИ-сгенерированных дорожных карт мы помогаем учащимся легко осваивать сложные технические дисциплины, избегая "tutorial hell" (ада туториалов). 
+              {t('landing.overview.desc')}
             </motion.p>
           </div>
 
@@ -256,29 +270,29 @@ export default function Landing() {
           <div className="grid md:grid-cols-2 gap-6 md:gap-8 w-full px-2">
             {[
               {
-                title: "Интерактивный Граф Знаний",
-                desc: "Визуализируйте свой путь обучения. Наш динамичный граф показывает зависимости и связи между курсами для идеального понимания структуры.",
+                title: t('landing.features.graph.title'),
+                desc: t('landing.features.graph.desc'),
                 icon: "🕸️",
                 color: "from-emerald-500/20 to-teal-500/20",
                 borderColor: "group-hover:border-emerald-500/50"
               },
               {
-                title: "Уроки от ИИ (Groq)",
-                desc: "Платформа генерирует подробные, актуальные и интерактивные уроки на лету с помощью высокопроизводительных ИИ-моделей.",
+                title: t('landing.features.lessons.title'),
+                desc: t('landing.features.lessons.desc'),
                 icon: "🧠",
                 color: "from-blue-500/20 to-indigo-500/20",
                 borderColor: "group-hover:border-blue-500/50"
               },
               {
-                title: "Языковая Поддержка",
-                desc: "В данный момент платформа полностью доступна на русском языке. В ближайшем будущем планируется масштабное обновление с поддержкой английского языка.",
+                title: t('landing.features.lang.title'),
+                desc: t('landing.features.lang.desc'),
                 icon: "🌍",
                 color: "from-purple-500/20 to-fuchsia-500/20",
                 borderColor: "group-hover:border-purple-500/50"
               },
               {
-                title: "Геймификация и Прогресс",
-                desc: "Следите за своими ежедневными сериями, получайте достижения и соревнуйтесь в лигах для поддержания мотивации.",
+                title: t('landing.features.game.title'),
+                desc: t('landing.features.game.desc'),
                 icon: "🏆",
                 color: "from-orange-500/20 to-amber-500/20",
                 borderColor: "group-hover:border-orange-500/50"
@@ -311,7 +325,7 @@ export default function Landing() {
               viewport={{ once: true }}
               className="text-3xl sm:text-4xl md:text-5xl font-bold mb-8 md:mb-12 text-on-surface"
             >
-              Команда Проекта
+              {t('landing.team.title')}
             </motion.h2>
             <div className="grid md:grid-cols-2 gap-6 md:gap-8 max-w-5xl mx-auto w-full">
               <motion.div 
@@ -333,12 +347,12 @@ export default function Landing() {
                 </div>
                 <div className="relative z-10 text-center sm:text-left">
                   <h4 className="text-on-surface font-semibold text-lg mb-4 flex items-center justify-center sm:justify-start gap-2">
-                    <Sparkles className="w-5 h-5 text-blue-500" /> Выполненная работа:
+                    <Sparkles className="w-5 h-5 text-blue-500" /> {t('landing.team.workDone')}
                   </h4>
                   <ul className="space-y-4 text-on-surface-variant font-light text-[15px] sm:text-[17px] text-left">
-                    <li className="flex items-start gap-3"><div className="mt-2 w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" /> Проектирование архитектуры платформы и концепции продукта.</li>
-                    <li className="flex items-start gap-3"><div className="mt-2 w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" /> Интеграция высокоскоростной ИИ логики (Groq API) для генерации курсов.</li>
-                    <li className="flex items-start gap-3"><div className="mt-2 w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" /> Разработка UI/UX дизайна, глассморфизм-интерфейса и анимаций (Framer Motion).</li>
+                    <li className="flex items-start gap-3"><div className="mt-2 w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" /> {t('landing.team.di.task1')}</li>
+                    <li className="flex items-start gap-3"><div className="mt-2 w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" /> {t('landing.team.di.task2')}</li>
+                    <li className="flex items-start gap-3"><div className="mt-2 w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" /> {t('landing.team.di.task3')}</li>
                   </ul>
                 </div>
               </motion.div>
@@ -363,13 +377,13 @@ export default function Landing() {
                 <div className="relative z-10 sm:text-right text-center">
                   <h4 className="text-on-surface font-semibold text-lg mb-4 flex items-center justify-center sm:justify-end gap-2">
                     <span className="block sm:hidden"><Terminal className="w-5 h-5 text-purple-500 inline mr-2"/></span>
-                    Выполненная работа: 
+                    {t('landing.team.workDone')} 
                     <Terminal className="w-5 h-5 text-purple-500 hidden sm:block" />
                   </h4>
                   <ul className="space-y-4 text-on-surface-variant font-light text-[15px] sm:text-[17px] text-left sm:text-right">
-                    <li className="flex items-start sm:items-start sm:justify-end gap-3 flex-row sm:flex-row"><div className="mt-2 w-2 h-2 rounded-full bg-purple-500 flex-shrink-0 sm:hidden" /><span className="sm:text-right flex-1">Масштабирование инфраструктуры и интеграция Firebase (Auth, Firestore).</span> <div className="mt-2 w-2 h-2 rounded-full bg-purple-500 flex-shrink-0 hidden sm:block" /></li>
-                    <li className="flex items-start sm:items-start sm:justify-end gap-3 flex-row sm:flex-row"><div className="mt-2 w-2 h-2 rounded-full bg-purple-500 flex-shrink-0 sm:hidden" /><span className="sm:text-right flex-1">Разработка сложного интерактивного графа знаний на базе Vis-Network.</span> <div className="mt-2 w-2 h-2 rounded-full bg-purple-500 flex-shrink-0 hidden sm:block" /></li>
-                    <li className="flex items-start sm:items-start sm:justify-end gap-3 flex-row sm:flex-row"><div className="mt-2 w-2 h-2 rounded-full bg-purple-500 flex-shrink-0 sm:hidden" /><span className="sm:text-right flex-1">Настройка роутинга, локализации (i18n) и логики работы клиентской части.</span> <div className="mt-2 w-2 h-2 rounded-full bg-purple-500 flex-shrink-0 hidden sm:block" /></li>
+                    <li className="flex items-start sm:items-start sm:justify-end gap-3 flex-row sm:flex-row"><div className="mt-2 w-2 h-2 rounded-full bg-purple-500 flex-shrink-0 sm:hidden" /><span className="sm:text-right flex-1">{t('landing.team.ad.task1')}</span> <div className="mt-2 w-2 h-2 rounded-full bg-purple-500 flex-shrink-0 hidden sm:block" /></li>
+                    <li className="flex items-start sm:items-start sm:justify-end gap-3 flex-row sm:flex-row"><div className="mt-2 w-2 h-2 rounded-full bg-purple-500 flex-shrink-0 sm:hidden" /><span className="sm:text-right flex-1">{t('landing.team.ad.task2')}</span> <div className="mt-2 w-2 h-2 rounded-full bg-purple-500 flex-shrink-0 hidden sm:block" /></li>
+                    <li className="flex items-start sm:items-start sm:justify-end gap-3 flex-row sm:flex-row"><div className="mt-2 w-2 h-2 rounded-full bg-purple-500 flex-shrink-0 sm:hidden" /><span className="sm:text-right flex-1">{t('landing.team.ad.task3')}</span> <div className="mt-2 w-2 h-2 rounded-full bg-purple-500 flex-shrink-0 hidden sm:block" /></li>
                   </ul>
                 </div>
               </motion.div>
@@ -387,12 +401,12 @@ export default function Landing() {
               yourwayy.co
             </div>
             <p className="text-sm text-on-surface-variant font-medium max-w-xs">
-              An intelligent, immersive environment to track, learn, and master your technical roadmap.
+              {t('landing.hero.subtitle')}
             </p>
           </div>
 
           <div className="flex flex-col items-center md:items-start gap-2 text-sm text-on-surface-variant">
-            <h4 className="font-semibold text-on-surface mb-2">Свяжитесь с нами</h4>
+            <h4 className="font-semibold text-on-surface mb-2">{t('landing.footer.contactUs')}</h4>
             <a href="mailto:support@yourwayy.co" className="hover:text-primary transition-colors flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-primary/50"></span> support@yourwayy.co
             </a>
@@ -402,9 +416,9 @@ export default function Landing() {
           </div>
 
           <div className="text-sm text-on-surface-variant font-medium text-center md:text-right flex flex-col items-center md:items-end justify-between h-full pt-1">
-            <div>&copy; 2026 yourwayy.co. All rights reserved.</div>
+            <div>&copy; {new Date().getFullYear()} yourwayy.co. {t('landing.footer.copy')}</div>
             <div className="mt-4 md:mt-6 text-[10px] uppercase tracking-widest font-mono opacity-70">
-              Designed & Developed by Ivakin Daniil & Dutpayev Adilzhan
+              {t('landing.footer.designedBy')}
             </div>
           </div>
         </div>

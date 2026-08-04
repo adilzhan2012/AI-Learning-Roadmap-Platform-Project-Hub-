@@ -246,6 +246,44 @@ export default function Auth({ type }) {
     
     if (isLogin) {
       setLoading(true);
+      const emailLower = email.trim().toLowerCase();
+      if (emailLower === 'google-review@yourwayy.co' && password === 'GoogleReview2026!') {
+        try {
+          await signInWithEmailAndPassword(auth, emailLower, password);
+          navigate('/dashboard');
+          return;
+        } catch (loginErr) {
+          if (loginErr.code === 'auth/user-not-found' || loginErr.code === 'auth/invalid-credential') {
+            try {
+              const userCredential = await createUserWithEmailAndPassword(auth, emailLower, password);
+              const userObj = userCredential.user;
+              await updateProfile(userObj, { displayName: 'Google Reviewer' });
+              
+              await getUserStats(userObj.uid, {
+                firstName: 'Google',
+                lastName: 'Reviewer',
+                username: 'googlereviewer',
+                email: emailLower,
+                avatarColor: 'bg-gradient-to-br from-blue-500 to-cyan-600'
+              });
+              
+              navigate('/dashboard');
+              return;
+            } catch (regErr) {
+              console.error('Failed to auto-register reviewer:', regErr);
+              setError(getFriendlyErrorMessage(regErr.code));
+              setLoading(false);
+              return;
+            }
+          } else {
+            console.error(loginErr);
+            setError(getFriendlyErrorMessage(loginErr.code));
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
       try {
         await signInWithEmailAndPassword(auth, email, password);
         navigate('/dashboard');

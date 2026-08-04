@@ -7,8 +7,12 @@ import { useState, useEffect } from 'react';
 const STORAGE_KEY = 'yourway-locale';
 
 const getInitialLocale = () => {
-  localStorage.setItem(STORAGE_KEY, 'ru');
-  return 'ru';
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved === 'ru' || saved === 'en') return saved;
+  const browserLang = navigator.language || navigator.userLanguage;
+  const initial = (browserLang && browserLang.startsWith('en')) ? 'en' : 'ru';
+  localStorage.setItem(STORAGE_KEY, initial);
+  return initial;
 };
 
 let currentLocale = getInitialLocale();
@@ -83,8 +87,8 @@ export function getLocale() {
 }
 
 export async function setLocale(locale) {
-  if (locale !== 'ru') {
-    return; // Non-Russian locales disabled (under development)
+  if (locale !== 'ru' && locale !== 'en') {
+    return;
   }
   if (locale !== currentLocale) {
     await loadLocale(locale);
@@ -97,8 +101,8 @@ export async function setLocale(locale) {
 
 export function getAvailableLocales() {
   return [
-    { code: 'ru', label: 'Русский', flag: '🇷🇺', active: true, disabled: false },
-    { code: 'en', label: 'English (US)', flag: '🇺🇸', active: false, disabled: true, statusText: 'Скоро в разработке' },
+    { code: 'ru', label: 'Русский', flag: '', active: currentLocale === 'ru', disabled: false },
+    { code: 'en', label: 'English (US)', flag: '', active: currentLocale === 'en', disabled: false },
   ];
 }
 
