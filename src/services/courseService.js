@@ -1,20 +1,17 @@
 import { auth, db, functions } from '../firebase.js';
 import { httpsCallable } from 'firebase/functions';
 import { 
-  collection, 
   doc, 
-  setDoc, 
   getDoc, 
+  setDoc, 
+  updateDoc, 
+  collection, 
+  addDoc, 
   getDocs, 
-  deleteDoc,
   query, 
   where, 
-  updateDoc, 
-  addDoc, 
-  orderBy, 
-  limit,
-  increment,
-  serverTimestamp
+  serverTimestamp,
+  runTransaction
 } from 'firebase/firestore';
 import { getLocale } from '../i18n.js';
 import { 
@@ -275,27 +272,35 @@ The response must be a valid JSON object matching this schema:
           break;
         }
 
-        // Save newly generated course to template cache
+        // Save newly generated course to template cache using runTransaction to prevent race conditions
         try {
-          await setDoc(templateRef, {
-            templateVersion: CACHE_VERSION,
-            topic,
-            normalizedTopic,
-            level,
-            preferences,
-            title: courseDataToUse.title || topic,
-            category: courseDataToUse.category || 'General',
-            hours: courseDataToUse.hours || '10h',
-            lessonsCount: courseDataToUse.lessonsCount || (courseDataToUse.nodes || []).length * 3,
-            gradient: courseDataToUse.gradient || 'from-blue-500 to-indigo-600',
-            description: courseDataToUse.description || `Learning path for ${topic}`,
-            nodes: courseDataToUse.nodes,
-            edges: courseDataToUse.edges,
-            createdAt: new Date().toISOString(),
-            lastAccessedAt: new Date().toISOString()
+          await runTransaction(db, async (txn) => {
+            const snap = await txn.get(templateRef);
+            if (snap.exists() && snap.data().templateVersion === CACHE_VERSION && Array.isArray(snap.data().nodes)) {
+              // Another request cached this template while AI was generating — use existing
+              courseDataToUse = snap.data();
+            } else {
+              txn.set(templateRef, {
+                templateVersion: CACHE_VERSION,
+                topic,
+                normalizedTopic,
+                level,
+                preferences,
+                title: courseDataToUse.title || topic,
+                category: courseDataToUse.category || 'General',
+                hours: courseDataToUse.hours || '10h',
+                lessonsCount: courseDataToUse.lessonsCount || (courseDataToUse.nodes || []).length * 3,
+                gradient: courseDataToUse.gradient || 'from-blue-500 to-indigo-600',
+                description: courseDataToUse.description || `Learning path for ${topic}`,
+                nodes: courseDataToUse.nodes,
+                edges: courseDataToUse.edges,
+                createdAt: new Date().toISOString(),
+                lastAccessedAt: new Date().toISOString()
+              });
+            }
           });
         } catch (saveCacheErr) {
-          console.warn("Failed to save template to cache:", saveCacheErr);
+          console.warn("Failed to save/re-verify template cache in transaction:", saveCacheErr);
         }
       }
 
@@ -467,11 +472,18 @@ Make it highly educational, long, and detailed so the user can genuinely learn f
     // Save generated lesson to template cache for other users
     if (lessonDocRef) {
       try {
-        await setDoc(lessonDocRef, {
-          rawNodeId,
-          content: finalContent,
-          createdAt: new Date().toISOString()
-        }, { merge: true });
+        await runTransaction(db, async (txn) => {
+          const snap = await txn.get(lessonDocRef);
+          if (snap.exists() && snap.data().content) {
+            finalContent = snap.data().content;
+          } else {
+            txn.set(lessonDocRef, {
+              rawNodeId,
+              content: finalContent,
+              createdAt: new Date().toISOString()
+            }, { merge: true });
+          }
+        });
       } catch (saveCacheErr) {
         console.warn("Failed to save lesson template content to cache:", saveCacheErr);
       }
@@ -565,14 +577,22 @@ Return ONLY a valid JSON object:
     ]
   };
 
-  // Cache in courseTemplates
+  // Cache in courseTemplates using runTransaction
   if (templateDocRef) {
     try {
-      await setDoc(templateDocRef, {
-        homeworkPrompt: result.prompt,
-        homeworkRubric: result.rubric,
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
+      await runTransaction(db, async (txn) => {
+        const snap = await txn.get(templateDocRef);
+        if (snap.exists() && snap.data().homeworkPrompt) {
+          result.prompt = snap.data().homeworkPrompt;
+          result.rubric = snap.data().homeworkRubric || result.rubric;
+        } else {
+          txn.set(templateDocRef, {
+            homeworkPrompt: result.prompt,
+            homeworkRubric: result.rubric,
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+        }
+      });
     } catch (saveCacheErr) {
       console.warn("Failed to cache homework in courseTemplates:", saveCacheErr);
     }
