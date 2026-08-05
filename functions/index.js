@@ -1054,3 +1054,43 @@ exports.generateCertificate = onCall(
   }
 );
 
+
+// ============================================================================
+// Leaderboard function (safe access to users for Leagues)
+// ============================================================================
+exports.getLeaderboard = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'User must be logged in to view leaderboard.');
+  }
+
+  try {
+    const snap = await db.collection('users').get();
+    const users = [];
+
+    snap.forEach((doc) => {
+      const data = doc.data();
+      // Only extract non-sensitive fields
+      users.push({
+        uid: doc.id,
+        firstName: data.firstName || 'Learner',
+        lastName: data.lastName || '',
+        username: data.username || '',
+        photoURL: data.photoURL || '',
+        avatarColor: data.avatarColor || '',
+        xp: data.xp || 0,
+        level: data.level || 1,
+        currentLeague: data.currentLeague || 'silicon',
+        weeklyXP: data.weeklyXP || 0,
+        totalXPEarned: data.totalXPEarned || 0,
+      });
+    });
+
+    return {
+      success: true,
+      users,
+    };
+  } catch (error) {
+    console.error('Error fetching leaderboard:', error);
+    throw new HttpsError('internal', 'Failed to fetch leaderboard data.');
+  }
+});

@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Trophy, ShieldAlert, ArrowRight, Loader2 } from 'lucide-react';
-import { auth, db } from '../firebase.js';
+import { auth, db, functions } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
+import { httpsCallable } from 'firebase/functions';
 import { collection, getDocs } from 'firebase/firestore';
 import { getUserStats, updateUserProfile } from '../services/courseService.js';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
@@ -104,30 +105,27 @@ export default function Leagues({ embedded = false }) {
             demotionProtected: s.demotionProtected !== false
           });
 
-          // Fetch other users from Firestore
-          // TEMPORARILY DISABLED UNTIL LAUNCH to avoid showing test accounts
-          /*
-          const usersRef = collection(db, 'users');
-          const snap = await getDocs(usersRef);
-          const uList = [];
-          snap.forEach((docSnap) => {
-            const data = docSnap.data();
-            if (docSnap.id !== currentUser.uid) {
-              uList.push({
-                id: docSnap.id,
-                name: data.username || data.firstName || 'Learner',
-                avatar: (data.username || data.firstName || 'L').charAt(0).toUpperCase(),
-                photoURL: data.photoURL,
-                avatarColor: data.avatarColor,
-                weeklyXP: data.weeklyXP || 0,
-                currentLeague: data.currentLeague || 'silicon',
+          // Fetch other users from Cloud Function
+          const getLeaderboard = httpsCallable(functions, 'getLeaderboard');
+          const lbRes = await getLeaderboard();
+          
+          if (lbRes.data && lbRes.data.success) {
+            const uList = lbRes.data.users
+              .filter(u => u.uid !== currentUser.uid)
+              .map(u => ({
+                id: u.uid,
+                name: u.username || u.firstName || 'Learner',
+                avatar: (u.username || u.firstName || 'L').charAt(0).toUpperCase(),
+                photoURL: u.photoURL,
+                avatarColor: u.avatarColor,
+                weeklyXP: u.weeklyXP || 0,
+                currentLeague: u.currentLeague || 'silicon',
                 isCurrentUser: false
-              });
-            }
-          });
-          setDbUsers(uList);
-          */
-          setDbUsers([]);
+              }));
+            setDbUsers(uList);
+          } else {
+            setDbUsers([]);
+          }
         } catch (e) {
           console.error("Error loading league data:", e);
         } finally {

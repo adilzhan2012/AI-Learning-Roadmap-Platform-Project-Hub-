@@ -98,7 +98,7 @@ service cloud.firestore {
     
     // --- Legacy quizResults root collection ---
     match /quizResults/{docId} {
-      allow read, delete: if isAuth() && resource.data.userId == request.auth.uid;
+      allow read, delete: if isAuth() && (resource == null || resource.data.userId == request.auth.uid);
       allow write: if false; // Migration only
     }
     
