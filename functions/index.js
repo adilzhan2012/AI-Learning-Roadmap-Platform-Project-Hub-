@@ -107,9 +107,100 @@ const calculateLevel = (xp) => {
   };
 };
 
-// ----------------------------------------------------
-// Functions
-// ----------------------------------------------------
+/**
+ * Helper: Uniformly handles plan limit checking and atomic counter increments
+ * across all usageTypes within a single Firestore transaction (runTransaction).
+ * Fixes race conditions across parallel calls for all usageTypes.
+ */
+async function processUsageLimitAndCounter(db, admin, userId, usageType, todayStr, monthStr) {
+  if (!usageType) return { plan: 'FREE' };
+
+  const subRef = db.collection('users').doc(userId).collection('subscription').doc('details');
+
+  try {
+    return await db.runTransaction(async (txn) => {
+      const subSnap = await txn.get(subRef);
+      const data = subSnap.exists ? subSnap.data() : {};
+      const plan = data.plan || 'FREE';
+
+      const currentRoadmaps = data.roadmapsGenerated || 0;
+      const currentAiQ = data.lastQuestionDate === todayStr ? (data.aiQuestionsUsed || 0) : 0;
+      const currentMentor = data.lastMentorDate === todayStr ? (data.mentorMessagesUsed || 0) : 0;
+      const currentHwMonth = data.homeworkMonthStart || monthStr;
+      const currentHwReviews = currentHwMonth === monthStr ? (data.homeworkReviewsUsed || 0) : 0;
+      const currentUltraTokens = data.ultraTokensUsed || 0;
+
+      // Check plan limits
+      if (plan === 'FREE') {
+        if (usageType === 'roadmap' && currentRoadmaps >= 1) {
+          throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
+        }
+        if (usageType === 'ai_question' && currentAiQ >= 5) {
+          throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
+        }
+        if (usageType === 'mentor_message') {
+          const userRecord = await admin.auth().getUser(userId);
+          const regTime = new Date(userRecord.metadata.creationTime).getTime();
+          const daysSinceReg = (Date.now() - regTime) / (1000 * 60 * 60 * 24);
+          const limitVal = daysSinceReg <= 7 ? 20 : 5;
+          const isOverLimit = daysSinceReg <= 7
+            ? currentMentor >= limitVal
+            : (data.lastMentorDate === todayStr && currentMentor >= limitVal);
+          if (isOverLimit) {
+            throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
+          }
+        }
+        if (usageType === 'homework_review' && currentHwReviews >= 2) {
+          throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
+        }
+      }
+
+      if (plan === 'PRO') {
+        if (usageType === 'homework_review' && currentHwReviews >= 30) {
+          throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
+        }
+      }
+
+      if (plan === 'ULTRA') {
+        if (usageType === 'mentor_message' && currentUltraTokens >= 300000) {
+          throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
+        }
+      }
+
+      // Atomic counter updates
+      const updates = {};
+      if (usageType === 'roadmap') {
+        updates.roadmapsGenerated = admin.firestore.FieldValue.increment(1);
+      } else if (usageType === 'ai_question') {
+        updates.aiQuestionsUsed = data.lastQuestionDate === todayStr
+          ? admin.firestore.FieldValue.increment(1)
+          : 1;
+        updates.lastQuestionDate = todayStr;
+      } else if (usageType === 'mentor_message') {
+        updates.mentorMessagesUsed = data.lastMentorDate === todayStr
+          ? admin.firestore.FieldValue.increment(1)
+          : 1;
+        updates.lastMentorDate = todayStr;
+        updates.mentorMonthStart = monthStr;
+      } else if (usageType === 'homework_review') {
+        updates.homeworkReviewsUsed = currentHwMonth === monthStr
+          ? admin.firestore.FieldValue.increment(1)
+          : 1;
+        updates.homeworkMonthStart = monthStr;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        txn.set(subRef, updates, { merge: true });
+      }
+
+      return { plan };
+    });
+  } catch (txnErr) {
+    if (txnErr instanceof HttpsError) throw txnErr;
+    console.error('[aiProxy] processUsageLimitAndCounter transaction failed:', txnErr);
+    throw new HttpsError('internal', 'Usage limit check failed. Please try again.');
+  }
+}
 
 exports.aiProxy = onCall(
   {
@@ -144,133 +235,11 @@ exports.aiProxy = onCall(
     const monthStr = todayStr.substring(0, 7);
 
     // --------------------------------------------------------------------------
-    // fix/critical-round1 (ФИКС 4 + ФИКС 5):
+    // fix/perf-cost-round3 (Item 2):
     // Чтение, проверка лимита и инкремент счётчика выполняются АТОМАРНО
-    // в одной Firestore транзакции (runTransaction).
-    //
-    // До этого: subRef.get() → set(merge:true) без транзакции.
-    // Параллельные вызовы читали одинаковый счётчик и оба инкрементировали
-    // от одной базы → лимит обходился при параллельных запросах.
-    //
-    // Теперь: read + limit-check + increment — атомарно.
-    // homework_review добавлен как отдельный usageType с собственными лимитами:
-    //   FREE:  2 проверки в месяц
-    //   PRO:   30 проверок в месяц
-    //   ULTRA: без лимита
-    //
-    // TODO (для тестовой инфраструктуры CF): добавить integration-тест, который
-    // запускает 5 параллельных вызовов aiProxy с одним usageType и убеждается,
-    // что счётчик = 5, а не случайное число. Тестовая инфраструктура для CF
-    // в проекте отсутствует — не создаём в рамках этой задачи.
+    // в одной Firestore транзакции через единый helper processUsageLimitAndCounter.
     // --------------------------------------------------------------------------
-
-    let transactionResult = null;
-
-    if (usageType) {
-      const subRef = db.collection('users').doc(userId).collection('subscription').doc('details');
-
-      try {
-        transactionResult = await db.runTransaction(async (txn) => {
-          const subSnap = await txn.get(subRef);
-          const data = subSnap.exists ? subSnap.data() : {};
-          const plan = data.plan || 'FREE';
-
-          // ------------------------------------------------------------------
-          // Собираем текущее состояние из snapshot транзакции
-          // ------------------------------------------------------------------
-          const currentRoadmaps = data.roadmapsGenerated || 0;
-          const currentAiQ = data.lastQuestionDate === todayStr ? (data.aiQuestionsUsed || 0) : 0;
-          const currentMentor = data.lastMentorDate === todayStr ? (data.mentorMessagesUsed || 0) : 0;
-          const currentHwMonth = data.homeworkMonthStart || monthStr;
-          const currentHwReviews = currentHwMonth === monthStr ? (data.homeworkReviewsUsed || 0) : 0;
-          const currentUltraTokens = data.ultraTokensUsed || 0;
-
-          // ------------------------------------------------------------------
-          // Проверка лимитов по тарифу (до вызова API)
-          // ------------------------------------------------------------------
-          if (plan === 'FREE') {
-            if (usageType === 'roadmap' && currentRoadmaps >= 1) {
-              throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
-            }
-            if (usageType === 'ai_question' && currentAiQ >= 5) {
-              throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
-            }
-            if (usageType === 'mentor_message') {
-              // Onboarding: 20 сообщений первые 7 дней, потом 5/день
-              const userRecord = await admin.auth().getUser(userId);
-              const regTime = new Date(userRecord.metadata.creationTime).getTime();
-              const daysSinceReg = (Date.now() - regTime) / (1000 * 60 * 60 * 24);
-              const limitVal = daysSinceReg <= 7 ? 20 : 5;
-              const mentorUsed = currentMentor;
-              const isOverLimit = daysSinceReg <= 7
-                ? mentorUsed >= limitVal
-                : (data.lastMentorDate === todayStr && mentorUsed >= limitVal);
-              if (isOverLimit) {
-                throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
-              }
-            }
-            // fix/critical-round1 (ФИКС 4): homework_review — серверный лимит FREE
-            if (usageType === 'homework_review' && currentHwReviews >= 2) {
-              throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
-            }
-          }
-
-          if (plan === 'PRO') {
-            // fix/critical-round1 (ФИКС 4): homework_review — серверный лимит PRO
-            if (usageType === 'homework_review' && currentHwReviews >= 30) {
-              throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
-            }
-          }
-
-          if (plan === 'ULTRA') {
-            if (usageType === 'mentor_message' && currentUltraTokens >= 300000) {
-              throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
-            }
-            // ULTRA: homework_review без лимита — пропускаем проверку
-          }
-
-          // ------------------------------------------------------------------
-          // Инкремент счётчика АТОМАРНО в той же транзакции
-          // ------------------------------------------------------------------
-          const updates = {};
-
-          if (usageType === 'roadmap') {
-            updates.roadmapsGenerated = admin.firestore.FieldValue.increment(1);
-          }
-          if (usageType === 'ai_question') {
-            updates.aiQuestionsUsed = data.lastQuestionDate === todayStr
-              ? admin.firestore.FieldValue.increment(1)
-              : 1;
-            updates.lastQuestionDate = todayStr;
-          }
-          if (usageType === 'mentor_message') {
-            updates.mentorMessagesUsed = data.lastMentorDate === todayStr
-              ? admin.firestore.FieldValue.increment(1)
-              : 1;
-            updates.lastMentorDate = todayStr;
-            updates.mentorMonthStart = monthStr;
-          }
-          if (usageType === 'homework_review') {
-            updates.homeworkReviewsUsed = currentHwMonth === monthStr
-              ? admin.firestore.FieldValue.increment(1)
-              : 1;
-            updates.homeworkMonthStart = monthStr;
-          }
-
-          if (Object.keys(updates).length > 0) {
-            txn.set(subRef, updates, { merge: true });
-          }
-
-          return { plan };
-        });
-      } catch (txnErr) {
-        // Если это HttpsError из нашей проверки лимита — пробрасываем как есть
-        if (txnErr instanceof HttpsError) throw txnErr;
-        // Иначе — внутренняя ошибка транзакции
-        console.error('[aiProxy] Transaction failed:', txnErr);
-        throw new HttpsError('internal', 'Usage limit check failed. Please try again.');
-      }
-    }
+    const transactionResult = await processUsageLimitAndCounter(db, admin, userId, usageType, todayStr, monthStr);
 
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
@@ -828,21 +797,50 @@ exports.deleteUserData = onCall(async (request) => {
 });
 
 // ----------------------------------------------------
-// Admin Operations
+// Admin Operations (strictly via Custom Claims)
 // ----------------------------------------------------
 
-exports.adminUpdateUser = onCall(async (request) => {
-  if (!request.auth?.token?.admin) {
-    // Bootstrap: Allow if database is empty or the user document has role 'admin' in Firestore
-    const userSnap = await db.collection("users").doc(request.auth.uid).get();
-    const isDbAdmin = userSnap.exists && userSnap.data().role === "admin";
-    
-    if (!isDbAdmin) {
-      throw new HttpsError("permission-denied", "Only admins can perform admin operations.");
-    }
+function verifyAdminCustomClaim(request) {
+  if (!request.auth || request.auth.token?.admin !== true) {
+    throw new HttpsError("permission-denied", "Only users with admin Custom Claim can perform admin operations.");
+  }
+}
+
+/**
+ * Cloud Function to assign Custom Claim admin status to a target user.
+ * Authorized if caller has admin Custom Claim OR passes valid INTERNAL_ADMIN_TOKEN in request.data.
+ */
+exports.setAdminClaim = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Must be authenticated");
   }
 
-  const { targetUserId, updates } = request.data;
+  const { targetUserId, internalToken, isAdmin = true } = request.data || {};
+  if (!targetUserId) {
+    throw new HttpsError("invalid-argument", "Missing targetUserId");
+  }
+
+  const isExistingAdmin = request.auth.token?.admin === true;
+  const isInternalAuth = internalToken && process.env.INTERNAL_ADMIN_TOKEN && internalToken === process.env.INTERNAL_ADMIN_TOKEN;
+
+  if (!isExistingAdmin && !isInternalAuth) {
+    throw new HttpsError("permission-denied", "Only existing admins or internal service tokens can set admin claims.");
+  }
+
+  await admin.auth().setCustomUserClaims(targetUserId, { admin: !!isAdmin });
+
+  await db.collection("users").doc(targetUserId).set({
+    role: isAdmin ? "admin" : "user",
+    isAdmin: !!isAdmin
+  }, { merge: true });
+
+  return { success: true, targetUserId, isAdmin: !!isAdmin };
+});
+
+exports.adminUpdateUser = onCall(async (request) => {
+  verifyAdminCustomClaim(request);
+
+  const { targetUserId, updates } = request.data || {};
   if (!targetUserId || !updates) {
     throw new HttpsError("invalid-argument", "Missing targetUserId or updates");
   }
@@ -868,15 +866,9 @@ exports.adminUpdateUser = onCall(async (request) => {
 });
 
 exports.adminSetMaintenance = onCall(async (request) => {
-  if (!request.auth?.token?.admin) {
-    const userSnap = await db.collection("users").doc(request.auth.uid).get();
-    const isDbAdmin = userSnap.exists && userSnap.data().role === "admin";
-    if (!isDbAdmin) {
-      throw new HttpsError("permission-denied", "Only admins can perform admin operations.");
-    }
-  }
+  verifyAdminCustomClaim(request);
 
-  const { isActive, endTime } = request.data;
+  const { isActive, endTime } = request.data || {};
   const maintenanceRef = db.collection("settings").doc("maintenance");
 
   const updates = {
@@ -895,15 +887,9 @@ exports.adminSetMaintenance = onCall(async (request) => {
 });
 
 exports.adminSetPolicies = onCall(async (request) => {
-  if (!request.auth?.token?.admin) {
-    const userSnap = await db.collection("users").doc(request.auth.uid).get();
-    const isDbAdmin = userSnap.exists && userSnap.data().role === "admin";
-    if (!isDbAdmin) {
-      throw new HttpsError("permission-denied", "Only admins can perform admin operations.");
-    }
-  }
+  verifyAdminCustomClaim(request);
 
-  const { terms_ru, terms_en, privacy_ru, privacy_en } = request.data;
+  const { terms_ru, terms_en, privacy_ru, privacy_en } = request.data || {};
   const legalRef = db.collection("settings").doc("legal");
 
   await legalRef.set({
@@ -917,13 +903,7 @@ exports.adminSetPolicies = onCall(async (request) => {
 });
 
 exports.getAdminDashboardStats = onCall(async (request) => {
-  if (!request.auth?.token?.admin) {
-    const userSnap = await db.collection("users").doc(request.auth.uid).get();
-    const isDbAdmin = userSnap.exists && userSnap.data().role === "admin";
-    if (!isDbAdmin) {
-      throw new HttpsError("permission-denied", "Only admins can access admin statistics.");
-    }
-  }
+  verifyAdminCustomClaim(request);
 
   const usersRef = db.collection("users");
 
@@ -973,6 +953,45 @@ const QRCode = require("qrcode");
 const puppeteer = require("puppeteer");
 const { renderCertificateHtml } = require("./certificateTemplate.js");
 const { renderCertificateHtml: renderCertificateHtmlFree } = require("./certificateTemplateFree.js");
+
+// Shared lazy browser instance for warm Cloud Function invocations (fix/perf-cost-round3 Item 4)
+let cachedBrowserInstance = null;
+
+async function getSharedBrowserInstance() {
+  if (cachedBrowserInstance && cachedBrowserInstance.isConnected && cachedBrowserInstance.isConnected()) {
+    return cachedBrowserInstance;
+  }
+
+  if (cachedBrowserInstance) {
+    try {
+      await cachedBrowserInstance.close();
+    } catch (_) {}
+    cachedBrowserInstance = null;
+  }
+
+  const fs = require('fs');
+  const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH ||
+    (fs.existsSync('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome')
+      ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+      : undefined);
+
+  cachedBrowserInstance = await puppeteer.launch({
+    ...(executablePath ? { executablePath } : {}),
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-accelerated-2d-canvas",
+      "--no-first-run",
+      "--no-zygote",
+      "--single-process",
+      "--disable-gpu",
+    ],
+    headless: true,
+  });
+
+  return cachedBrowserInstance;
+}
 
 exports.generateCertificate = onCall(
   {
@@ -1100,32 +1119,21 @@ exports.generateCertificate = onCall(
       qrCodeDataUrl,
     });
 
-    // 7. Render PDF with Puppeteer
+    // 7. Render PDF with Puppeteer (reusing shared browser instance across warm invocations)
     let pdfBuffer;
-    let browser;
+    let page = null;
     try {
-      const fs = require('fs');
-      const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH ||
-        (fs.existsSync('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome')
-          ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-          : undefined);
+      let browser;
+      try {
+        browser = await getSharedBrowserInstance();
+        page = await browser.newPage();
+      } catch (browserErr) {
+        console.warn("[generateCertificate] Stale/disconnected browser instance detected, recreating browser:", browserErr);
+        cachedBrowserInstance = null;
+        browser = await getSharedBrowserInstance();
+        page = await browser.newPage();
+      }
 
-      browser = await puppeteer.launch({
-        ...(executablePath ? { executablePath } : {}),
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-          "--disable-accelerated-2d-canvas",
-          "--no-first-run",
-          "--no-zygote",
-          "--single-process",
-          "--disable-gpu",
-        ],
-        headless: true,
-      });
-
-      const page = await browser.newPage();
       await page.setViewport({ width: 1473, height: 1079 });
       await page.setContent(htmlContent, { waitUntil: "networkidle0" });
       if (isFree) {
@@ -1142,8 +1150,8 @@ exports.generateCertificate = onCall(
         });
       }
     } finally {
-      if (browser) {
-        await browser.close();
+      if (page) {
+        await page.close().catch(() => {});
       }
     }
 
@@ -1212,7 +1220,7 @@ exports.generateCertificate = onCall(
 
 
 // ============================================================================
-// Leaderboard function (safe access to users for Leagues)
+// Leaderboard function (paginated top 100 with rank lookup for current user)
 // ============================================================================
 exports.getLeaderboard = onCall(async (request) => {
   if (!request.auth) {
@@ -1220,12 +1228,23 @@ exports.getLeaderboard = onCall(async (request) => {
   }
 
   try {
-    const snap = await db.collection('users').get();
+    const currentUserId = request.auth.uid;
+    const requestedSort = request.data?.sortBy;
+    const sortField = ['weeklyXP', 'xp', 'totalXPEarned'].includes(requestedSort) ? requestedSort : 'weeklyXP';
+    const limitVal = Math.min(Math.max(Number(request.data?.limit) || 100, 1), 100);
+
+    const snap = await db.collection('users')
+      .orderBy(sortField, 'desc')
+      .limit(limitVal)
+      .get();
+
     const users = [];
+    let currentUserInTop = false;
 
     snap.forEach((doc) => {
       const data = doc.data();
-      // Only extract non-sensitive fields
+      if (doc.id === currentUserId) currentUserInTop = true;
+
       users.push({
         uid: doc.id,
         firstName: data.firstName || 'Learner',
@@ -1241,9 +1260,44 @@ exports.getLeaderboard = onCall(async (request) => {
       });
     });
 
+    let currentUserRank = null;
+    if (!currentUserInTop) {
+      const userDoc = await db.collection('users').doc(currentUserId).get();
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        const userXpValue = userData[sortField] || 0;
+
+        const countSnap = await db.collection('users')
+          .where(sortField, '>', userXpValue)
+          .count()
+          .get();
+
+        const rank = (countSnap.data().count || 0) + 1;
+        currentUserRank = {
+          rank,
+          user: {
+            uid: userDoc.id,
+            firstName: userData.firstName || 'Learner',
+            lastName: userData.lastName || '',
+            username: userData.username || '',
+            photoURL: userData.photoURL || '',
+            avatarColor: userData.avatarColor || '',
+            xp: userData.xp || 0,
+            level: userData.level || 1,
+            currentLeague: userData.currentLeague || 'silicon',
+            weeklyXP: userData.weeklyXP || 0,
+            totalXPEarned: userData.totalXPEarned || 0,
+          }
+        };
+      }
+    }
+
     return {
       success: true,
       users,
+      currentUserRank,
+      sortField,
+      limit: limitVal
     };
   } catch (error) {
     console.error('Error fetching leaderboard:', error);

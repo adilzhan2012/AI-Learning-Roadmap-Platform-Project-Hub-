@@ -144,6 +144,32 @@ Ensure you have [Node.js](https://nodejs.org/) (v18+) installed on your machine.
    npm run dev
    ```
 
+### 🔐 Назначение первого администратора (Admin Custom Claims Setup)
+
+Администраторские функции (`adminUpdateUser`, `adminSetMaintenance`, `adminSetPolicies`) защищены проверкой Custom Claim `admin: true`.
+
+Для назначения первого администратора используйте один из двух способов:
+
+#### Вариант A: Через Cloud Function `setAdminClaim` (с секретным токеном `INTERNAL_ADMIN_TOKEN`)
+```javascript
+import { httpsCallable } from 'firebase/functions';
+import { functions } from './firebase.js';
+
+const setAdmin = httpsCallable(functions, 'setAdminClaim');
+await setAdmin({
+  targetUserId: 'TARGET_USER_UID',
+  internalToken: 'ВАШ_INTERNAL_ADMIN_TOKEN',
+  isAdmin: true
+});
+```
+
+#### Вариант B: Через Node.js Firebase Admin SDK / CLI
+```javascript
+const admin = require('firebase-admin');
+admin.initializeApp();
+await admin.auth().setCustomUserClaims('TARGET_USER_UID', { admin: true });
+```
+
 ## 📄 Лицензия
 
 Этот проект распространяется под лицензией MIT.
