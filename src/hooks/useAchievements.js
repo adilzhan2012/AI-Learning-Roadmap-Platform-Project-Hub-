@@ -39,37 +39,51 @@ export const useAchievements = () => {
           const completedLessonsCount = userCourses.reduce((acc, c) => acc + (c.nodes || []).filter(n => n.status === 'completed').length, 0);
 
           // --- Run database migration from legacy root collection to users subcollection ---
-          for (const course of userCourses) {
-            for (const node of (course.nodes || [])) {
-              const legacyRef = doc(db, 'quizResults', `${user.uid}_${node.id}`);
-              try {
-                const legacySnap = await getDoc(legacyRef);
-                if (legacySnap.exists()) {
-                  const legacyData = legacySnap.data();
-                  const newRef = doc(db, 'users', user.uid, 'quizResults', node.id);
-                  const newSnap = await getDoc(newRef);
-                  
-                  if (!newSnap.exists()) {
-                    const attempts = [{
-                      score: legacyData.score || 0,
-                      date: legacyData.lastAttemptAt?.toDate?.()?.toISOString() || legacyData.lastAttemptAt || new Date().toISOString()
-                    }];
+          if (!userData.legacyMigrated) {
+            let migrationSuccess = true;
+            for (const course of userCourses) {
+              for (const node of (course.nodes || [])) {
+                const legacyRef = doc(db, 'quizResults', `${user.uid}_${node.id}`);
+                try {
+                  const legacySnap = await getDoc(legacyRef);
+                  if (legacySnap.exists()) {
+                    const legacyData = legacySnap.data();
+                    const newRef = doc(db, 'users', user.uid, 'quizResults', String(node.id));
+                    const newSnap = await getDoc(newRef);
                     
-                    await setDoc(newRef, {
-                      userId: user.uid,
-                      roadmapId: legacyData.roadmapId || course.id,
-                      nodeId: node.id,
-                      score: legacyData.score || 0,
-                      passed: legacyData.passed || false,
-                      attempts,
-                      attemptsCount: 1,
-                      lastAttemptAt: legacyData.lastAttemptAt || new Date().toISOString(),
-                      cooldownUntil: legacyData.cooldownUntil || null
-                    });
+                    if (!newSnap.exists()) {
+                      const attempts = [{
+                        score: legacyData.score || 0,
+                        date: legacyData.lastAttemptAt?.toDate?.()?.toISOString() || legacyData.lastAttemptAt || new Date().toISOString()
+                      }];
+                      
+                      await setDoc(newRef, {
+                        userId: user.uid,
+                        roadmapId: legacyData.roadmapId || course.id,
+                        nodeId: String(node.id),
+                        score: legacyData.score || 0,
+                        passed: legacyData.passed || false,
+                        attempts,
+                        attemptsCount: 1,
+                        lastAttemptAt: legacyData.lastAttemptAt || new Date().toISOString(),
+                        cooldownUntil: legacyData.cooldownUntil || null
+                      });
+                    }
                   }
+                } catch (e) {
+                  console.warn("Could not migrate legacy quiz:", e);
+                  migrationSuccess = false;
                 }
-              } catch (e) {
-                console.warn("Could not migrate legacy quiz:", e);
+              }
+            }
+
+            // Set legacyMigrated flag ONLY after ALL migration operations complete successfully
+            if (migrationSuccess) {
+              try {
+                const userDocRef = doc(db, 'users', user.uid);
+                await setDoc(userDocRef, { legacyMigrated: true }, { merge: true });
+              } catch (flagErr) {
+                console.warn("Could not set legacyMigrated flag:", flagErr);
               }
             }
           }
