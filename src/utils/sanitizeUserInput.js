@@ -12,66 +12,100 @@
 export const MAX_INPUT_LENGTH = 2000;
 export const MAX_CODE_LENGTH  = 8000;
 
+/**
+ * Паттерны попытки переопределения системного промпта.
+ * Используем строки с new RegExp() там, где regex-литерал содержит
+ * спецсимволы, которые могут путать парсер (< | >).
+ */
 const INJECTION_PATTERNS = [
-  /ignores+(alls+)?(previous|above|prior)s+(instructions?|prompts?|context)/gi,
-  /disregards+(alls+)?(previous|above|prior)s+(instructions?|prompts?)/gi,
-  /forgets+(alls+)?(previous|above|prior)s+(instructions?|prompts?)/gi,
-  /overrides+(thes+)?(system|previous)s+(prompt|instructions?)/gi,
-  /yous+ares+nows+(a|an)s+/gi,
-  /acts+ass+(a|an)s+/gi,
-  /pretends+(tos+be|yous+are)s+/gi,
-  /roleplays+ass+/gi,
-  /switchs+(tos+)?(developer|jailbreak|DAN)s+mode/gi,
-  /DANs+mode/gi,
+  // Классические injection triggers
+  /ignore\s+(all\s+)?(previous|above|prior)\s+(instructions?|prompts?|context)/gi,
+  /disregard\s+(all\s+)?(previous|above|prior)\s+(instructions?|prompts?)/gi,
+  /forget\s+(all\s+)?(previous|above|prior)\s+(instructions?|prompts?)/gi,
+  /override\s+(the\s+)?(system|previous)\s+(prompt|instructions?)/gi,
+
+  // Ролевые переключатели
+  /you\s+are\s+now\s+(a|an)\s+/gi,
+  /act\s+as\s+(a|an)\s+/gi,
+  /pretend\s+(to\s+be|you\s+are)\s+/gi,
+  /roleplay\s+as\s+/gi,
+  /switch\s+(to\s+)?(developer|jailbreak|DAN)\s+mode/gi,
+  /DAN\s+mode/gi,
   /jailbreak/gi,
-  /^SYSTEMs*:/gim,
-  /^CRITICALs+INSTRUCTIONs*:/gim,
-  /^IMPORTANTs*:/gim,
-  /[INST]/gi,
-  /<<SYS>>/gi,
-  /<|system|>/gi,
-  /<|im_start|>/gi,
-  /(
-s*){5,}/g,
+
+  // Маркеры структуры промпта
+  /^SYSTEM\s*:/gim,
+  /^CRITICAL\s+INSTRUCTION\s*:/gim,
+  /^IMPORTANT\s*:/gim,
+
+  // LLM special tokens — используем new RegExp чтобы избежать проблем парсера
+  new RegExp('\\[INST\\]', 'gi'),
+  new RegExp('<<SYS>>', 'gi'),
+  new RegExp('<\\|system\\|>', 'gi'),
+  new RegExp('<\\|im_start\\|>', 'gi'),
+
+  // Избыточные переносы строк (> 4 пустых строк подряд) — маскируют структуру промпта
+  /(\n\s*){5,}/g,
 ];
 
+/**
+ * Применяет все injection-паттерны к тексту, заменяет на '[removed]'.
+ */
 function stripInjectionPatterns(text) {
   let result = text;
   for (const pattern of INJECTION_PATTERNS) {
+    // Сбрасываем lastIndex для stateful (global) RegExp между вызовами
     if (pattern.global) pattern.lastIndex = 0;
     result = result.replace(pattern, '[removed]');
   }
   return result;
 }
 
+/**
+ * Нормализует whitespace: схлопывает 3+ пустых строки в одну,
+ * убирает trailing spaces.
+ */
 function normalizeWhitespace(text) {
   return text
-    .replace(/[ 	]+$/gm, '')
-    .replace(/(?
-){3,}/g, '
-
-')
+    .replace(/[ \t]+$/gm, '')
+    .replace(/(\r?\n){3,}/g, '\n\n')
     .trim();
 }
 
+/**
+ * Санитизирует пользовательский текстовый ввод перед вставкой в AI-промпт.
+ * Применяется к: topic, topicLabel, topicDesc, submissionText.
+ *
+ * @param {string} text
+ * @param {number} [maxLen=MAX_INPUT_LENGTH]
+ * @returns {string}
+ */
 export function sanitizeUserInput(text, maxLen = MAX_INPUT_LENGTH) {
   if (!text || typeof text !== 'string') return '';
   let result = text.substring(0, maxLen * 2);
   result = stripInjectionPatterns(result);
   result = normalizeWhitespace(result);
   if (result.length > maxLen) {
-    result = result.substring(0, maxLen) + '… [truncated]';
+    result = result.substring(0, maxLen) + '\u2026 [truncated]';
   }
   return result;
 }
 
+/**
+ * Санитизирует код студента перед вставкой в AI-промпт.
+ * НЕ нормализует whitespace агрессивно (отступы семантически значимы).
+ * Фильтрует только injection-паттерны.
+ *
+ * @param {string} code
+ * @param {number} [maxLen=MAX_CODE_LENGTH]
+ * @returns {string}
+ */
 export function sanitizeCode(code, maxLen = MAX_CODE_LENGTH) {
   if (!code || typeof code !== 'string') return '';
   let result = code.substring(0, maxLen * 2);
   result = stripInjectionPatterns(result);
   if (result.length > maxLen) {
-    result = result.substring(0, maxLen) + '
-// ... [code truncated for safety]';
+    result = result.substring(0, maxLen) + '\n// ... [code truncated for safety]';
   }
   return result;
 }
