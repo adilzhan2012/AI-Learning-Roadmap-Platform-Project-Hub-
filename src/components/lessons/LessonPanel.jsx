@@ -124,6 +124,7 @@ export default function LessonPanel({
     
     if (passed) {
       setFailedConcepts([]);
+      setNonUltraAdaptationHint(false);
       await addXP(25, 'Пройден квиз', 'quiz_passed', { nodeId: selectedNode.id });
       if (score === total) {
         await addXP(50, 'Идеальный результат', 'quiz_perfect', { nodeId: selectedNode.id });
@@ -152,6 +153,9 @@ export default function LessonPanel({
         } catch (e) {
           console.error("Adaptive graph rebuild failed:", e);
         }
+      } else {
+        // UI signal for FREE/PRO users instead of silent no-op/console.warn
+        setNonUltraAdaptationHint(true);
       }
     }
   };
@@ -490,6 +494,20 @@ Provide a code boilerplate template at the end.`;
               <div className="mx-6 md:mx-10 mt-6 p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex gap-3 items-center text-xs text-indigo-300">
                 <span>🧬 <strong>AI-Наставник:</strong> Обнаружены пробелы по теме. Граф знаний перестроен, добавлен микро-модуль для закрытия пробелов.</span>
                 <button onClick={() => setAdaptationBanner(false)} className="ml-auto text-indigo-400 hover:text-zinc-900 dark:text-zinc-100">✕</button>
+              </div>
+            )}
+
+            {nonUltraAdaptationHint && (
+              <div className="mx-6 md:mx-10 mt-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex gap-3 items-center text-xs text-amber-300">
+                <span>⚡ <strong>Адаптивный курс:</strong> Автоматическая перестройка графа и подбор микро-модулей для закрытия пробелов доступны на подписке ULTRA.</span>
+                <button 
+                  type="button"
+                  onClick={() => setUpgradeModalOpen(true)}
+                  className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-lg text-[11px] shrink-0 transition-colors ml-auto"
+                >
+                  Улучшить
+                </button>
+                <button onClick={() => setNonUltraAdaptationHint(false)} className="text-amber-400 hover:text-zinc-900 dark:text-zinc-100">✕</button>
               </div>
             )}
 
