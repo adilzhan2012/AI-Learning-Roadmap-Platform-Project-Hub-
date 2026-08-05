@@ -185,7 +185,7 @@ export default function Landing() {
                   <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
                 </div>
                 <div className="flex-1 h-6 bg-on-surface/5 rounded-full flex items-center justify-center">
-                  <span className="text-xs text-neutral-500 font-mono tracking-wider">platform.projecthub.ai</span>
+                  <span className="text-xs text-neutral-500 font-mono tracking-wider">yourwayy.co</span>
                 </div>
               </div>
               <div className="flex-1 p-8 flex items-center justify-center">
