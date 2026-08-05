@@ -125,13 +125,19 @@ exports.aiProxy = onCall(
       );
     }
 
-    const { prompt, usageType, modelName } = request.data;
-    if (!prompt) {
+    const { prompt, messages: clientMessages, usageType, modelName } = request.data;
+    // fix/critical-round1: поддерживаем messages[] для разделения system/user ролей.
+    // Это структурная защита от prompt injection — сильнее, чем только санитизация текста.
+    if (!prompt && (!clientMessages || !Array.isArray(clientMessages) || clientMessages.length === 0)) {
       throw new HttpsError(
         "invalid-argument",
-        "The function must be called with a 'prompt' argument."
+        "The function must be called with either a 'prompt' or 'messages' argument."
       );
     }
+    // Build messages array: if explicit messages array provided, use it; otherwise wrap prompt
+    const groqMessages = clientMessages && clientMessages.length > 0
+      ? clientMessages
+      : [{ role: "user", content: prompt }];
 
     const userId = request.auth.uid;
     let currentUsage = null;
@@ -233,7 +239,7 @@ exports.aiProxy = onCall(
             },
             body: JSON.stringify({
               model: modelNameStr,
-              messages: [{ role: "user", content: prompt }],
+              messages: groqMessages,
               temperature: 0.2,
             }),
           });

@@ -22,6 +22,8 @@ import { usePlanLimits } from '../../hooks/usePlanLimits.js';
 import QuizModal from '../quiz/QuizModal.jsx';
 import UpgradeModal from '../shared/UpgradeModal.jsx';
 import { generateLessonContent, updateNodeStatus, generateELI5Content, generateRealWorldExample, updateNodeFields, rebuildGraphForFailedNode, callGroqWithRetry } from '../../services/courseService.js';
+// fix/critical-round1: санитизация user input перед вставкой в промпты
+import { sanitizeUserInput, sanitizeCode } from '../../utils/sanitizeUserInput.js';
 import ReactMarkdown from 'react-markdown';
 import Flashcard from './Flashcard.jsx';
 import ContextualMentor from './ContextualMentor.jsx';
@@ -159,13 +161,13 @@ export default function LessonPanel({
     setCodeReviewResult('');
     try {
       const prompt = `You are an expert software developer and security auditor.
-Analyze the following Go/programming code submitted by a student for the lesson: "${selectedNode.label}".
-Topic description: "${selectedNode.desc}"
-Practice assignment: "${practiceAssignment}"
+Analyze the following Go/programming code submitted by a student for the lesson: "${sanitizeUserInput(selectedNode.label, 200)}".
+Topic description: "${sanitizeUserInput(selectedNode.desc, 400)}"
+Practice assignment: "${sanitizeUserInput(practiceAssignment, 500)}"
 
 Student Code:
 \`\`\`go
-${practiceCode}
+${sanitizeCode(practiceCode)}
 \`\`\`
 
 INSTRUCTIONS:

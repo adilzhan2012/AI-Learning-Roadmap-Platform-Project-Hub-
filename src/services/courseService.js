@@ -24,17 +24,27 @@ import {
   logCacheMetric, 
   CACHE_VERSION 
 } from '../utils/cacheUtils.js';
+// fix/critical-round1: санитизация user input перед вставкой в AI-промпты
+import { sanitizeUserInput, sanitizeCode } from '../utils/sanitizeUserInput.js';
 
 // Helper to get Groq API Key is removed as it's now handled by Cloud Functions
 
 // Retry helper with exponential backoff and model fallback for 503/429/404 errors
 // Call our secure Cloud Function proxy
-export async function callGroqWithRetry(apiKey, prompt, usageType, modelName) {
+// fix/critical-round1: принимает опциональный messages[] для разделения system/user ролей (защита от prompt injection)
+export async function callGroqWithRetry(apiKey, prompt, usageType, modelName, messages) {
   try {
     const aiProxy = httpsCallable(functions, 'aiProxy');
-    const payload = { prompt };
+    const payload = {};
     
-    const knownUsageTypes = ['roadmap', 'ai_question', 'mentor_message'];
+    // Если переданы структурированные messages — используем их, иначе prompt
+    if (messages && messages.length > 0) {
+      payload.messages = messages;
+    } else {
+      payload.prompt = prompt;
+    }
+    
+    const knownUsageTypes = ['roadmap', 'ai_question', 'mentor_message', 'homework_review'];
     if (usageType) {
       if (knownUsageTypes.includes(usageType)) {
         payload.usageType = usageType;
@@ -177,7 +187,7 @@ ${preferences.duration ? `- Requested Duration: ${preferences.duration}` : ''}
           }
         }
 
-        const basePrompt = `You are an expert AI curriculum designer. Build a complete, highly structured learning roadmap for the topic: "${topic}" at difficulty level: "${level}".
+        const basePrompt = `You are an expert AI curriculum designer. Build a complete, highly structured learning roadmap for the topic: "${sanitizeUserInput(topic, 500)}" at difficulty level: "${sanitizeUserInput(level, 50)}".
 ${prefString}
 ${ragContext}
 
@@ -432,9 +442,9 @@ Advanced Preferences:
       `.trim();
     }
 
-    const prompt = `You are an expert tutor. Write a comprehensive, highly detailed lesson in Markdown format for the topic: "${topicLabel}".
-This lesson is part of a larger course called "${courseTitle}".
-Topic context: ${topicDesc}
+    const prompt = `You are an expert tutor. Write a comprehensive, highly detailed lesson in Markdown format for the topic: "${sanitizeUserInput(topicLabel, 300)}".
+This lesson is part of a larger course called "${sanitizeUserInput(courseTitle, 200)}".
+Topic context: ${sanitizeUserInput(topicDesc, 500)}
 ${prefString}
 
 CRITICAL INSTRUCTION: You MUST generate the ENTIRE lesson content in the ${languageName} language.
@@ -593,7 +603,11 @@ export async function reviewHomeworkSubmission(courseId, nodeId, submissionText,
   const currentLocale = getLocale();
   const languageName = currentLocale === 'ru' ? 'Russian' : 'English';
 
-  const reviewPrompt = `You are a strict code and homework evaluator. Evaluate the student's submission against the provided rubric.
+  // fix/critical-round1: разделяем системный промпт и пользовательский input на отдельные Groq messages.
+  // submissionText помещается в user-role сообщение — структурная защита от prompt injection.
+  const sanitizedSubmission = sanitizeUserInput(submissionText, 4000);
+
+  const systemPrompt = `You are a strict code and homework evaluator. Evaluate the student's submission against the provided rubric.
 CRITICAL INSTRUCTION: Respond ENTIRELY in ${languageName} language.
 
 Homework Task:
@@ -604,9 +618,6 @@ ${(lessonContent || '').substring(0, 2000)}
 
 Evaluation Rubric:
 ${JSON.stringify(rubric, null, 2)}
-
-Student Submission:
-${submissionText}
 
 Instructions:
 1. Evaluate whether each criterion in the rubric is met by the student.
@@ -628,7 +639,13 @@ Return ONLY a valid JSON object:
   ]
 }`;
 
-  const textResponse = await callGroqWithRetry(null, reviewPrompt, 'ai_question');
+  const userMessage = `Student Submission:\n${sanitizedSubmission}`;
+
+  // fix/critical-round1: usageType изменён на 'homework_review' (отдельный серверный лимит, Фикс 4)
+  const textResponse = await callGroqWithRetry(null, null, 'homework_review', null, [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userMessage }
+  ]);
   if (!textResponse) throw new Error('Empty response from Groq API');
 
   let cleanText = textResponse.trim();
@@ -1144,8 +1161,8 @@ export async function generateRealWorldExample(topicLabel, topicDesc) {
   const currentLocale = localStorage.getItem('yourway-locale');
   let languageName = currentLocale === 'en' ? 'English' : 'Russian';
 
-  const prompt = `You are a career mentor. The student is learning about "${topicLabel}".
-Context: ${topicDesc}
+  const prompt = `You are a career mentor. The student is learning about "${sanitizeUserInput(topicLabel, 300)}".
+Context: ${sanitizeUserInput(topicDesc, 500)}
 Provide exactly ONE highly engaging, mind-blowing, and realistic real-world example of how this specific concept is used in a top tech company (like Netflix, Google, Space X) or in a fascinating real-world scenario.
 Keep it to 2-3 sentences max. Do NOT use markdown headings.
 CRITICAL INSTRUCTION: Respond entirely in ${languageName}.`;
