@@ -115,14 +115,14 @@ export default function Layout() {
   const isGraphPage = location.pathname === '/graph';
 
   return (
-    <div className="flex flex-col min-h-screen w-full overflow-y-auto bg-background text-on-background font-sans transition-colors duration-200">
+    <div className="flex flex-col min-h-screen w-full overflow-x-hidden bg-background text-on-background font-sans transition-colors duration-200">
       <div id="topbar-container"><Topbar /></div>
       <main 
         id="page-content" 
         className={`flex-1 relative w-full max-w-[2000px] mx-auto ${
           isGraphPage 
-            ? 'h-[calc(100vh-3.5rem)] pt-14 overflow-y-auto px-4 pb-4 flex flex-col' 
-            : 'overflow-y-auto pt-20 md:pt-22 px-6 sm:px-12 md:px-16 pb-12'
+            ? 'h-[calc(100vh-3.5rem)] pt-14 overflow-y-auto px-2 md:px-4 pb-4 flex flex-col' 
+            : 'overflow-y-auto pt-20 md:pt-22 px-4 sm:px-8 md:px-16 pb-12'
         }`}
       >
         <AnimatePresence mode="wait">

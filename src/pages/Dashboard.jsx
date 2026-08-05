@@ -212,25 +212,25 @@ export default function Dashboard() {
       {/* Hero Banner with large abstract Apple Visual */}
       <motion.div 
         variants={itemVariants}
-        className="relative overflow-hidden rounded-[16px] bg-surface border border-outline p-8 md:p-12"
+        className="relative overflow-hidden rounded-[16px] bg-surface border border-outline p-6 md:p-12"
       >
-        <div className="flex flex-col md:flex-row justify-between items-center gap-8 relative z-10">
-          <div className="flex-1 max-w-2xl">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6 md:gap-8 relative z-10">
+          <div className="flex-1 w-full max-w-2xl text-center md:text-left">
             <motion.h1 
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1 }}
-              className="text-4xl md:text-[56px] font-bold text-on-surface mb-4 tracking-tight leading-none font-clash"
+              className="text-3xl md:text-[56px] font-bold text-on-surface mb-4 tracking-tight leading-none font-clash"
             >
               {t(getGreetingKey(), { name: stats.firstName || 'Learner', defaultValue: t('dashboard.welcome', { name: stats.firstName || 'Learner' }) })}
             </motion.h1>
-            <p className="text-sm text-on-surface-variant mb-8 leading-relaxed">
+            <p className="text-sm text-on-surface-variant mb-6 md:mb-8 leading-relaxed mx-auto md:mx-0 max-w-lg">
               {t('dashboard.streakDesc', { streak: stats.streakDays || 1 })}
             </p>
             <motion.button
               whileTap={{ scale: 0.98 }}
               onClick={() => setShowGenModal(true)}
-              className="bg-on-surface hover:bg-surface-container text-inverse-on-surface px-6 py-3 rounded-[12px] font-bold text-xs transition-colors"
+              className="bg-on-surface hover:bg-surface-container text-inverse-on-surface px-6 py-3 rounded-[12px] font-bold text-xs transition-colors mx-auto md:mx-0 block md:inline-block"
             >
               {t('dashboard.generateCourse')}
             </motion.button>
@@ -285,7 +285,7 @@ export default function Dashboard() {
           </div>
           <button
             onClick={() => navigate('/pricing')}
-            className="bg-on-surface hover:bg-surface-container text-inverse-on-surface rounded-[12px] px-5 py-2.5 text-xs font-bold transition-all font-sans whitespace-nowrap self-start md:self-auto"
+            className="w-full md:w-auto bg-on-surface hover:bg-surface-container text-inverse-on-surface rounded-[12px] px-5 py-2.5 text-xs font-bold transition-all font-sans whitespace-nowrap self-start md:self-auto text-center"
           >
             Узнать больше
           </button>
@@ -367,7 +367,7 @@ export default function Dashboard() {
         </div>
         <button 
           onClick={() => setShowGenModal(true)}
-          className="border border-[#FFFFFF] hover:bg-on-surface text-on-surface hover:text-inverse-on-surface px-6 py-3 rounded-[12px] font-bold text-xs transition-all whitespace-nowrap font-sans"
+          className="w-full md:w-auto border border-[#FFFFFF] hover:bg-on-surface text-on-surface hover:text-inverse-on-surface px-6 py-3 rounded-[12px] font-bold text-xs transition-all whitespace-nowrap font-sans text-center"
         >
           {t('dashboard.buildRoadmap')}
         </button>
@@ -375,8 +375,8 @@ export default function Dashboard() {
 
       {/* Courses Row */}
       <motion.div variants={itemVariants} className="space-y-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold font-clash text-on-surface">Ваши курсы дорожных карт</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+          <h2 className="text-xl sm:text-2xl font-bold font-clash text-on-surface">Ваши курсы дорожных карт</h2>
           <button onClick={() => navigate('/courses')} className="text-xs font-bold text-on-surface hover:text-on-surface/80 flex items-center gap-1 group font-sans">
             {t('dashboard.viewAllCatalog')} <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </button>
