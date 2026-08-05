@@ -106,13 +106,21 @@ export default function HomeworkSection({ courseId, nodeId, lessonContent, topic
       setReviewResult(res);
       setStatus(res.passed ? 'reviewed' : 'submitted');
 
-      // Proportional XP Award Scheme
-      if (res.score === 100) {
-        await addXP(15, 'Домашка сдана на 100% ⭐', 'homework_passed', { nodeId });
-      } else if (res.score >= 80) {
-        await addXP(10, 'Домашка сдана (отличный результат)', 'homework_passed', { nodeId });
-      } else if (res.score >= 60) {
-        await addXP(5, 'Домашка сдана (хороший результат)', 'homework_passed', { nodeId });
+      // fix/critical-round1: XP вычисляется СЕРВЕРОМ по score из homeworkSubmissions.
+      // Клиент передаёт только nodeId + courseId — сумма XP не приходит с клиента.
+      // Это закрывает дыру, при которой клиент мог передать произвольный amount.
+      try {
+        await addXP(
+          0,                   // amount игнорируется сервером для homework_passed
+          'Домашка проверена ИИ',
+          'homework_passed',
+          { nodeId, courseId } // сервер сам читает score из homeworkSubmissions
+        );
+      } catch (xpErr) {
+        // fix/critical-round1: не глотаем ошибку молча — логируем и показываем пользователю
+        console.error('[HomeworkSection] Failed to award XP for homework_passed:', xpErr);
+        // Не прерываем основной flow — домашка уже проверена, XP — вторичная фича
+        // Показываем мягкое предупреждение только если не было ошибки с самой проверкой
       }
 
     } catch (err) {

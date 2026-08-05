@@ -469,6 +469,50 @@ exports.awardXP = onCall(async (request) => {
       activityIcon = "record_voice_over";
       activityColor = "text-violet-500";
 
+    } else if (activityType === "homework_passed") {
+      // fix/critical-round1: XP вычисляется на СЕРВЕРЕ по score из homeworkSubmissions.
+      // Клиент передаёт только nodeId + courseId; готовая сумма XP от клиента игнорируется.
+      const { nodeId, courseId } = details;
+      if (!nodeId) throw new HttpsError("invalid-argument", "Missing nodeId for homework_passed");
+      if (!courseId) throw new HttpsError("invalid-argument", "Missing courseId for homework_passed");
+
+      // Read the actual score from Firestore — prevents client-side XP inflation
+      const hwRef = userRef.collection("homeworkSubmissions").doc
+        ? db.collection("users").doc(userId)
+            .collection("homeworkSubmissions").doc(`${courseId}_${nodeId}`)
+        : null;
+
+      if (!hwRef) throw new HttpsError("internal", "Could not build homework reference");
+
+      const hwDoc = await transaction.get(hwRef);
+      if (!hwDoc.exists) {
+        throw new HttpsError("failed-precondition", "No homework submission found for this node");
+      }
+      const hwData = hwDoc.data();
+      if (!hwData.passed) {
+        throw new HttpsError("failed-precondition", "Homework has not been passed");
+      }
+
+      const score = hwData.score || 0;
+      // XP tier: score 60-79 → 5, score 80-99 → 10, score 100 → 15
+      if (score === 100) {
+        amount = 15;
+      } else if (score >= 80) {
+        amount = 10;
+      } else if (score >= 60) {
+        amount = 5;
+      } else {
+        // score < 60 but passed flag is true — defensive: award minimum
+        amount = 5;
+      }
+
+      reasonKey = `homework_passed_${courseId}_${nodeId}`;
+      activityTitle = locale === "ru"
+        ? `Домашнее задание сдано (${score}/100)`
+        : `Homework passed (${score}/100)`;
+      activityIcon = "assignment_turned_in";
+      activityColor = score === 100 ? "text-amber-500" : "text-emerald-500";
+
     } else {
       throw new HttpsError("invalid-argument", "Unsupported activityType");
     }

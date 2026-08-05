@@ -53,7 +53,13 @@ export const useXP = () => {
         }
       }
     } catch (e) {
-      console.error("Failed to add XP:", e);
+      // fix/critical-round1: логируем ошибку с достаточным контекстом для диагностики.
+      // Тихое проглатывание заменено на полное логирование кода и activityType.
+      console.error(`[useXP] Failed to award XP for activityType='${activityType}':`, {
+        errorCode: e.code,
+        errorMessage: e.message,
+        details
+      });
     }
   }, [showXPToast, showLevelUp]);
 
