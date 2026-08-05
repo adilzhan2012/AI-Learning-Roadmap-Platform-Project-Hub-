@@ -4,7 +4,6 @@ import { X, Award, FileBadge, ExternalLink, Loader2, DownloadCloud } from 'lucid
 import { useLocale } from '../../i18n.js';
 import { getUserAllCertificates, requestCourseCertificate } from '../../services/courseService.js';
 import { auth } from '../../firebase.js';
-import { toast } from 'react-hot-toast';
 
 export default function CertificatesModal({ isOpen, onClose }) {
   const locale = useLocale();
@@ -52,12 +51,10 @@ export default function CertificatesModal({ isOpen, onClose }) {
 
     // PDF is missing, let's try to generate it on the fly
     setGeneratingId(cert.id);
-    const loadingToast = toast.loading(locale === 'ru' ? 'Генерация сертификата...' : 'Generating certificate...');
     
     try {
       const result = await requestCourseCertificate(cert.courseId);
       if (result && result.fileUrl) {
-        toast.success(locale === 'ru' ? 'Готово!' : 'Done!', { id: loadingToast });
         window.open(result.fileUrl, '_blank');
         // Update local state to include the new URL
         setCertificates(prev => prev.map(c => 
@@ -68,7 +65,7 @@ export default function CertificatesModal({ isOpen, onClose }) {
       }
     } catch (error) {
       console.error("Failed to generate PDF:", error);
-      toast.error(locale === 'ru' ? 'Ошибка генерации PDF (попробуйте позже)' : 'Failed to generate PDF (try again later)', { id: loadingToast });
+      alert(locale === 'ru' ? 'Ошибка генерации PDF (попробуйте позже)' : 'Failed to generate PDF (try again later)');
     } finally {
       setGeneratingId(null);
     }
