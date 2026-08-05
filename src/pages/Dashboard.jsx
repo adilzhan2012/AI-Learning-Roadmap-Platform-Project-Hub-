@@ -15,7 +15,8 @@ import {
   Brain, 
   Sparkles, 
   Loader2,
-  Lock
+  Lock,
+  FileBadge
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase.js';
@@ -25,10 +26,11 @@ import {
   getUserCourses, 
   getRecentActivities 
 } from '../services/courseService.js';
+import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import CourseGeneratorModal from '../components/CourseGeneratorModal.jsx';
+import CertificatesModal from '../components/shared/CertificatesModal.jsx';
 import RepeatReminder from '../components/shared/RepeatReminder.jsx';
 import { t, useLocale } from '../i18n.js';
-import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import { LeagueIcon } from './Leagues.jsx';
 
 const staggerContainer = {
@@ -126,6 +128,7 @@ export default function Dashboard() {
 
   // AI Generator modal state
   const [showGenModal, setShowGenModal] = useState(false);
+  const [showCertModal, setShowCertModal] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -493,48 +496,36 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
-        {/* Weekly Goal (1/3 width) */}
-        <motion.div variants={itemVariants} className="lg:col-span-1 bg-surface border border-outline rounded-[16px] p-6 flex flex-col items-center justify-between text-center min-h-[360px]">
-          <h2 className="text-base font-bold text-on-surface w-full text-left mb-4 font-sans">{t('dashboard.weeklyGoal')}</h2>
+        {/* Certificates Card (1/3 width) replaces Weekly Goal */}
+        <motion.div 
+          variants={itemVariants} 
+          onClick={() => setShowCertModal(true)}
+          className="lg:col-span-1 bg-surface border border-outline hover:border-white/20 transition-all rounded-[16px] p-6 flex flex-col items-center justify-between text-center min-h-[360px] cursor-pointer group"
+        >
+          <div className="w-full flex items-center justify-between mb-4">
+            <h2 className="text-base font-bold text-on-surface font-sans flex items-center gap-2">
+              <FileBadge className="w-4 h-4 text-on-surface-variant" strokeWidth={1.5} />
+              Мои сертификаты
+            </h2>
+          </div>
           
-          <div className="relative w-28 h-28 my-auto">
-            <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-              <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.04)" className="stroke-[3px]" />
-              <motion.circle 
-                cx="50" cy="50" r="45" 
-                fill="none" 
-                stroke="#FFFFFF" 
-                className="stroke-[3px]"
-                strokeLinecap="square"
-                initial={{ pathLength: 0 }}
-                animate={{ pathLength: Math.min((stats.activeCoursesCount || 1) / 3, 1) }}
-                transition={{ duration: 1.2, ease: "easeOut" }}
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center font-sans">
-              <span className="text-2xl font-bold text-on-surface font-mono">{stats.activeCoursesCount || 0}<span className="text-sm text-on-surface-variant font-sans">/3</span></span>
-              <span className="text-[8px] font-bold text-on-surface-variant mt-0.5 uppercase tracking-widest">{t('insights.coursesActive')}</span>
+          <div className="relative w-32 h-32 my-auto flex items-center justify-center">
+            <div className="absolute inset-0 bg-primary/10 rounded-full blur-2xl group-hover:bg-primary/20 transition-colors" />
+            <div className="relative z-10 w-24 h-24 rounded-full bg-surface-container border border-outline flex items-center justify-center">
+              <div className="flex flex-col items-center justify-center font-sans">
+                <span className="text-3xl font-bold text-on-surface font-mono">{stats.certificatesCount || 0}</span>
+                <span className="text-[10px] font-bold text-on-surface-variant mt-1 uppercase tracking-widest">Получено</span>
+              </div>
             </div>
+            {/* Decorative orbit circle */}
+            <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full -rotate-90 animate-[spin_10s_linear_infinite]">
+              <circle cx="50" cy="50" r="48" fill="none" stroke="currentColor" className="stroke-[1px] text-primary/30 stroke-dasharray-[4_8]" />
+            </svg>
           </div>
 
-          <p className="text-[11px] text-on-surface-variant my-3 font-sans">
-            {stats.activeCoursesCount >= 3 ? t('dashboard.weeklyGoalSuccess') : t('dashboard.weeklyGoalPending')}
-          </p>
-
-          <div className="flex gap-1.5 w-full justify-center">
-            {['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map((day, idx) => {
-              const active = idx < (stats.streakDays || 1);
-              return (
-                <div 
-                  key={idx} 
-                  className={`w-6 h-6 rounded-[6px] border flex items-center justify-center text-[9px] font-bold font-sans ${
-                    active ? 'bg-on-surface border-[#FFFFFF] text-inverse-on-surface' : 'bg-surface-container/40 border border-outline text-on-surface-variant'
-                  }`}
-                >
-                  {day}
-                </div>
-              );
-            })}
+          <div className="flex items-center justify-between w-full text-[10px] font-bold text-on-surface mt-4 border-t border-outline pt-3 group-hover:text-on-surface/80 transition-colors">
+            <span>Смотреть все</span>
+            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
           </div>
         </motion.div>
 
@@ -596,6 +587,12 @@ export default function Dashboard() {
         isOpen={showGenModal} 
         onClose={() => setShowGenModal(false)} 
         userUid={user?.uid} 
+      />
+
+      {/* Certificates modal */}
+      <CertificatesModal 
+        isOpen={showCertModal}
+        onClose={() => setShowCertModal(false)}
       />
     </motion.div>
   );

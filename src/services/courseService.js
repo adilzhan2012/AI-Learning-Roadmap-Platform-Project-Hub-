@@ -918,3 +918,19 @@ export async function getCourseCertificate(userId, courseId) {
   }
 }
 
+// Get all certificates for a user
+export async function getUserAllCertificates(userId) {
+  try {
+    const certsRef = collection(db, 'certificates');
+    const q = query(certsRef, where('userId', '==', userId));
+    const snap = await getDocs(q);
+    const certificates = [];
+    snap.forEach(doc => {
+      certificates.push({ id: doc.id, ...doc.data() });
+    });
+    return certificates.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  } catch (error) {
+    console.error('Error fetching user certificates:', error);
+    return [];
+  }
+}
