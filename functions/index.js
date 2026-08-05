@@ -864,6 +864,7 @@ exports.generateCertificate = onCall(
       .get();
 
     let certIdToUse = null;
+    let existingCertData = null;
 
     if (!existingSnap.empty) {
       const existingDoc = existingSnap.docs[0].data();
@@ -877,6 +878,7 @@ exports.generateCertificate = onCall(
       } else {
         // Doc exists but no PDF generated yet (fallback engaged previously)
         certIdToUse = existingDoc.certId || existingSnap.docs[0].id;
+        existingCertData = existingDoc;
       }
     }
     // 2. Fetch course data & user progress
@@ -885,18 +887,21 @@ exports.generateCertificate = onCall(
       courseSnap = await db.collection("courses").doc(courseId).get();
     }
 
-    if (!courseSnap.exists) {
+    if (!courseSnap.exists && !existingCertData) {
       throw new HttpsError("not-found", "Курс не найден.");
     }
 
-    const courseData = courseSnap.data();
-    const progress = Number(courseData.progress || 0);
-
-    if (progress < 100) {
-      throw new HttpsError(
-        "failed-precondition",
-        "Сертификат выдается только после 100% прохождения курса."
-      );
+    const courseData = courseSnap.exists ? courseSnap.data() : {};
+    
+    // Only check progress if we are generating a brand new certificate
+    if (!existingCertData) {
+      const progress = Number(courseData.progress || 0);
+      if (progress < 100) {
+        throw new HttpsError(
+          "failed-precondition",
+          "Сертификат выдается только после 100% прохождения курса."
+        );
+      }
     }
 
     // 3. Gather student profile info
@@ -905,16 +910,16 @@ exports.generateCertificate = onCall(
     const subSnap = await db.collection("users").doc(userId).collection("subscription").doc("details").get();
     const plan = subSnap.exists ? (subSnap.data().plan || "FREE") : "FREE";
     const isFree = plan === "FREE";
-    const userName = userData.displayName || userData.name || userData.email?.split("@")[0] || "Студент YourWay";
+    const userName = existingCertData?.userName || userData.displayName || userData.name || userData.email?.split("@")[0] || "Студент YourWay";
     const userXp = Number(userData.stats?.xp || userData.xp || 0);
     const userLevelInfo = calculateLevel(userXp);
-    const userLevel = userLevelInfo.current.level;
+    const userLevel = existingCertData?.userLevel || userLevelInfo.current.level;
 
-    const courseTitle = courseData.title || courseData.name || "Интерактивный курс";
-    const modulesCount = Array.isArray(courseData.modules)
+    const courseTitle = existingCertData?.courseName || courseData.title || courseData.name || "Интерактивный курс";
+    const modulesCount = existingCertData?.modulesCount || (Array.isArray(courseData.modules)
       ? courseData.modules.length
-      : Number(courseData.modulesCount || 1);
-    const hoursLearned = Number(courseData.estimatedHours || courseData.hoursLearned || Math.ceil(modulesCount * 1.5));
+      : Number(courseData.modulesCount || 1));
+    const hoursLearned = existingCertData?.hoursLearned || Number(courseData.estimatedHours || courseData.hoursLearned || Math.ceil(modulesCount * 1.5));
 
     // 4. Generate certId YW-YYYY-XXXXX
     const year = new Date().getFullYear();
