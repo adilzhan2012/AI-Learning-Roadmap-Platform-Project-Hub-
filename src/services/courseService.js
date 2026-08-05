@@ -17,6 +17,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { getLocale } from '../i18n.js';
+import { validateCourseGraph } from '../utils/graphValidation.js';
 
 // Helper to get Groq API Key is removed as it's now handled by Cloud Functions
 
@@ -171,7 +172,7 @@ ${preferences.duration ? `- Requested Duration: ${preferences.duration}` : ''}
     }
   }
 
-  const prompt = `You are an expert AI curriculum designer. Build a complete, highly structured learning roadmap for the topic: "${topic}" at difficulty level: "${level}".
+  const basePrompt = `You are an expert AI curriculum designer. Build a complete, highly structured learning roadmap for the topic: "${topic}" at difficulty level: "${level}".
 ${prefString}
 ${ragContext}
 
@@ -207,52 +208,86 @@ The response must be a valid JSON object matching this schema:
 4. Set the status of the first node (with no prerequisites) to "active" and all other nodes to "locked".
 5. Return ONLY the JSON object, with no markdown formatting tags. Do NOT wrap it in \`\`\`json \`\`\`. Do not include any explanations.`;
 
-  const textResponse = await callGroqWithRetry(null, prompt, 'roadmap');
+  const MAX_RETRIES = 2;
+  let currentPrompt = basePrompt;
+  let attempt = 0;
 
-  if (!textResponse) {
-    throw new Error('Empty response from Groq API');
-  }
+  let finalCourseData = null;
+  let finalNodes = null;
+  let finalEdges = null;
 
-  let cleanText = textResponse.trim();
-  // Strip markdown code blocks if the AI ignored the instruction
-  cleanText = cleanText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-  cleanText = cleanText.replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
-  
-  // Try to find JSON object bounds if there's trailing/leading text
-  const firstBrace = cleanText.indexOf('{');
-  const lastBrace = cleanText.lastIndexOf('}');
-  if (firstBrace !== -1 && lastBrace !== -1) {
-    cleanText = cleanText.substring(firstBrace, lastBrace + 1);
-  }
+  while (attempt <= MAX_RETRIES) {
+    const textResponse = await callGroqWithRetry(null, currentPrompt, 'roadmap');
 
-  let courseData;
-  try {
-    courseData = JSON.parse(cleanText);
-  } catch (err) {
-    console.error("Failed to parse AI response as JSON. Raw response:", textResponse);
-    throw new Error('Invalid JSON format returned by AI. Please try again.');
-  }
+    if (!textResponse) {
+      if (attempt < MAX_RETRIES) {
+        attempt++;
+        continue;
+      }
+      throw new Error('Empty response from Groq API');
+    }
 
-  if (!courseData.nodes || !Array.isArray(courseData.nodes)) {
-    throw new Error('Invalid course structure returned by AI. Missing nodes. Please try again.');
+    let cleanText = textResponse.trim();
+    // Strip markdown code blocks if the AI ignored the instruction
+    cleanText = cleanText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+    cleanText = cleanText.replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+    
+    // Try to find JSON object bounds if there's trailing/leading text
+    const firstBrace = cleanText.indexOf('{');
+    const lastBrace = cleanText.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      cleanText = cleanText.substring(firstBrace, lastBrace + 1);
+    }
+
+    let courseData;
+    try {
+      courseData = JSON.parse(cleanText);
+    } catch (err) {
+      console.error(`Attempt ${attempt + 1}: Failed to parse AI response as JSON. Raw response:`, textResponse);
+      if (attempt < MAX_RETRIES) {
+        attempt++;
+        currentPrompt = `${basePrompt}\n\nCRITICAL FIX: Your previous response was invalid JSON. Ensure you return valid JSON without syntax errors.`;
+        continue;
+      }
+      throw new Error('Invalid JSON format returned by AI. Please try again.');
+    }
+
+    const rawNodes = courseData.nodes || [];
+    const rawEdges = courseData.edges || [];
+
+    const validation = validateCourseGraph(rawNodes, rawEdges);
+
+    if (!validation.valid) {
+      console.warn(`Attempt ${attempt + 1}: Course graph validation failed with errors:`, validation.errors);
+      if (attempt < MAX_RETRIES) {
+        attempt++;
+        currentPrompt = `${basePrompt}\n\nCRITICAL FIX REQUIRED: Your previous course graph was invalid. Please fix the following errors:\n${validation.errors.map(err => `- ${err}`).join('\n')}`;
+        continue;
+      }
+      throw new Error(`Course graph validation failed after ${MAX_RETRIES + 1} attempts: ${validation.errors.join('; ')}`);
+    }
+
+    // Graph is valid!
+    finalCourseData = courseData;
+    break;
   }
 
   // Normalize nodes and edges to ensure unique IDs across the entire app
   const courseIdPrefix = Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 4) + '-';
   const idMap = new Map();
   
-  courseData.nodes.forEach(node => {
+  finalCourseData.nodes.forEach(node => {
     const oldId = parseInt(node.id, 10);
     if (!isNaN(oldId) && !idMap.has(oldId)) {
       idMap.set(oldId, courseIdPrefix + oldId);
     }
   });
 
-  const nodes = courseData.nodes.map((node) => {
+  const nodes = finalCourseData.nodes.map((node) => {
     const oldId = parseInt(node.id, 10);
     const newId = idMap.get(oldId) || (courseIdPrefix + oldId);
     // Find if this node has any prerequisites pointing to it (using old IDs from AI)
-    const hasPrereq = (courseData.edges || []).some(e => parseInt(e.to, 10) === oldId);
+    const hasPrereq = (finalCourseData.edges || []).some(e => parseInt(e.to, 10) === oldId);
     return {
       ...node,
       id: newId,
@@ -260,7 +295,7 @@ The response must be a valid JSON object matching this schema:
     };
   });
 
-  const edges = (courseData.edges || [])
+  const edges = (finalCourseData.edges || [])
     .map(e => {
       const oldFrom = parseInt(e.from, 10);
       const oldTo = parseInt(e.to, 10);
@@ -277,13 +312,13 @@ The response must be a valid JSON object matching this schema:
     userId,
     topic: topic,
     normalizedTopic: normalizedTopic,
-    title: courseData.title || topic,
+    title: finalCourseData.title || topic,
     category: '✨ Сгенерировано ИИ',
-    level: courseData.level || level,
-    hours: courseData.hours || '10h',
-    lessonsCount: courseData.lessonsCount || nodes.length * 3,
-    gradient: courseData.gradient || 'from-blue-500 to-indigo-600',
-    description: courseData.description || `Learning path for ${topic}`,
+    level: finalCourseData.level || level,
+    hours: finalCourseData.hours || '10h',
+    lessonsCount: finalCourseData.lessonsCount || nodes.length * 3,
+    gradient: finalCourseData.gradient || 'from-blue-500 to-indigo-600',
+    description: finalCourseData.description || `Learning path for ${topic}`,
     nodes,
     edges,
     preferences,
