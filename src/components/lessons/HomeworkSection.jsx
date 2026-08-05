@@ -14,6 +14,7 @@ import {
   AlertCircle,
   Zap
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { 
   generateHomeworkWithRubric, 
   reviewHomeworkSubmission, 
@@ -26,6 +27,7 @@ import UpgradeModal from '../shared/UpgradeModal.jsx';
 import { AIParsingError } from '../../utils/aiResponseParser.js';
 
 export default function HomeworkSection({ courseId, nodeId, lessonContent, topicLabel, topicDesc }) {
+  const navigate = useNavigate();
   const { addXP } = useXP();
   const { plan, usage, checkLimit, incrementUsage, setUpgradeModalOpen, isUpgradeModalOpen } = usePlanLimits();
 
@@ -370,7 +372,7 @@ export default function HomeworkSection({ courseId, nodeId, lessonContent, topic
       <UpgradeModal 
         isOpen={isUpgradeModalOpen} 
         onClose={() => setUpgradeModalOpen(false)} 
-        onUpgrade={() => alert("Backend payment integration is pending.")} 
+        onUpgrade={() => navigate('/pricing')} 
       />
     </div>
   );

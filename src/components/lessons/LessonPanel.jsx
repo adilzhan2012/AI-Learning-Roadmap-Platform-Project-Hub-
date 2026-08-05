@@ -718,7 +718,7 @@ Provide a code boilerplate template at the end.`;
       <UpgradeModal 
         isOpen={isUpgradeModalOpen} 
         onClose={() => setUpgradeModalOpen(false)} 
-        onUpgrade={() => alert("Backend payment integration is pending.")} 
+        onUpgrade={() => navigate('/pricing')} 
       />
 
       {/* Slide Viewer Overlay */}
