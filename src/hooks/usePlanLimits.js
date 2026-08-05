@@ -31,6 +31,8 @@ export const usePlanLimits = () => {
           lastQuestionDate: todayStr,
           mentorMessagesUsed: 0,
           ultraTokensUsed: 0,
+          homeworkReviewsUsed: 0,
+          homeworkMonthStart: monthStr,
           lastMentorDate: todayStr,
           mentorMonthStart: monthStr
         };
@@ -59,19 +61,21 @@ export const usePlanLimits = () => {
               const daysSinceReg = (nowTime - regTime) / (1000 * 60 * 60 * 24);
               
               if (daysSinceReg > 7) {
-                // Regular FREE plan (after onboarding): daily reset
                 if (data.lastMentorDate !== todayStr) {
                   newMentorMessagesUsed = 0;
                 }
-              } else {
-                // Onboarding phase: cumulative (no daily reset)
               }
             } else {
-              // PRO & ULTRA: daily reset
               if (data.lastMentorDate !== todayStr) {
                 newMentorMessagesUsed = 0;
                 newUltraTokensUsed = 0;
               }
+            }
+
+            // Monthly reset for homework reviews
+            let newHomeworkReviewsUsed = data.homeworkReviewsUsed || 0;
+            if (data.homeworkMonthStart !== monthStr) {
+              newHomeworkReviewsUsed = 0;
             }
 
           setUsage({ 
@@ -80,6 +84,8 @@ export const usePlanLimits = () => {
             lastQuestionDate: todayStr,
             mentorMessagesUsed: newMentorMessagesUsed,
             ultraTokensUsed: newUltraTokensUsed,
+            homeworkReviewsUsed: newHomeworkReviewsUsed,
+            homeworkMonthStart: monthStr,
             lastMentorDate: data.lastMentorDate || todayStr,
             mentorMonthStart: data.mentorMonthStart || monthStr
           });
@@ -159,6 +165,15 @@ export const usePlanLimits = () => {
       return true;
     }
 
+    if (type === 'homework_review') {
+      const limitVal = PLAN_LIMITS[plan]?.homeworkReviewsPerMonth ?? 2;
+      if (limitVal !== Infinity && usage.homeworkReviewsUsed >= limitVal) {
+        setUpgradeModalOpen(true);
+        return false;
+      }
+      return true;
+    }
+
     return true;
   }, [plan, usage]);
 
@@ -174,6 +189,9 @@ export const usePlanLimits = () => {
       } else if (type === 'ai_question') {
         newUsage.aiQuestionsUsed += 1;
         newUsage.lastQuestionDate = todayStr;
+      } else if (type === 'homework_review') {
+        newUsage.homeworkReviewsUsed = (newUsage.homeworkReviewsUsed || 0) + 1;
+        newUsage.homeworkMonthStart = monthStr;
       } else if (type === 'mentor_message') {
         newUsage.mentorMessagesUsed += 1;
         newUsage.lastMentorDate = todayStr;

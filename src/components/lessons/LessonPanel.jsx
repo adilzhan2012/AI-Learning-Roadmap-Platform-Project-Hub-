@@ -25,6 +25,7 @@ import { generateLessonContent, updateNodeStatus, generateELI5Content, generateR
 import ReactMarkdown from 'react-markdown';
 import Flashcard from './Flashcard.jsx';
 import ContextualMentor from './ContextualMentor.jsx';
+import HomeworkSection from './HomeworkSection.jsx';
 import { markdownToSlides } from '../../services/courseService.js';
 import SlideViewer from './SlideViewer.jsx';
 import DynamicImage from './DynamicImage.jsx';
@@ -631,6 +632,17 @@ Provide a code boilerplate template at the end.`;
               </div>
             )}
             
+            {/* Interactive Homework Section */}
+            {selectedCourse && selectedNode && selectedNode.content && (
+              <HomeworkSection
+                courseId={selectedCourse.id}
+                nodeId={selectedNode.id}
+                lessonContent={selectedNode.content}
+                topicLabel={selectedNode.label}
+                topicDesc={selectedNode.desc}
+              />
+            )}
+
             {/* Footer actions */}
             <div className="p-6 md:p-8 mt-auto border-t border-white/10 bg-background flex flex-col md:flex-row justify-between items-center gap-6">
               <div>

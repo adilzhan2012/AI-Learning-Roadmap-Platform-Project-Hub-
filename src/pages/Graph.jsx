@@ -1183,6 +1183,20 @@ Respond in Russian. Keep your reply concise and professional.`;
                       </div>
                     )}
 
+                    {/* Homework Reviewed Badge */}
+                    {(node.homeworkPassed || node.homeworkStatus === 'reviewed') && !isLocked && (
+                      <div 
+                        title="Домашка сдана" 
+                        className={`absolute top-0 left-4 translate-y-[-50%] font-black text-[8px] tracking-tight uppercase px-2 py-0.5 rounded-full border shadow-md flex items-center gap-1 ${
+                          node.homeworkScore === 100 
+                            ? 'bg-gradient-to-r from-amber-400 to-yellow-500 text-zinc-950 border-amber-300'
+                            : 'bg-emerald-500 text-zinc-950 border-emerald-400'
+                        }`}
+                      >
+                        <span>{node.homeworkScore === 100 ? 'Домашка сдана на отлично ⭐' : 'Домашка сдана ✓'}</span>
+                      </div>
+                    )}
+
                     {/* Branch folding button */}
                     {hasChildren && (
                       <button 
