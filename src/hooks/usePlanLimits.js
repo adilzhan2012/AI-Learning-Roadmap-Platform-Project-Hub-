@@ -22,45 +22,57 @@ export const usePlanLimits = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        const ref = doc(db, 'users', user.uid, 'subscription', 'details');
-        const snap = await getDoc(ref);
         const todayStr = new Date().toISOString().split('T')[0];
         const monthStr = todayStr.substring(0, 7); // YYYY-MM
+        const initData = { 
+          plan: 'FREE', 
+          roadmapsGenerated: 0, 
+          aiQuestionsUsed: 0, 
+          lastQuestionDate: todayStr,
+          mentorMessagesUsed: 0,
+          ultraTokensUsed: 0,
+          lastMentorDate: todayStr,
+          mentorMonthStart: monthStr
+        };
 
-        if (snap.exists()) {
-          const data = snap.data();
-          const currentPlan = data.plan || 'FREE';
-          setPlan(currentPlan);
-          setDbBillingPeriod(data.billingPeriod || 'monthly');
+        try {
+          const ref = doc(db, 'users', user.uid, 'subscription', 'details');
+          const snap = await getDoc(ref);
           
-          let newAiQuestionsUsed = data.aiQuestionsUsed || 0;
-          if (data.lastQuestionDate !== todayStr) {
-            newAiQuestionsUsed = 0;
-          }
-
-          let newMentorMessagesUsed = data.mentorMessagesUsed || 0;
-          let newUltraTokensUsed = data.ultraTokensUsed || 0;
-
-          if (currentPlan === 'FREE') {
-            const regTime = new Date(user.metadata.creationTime || new Date()).getTime();
-            const nowTime = new Date().getTime();
-            const daysSinceReg = (nowTime - regTime) / (1000 * 60 * 60 * 24);
+          if (snap.exists()) {
+            const data = snap.data();
+            const currentPlan = data.plan || 'FREE';
+            setPlan(currentPlan);
+            setDbBillingPeriod(data.billingPeriod || 'monthly');
             
-            if (daysSinceReg > 7) {
-              // Regular FREE plan (after onboarding): daily reset
-              if (data.lastMentorDate !== todayStr) {
-                newMentorMessagesUsed = 0;
+            let newAiQuestionsUsed = data.aiQuestionsUsed || 0;
+            if (data.lastQuestionDate !== todayStr) {
+              newAiQuestionsUsed = 0;
+            }
+
+            let newMentorMessagesUsed = data.mentorMessagesUsed || 0;
+            let newUltraTokensUsed = data.ultraTokensUsed || 0;
+
+            if (currentPlan === 'FREE') {
+              const regTime = new Date(user.metadata.creationTime || new Date()).getTime();
+              const nowTime = new Date().getTime();
+              const daysSinceReg = (nowTime - regTime) / (1000 * 60 * 60 * 24);
+              
+              if (daysSinceReg > 7) {
+                // Regular FREE plan (after onboarding): daily reset
+                if (data.lastMentorDate !== todayStr) {
+                  newMentorMessagesUsed = 0;
+                }
+              } else {
+                // Onboarding phase: cumulative (no daily reset)
               }
             } else {
-              // Onboarding phase: cumulative (no daily reset)
+              // PRO & ULTRA: daily reset
+              if (data.lastMentorDate !== todayStr) {
+                newMentorMessagesUsed = 0;
+                newUltraTokensUsed = 0;
+              }
             }
-          } else {
-            // PRO & ULTRA: daily reset
-            if (data.lastMentorDate !== todayStr) {
-              newMentorMessagesUsed = 0;
-              newUltraTokensUsed = 0;
-            }
-          }
 
           setUsage({ 
             roadmapsGenerated: data.roadmapsGenerated || 0, 
@@ -72,22 +84,19 @@ export const usePlanLimits = () => {
             mentorMonthStart: data.mentorMonthStart || monthStr
           });
         } else {
-          const initData = { 
-            plan: 'FREE', 
-            roadmapsGenerated: 0, 
-            aiQuestionsUsed: 0, 
-            lastQuestionDate: todayStr,
-            mentorMessagesUsed: 0,
-            ultraTokensUsed: 0,
-            lastMentorDate: todayStr,
-            mentorMonthStart: monthStr
-          };
           // Document doesn't exist yet, which means user is on FREE plan by default.
           // DO NOT write to Firestore here because security rules block client writes to /subscription.
           setPlan('FREE');
           setDbBillingPeriod('monthly');
           setUsage(initData);
         }
+      } catch (error) {
+        console.error("Failed to load plan limits:", error);
+        // Fallback to FREE plan logic so app doesn't break
+        setPlan('FREE');
+        setDbBillingPeriod('monthly');
+        setUsage(initData);
+      }
       } else {
         setPlan('FREE');
       }

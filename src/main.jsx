@@ -26,6 +26,15 @@ initClarity();
 
 initTheme();
 
+// Suppress benign internal Firebase IndexedDB errors from bubbling up to Sentry
+window.addEventListener('unhandledrejection', (event) => {
+  if (event.reason && event.reason.message) {
+    const msg = event.reason.message;
+    if (msg.includes("Failed to execute 'transaction' on 'IDBDatabase': The database connection is closing") || msg === 'Aa') {
+      event.preventDefault(); // Stop the error from surfacing or breaking the app
+    }
+  }
+});
 ReactDOM.createRoot(document.getElementById('app')).render(
   <React.StrictMode>
     <App />

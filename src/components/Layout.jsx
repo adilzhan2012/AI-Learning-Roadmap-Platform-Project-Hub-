@@ -86,7 +86,8 @@ export default function Layout() {
 
   // Route protection
   const isPublicRoute = ['/', '/login', '/register'].includes(location.pathname);
-  if (!user && !isPublicRoute) {
+  const currentUser = user || auth.currentUser;
+  if (!currentUser && !isPublicRoute) {
     return <Navigate to="/login" replace />;
   }
 

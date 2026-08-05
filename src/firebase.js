@@ -39,10 +39,13 @@ try {
   
   const recaptchaKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
   if (recaptchaKey) {
-    initializeAppCheck(app, {
-      provider: new ReCaptchaV3Provider(recaptchaKey),
-      isTokenAutoRefreshEnabled: true
-    });
+    if (typeof window !== 'undefined' && !window._appCheckInitialized) {
+      window._appCheckInitialized = true;
+      initializeAppCheck(app, {
+        provider: new ReCaptchaV3Provider(recaptchaKey),
+        isTokenAutoRefreshEnabled: true
+      });
+    }
   } else {
     console.warn("VITE_RECAPTCHA_SITE_KEY is missing. App Check will not function properly.");
   }
