@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { callGroqWithRetry } from '../services/courseService.js';
+import { callGroqWithRetry, withTimeout } from '../services/courseService.js';
 import { getLocale } from '../i18n.js';
 import { db, auth } from '../firebase.js';
 import { doc, setDoc, getDoc, serverTimestamp, increment } from 'firebase/firestore';
@@ -77,7 +77,11 @@ Return ONLY a valid JSON object:
 }
 `;
 
-      const textResponse = await callGroqWithRetry(apiKey, quizPrompt, 'ai_question');
+      const textResponse = await withTimeout(
+        callGroqWithRetry(apiKey, quizPrompt, 'ai_question'),
+        50000,
+        'Превышено время ожидания генерации теста (50 сек). Пожалуйста, попробуйте еще раз.'
+      );
       if (!textResponse) throw new Error('Empty response');
 
       let parsed = parseAIJson(textResponse);

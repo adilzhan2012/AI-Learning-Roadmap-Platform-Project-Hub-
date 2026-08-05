@@ -655,7 +655,20 @@ Provide a code boilerplate template at the end.`;
               <div>
                 <p className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-1">Завершили изучение материала?</p>
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">Пройдите тест, чтобы закрепить знания и разблокировать следующие уроки.</p>
-                {quizError && <p className="text-sm text-red-500 mt-2">{quizError}</p>}
+                {quizError && (
+                  <div className="mt-2 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-3 text-xs text-rose-300">
+                    <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                    <span className="flex-1">{quizError}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenQuiz(true)}
+                      disabled={quizGenerating}
+                      className="px-3 py-1 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 rounded-lg text-xs font-bold text-rose-200 shrink-0 transition-colors cursor-pointer"
+                    >
+                      Попробовать снова
+                    </button>
+                  </div>
+                )}
                 {genError && <p className="text-sm text-red-500 mt-2">{genError}</p>}
               </div>
               <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">

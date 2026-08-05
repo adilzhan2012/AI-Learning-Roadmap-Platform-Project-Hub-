@@ -30,6 +30,26 @@ import {
   CACHE_VERSION 
 } from '../utils/cacheUtils.js';
 import { parseAIJson, AIParsingError } from '../utils/aiResponseParser.js';
+
+export function withTimeout(promise, ms = 50000, customErrorMessage = 'Превышено время ожидания ответа ИИ.') {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      const err = new Error(customErrorMessage);
+      err.name = 'TimeoutError';
+      reject(err);
+    }, ms);
+
+    promise
+      .then((res) => {
+        clearTimeout(timer);
+        resolve(res);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
 // fix/critical-round1: санитизация user input перед вставкой в AI-промпты
 import { sanitizeUserInput, sanitizeCode } from '../utils/sanitizeUserInput.js';
 
@@ -478,7 +498,11 @@ Def: [A concise, 1-2 sentence definition]
 ---
 Make it highly educational, long, and detailed so the user can genuinely learn from it.`;
 
-    const textResponse = await callGroqWithRetry(null, prompt, 'ai_question');
+    const textResponse = await withTimeout(
+      callGroqWithRetry(null, prompt, 'ai_question'),
+      50000,
+      'Превышено время ожидания генерации урока (50 сек). Пожалуйста, попробуйте еще раз.'
+    );
 
     if (!textResponse) throw new Error('Empty response from Groq API');
     finalContent = textResponse;
@@ -579,7 +603,11 @@ Return ONLY a valid JSON object:
   ]
 }`;
 
-  const textResponse = await callGroqWithRetry(null, prompt, 'ai_question');
+  const textResponse = await withTimeout(
+    callGroqWithRetry(null, prompt, 'ai_question'),
+    50000,
+    'Превышено время ожидания генерации задания (50 сек). Пожалуйста, попробуйте еще раз.'
+  );
   if (!textResponse) throw new Error('Empty response from Groq API');
 
   const parsed = parseAIJson(textResponse);
@@ -662,10 +690,14 @@ Return ONLY a valid JSON object:
   const userMessage = `Student Submission:\n${sanitizedSubmission}`;
 
   // fix/critical-round1: usageType изменён на 'homework_review' (отдельный серверный лимит, Фикс 4)
-  const textResponse = await callGroqWithRetry(null, null, 'homework_review', null, [
-    { role: 'system', content: systemPrompt },
-    { role: 'user', content: userMessage }
-  ]);
+  const textResponse = await withTimeout(
+    callGroqWithRetry(null, null, 'homework_review', null, [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMessage }
+    ]),
+    50000,
+    'Превышено время ожидания проверки задания (50 сек). Пожалуйста, попробуйте еще раз.'
+  );
   if (!textResponse) throw new Error('Empty response from Groq API');
 
   const reviewResult = parseAIJson(textResponse);
