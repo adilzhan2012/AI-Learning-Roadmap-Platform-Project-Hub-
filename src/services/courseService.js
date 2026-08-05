@@ -486,7 +486,268 @@ Make it highly educational, long, and detailed so the user can genuinely learn f
 }
 
 
-// 2. Fetch User Courses
+// 1.6 Generate Homework & Rubric with Template Caching
+export async function generateHomeworkWithRubric(courseId, nodeId, lessonContent, topicLabel, topicDesc) {
+  const courseRef = doc(db, 'courses', courseId);
+  const courseSnap = await getDoc(courseRef);
+  if (!courseSnap.exists()) throw new Error('Course not found');
+  const courseData = courseSnap.data();
+
+  const targetNode = (courseData.nodes || []).find(n => String(n.id) === String(nodeId));
+  const rawNodeId = targetNode?.rawNodeId || targetNode?.id || nodeId;
+  const courseTemplateId = courseData.courseTemplateId || buildCourseCacheKey(courseData.topic || courseData.title, courseData.level || 'Intermediate', courseData.preferences || {});
+  const lessonKey = buildLessonCacheKey(rawNodeId);
+
+  let templateDocRef = null;
+  if (courseTemplateId) {
+    try {
+      templateDocRef = doc(db, 'courseTemplates', courseTemplateId, 'lessons', lessonKey);
+      const lessonSnap = await getDoc(templateDocRef);
+      if (lessonSnap.exists() && lessonSnap.data().homeworkPrompt && lessonSnap.data().homeworkRubric) {
+        const data = lessonSnap.data();
+        logCacheMetric('homework', true, `${courseTemplateId}/${lessonKey}`);
+        return {
+          prompt: data.homeworkPrompt,
+          rubric: data.homeworkRubric
+        };
+      } else {
+        logCacheMetric('homework', false, `${courseTemplateId}/${lessonKey}`);
+      }
+    } catch (cacheErr) {
+      console.warn("Homework cache check warning:", cacheErr);
+    }
+  }
+
+  const currentLocale = getLocale();
+  const languageName = currentLocale === 'ru' ? 'Russian' : 'English';
+
+  const prompt = `You are an expert educational reviewer. Based on the lesson material below for "${topicLabel}", create an interactive homework assignment and a strict 3-5 criterion rubric for AI evaluation.
+CRITICAL INSTRUCTION: Respond ENTIRELY in ${languageName} language.
+
+Lesson Material:
+${(lessonContent || '').substring(0, 3000)}
+
+Requirements:
+1. "prompt": A clear, hands-on homework assignment with instructions, requirements, and an example answer structure.
+2. "rubric": 3 to 5 evaluation criteria. Each criterion must have:
+   - "id": string (e.g. "crit_1")
+   - "criterion": short title of the criterion
+   - "description": clear explanation of what is required to pass this criterion
+   - "weight": number (sum of weights should equal 100)
+
+Return ONLY a valid JSON object:
+{
+  "prompt": "Full homework assignment instructions...",
+  "rubric": [
+    {
+      "id": "crit_1",
+      "criterion": "Criterion Name",
+      "description": "What is evaluated...",
+      "weight": 25
+    }
+  ]
+}`;
+
+  const textResponse = await callGroqWithRetry(null, prompt, 'ai_question');
+  if (!textResponse) throw new Error('Empty response from Groq API');
+
+  let cleanText = textResponse.trim();
+  cleanText = cleanText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+  cleanText = cleanText.replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  const firstBrace = cleanText.indexOf('{');
+  const lastBrace = cleanText.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1) {
+    cleanText = cleanText.substring(firstBrace, lastBrace + 1);
+  }
+
+  const parsed = JSON.parse(cleanText);
+  const result = {
+    prompt: parsed.prompt || `Практическое задание по теме "${topicLabel}".`,
+    rubric: parsed.rubric || [
+      { id: 'crit_1', criterion: 'Понимание концепции', description: 'Ответ демонстрирует правильное понимание темы.', weight: 50 },
+      { id: 'crit_2', criterion: 'Практическая применимость', description: 'Приведены корректные примеры или решение.', weight: 50 }
+    ]
+  };
+
+  // Cache in courseTemplates
+  if (templateDocRef) {
+    try {
+      await setDoc(templateDocRef, {
+        homeworkPrompt: result.prompt,
+        homeworkRubric: result.rubric,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (saveCacheErr) {
+      console.warn("Failed to cache homework in courseTemplates:", saveCacheErr);
+    }
+  }
+
+  return result;
+}
+
+// 1.7 Review Homework Submission with AI
+export async function reviewHomeworkSubmission(courseId, nodeId, submissionText, lessonContent, homeworkPrompt, rubric) {
+  const userId = auth.currentUser?.uid;
+  if (!userId) throw new Error('Unauthenticated');
+
+  const currentLocale = getLocale();
+  const languageName = currentLocale === 'ru' ? 'Russian' : 'English';
+
+  const reviewPrompt = `You are a strict code and homework evaluator. Evaluate the student's submission against the provided rubric.
+CRITICAL INSTRUCTION: Respond ENTIRELY in ${languageName} language.
+
+Homework Task:
+${homeworkPrompt}
+
+Lesson Context:
+${(lessonContent || '').substring(0, 2000)}
+
+Evaluation Rubric:
+${JSON.stringify(rubric, null, 2)}
+
+Student Submission:
+${submissionText}
+
+Instructions:
+1. Evaluate whether each criterion in the rubric is met by the student.
+2. Provide a overall score from 0 to 100 based on criterion weights.
+3. Mark "passed": true if score >= 60, otherwise false.
+4. For each criterion, give constructive, encouraging, but honest feedback.
+
+Return ONLY a valid JSON object:
+{
+  "score": 85,
+  "passed": true,
+  "overallComment": "General feedback summary for student...",
+  "feedback": [
+    {
+      "criterion": "Criterion Name",
+      "met": true,
+      "comment": "Specific feedback explaining why this was met or what was missing..."
+    }
+  ]
+}`;
+
+  const textResponse = await callGroqWithRetry(null, reviewPrompt, 'ai_question');
+  if (!textResponse) throw new Error('Empty response from Groq API');
+
+  let cleanText = textResponse.trim();
+  cleanText = cleanText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+  cleanText = cleanText.replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  const firstBrace = cleanText.indexOf('{');
+  const lastBrace = cleanText.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1) {
+    cleanText = cleanText.substring(firstBrace, lastBrace + 1);
+  }
+
+  const reviewResult = JSON.parse(cleanText);
+
+  // Soft Rate-Limit: max 3 reviews per hour per node
+  const hwRef = doc(db, 'users', userId, 'homeworkSubmissions', `${courseId}_${nodeId}`);
+  const hwSnap = await getDoc(hwRef);
+
+  let attempts = [];
+  if (hwSnap.exists()) {
+    attempts = hwSnap.data().attempts || [];
+  }
+
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const recentHourlyAttempts = attempts.filter(a => new Date(a.timestamp) > oneHourAgo);
+  if (recentHourlyAttempts.length >= 3) {
+    const error = new Error("RATE_LIMIT_HOURLY");
+    error.userMessage = "Вы достигли лимита проверок для этого задания за час.";
+    throw error;
+  }
+
+  // Increment monthly user homework reviews counter in Firestore /subscription/details
+  try {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const monthStr = todayStr.substring(0, 7);
+    const subRef = doc(db, 'users', userId, 'subscription', 'details');
+    const subSnap = await getDoc(subRef);
+    if (subSnap.exists()) {
+      const subData = subSnap.data();
+      const currentMonthStart = subData.homeworkMonthStart || monthStr;
+      let newReviewsUsed = subData.homeworkReviewsUsed || 0;
+
+      if (currentMonthStart !== monthStr) {
+        newReviewsUsed = 1;
+      } else {
+        newReviewsUsed += 1;
+      }
+
+      await updateDoc(subRef, {
+        homeworkReviewsUsed: newReviewsUsed,
+        homeworkMonthStart: monthStr
+      });
+    }
+  } catch (subErr) {
+    console.warn("Failed to update subscription homework counter in Firestore:", subErr);
+  }
+
+  attempts.push({
+    submission: submissionText,
+    score: reviewResult.score,
+    passed: reviewResult.passed,
+    overallComment: reviewResult.overallComment,
+    feedback: reviewResult.feedback,
+    timestamp: new Date().toISOString()
+  });
+
+  const hwDataToSave = {
+    userId,
+    courseId,
+    nodeId: String(nodeId),
+    status: reviewResult.passed ? 'reviewed' : 'submitted',
+    submission: submissionText,
+    score: reviewResult.score,
+    passed: reviewResult.passed,
+    feedback: reviewResult.feedback,
+    overallComment: reviewResult.overallComment,
+    attempts,
+    attemptsCount: attempts.length,
+    updatedAt: serverTimestamp()
+  };
+
+  await setDoc(hwRef, hwDataToSave, { merge: true });
+
+  // Update node in user's course doc with homework status flag
+  try {
+    const courseRef = doc(db, 'courses', courseId);
+    const cSnap = await getDoc(courseRef);
+    if (cSnap.exists()) {
+      const cData = cSnap.data();
+      const updatedNodes = (cData.nodes || []).map(n => {
+        if (String(n.id) === String(nodeId)) {
+          return {
+            ...n,
+            homeworkStatus: reviewResult.passed ? 'reviewed' : 'submitted',
+            homeworkPassed: reviewResult.passed,
+            homeworkScore: reviewResult.score
+          };
+        }
+        return n;
+      });
+      await updateDoc(courseRef, { nodes: updatedNodes });
+    }
+  } catch (err) {
+    console.warn("Failed to update node homeworkStatus flag:", err);
+  }
+
+  return {
+    ...reviewResult,
+    attemptsCount: attempts.length
+  };
+}
+
+export async function getHomeworkState(courseId, nodeId) {
+  const userId = auth.currentUser?.uid;
+  if (!userId) return null;
+  const hwRef = doc(db, 'users', userId, 'homeworkSubmissions', `${courseId}_${nodeId}`);
+  const hwSnap = await getDoc(hwRef);
+  if (!hwSnap.exists()) return null;
+  return hwSnap.data();
+}
 export async function getUserCourses(userId) {
   const coursesCol = collection(db, 'courses');
   const q = query(coursesCol, where('userId', '==', userId));
