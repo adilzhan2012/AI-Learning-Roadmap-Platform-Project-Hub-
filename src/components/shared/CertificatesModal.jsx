@@ -140,7 +140,11 @@ export default function CertificatesModal({ isOpen, onClose }) {
                           {cert.courseName}
                         </h4>
                         <div className="flex items-center gap-2 text-xs text-on-surface-variant font-mono">
-                          <span>{cert.issuedAt}</span>
+                          <span>
+                            {cert.issuedAt?.toDate 
+                              ? cert.issuedAt.toDate().toLocaleDateString() 
+                              : (cert.issuedAt?.seconds ? new Date(cert.issuedAt.seconds * 1000).toLocaleDateString() : (cert.issuedAt || 'Recent'))}
+                          </span>
                           <span>•</span>
                           <span>{cert.modulesCount} modules</span>
                         </div>
