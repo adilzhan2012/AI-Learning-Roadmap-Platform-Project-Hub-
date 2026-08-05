@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db, auth, functions } from '../firebase.js';
 import { httpsCallable } from 'firebase/functions';
 import { calculateLevel } from '../constants/levels.js';
@@ -13,23 +13,45 @@ export const useXP = () => {
   const { showXPToast, showLevelUp } = useGamification();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    let snapshotUnsubscribe = null;
+
+    const authUnsubscribe = onAuthStateChanged(auth, (user) => {
+      if (snapshotUnsubscribe) {
+        snapshotUnsubscribe();
+        snapshotUnsubscribe = null;
+      }
+
       if (user) {
         const docRef = doc(db, 'users', user.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          const currentXp = data.xp || 0;
-          setUserLevelData(calculateLevel(currentXp));
-        } else {
-          setUserLevelData(calculateLevel(0));
-        }
+        snapshotUnsubscribe = onSnapshot(
+          docRef,
+          (docSnap) => {
+            if (docSnap.exists()) {
+              const data = docSnap.data();
+              const currentXp = data.xp || 0;
+              setUserLevelData(calculateLevel(currentXp));
+            } else {
+              setUserLevelData(calculateLevel(0));
+            }
+            setLoading(false);
+          },
+          (error) => {
+            console.error('[useXP] Error in user XP snapshot listener:', error);
+            setLoading(false);
+          }
+        );
       } else {
         setUserLevelData(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
-    return () => unsubscribe();
+
+    return () => {
+      authUnsubscribe();
+      if (snapshotUnsubscribe) {
+        snapshotUnsubscribe();
+      }
+    };
   }, []);
 
   const addXP = useCallback(async (amount, reason, activityType, details) => {
