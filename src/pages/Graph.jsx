@@ -1105,7 +1105,7 @@ Respond in Russian. Keep your reply concise and professional.`;
               const isFolded = foldedNodes.has(node.id);
               
               // Dynamic card widths/heights matching animation dimensions:
-              const cardWidth = 620;
+              const cardWidth = 220;
               const cardHeight = 56;
 
               const isSelected = selectedNode?.id === node.id;
