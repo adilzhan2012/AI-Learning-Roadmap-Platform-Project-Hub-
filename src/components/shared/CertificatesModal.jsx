@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Award, FileBadge, ExternalLink, Loader2 } from 'lucide-react';
+import { X, Award, FileBadge, ExternalLink, Loader2, DownloadCloud } from 'lucide-react';
 import { useLocale } from '../../i18n.js';
-import { getUserAllCertificates } from '../../services/courseService.js';
+import { getUserAllCertificates, requestCourseCertificate } from '../../services/courseService.js';
 import { auth } from '../../firebase.js';
+import { toast } from 'react-hot-toast';
 
 export default function CertificatesModal({ isOpen, onClose }) {
   const locale = useLocale();
   const [certificates, setCertificates] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [generatingId, setGeneratingId] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -37,7 +39,39 @@ export default function CertificatesModal({ isOpen, onClose }) {
     emptyTitle: 'No certificates yet',
     emptyText: 'Complete your first course to earn a certificate.',
     loading: 'Loading...',
-    view: 'View PDF'
+    view: 'View PDF',
+    generate: 'Generate PDF',
+    generating: 'Generating...'
+  };
+
+  const handleCertificateClick = async (cert) => {
+    if (cert.fileUrl) {
+      window.open(cert.fileUrl, '_blank');
+      return;
+    }
+
+    // PDF is missing, let's try to generate it on the fly
+    setGeneratingId(cert.id);
+    const loadingToast = toast.loading(locale === 'ru' ? 'Генерация сертификата...' : 'Generating certificate...');
+    
+    try {
+      const result = await requestCourseCertificate(cert.courseId);
+      if (result && result.fileUrl) {
+        toast.success(locale === 'ru' ? 'Готово!' : 'Done!', { id: loadingToast });
+        window.open(result.fileUrl, '_blank');
+        // Update local state to include the new URL
+        setCertificates(prev => prev.map(c => 
+          c.id === cert.id ? { ...c, fileUrl: result.fileUrl } : c
+        ));
+      } else {
+        throw new Error("No URL returned");
+      }
+    } catch (error) {
+      console.error("Failed to generate PDF:", error);
+      toast.error(locale === 'ru' ? 'Ошибка генерации PDF (попробуйте позже)' : 'Failed to generate PDF (try again later)', { id: loadingToast });
+    } finally {
+      setGeneratingId(null);
+    }
   };
 
   return (
@@ -95,8 +129,8 @@ export default function CertificatesModal({ isOpen, onClose }) {
                 {certificates.map((cert) => (
                   <div 
                     key={cert.id}
-                    onClick={() => cert.fileUrl && window.open(cert.fileUrl, '_blank')}
-                    className="group bg-surface-container/30 border border-outline hover:border-primary/50 rounded-[16px] p-4 flex flex-col transition-all cursor-pointer hover:shadow-lg hover:shadow-primary/5 relative overflow-hidden"
+                    onClick={() => generatingId !== cert.id && handleCertificateClick(cert)}
+                    className={`group bg-surface-container/30 border border-outline hover:border-primary/50 rounded-[16px] p-4 flex flex-col transition-all cursor-pointer hover:shadow-lg hover:shadow-primary/5 relative overflow-hidden ${generatingId === cert.id ? 'opacity-70 pointer-events-none' : ''}`}
                   >
                     <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors" />
                     
@@ -119,8 +153,22 @@ export default function CertificatesModal({ isOpen, onClose }) {
                     <div className="mt-4 pt-4 border-t border-outline/50 flex items-center justify-between relative z-10">
                       <span className="text-xs font-mono text-on-surface-variant">ID: {cert.certId || cert.id}</span>
                       <div className="flex items-center gap-1 text-sm font-medium text-primary group-hover:translate-x-1 transition-transform">
-                        <span>{content.view}</span>
-                        <ExternalLink className="w-4 h-4" />
+                        {generatingId === cert.id ? (
+                          <>
+                            <span>{content.generating}</span>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          </>
+                        ) : cert.fileUrl ? (
+                          <>
+                            <span>{content.view}</span>
+                            <ExternalLink className="w-4 h-4" />
+                          </>
+                        ) : (
+                          <>
+                            <span>{content.generate}</span>
+                            <DownloadCloud className="w-4 h-4" />
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

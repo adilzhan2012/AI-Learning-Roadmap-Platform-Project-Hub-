@@ -24,7 +24,8 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { 
   getUserStats, 
   getUserCourses, 
-  getRecentActivities 
+  getRecentActivities,
+  getUserAllCertificates
 } from '../services/courseService.js';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import CourseGeneratorModal from '../components/CourseGeneratorModal.jsx';
@@ -137,9 +138,11 @@ export default function Dashboard() {
         try {
           const fetchedStats = await getUserStats(currentUser.uid);
           const fetchedCourses = await getUserCourses(currentUser.uid);
+          const fetchedCerts = await getUserAllCertificates(currentUser.uid);
           
           // Dynamically compute active courses to fix any database desyncs
           fetchedStats.activeCoursesCount = fetchedCourses.length;
+          fetchedStats.certificatesCount = fetchedCerts.length;
           
           setStats(fetchedStats);
           localStorage.setItem('cached_stats', JSON.stringify(fetchedStats));
