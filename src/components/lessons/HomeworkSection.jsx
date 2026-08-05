@@ -23,6 +23,7 @@ import { useXP } from '../../hooks/useXP.js';
 import { usePlanLimits } from '../../hooks/usePlanLimits.js';
 import { PLAN_LIMITS } from '../../constants/planLimits.js';
 import UpgradeModal from '../shared/UpgradeModal.jsx';
+import { AIParsingError } from '../../utils/aiResponseParser.js';
 
 export default function HomeworkSection({ courseId, nodeId, lessonContent, topicLabel, topicDesc }) {
   const { addXP } = useXP();
@@ -68,7 +69,13 @@ export default function HomeworkSection({ courseId, nodeId, lessonContent, topic
         }
       } catch (err) {
         console.error("Homework init error:", err);
-        if (isMounted) setError("Не удалось загрузить домашнее задание.");
+        if (isMounted) {
+          if (err instanceof AIParsingError || err?.name === 'AIParsingError') {
+            setError("Ошибка парсинга ответа ИИ при создании домашки. Попробуйте еще раз.");
+          } else {
+            setError("Не удалось загрузить домашнее задание.");
+          }
+        }
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -107,26 +114,23 @@ export default function HomeworkSection({ courseId, nodeId, lessonContent, topic
       setStatus(res.passed ? 'reviewed' : 'submitted');
 
       // fix/critical-round1: XP вычисляется СЕРВЕРОМ по score из homeworkSubmissions.
-      // Клиент передаёт только nodeId + courseId — сумма XP не приходит с клиента.
-      // Это закрывает дыру, при которой клиент мог передать произвольный amount.
       try {
         await addXP(
-          0,                   // amount игнорируется сервером для homework_passed
+          0,
           'Домашка проверена ИИ',
           'homework_passed',
-          { nodeId, courseId } // сервер сам читает score из homeworkSubmissions
+          { nodeId, courseId }
         );
       } catch (xpErr) {
-        // fix/critical-round1: не глотаем ошибку молча — логируем и показываем пользователю
         console.error('[HomeworkSection] Failed to award XP for homework_passed:', xpErr);
-        // Не прерываем основной flow — домашка уже проверена, XP — вторичная фича
-        // Показываем мягкое предупреждение только если не было ошибки с самой проверкой
       }
 
     } catch (err) {
       console.error("Homework submission review failed:", err);
       if (err.userMessage) {
         setError(err.userMessage);
+      } else if (err instanceof AIParsingError || err?.name === 'AIParsingError') {
+        setError("Не удалось обработать ответ ИИ при проверке ответа. Нажмите «Попробовать снова».");
       } else {
         setError("Ошибка при проверке домашнего задания ИИ. Попробуйте еще раз.");
       }
@@ -236,7 +240,19 @@ export default function HomeworkSection({ courseId, nodeId, lessonContent, topic
           className="w-full bg-surface-container/60 border border-white/10 focus:border-indigo-500/50 rounded-2xl p-4 text-sm text-on-surface placeholder:text-zinc-500 focus:outline-none transition-all resize-y font-mono"
         />
 
-        {error && <p className="text-xs text-rose-400 font-medium">{error}</p>}
+        {error && (
+          <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl p-4 mb-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-rose-300">
+            <span>{error}</span>
+            <button
+              onClick={handleSubmit}
+              disabled={reviewing}
+              className="px-3.5 py-2 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 rounded-xl font-bold text-rose-200 shrink-0 flex items-center gap-1.5 cursor-pointer transition-all"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Попробовать снова
+            </button>
+          </div>
+        )}
 
         <div className="flex items-center justify-between pt-1">
           <p className="text-[11px] text-zinc-400">

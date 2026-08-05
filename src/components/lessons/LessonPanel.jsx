@@ -24,6 +24,7 @@ import UpgradeModal from '../shared/UpgradeModal.jsx';
 import { generateLessonContent, updateNodeStatus, generateELI5Content, generateRealWorldExample, updateNodeFields, rebuildGraphForFailedNode, callGroqWithRetry } from '../../services/courseService.js';
 // fix/critical-round1: санитизация user input перед вставкой в промпты
 import { sanitizeUserInput, sanitizeCode } from '../../utils/sanitizeUserInput.js';
+import { AIParsingError } from '../../utils/aiResponseParser.js';
 import ReactMarkdown from 'react-markdown';
 import Flashcard from './Flashcard.jsx';
 import ContextualMentor from './ContextualMentor.jsx';
@@ -181,7 +182,11 @@ Provide a highly thorough, detailed code review in the Russian language. Include
       await addXP(40, 'AI Code Review пройден', 'code_review_passed', { nodeId: selectedNode.id });
     } catch (e) {
       console.error(e);
-      setCodeReviewResult('❌ Не удалось сгенерировать рецензию ИИ. Пожалуйста, попробуйте еще раз.');
+      if (e instanceof AIParsingError || e?.name === 'AIParsingError') {
+        setCodeReviewResult('❌ Не удалось обработать ответ от ИИ при проверке кода. Пожалуйста, попробуйте еще раз.');
+      } else {
+        setCodeReviewResult('❌ Не удалось сгенерировать рецензию ИИ. Пожалуйста, попробуйте еще раз.');
+      }
     } finally {
       setReviewingCode(false);
     }

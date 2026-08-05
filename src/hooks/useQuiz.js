@@ -3,6 +3,7 @@ import { callGroqWithRetry } from '../services/courseService.js';
 import { getLocale } from '../i18n.js';
 import { db, auth } from '../firebase.js';
 import { doc, setDoc, getDoc, serverTimestamp, increment } from 'firebase/firestore';
+import { parseAIJson, AIParsingError } from '../utils/aiResponseParser.js';
 
 export const useQuiz = () => {
   const [generating, setGenerating] = useState(false);
@@ -21,14 +22,11 @@ export const useQuiz = () => {
         try {
           const quizRef = doc(db, 'users', userId, 'quizResults', String(nodeId));
           const quizSnap = await getDoc(quizRef);
-          if (quizSnap.exists()) {
-            const data = quizSnap.data();
-            if (data.questions && data.questions.length > 0) {
-              cachedQuestions = data.questions;
-            }
+          if (quizSnap.exists() && quizSnap.data().questions && quizSnap.data().questions.length > 0) {
+            cachedQuestions = quizSnap.data().questions;
           }
-        } catch (readErr) {
-          console.warn("Failed to check Firestore cache for quiz:", readErr);
+        } catch (cacheErr) {
+          console.warn("Quiz cache read warning:", cacheErr);
         }
       }
 
@@ -37,46 +35,40 @@ export const useQuiz = () => {
         return cachedQuestions;
       }
 
-      const apiKey = null;
+      const apiKey = null; // Cloud Functions proxy mode
       const currentLocale = getLocale();
       const languageName = currentLocale === 'ru' ? 'Russian' : 'English';
 
-      let focusInstruction = '';
+      let adaptivityPromptPart = "";
       if (failedConcepts && failedConcepts.length > 0) {
-        focusInstruction = `
-CRITICAL ADAPTIVE INSTRUCTION:
-The student previously struggled with these specific concepts:
-${failedConcepts.map(c => `- ${c}`).join('\n')}
-
-Generate 5 NEW, FRESH questions that test these weak areas with different scenarios and perspectives!
-        `.trim();
+        adaptivityPromptPart = `
+CRITICAL ADAPTIVE INSTRUCTION: The student previously failed questions on these specific topics/headings: ${JSON.stringify(failedConcepts)}.
+You MUST include at least 2 questions specifically targeting these failed concepts with clearer, simpler explanations and hints.
+`;
       }
 
-      const quizPrompt = `
-You are a strict examiner. Based on the lesson material below, create 5 questions to test REAL understanding of the topic.
-CRITICAL INSTRUCTION: You MUST generate the ENTIRE response in the ${languageName} language.
-${focusInstruction}
+      const quizPrompt = `You are an expert tutor creating a quiz to verify student understanding.
+Analyze the following lesson content and create a 3-5 question multiple-choice quiz.
+CRITICAL INSTRUCTION: Respond ENTIRELY in ${languageName} language.
+${adaptivityPromptPart}
+Lesson Content:
+${(lessonContent || '').substring(0, 4000)}
 
-Material:
-${lessonContent.substring(0, 3500)}
+Requirements:
+1. Generate between 3 and 5 questions based directly on the material provided.
+2. Each question MUST have exactly 4 options.
+3. "correctAnswer": Index of the correct option (0, 1, 2, or 3).
+4. "explanation": Brief explanation of why that answer is correct.
+5. "sectionHeading": The nearest section heading/topic in the lesson.
 
-REQUIREMENTS FOR QUESTIONS (mandatory):
-1. At least 2 questions must be APPLICATION of knowledge (not "what is X", but "what happens if / why / how to correctly do").
-2. At least 1 question must be ERROR RECOGNITION (show wrong code/approach, ask what is wrong).
-3. All incorrect options must be plausible - not obvious.
-4. Questions must cover different parts of the material, no repetitions.
-5. Include sectionHeading field for each question matching the nearest H2/H3 header text in the lesson material.
-
-IMPORTANT: Return ONLY a valid JSON object without markdown tags or explanations.
-
+Return ONLY a valid JSON object:
 {
   "questions": [
     {
       "id": 1,
-      "type": "apply",
-      "question": "Question text",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correctIndex": 0,
+      "questionText": "Clear question text?",
+      "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
+      "correctAnswer": 0,
       "explanation": "Detailed explanation of why this answer is correct and others are wrong",
       "sectionHeading": "Nearest H2/H3 Heading Text in Material"
     }
@@ -88,17 +80,7 @@ IMPORTANT: Return ONLY a valid JSON object without markdown tags or explanations
       const textResponse = await callGroqWithRetry(apiKey, quizPrompt, 'ai_question');
       if (!textResponse) throw new Error('Empty response');
 
-      let cleanText = textResponse.trim();
-      cleanText = cleanText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-      cleanText = cleanText.replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
-      
-      const firstBrace = cleanText.indexOf('{');
-      const lastBrace = cleanText.lastIndexOf('}');
-      if (firstBrace !== -1 && lastBrace !== -1) {
-        cleanText = cleanText.substring(firstBrace, lastBrace + 1);
-      }
-
-      let parsed = JSON.parse(cleanText);
+      let parsed = parseAIJson(textResponse);
       if (!parsed.questions || parsed.questions.length === 0) {
         throw new Error('Invalid quiz format');
       }
@@ -122,7 +104,11 @@ IMPORTANT: Return ONLY a valid JSON object without markdown tags or explanations
 
     } catch (err) {
       console.error('Quiz generation failed:', err);
-      setError(err.message || 'Failed to generate quiz');
+      if (err instanceof AIParsingError || err?.name === 'AIParsingError') {
+        setError('Не удалось распарсить тест от ИИ. Нажмите «Попробовать снова».');
+      } else {
+        setError(err.message || 'Не удалось сгенерировать тест. Нажмите «Попробовать снова».');
+      }
       return null;
     } finally {
       setGenerating(false);

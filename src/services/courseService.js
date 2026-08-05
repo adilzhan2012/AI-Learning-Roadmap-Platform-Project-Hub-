@@ -28,6 +28,7 @@ import {
   logCacheMetric, 
   CACHE_VERSION 
 } from '../utils/cacheUtils.js';
+import { parseAIJson, AIParsingError } from '../utils/aiResponseParser.js';
 // fix/critical-round1: санитизация user input перед вставкой в AI-промпты
 import { sanitizeUserInput, sanitizeCode } from '../utils/sanitizeUserInput.js';
 
@@ -242,27 +243,17 @@ The response must be a valid JSON object matching this schema:
             throw new Error('Empty response from Groq API');
           }
 
-          let cleanText = textResponse.trim();
-          cleanText = cleanText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-          cleanText = cleanText.replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
-          
-          const firstBrace = cleanText.indexOf('{');
-          const lastBrace = cleanText.lastIndexOf('}');
-          if (firstBrace !== -1 && lastBrace !== -1) {
-            cleanText = cleanText.substring(firstBrace, lastBrace + 1);
-          }
-
           let courseData;
           try {
-            courseData = JSON.parse(cleanText);
-          } catch (err) {
-            console.error(`Attempt ${attempt + 1}: Failed to parse AI response as JSON. Raw response:`, textResponse);
+            courseData = parseAIJson(textResponse);
+          } catch (jsonErr) {
+            console.warn(`JSON Parse failed on attempt ${attempt}:`, jsonErr);
             if (attempt < MAX_RETRIES) {
               attempt++;
-              currentPrompt = `${basePrompt}\n\nCRITICAL FIX: Your previous response was invalid JSON. Ensure you return valid JSON without syntax errors.`;
+              currentPrompt = `${basePrompt}\n\nCRITICAL FIX: Your previous response was invalid JSON (${jsonErr.message}). Output ONLY raw, strictly valid JSON matching the schema.`;
               continue;
             }
-            throw new Error('Invalid JSON format returned by AI. Please try again.');
+            throw new AIParsingError('Failed to generate course roadmap: Invalid JSON from AI', textResponse, jsonErr);
           }
 
           const rawNodes = courseData.nodes || [];
@@ -565,16 +556,7 @@ Return ONLY a valid JSON object:
   const textResponse = await callGroqWithRetry(null, prompt, 'ai_question');
   if (!textResponse) throw new Error('Empty response from Groq API');
 
-  let cleanText = textResponse.trim();
-  cleanText = cleanText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-  cleanText = cleanText.replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
-  const firstBrace = cleanText.indexOf('{');
-  const lastBrace = cleanText.lastIndexOf('}');
-  if (firstBrace !== -1 && lastBrace !== -1) {
-    cleanText = cleanText.substring(firstBrace, lastBrace + 1);
-  }
-
-  const parsed = JSON.parse(cleanText);
+  const parsed = parseAIJson(textResponse);
   const result = {
     prompt: parsed.prompt || `Практическое задание по теме "${topicLabel}".`,
     rubric: parsed.rubric || [
@@ -652,16 +634,7 @@ Return ONLY a valid JSON object:
   ]);
   if (!textResponse) throw new Error('Empty response from Groq API');
 
-  let cleanText = textResponse.trim();
-  cleanText = cleanText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-  cleanText = cleanText.replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
-  const firstBrace = cleanText.indexOf('{');
-  const lastBrace = cleanText.lastIndexOf('}');
-  if (firstBrace !== -1 && lastBrace !== -1) {
-    cleanText = cleanText.substring(firstBrace, lastBrace + 1);
-  }
-
-  const reviewResult = JSON.parse(cleanText);
+  const reviewResult = parseAIJson(textResponse);
 
   // Soft Rate-Limit: max 3 reviews per hour per node
   const hwRef = doc(db, 'users', userId, 'homeworkSubmissions', `${courseId}_${nodeId}`);
