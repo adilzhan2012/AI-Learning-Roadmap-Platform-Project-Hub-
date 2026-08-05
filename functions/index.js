@@ -140,75 +140,135 @@ exports.aiProxy = onCall(
       : [{ role: "user", content: prompt }];
 
     const userId = request.auth.uid;
-    let currentUsage = null;
     const todayStr = new Date().toISOString().split('T')[0];
     const monthStr = todayStr.substring(0, 7);
 
+    // --------------------------------------------------------------------------
+    // fix/critical-round1 (ФИКС 4 + ФИКС 5):
+    // Чтение, проверка лимита и инкремент счётчика выполняются АТОМАРНО
+    // в одной Firestore транзакции (runTransaction).
+    //
+    // До этого: subRef.get() → set(merge:true) без транзакции.
+    // Параллельные вызовы читали одинаковый счётчик и оба инкрементировали
+    // от одной базы → лимит обходился при параллельных запросах.
+    //
+    // Теперь: read + limit-check + increment — атомарно.
+    // homework_review добавлен как отдельный usageType с собственными лимитами:
+    //   FREE:  2 проверки в месяц
+    //   PRO:   30 проверок в месяц
+    //   ULTRA: без лимита
+    //
+    // TODO (для тестовой инфраструктуры CF): добавить integration-тест, который
+    // запускает 5 параллельных вызовов aiProxy с одним usageType и убеждается,
+    // что счётчик = 5, а не случайное число. Тестовая инфраструктура для CF
+    // в проекте отсутствует — не создаём в рамках этой задачи.
+    // --------------------------------------------------------------------------
+
+    let transactionResult = null;
+
     if (usageType) {
       const subRef = db.collection('users').doc(userId).collection('subscription').doc('details');
-      const subSnap = await subRef.get();
-      let plan = 'FREE';
-      
-      if (subSnap.exists) {
-        const data = subSnap.data();
-        plan = data.plan || 'FREE';
-        currentUsage = {
-          roadmapsGenerated: data.roadmapsGenerated || 0,
-          aiQuestionsUsed: data.lastQuestionDate === todayStr ? (data.aiQuestionsUsed || 0) : 0,
-          lastQuestionDate: data.lastQuestionDate || todayStr,
-          mentorMessagesUsed: data.lastMentorDate === todayStr ? (data.mentorMessagesUsed || 0) : 0,
-          lastMentorDate: data.lastMentorDate || todayStr,
-          mentorMonthStart: data.mentorMonthStart || monthStr,
-          ultraTokensUsed: data.ultraTokensUsed || 0
-        };
-      } else {
-        currentUsage = { 
-          roadmapsGenerated: 0, 
-          aiQuestionsUsed: 0, 
-          lastQuestionDate: todayStr,
-          mentorMessagesUsed: 0,
-          lastMentorDate: todayStr,
-          mentorMonthStart: monthStr,
-          ultraTokensUsed: 0
-        };
-      }
 
-      if (plan === 'FREE') {
-        const maxRoadmaps = 1;
-        const maxAiQuestions = 5;
-        
-        if (usageType === 'roadmap' && currentUsage.roadmapsGenerated >= maxRoadmaps) {
-          throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
-        }
-        if (usageType === 'ai_question' && currentUsage.aiQuestionsUsed >= maxAiQuestions) {
-          throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
-        }
-        if (usageType === 'mentor_message') {
-          // Get user metadata for onboarding check
-          const userRecord = await admin.auth().getUser(userId);
-          const regTime = new Date(userRecord.metadata.creationTime).getTime();
-          const nowTime = Date.now();
-          const daysSinceReg = (nowTime - regTime) / (1000 * 60 * 60 * 24);
+      try {
+        transactionResult = await db.runTransaction(async (txn) => {
+          const subSnap = await txn.get(subRef);
+          const data = subSnap.exists ? subSnap.data() : {};
+          const plan = data.plan || 'FREE';
 
-          const limitVal = daysSinceReg <= 7 ? 20 : 5;
-          const mentorUsed = currentUsage.mentorMessagesUsed || 0;
-          if (daysSinceReg <= 7) {
-            if (mentorUsed >= limitVal) {
+          // ------------------------------------------------------------------
+          // Собираем текущее состояние из snapshot транзакции
+          // ------------------------------------------------------------------
+          const currentRoadmaps = data.roadmapsGenerated || 0;
+          const currentAiQ = data.lastQuestionDate === todayStr ? (data.aiQuestionsUsed || 0) : 0;
+          const currentMentor = data.lastMentorDate === todayStr ? (data.mentorMessagesUsed || 0) : 0;
+          const currentHwMonth = data.homeworkMonthStart || monthStr;
+          const currentHwReviews = currentHwMonth === monthStr ? (data.homeworkReviewsUsed || 0) : 0;
+          const currentUltraTokens = data.ultraTokensUsed || 0;
+
+          // ------------------------------------------------------------------
+          // Проверка лимитов по тарифу (до вызова API)
+          // ------------------------------------------------------------------
+          if (plan === 'FREE') {
+            if (usageType === 'roadmap' && currentRoadmaps >= 1) {
               throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
             }
-          } else {
-            if (currentUsage.lastMentorDate === todayStr && mentorUsed >= limitVal) {
+            if (usageType === 'ai_question' && currentAiQ >= 5) {
+              throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
+            }
+            if (usageType === 'mentor_message') {
+              // Onboarding: 20 сообщений первые 7 дней, потом 5/день
+              const userRecord = await admin.auth().getUser(userId);
+              const regTime = new Date(userRecord.metadata.creationTime).getTime();
+              const daysSinceReg = (Date.now() - regTime) / (1000 * 60 * 60 * 24);
+              const limitVal = daysSinceReg <= 7 ? 20 : 5;
+              const mentorUsed = currentMentor;
+              const isOverLimit = daysSinceReg <= 7
+                ? mentorUsed >= limitVal
+                : (data.lastMentorDate === todayStr && mentorUsed >= limitVal);
+              if (isOverLimit) {
+                throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
+              }
+            }
+            // fix/critical-round1 (ФИКС 4): homework_review — серверный лимит FREE
+            if (usageType === 'homework_review' && currentHwReviews >= 2) {
               throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
             }
           }
-        }
-      }
 
-      if (plan === 'ULTRA' && usageType === 'mentor_message') {
-        const maxTokens = 300000;
-        if ((currentUsage.ultraTokensUsed || 0) >= maxTokens) {
-          throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
-        }
+          if (plan === 'PRO') {
+            // fix/critical-round1 (ФИКС 4): homework_review — серверный лимит PRO
+            if (usageType === 'homework_review' && currentHwReviews >= 30) {
+              throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
+            }
+          }
+
+          if (plan === 'ULTRA') {
+            if (usageType === 'mentor_message' && currentUltraTokens >= 300000) {
+              throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
+            }
+            // ULTRA: homework_review без лимита — пропускаем проверку
+          }
+
+          // ------------------------------------------------------------------
+          // Инкремент счётчика АТОМАРНО в той же транзакции
+          // ------------------------------------------------------------------
+          const updates = {};
+
+          if (usageType === 'roadmap') {
+            updates.roadmapsGenerated = admin.firestore.FieldValue.increment(1);
+          }
+          if (usageType === 'ai_question') {
+            updates.aiQuestionsUsed = data.lastQuestionDate === todayStr
+              ? admin.firestore.FieldValue.increment(1)
+              : 1;
+            updates.lastQuestionDate = todayStr;
+          }
+          if (usageType === 'mentor_message') {
+            updates.mentorMessagesUsed = data.lastMentorDate === todayStr
+              ? admin.firestore.FieldValue.increment(1)
+              : 1;
+            updates.lastMentorDate = todayStr;
+            updates.mentorMonthStart = monthStr;
+          }
+          if (usageType === 'homework_review') {
+            updates.homeworkReviewsUsed = currentHwMonth === monthStr
+              ? admin.firestore.FieldValue.increment(1)
+              : 1;
+            updates.homeworkMonthStart = monthStr;
+          }
+
+          if (Object.keys(updates).length > 0) {
+            txn.set(subRef, updates, { merge: true });
+          }
+
+          return { plan };
+        });
+      } catch (txnErr) {
+        // Если это HttpsError из нашей проверки лимита — пробрасываем как есть
+        if (txnErr instanceof HttpsError) throw txnErr;
+        // Иначе — внутренняя ошибка транзакции
+        console.error('[aiProxy] Transaction failed:', txnErr);
+        throw new HttpsError('internal', 'Usage limit check failed. Please try again.');
       }
     }
 
@@ -252,28 +312,22 @@ exports.aiProxy = onCall(
           const data = await response.json();
           const assistantReply = data.choices[0].message.content;
           
-          if (usageType && currentUsage) {
-            const subRef = db.collection('users').doc(userId).collection('subscription').doc('details');
-            if (usageType === 'roadmap') currentUsage.roadmapsGenerated += 1;
-            if (usageType === 'ai_question') {
-              currentUsage.aiQuestionsUsed = currentUsage.lastQuestionDate === todayStr ? (currentUsage.aiQuestionsUsed + 1) : 1;
-              currentUsage.lastQuestionDate = todayStr;
+          // fix/critical-round1: счётчик использования теперь атомарно инкрементируется
+          // в pre-API транзакции. Здесь остаётся только ULTRA token accounting,
+          // т.к. зависит от фактической длины ответа (известна только post-API).
+          if (usageType === 'mentor_message' && transactionResult?.plan === 'ULTRA') {
+            try {
+              const subRef = db.collection('users').doc(userId).collection('subscription').doc('details');
+              const msgLen = groqMessages.reduce((acc, m) => acc + (m.content || '').length, 0);
+              const promptTokens = Math.ceil(msgLen / 4);
+              const replyTokens = Math.ceil(assistantReply.length / 4);
+              await subRef.set({
+                ultraTokensUsed: admin.firestore.FieldValue.increment(promptTokens + replyTokens)
+              }, { merge: true });
+            } catch (tokenErr) {
+              // Non-critical — не прерываем ответ пользователю
+              console.warn('[aiProxy] Failed to update ULTRA token count:', tokenErr);
             }
-            if (usageType === 'mentor_message') {
-              currentUsage.mentorMessagesUsed = currentUsage.lastMentorDate === todayStr ? (currentUsage.mentorMessagesUsed + 1) : 1;
-              currentUsage.lastMentorDate = todayStr;
-              currentUsage.mentorMonthStart = monthStr;
-              
-              const subSnap = await subRef.get();
-              const plan = subSnap.exists ? (subSnap.data().plan || 'FREE') : 'FREE';
-              if (plan === 'ULTRA') {
-                const promptTokens = Math.ceil(prompt.length / 4);
-                const replyTokens = Math.ceil(assistantReply.length / 4);
-                currentUsage.ultraTokensUsed = (currentUsage.ultraTokensUsed || 0) + promptTokens + replyTokens;
-              }
-            }
-            
-            await subRef.set(currentUsage, { merge: true });
           }
 
           return { result: assistantReply };

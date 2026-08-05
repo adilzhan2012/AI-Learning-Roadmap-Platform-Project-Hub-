@@ -676,31 +676,9 @@ Return ONLY a valid JSON object:
     throw error;
   }
 
-  // Increment monthly user homework reviews counter in Firestore /subscription/details
-  try {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const monthStr = todayStr.substring(0, 7);
-    const subRef = doc(db, 'users', userId, 'subscription', 'details');
-    const subSnap = await getDoc(subRef);
-    if (subSnap.exists()) {
-      const subData = subSnap.data();
-      const currentMonthStart = subData.homeworkMonthStart || monthStr;
-      let newReviewsUsed = subData.homeworkReviewsUsed || 0;
-
-      if (currentMonthStart !== monthStr) {
-        newReviewsUsed = 1;
-      } else {
-        newReviewsUsed += 1;
-      }
-
-      await updateDoc(subRef, {
-        homeworkReviewsUsed: newReviewsUsed,
-        homeworkMonthStart: monthStr
-      });
-    }
-  } catch (subErr) {
-    console.warn("Failed to update subscription homework counter in Firestore:", subErr);
-  }
+  // fix/critical-round1 (ФИКС 4): клиентский инкремент homeworkReviewsUsed удалён.
+  // aiProxy теперь атомарно инкрементирует счётчик в runTransaction ДО вызова Groq API.
+  // Клиентская версия была ненадёжной (race condition) и дублирующей.
 
   attempts.push({
     submission: submissionText,
