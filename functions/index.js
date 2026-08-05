@@ -863,16 +863,22 @@ exports.generateCertificate = onCall(
       .limit(1)
       .get();
 
+    let certIdToUse = null;
+
     if (!existingSnap.empty) {
       const existingDoc = existingSnap.docs[0].data();
-      return {
-        success: true,
-        fileUrl: existingDoc.fileUrl,
-        certId: existingDoc.certId,
-        alreadyExisted: true,
-      };
+      if (existingDoc.fileUrl) {
+        return {
+          success: true,
+          fileUrl: existingDoc.fileUrl,
+          certId: existingDoc.certId || existingSnap.docs[0].id,
+          alreadyExisted: true,
+        };
+      } else {
+        // Doc exists but no PDF generated yet (fallback engaged previously)
+        certIdToUse = existingDoc.certId || existingSnap.docs[0].id;
+      }
     }
-
     // 2. Fetch course data & user progress
     let courseSnap = await db.collection("users").doc(userId).collection("courses").doc(courseId).get();
     if (!courseSnap.exists) {
@@ -913,7 +919,7 @@ exports.generateCertificate = onCall(
     // 4. Generate certId YW-YYYY-XXXXX
     const year = new Date().getFullYear();
     const randomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
-    const certId = `YW-${year}-${randomCode}`;
+    const certId = certIdToUse || `YW-${year}-${randomCode}`;
 
     // 5. Generate QR Code
     const verifyUrl = `https://beta.yourwayy.co/verify/${certId}`;
@@ -1036,16 +1042,17 @@ exports.generateCertificate = onCall(
 
     await db.collection("certificates").doc(certId).set(certDoc);
 
-    // 10. Increment user stats certificatesCount
-    await db.collection("users").doc(userId).set(
-      {
-        stats: {
-          certificatesCount: admin.firestore.FieldValue.increment(1),
+    // 10. Increment user stats certificatesCount (only if it's a new certificate)
+    if (!certIdToUse) {
+      await db.collection("users").doc(userId).set(
+        {
+          stats: {
+            certificatesCount: admin.firestore.FieldValue.increment(1),
+          },
         },
-      },
-      { merge: true }
-    );
-
+        { merge: true }
+      );
+    }
     return {
       success: true,
       fileUrl,
