@@ -133,11 +133,15 @@ export default function Dashboard() {
       if (currentUser) {
         try {
           const fetchedStats = await getUserStats(currentUser.uid);
+          const fetchedCourses = await getUserCourses(currentUser.uid);
+          
+          // Dynamically compute active courses to fix any database desyncs
+          fetchedStats.activeCoursesCount = fetchedCourses.length;
+          
           setStats(fetchedStats);
           localStorage.setItem('cached_stats', JSON.stringify(fetchedStats));
           localStorage.setItem('cached_profile', JSON.stringify(fetchedStats));
 
-          const fetchedCourses = await getUserCourses(currentUser.uid);
           setCourses(fetchedCourses);
 
           const fetchedActivities = await getRecentActivities(currentUser.uid);
