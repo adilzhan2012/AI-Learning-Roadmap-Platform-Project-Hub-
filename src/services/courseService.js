@@ -66,6 +66,16 @@ export async function callGroqWithRetry(apiKey, prompt, usageType, modelName, me
     if (!response || !response.data || !response.data.result) {
       throw new Error('Empty response from AI Proxy');
     }
+
+    if (response.data.usageType && typeof response.data.updatedUsageCount === 'number') {
+      window.dispatchEvent(new CustomEvent('planUsage:updated', {
+        detail: {
+          usageType: response.data.usageType,
+          updatedUsageCount: response.data.updatedUsageCount
+        }
+      }));
+    }
+
     return response.data.result;
   } catch (error) {
     console.error("AI Proxy Error:", error);

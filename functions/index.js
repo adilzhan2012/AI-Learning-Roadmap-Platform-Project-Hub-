@@ -113,7 +113,7 @@ const calculateLevel = (xp) => {
  * Fixes race conditions across parallel calls for all usageTypes.
  */
 async function processUsageLimitAndCounter(db, admin, userId, usageType, todayStr, monthStr) {
-  if (!usageType) return { plan: 'FREE' };
+  if (!usageType) return { plan: 'FREE', updatedUsageCount: 0 };
 
   const subRef = db.collection('users').doc(userId).collection('subscription').doc('details');
 
@@ -167,22 +167,28 @@ async function processUsageLimitAndCounter(db, admin, userId, usageType, todaySt
         }
       }
 
-      // Atomic counter updates
+      // Atomic counter updates & calculation of server usage count
       const updates = {};
+      let updatedUsageCount = 0;
+
       if (usageType === 'roadmap') {
+        updatedUsageCount = currentRoadmaps + 1;
         updates.roadmapsGenerated = admin.firestore.FieldValue.increment(1);
       } else if (usageType === 'ai_question') {
+        updatedUsageCount = data.lastQuestionDate === todayStr ? currentAiQ + 1 : 1;
         updates.aiQuestionsUsed = data.lastQuestionDate === todayStr
           ? admin.firestore.FieldValue.increment(1)
           : 1;
         updates.lastQuestionDate = todayStr;
       } else if (usageType === 'mentor_message') {
+        updatedUsageCount = data.lastMentorDate === todayStr ? currentMentor + 1 : 1;
         updates.mentorMessagesUsed = data.lastMentorDate === todayStr
           ? admin.firestore.FieldValue.increment(1)
           : 1;
         updates.lastMentorDate = todayStr;
         updates.mentorMonthStart = monthStr;
       } else if (usageType === 'homework_review') {
+        updatedUsageCount = currentHwMonth === monthStr ? currentHwReviews + 1 : 1;
         updates.homeworkReviewsUsed = currentHwMonth === monthStr
           ? admin.firestore.FieldValue.increment(1)
           : 1;
@@ -193,7 +199,7 @@ async function processUsageLimitAndCounter(db, admin, userId, usageType, todaySt
         txn.set(subRef, updates, { merge: true });
       }
 
-      return { plan };
+      return { plan, updatedUsageCount };
     });
   } catch (txnErr) {
     if (txnErr instanceof HttpsError) throw txnErr;
@@ -299,7 +305,11 @@ exports.aiProxy = onCall(
             }
           }
 
-          return { result: assistantReply };
+          return { 
+            result: assistantReply,
+            usageType: usageType || null,
+            updatedUsageCount: transactionResult?.updatedUsageCount || 0
+          };
         } catch (err) {
           lastError = err;
           const errMsg = err.message || "";

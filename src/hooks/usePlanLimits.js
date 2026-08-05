@@ -177,7 +177,7 @@ export const usePlanLimits = () => {
     return true;
   }, [plan, usage]);
 
-  const incrementUsage = useCallback(async (type, tokenCount = 0) => {
+  const incrementUsage = useCallback((type, updatedCount = null) => {
     if (!auth.currentUser) return;
     const todayStr = new Date().toISOString().split('T')[0];
     const monthStr = todayStr.substring(0, 7);
@@ -185,24 +185,36 @@ export const usePlanLimits = () => {
     setUsage(prev => {
       const newUsage = { ...prev };
       if (type === 'roadmap') {
-        newUsage.roadmapsGenerated += 1;
+        newUsage.roadmapsGenerated = typeof updatedCount === 'number' ? updatedCount : (newUsage.roadmapsGenerated || 0) + 1;
       } else if (type === 'ai_question') {
-        newUsage.aiQuestionsUsed += 1;
+        newUsage.aiQuestionsUsed = typeof updatedCount === 'number' ? updatedCount : (newUsage.aiQuestionsUsed || 0) + 1;
         newUsage.lastQuestionDate = todayStr;
       } else if (type === 'homework_review') {
-        newUsage.homeworkReviewsUsed = (newUsage.homeworkReviewsUsed || 0) + 1;
+        newUsage.homeworkReviewsUsed = typeof updatedCount === 'number' ? updatedCount : (newUsage.homeworkReviewsUsed || 0) + 1;
         newUsage.homeworkMonthStart = monthStr;
       } else if (type === 'mentor_message') {
-        newUsage.mentorMessagesUsed += 1;
+        newUsage.mentorMessagesUsed = typeof updatedCount === 'number' ? updatedCount : (newUsage.mentorMessagesUsed || 0) + 1;
         newUsage.lastMentorDate = todayStr;
         newUsage.mentorMonthStart = monthStr;
-        if (plan === 'ULTRA' && tokenCount > 0) {
-          newUsage.ultraTokensUsed = (newUsage.ultraTokensUsed || 0) + tokenCount;
+        if (plan === 'ULTRA' && typeof updatedCount === 'number') {
+          newUsage.ultraTokensUsed = updatedCount;
         }
       }
       return newUsage;
     });
   }, [plan]);
+
+  useEffect(() => {
+    const handleUsageUpdated = (event) => {
+      const { usageType, updatedUsageCount } = event.detail || {};
+      if (usageType && typeof updatedUsageCount === 'number') {
+        incrementUsage(usageType, updatedUsageCount);
+      }
+    };
+
+    window.addEventListener('planUsage:updated', handleUsageUpdated);
+    return () => window.removeEventListener('planUsage:updated', handleUsageUpdated);
+  }, [incrementUsage]);
 
   return { plan, usage, checkLimit, incrementUsage, isUpgradeModalOpen, setUpgradeModalOpen, loading, dbBillingPeriod };
 };
