@@ -612,36 +612,76 @@ exports.unlockAchievement = onCall(async (request) => {
 // ----------------------------------------------------
 // Secure updateSubscription Cloud Function
 // ----------------------------------------------------
+//
+// SECURITY NOTE (fix/critical-round1):
+//   Вариант 2 применён: платёжная интеграция (Stripe/YooKassa) в коде ОТСУТСТВУЕТ.
+//   До её внедрения смена тарифа на платный требует:
+//     - Admin Custom Claim (request.auth.token.admin === true), ИЛИ
+//     - Внутренний серверный токен (INTERNAL_ADMIN_TOKEN из env), ИЛИ
+//     - Понижение на FREE — разрешено любому владельцу аккаунта
+//   Прямой вызов с план='PRO'/'ULTRA' от клиента без этих прав → ошибка.
+//
+// TODO: После внедрения платёжного провайдера (Stripe/YooKassa):
+//   1. Создать отдельный webhook-эндпоинт (onRequest, не onCall)
+//      принимающий события payment.succeeded/subscription.updated.
+//   2. Верифицировать подпись webhook через provider SDK (stripe.webhooks.constructEvent).
+//   3. Вызывать логику смены тарифа ТОЛЬКО из этого верифицированного webhook-обработчика.
+//   4. Убрать INTERNAL_ADMIN_TOKEN fallback — он нужен только на переходный период.
+// ----------------------------------------------------
 exports.updateSubscription = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Must be authenticated");
   }
 
-  // Enforce email verification for subscription plan changes
-  if (!request.auth.token.email_verified) {
-    throw new HttpsError("permission-denied", "Email must be verified to change your subscription.");
-  }
-
-  const { plan } = request.data;
+  const { plan, internalToken } = request.data;
   const userId = request.auth.uid;
 
   if (!["FREE", "PRO", "ULTRA"].includes(plan)) {
     throw new HttpsError("invalid-argument", "Invalid plan type");
   }
 
+  // Downgrade to FREE is always allowed by the account owner (cancellation flow)
+  const isDowngradeToFree = plan === "FREE";
+
+  // Upgrade to paid plan requires either admin Custom Claim or internal server token
+  if (!isDowngradeToFree) {
+    const isAdmin = request.auth.token.admin === true;
+    const expectedToken = process.env.INTERNAL_ADMIN_TOKEN;
+    const hasValidToken = expectedToken && internalToken && internalToken === expectedToken;
+
+    if (!isAdmin && !hasValidToken) {
+      // Log suspicious attempt for monitoring
+      console.error(
+        `[SECURITY] Blocked unauthorized subscription upgrade attempt: uid=${userId} plan=${plan} ` +
+        `hasToken=${!!internalToken} isAdmin=${isAdmin}`
+      );
+      throw new HttpsError(
+        "permission-denied",
+        "Subscription upgrades require payment verification. Please use the in-app payment flow."
+      );
+    }
+  }
+
+  // Enforce email verification for any subscription change
+  if (!request.auth.token.email_verified) {
+    throw new HttpsError("permission-denied", "Email must be verified to change your subscription.");
+  }
+
   const subRef = db.collection("users").doc(userId).collection("subscription").doc("details");
   await subRef.set({
     plan,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    paymentVerified: plan !== "FREE"
+    // paymentVerified is set to true only for paid plans AND only when authorized above
+    paymentVerified: !isDowngradeToFree
   }, { merge: true });
 
   const userRef = db.collection("users").doc(userId);
   await userRef.update({
-    isPremium: plan !== "FREE",
-    subscriptionPlan: plan === "FREE" ? null : plan
+    isPremium: !isDowngradeToFree,
+    subscriptionPlan: isDowngradeToFree ? null : plan
   });
 
+  console.log(`[updateSubscription] uid=${userId} plan changed to ${plan}`);
   return { success: true };
 });
 
