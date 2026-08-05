@@ -54,96 +54,45 @@ export default function LessonPanel({
   const { addXP } = useXP();
   
   // Quiz state
-  const { generateQuiz, saveQuizResult, checkCooldown, generating: quizGenerating, error: quizError } = useQuiz();
+  const { generateQuiz, saveQuizResult, resetConsecutiveFails, generating: quizGenerating, error: quizError } = useQuiz();
   const [quizOpen, setQuizOpen] = useState(false);
   const [quizData, setQuizData] = useState([]);
-  const [cooldownConfirmOpen, setCooldownConfirmOpen] = useState(false);
-  const [cooldownMinutes, setCooldownMinutes] = useState(0);
-  
-  // Plan limits
-  const { plan, usage, checkLimit, incrementUsage, isUpgradeModalOpen, setUpgradeModalOpen } = usePlanLimits();
+  const [failedConcepts, setFailedConcepts] = useState([]);
+  const [consecutiveFailsCount, setConsecutiveFailsCount] = useState(0);
 
-  // New UX States
-  const [isELI5, setIsELI5] = useState(false);
-  const [eli5Generating, setEli5Generating] = useState(false);
-  const [insight, setInsight] = useState('');
-  const [insightGenerating, setInsightGenerating] = useState(false);
+  const handleReviewSection = (headingText) => {
+    if (!contentRef.current || !headingText) return;
+    const elements = contentRef.current.querySelectorAll('h1, h2, h3, h4');
+    const target = Array.from(elements).find(el => 
+      el.textContent.toLowerCase().includes(headingText.toLowerCase()) || 
+      headingText.toLowerCase().includes(el.textContent.toLowerCase())
+    );
 
-  // ULTRA States
-  const [practiceCode, setPracticeCode] = useState('package main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello, Go!")\n}');
-  const [codeReviewResult, setCodeReviewResult] = useState('');
-  const [reviewingCode, setReviewingCode] = useState(false);
-  const [showPractice, setShowPractice] = useState(false);
-  const [practiceAssignment, setPracticeAssignment] = useState('');
-  const [generatingAssignment, setGeneratingAssignment] = useState(false);
-  const [adaptationBanner, setAdaptationBanner] = useState(false);
-
-  const [showSlides, setShowSlides] = useState(false);
-  const contentRef = React.useRef(null);
-  const { selection, clear } = useTextSelection(contentRef);
-
-  // Auto-generate content when a new empty node is selected
-  useEffect(() => {
-    if (selectedCourse && selectedNode && !selectedNode.content && !generating && !genError) {
-      handleGenerateContent();
-    }
-    // Reset local view states
-    setIsELI5(false);
-    setInsight('');
-  }, [selectedCourse?.id, selectedNode?.id]);
-
-  // Clear error when node changes
-  useEffect(() => {
-    setGenError('');
-  }, [selectedNode?.id]);
-
-  const handleGenerateContent = async () => {
-    if (!selectedCourse || !selectedNode) return;
-    setGenerating(true);
-    setGenError('');
-    try {
-      const markdown = await generateLessonContent(
-        selectedCourse.id, 
-        selectedNode.id, 
-        selectedCourse.title, 
-        selectedNode.label, 
-        selectedNode.desc,
-        selectedCourse.preferences || {}
-      );
-      
-      const updatedNode = { ...selectedNode, content: markdown };
-      onNodeUpdated(updatedNode); // Pass to parent Graph.jsx to update course state
-      
-    } catch (err) {
-      console.error(err);
-      if (err.message === 'MISSING_API_KEY') {
-        setGenError(t('settings.profile.apiKeyMissing'));
-      } else {
-        setGenError(err.message || 'Failed to generate lesson content. Please try again.');
-      }
-    } finally {
-      setGenerating(false);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.classList.add('bg-indigo-500/20', 'rounded-lg', 'transition-all', 'duration-500');
+      setTimeout(() => {
+        target.classList.remove('bg-indigo-500/20');
+      }, 3000);
     }
   };
 
-  const handleOpenQuiz = async (ignoreCooldown = false) => {
+  const handleOpenQuiz = async (forceFresh = false, customFailedConcepts = null) => {
     if (!selectedNode?.content) return;
     
     if (!checkLimit('ai_question')) {
       return;
     }
 
-    if (!ignoreCooldown) {
-      const { allowed, cooldownUntil } = await checkCooldown(selectedNode.id);
-      if (!allowed) {
-        const minutesLeft = Math.ceil((cooldownUntil.getTime() - Date.now()) / 60000);
-        setCooldownMinutes(minutesLeft);
-        setCooldownConfirmOpen(true);
-        return;
-      }
-    }
+    const conceptsToPass = customFailedConcepts || failedConcepts;
+    const questions = await generateQuiz(
+      selectedCourse.id, 
+      selectedNode.id, 
+      selectedNode.content, 
+      conceptsToPass,
+      forceFresh || conceptsToPass.length > 0
+    );
 
-    const questions = await generateQuiz(selectedCourse.id, selectedNode.id, selectedNode.content);
     if (questions) {
       await incrementUsage('ai_question');
       setQuizData(questions);
@@ -151,16 +100,26 @@ export default function LessonPanel({
     }
   };
 
-  const handleQuizComplete = async (score, total, passed) => {
+  const handleQuizComplete = async (score, total, passed, failedDetails = []) => {
     setQuizOpen(false);
     
-    await saveQuizResult(selectedCourse.id, selectedNode.id, score, total, passed);
+    const saveRes = await saveQuizResult(selectedCourse.id, selectedNode.id, score, total, passed, failedDetails);
     
+    if (saveRes) {
+      setConsecutiveFailsCount(saveRes.consecutiveFails || 0);
+    }
+
+    if (failedDetails && failedDetails.length > 0) {
+      const newConcepts = failedDetails.map(d => d.sectionHeading || d.questionText);
+      setFailedConcepts(newConcepts);
+    }
+
     if (onQuizComplete) {
       onQuizComplete();
     }
     
     if (passed) {
+      setFailedConcepts([]);
       await addXP(25, 'Пройден квиз', 'quiz_passed', { nodeId: selectedNode.id });
       if (score === total) {
         await addXP(50, 'Идеальный результат', 'quiz_perfect', { nodeId: selectedNode.id });
@@ -702,7 +661,8 @@ Provide a code boilerplate template at the end.`;
         questions={quizData} 
         flashcards={flashcards}
         onComplete={handleQuizComplete} 
-        onForceRetry={() => handleOpenQuiz(true)}
+        onForceRetry={(failedDetails) => handleOpenQuiz(true, failedDetails?.map(d => d.sectionHeading || d.questionText))}
+        onReviewSection={handleReviewSection}
         onAskMentor={(questionText, userAnswer, correctAnswer, explanation) => {
           setQuizOpen(false);
           onClose(); // Close lesson panel
@@ -713,45 +673,6 @@ Provide a code boilerplate template at the end.`;
           }));
         }}
       />
-
-      {/* Cooldown Override Confirmation Modal */}
-      {cooldownConfirmOpen && (
-        <div className="fixed inset-0 z-[210] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="bg-surface border border-zinc-200 dark:border-zinc-700 rounded-3xl max-w-md w-full p-6 shadow-2xl relative text-left"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4 text-amber-400">
-              <AlertCircle className="w-6 h-6" />
-            </div>
-            <h3 className="text-xl font-black text-white mb-2">Повторная попытка</h3>
-            <p className="text-sm text-zinc-300 mb-4 leading-relaxed">
-              Вы недавно допустили ошибки в тесте (осталось ждать <span className="text-amber-400 font-bold">{cooldownMinutes} мин.</span> до окончания стандартного перерыва).
-            </p>
-            <p className="text-sm text-zinc-400 mb-6 bg-white/5 p-3.5 rounded-2xl border border-white/5 leading-relaxed">
-              💡 <strong className="text-zinc-200">Совет:</strong> Рекомендуем еще раз перечитать теорию выше, чтобы закрепить материал. Но если вы уверены в своих силах, можете начать тест прямо сейчас!
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={() => setCooldownConfirmOpen(false)}
-                className="flex-1 px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 font-bold text-sm text-zinc-300 transition-all text-center"
-              >
-                📖 Повторить теорию
-              </button>
-              <button
-                onClick={() => {
-                  setCooldownConfirmOpen(false);
-                  handleOpenQuiz(true);
-                }}
-                className="flex-1 px-4 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-zinc-950 font-black text-sm transition-all shadow-lg shadow-amber-500/20 text-center flex items-center justify-center gap-1.5"
-              >
-                🚀 Я уверен, начать
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
 
       <UpgradeModal 
         isOpen={isUpgradeModalOpen} 

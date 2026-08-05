@@ -5,7 +5,16 @@ import QuizQuestion from './QuizQuestion.jsx';
 import QuizResults from './QuizResults.jsx';
 import Flashcard from '../lessons/Flashcard.jsx';
 
-export default function QuizModal({ questions, flashcards = [], isOpen, onClose, onComplete, onAskMentor, onForceRetry }) {
+export default function QuizModal({ 
+  questions, 
+  flashcards = [], 
+  isOpen, 
+  onClose, 
+  onComplete, 
+  onAskMentor, 
+  onForceRetry,
+  onReviewSection 
+}) {
   const [mode, setMode] = useState('quiz'); // 'flashcards' | 'intermission' | 'quiz'
   const [flashcardIndex, setFlashcardIndex] = useState(0);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -55,31 +64,45 @@ export default function QuizModal({ questions, flashcards = [], isOpen, onClose,
 
   const handleRetry = () => {
     if (results) {
-      onComplete(results.score, results.total, results.passed);
+      onComplete(results.score, results.total, results.passed, results.failedDetails);
     }
   };
 
   const handleForceRetry = () => {
+    if (results) {
+      onComplete(results.score, results.total, results.passed, results.failedDetails);
+    }
     if (onForceRetry) {
       onClose();
-      onForceRetry();
+      onForceRetry(results?.failedDetails);
     }
   };
 
   const calculateScore = () => {
     let score = 0;
+    const failedDetails = [];
     const explanations = questions.map((q, i) => {
       const isCorrect = answers[i] === q.correctIndex;
-      if (isCorrect) score++;
+      if (isCorrect) {
+        score++;
+      } else {
+        failedDetails.push({
+          questionText: q.question,
+          userAnswer: q.options[answers[i]] || 'нет ответа',
+          correctAnswer: q.options[q.correctIndex],
+          sectionHeading: q.sectionHeading || ''
+        });
+      }
       return { 
         isCorrect, 
         text: q.explanation,
         questionText: q.question,
         userAnswer: q.options[answers[i]] || 'нет ответа',
-        correctAnswer: q.options[q.correctIndex]
+        correctAnswer: q.options[q.correctIndex],
+        sectionHeading: q.sectionHeading || ''
       };
     });
-    return { score, total: questions.length, explanations, passed: (score / questions.length) >= 0.6 };
+    return { score, total: questions.length, explanations, failedDetails, passed: (score / questions.length) >= 0.6 };
   };
 
   const results = showResults ? calculateScore() : null;
@@ -207,8 +230,14 @@ export default function QuizModal({ questions, flashcards = [], isOpen, onClose,
                 explanations={results.explanations}
                 onRetry={handleRetry}
                 onForceRetry={handleForceRetry}
-                onContinue={() => onComplete(results.score, results.total, results.passed)}
+                onContinue={() => onComplete(results.score, results.total, results.passed, results.failedDetails)}
                 onAskMentor={onAskMentor}
+                onReviewSection={(headingText) => {
+                  if (onReviewSection) {
+                    onClose();
+                    onReviewSection(headingText);
+                  }
+                }}
               />
             )}
           </AnimatePresence>

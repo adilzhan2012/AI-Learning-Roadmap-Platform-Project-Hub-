@@ -8,7 +8,7 @@ export const useQuiz = () => {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
 
-  const generateQuiz = useCallback(async (roadmapId, nodeId, lessonContent) => {
+  const generateQuiz = useCallback(async (roadmapId, nodeId, lessonContent, failedConcepts = [], forceFresh = false) => {
     setGenerating(true);
     setError('');
     
@@ -16,7 +16,8 @@ export const useQuiz = () => {
       const userId = auth.currentUser?.uid;
       let cachedQuestions = null;
 
-      if (userId && nodeId) {
+      // Only check cache if forceFresh is false and no failed concepts are passed
+      if (userId && nodeId && !forceFresh && (!failedConcepts || failedConcepts.length === 0)) {
         try {
           const quizRef = doc(db, 'users', userId, 'quizResults', String(nodeId));
           const quizSnap = await getDoc(quizRef);
@@ -27,7 +28,7 @@ export const useQuiz = () => {
             }
           }
         } catch (readErr) {
-          console.warn("Failed to check Firestore cache for quiz (ignoring and proceeding to generate):", readErr);
+          console.warn("Failed to check Firestore cache for quiz:", readErr);
         }
       }
 
@@ -37,22 +38,34 @@ export const useQuiz = () => {
       }
 
       const apiKey = null;
-      
       const currentLocale = getLocale();
       const languageName = currentLocale === 'ru' ? 'Russian' : 'English';
+
+      let focusInstruction = '';
+      if (failedConcepts && failedConcepts.length > 0) {
+        focusInstruction = `
+CRITICAL ADAPTIVE INSTRUCTION:
+The student previously struggled with these specific concepts:
+${failedConcepts.map(c => `- ${c}`).join('\n')}
+
+Generate 5 NEW, FRESH questions that test these weak areas with different scenarios and perspectives!
+        `.trim();
+      }
 
       const quizPrompt = `
 You are a strict examiner. Based on the lesson material below, create 5 questions to test REAL understanding of the topic.
 CRITICAL INSTRUCTION: You MUST generate the ENTIRE response in the ${languageName} language.
+${focusInstruction}
 
 Material:
-${lessonContent.substring(0, 3000)}
+${lessonContent.substring(0, 3500)}
 
 REQUIREMENTS FOR QUESTIONS (mandatory):
 1. At least 2 questions must be APPLICATION of knowledge (not "what is X", but "what happens if / why / how to correctly do").
 2. At least 1 question must be ERROR RECOGNITION (show wrong code/approach, ask what is wrong).
 3. All incorrect options must be plausible - not obvious.
 4. Questions must cover different parts of the material, no repetitions.
+5. Include sectionHeading field for each question matching the nearest H2/H3 header text in the lesson material.
 
 IMPORTANT: Return ONLY a valid JSON object without markdown tags or explanations.
 
@@ -64,7 +77,8 @@ IMPORTANT: Return ONLY a valid JSON object without markdown tags or explanations
       "question": "Question text",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correctIndex": 0,
-      "explanation": "Explanation of why this answer is correct and others are wrong"
+      "explanation": "Detailed explanation of why this answer is correct and others are wrong",
+      "sectionHeading": "Nearest H2/H3 Heading Text in Material"
     }
   ],
   "passingScore": 60
@@ -75,11 +89,9 @@ IMPORTANT: Return ONLY a valid JSON object without markdown tags or explanations
       if (!textResponse) throw new Error('Empty response');
 
       let cleanText = textResponse.trim();
-      // Strip markdown code blocks if the AI ignored the instruction
       cleanText = cleanText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
       cleanText = cleanText.replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
       
-      // Try to find JSON object bounds if there's trailing/leading text
       const firstBrace = cleanText.indexOf('{');
       const lastBrace = cleanText.lastIndexOf('}');
       if (firstBrace !== -1 && lastBrace !== -1) {
@@ -102,7 +114,7 @@ IMPORTANT: Return ONLY a valid JSON object without markdown tags or explanations
             lastGeneratedAt: serverTimestamp()
           }, { merge: true });
         } catch (writeErr) {
-          console.warn("Failed to cache generated quiz in Firestore (proceeding anyway):", writeErr);
+          console.warn("Failed to cache generated quiz in Firestore:", writeErr);
         }
       }
 
@@ -117,68 +129,78 @@ IMPORTANT: Return ONLY a valid JSON object without markdown tags or explanations
     }
   }, []);
 
-  const saveQuizResult = useCallback(async (roadmapId, nodeId, score, total, passed) => {
+  const saveQuizResult = useCallback(async (roadmapId, nodeId, score, total, passed, failedDetails = []) => {
     if (!auth.currentUser) return;
     try {
       const userId = auth.currentUser.uid;
       const docRef = doc(db, 'users', userId, 'quizResults', String(nodeId));
       
-      // Get existing attempts to accumulate history
       const snap = await getDoc(docRef);
       let attempts = [];
+      let consecutiveFails = 0;
+      let failedConceptsSummary = {};
+
       if (snap.exists()) {
-        attempts = snap.data().attempts || [];
+        const data = snap.data();
+        attempts = data.attempts || [];
+        consecutiveFails = data.consecutiveFails || 0;
+        failedConceptsSummary = data.failedConceptsSummary || {};
       }
 
-      // Add new attempt
+      if (passed) {
+        consecutiveFails = 0;
+      } else {
+        consecutiveFails += 1;
+        failedDetails.forEach(detail => {
+          const conceptKey = detail.sectionHeading || detail.questionText.substring(0, 40);
+          failedConceptsSummary[conceptKey] = (failedConceptsSummary[conceptKey] || 0) + 1;
+        });
+      }
+
       attempts.push({
         score,
         total,
-        date: new Date().toISOString()
+        passed,
+        failedConcepts: failedDetails.map(d => d.sectionHeading || d.questionText),
+        timestamp: new Date().toISOString()
       });
 
-      const COOLDOWN_MINUTES = 10;
       const dataToSave = {
         userId,
         roadmapId,
         nodeId: String(nodeId),
         score,
         total,
-        attempts, // Array of [{score, total, date}]
+        attempts,
         attemptsCount: attempts.length,
+        consecutiveFails,
+        failedConceptsSummary,
         lastAttemptAt: serverTimestamp(),
         passed
       };
 
-      if (!passed) {
-        dataToSave.cooldownUntil = new Date(Date.now() + COOLDOWN_MINUTES * 60 * 1000);
-      } else {
-        dataToSave.cooldownUntil = null;
+      await setDoc(docRef, dataToSave, { merge: true });
+
+      // Signal graph rebuild if user is stuck (e.g. 4+ consecutive failures)
+      if (consecutiveFails >= 4) {
+        console.warn(`Node ${nodeId} has ${consecutiveFails} consecutive fails. Signal candidate for rebuildGraphForFailedNode.`);
       }
 
-      await setDoc(docRef, dataToSave, { merge: true });
+      return { consecutiveFails, failedConceptsSummary };
     } catch (e) {
       console.error('Failed to save quiz result:', e);
     }
   }, []);
 
-  const checkCooldown = useCallback(async (nodeId) => {
-    if (!auth.currentUser) return { allowed: true };
+  const resetConsecutiveFails = useCallback(async (nodeId) => {
+    if (!auth.currentUser) return;
     try {
       const docRef = doc(db, 'users', auth.currentUser.uid, 'quizResults', String(nodeId));
-      const snap = await getDoc(docRef);
-      if (snap.exists()) {
-        const data = snap.data();
-        if (data.cooldownUntil && data.cooldownUntil.toDate() > new Date()) {
-          return { allowed: false, cooldownUntil: data.cooldownUntil.toDate() };
-        }
-      }
-      return { allowed: true };
+      await setDoc(docRef, { consecutiveFails: 0 }, { merge: true });
     } catch (e) {
-      console.error('Failed to check cooldown:', e);
-      return { allowed: true };
+      console.warn("Failed to reset consecutive fails counter:", e);
     }
   }, []);
 
-  return { generateQuiz, saveQuizResult, checkCooldown, generating, error, setError };
+  return { generateQuiz, saveQuizResult, resetConsecutiveFails, generating, error, setError };
 };
