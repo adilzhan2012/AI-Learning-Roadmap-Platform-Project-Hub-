@@ -300,7 +300,8 @@ Provide a code boilerplate template at the end.`;
     }
     setEli5Generating(true);
     try {
-      const simplified = await generateELI5Content(selectedNode.content);
+      const rawNodeId = selectedNode.rawNodeId || selectedNode.id;
+      const simplified = await generateELI5Content(selectedNode.content, selectedCourse?.courseTemplateId, rawNodeId);
       const updatedNode = { ...selectedNode, eli5Content: simplified };
       onNodeUpdated(updatedNode);
       setIsELI5(true);

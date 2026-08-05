@@ -18,6 +18,12 @@ import {
 } from 'firebase/firestore';
 import { getLocale } from '../i18n.js';
 import { validateCourseGraph } from '../utils/graphValidation.js';
+import { 
+  buildCourseCacheKey, 
+  buildLessonCacheKey, 
+  logCacheMetric, 
+  CACHE_VERSION 
+} from '../utils/cacheUtils.js';
 
 // Helper to get Groq API Key is removed as it's now handled by Cloud Functions
 
@@ -75,6 +81,7 @@ export async function generateCourseAndSave(userId, topic, level, preferences = 
   const genPromise = (async () => {
     try {
       const coursesCol = collection(db, 'courses');
+      const templatesCol = collection(db, 'courseTemplates');
 
       // 1. Deduplication check: 10-second burst window to prevent double-click duplicates
       try {
@@ -102,47 +109,45 @@ export async function generateCourseAndSave(userId, topic, level, preferences = 
         console.warn("Deduplication check warning:", dedupErr);
       }
 
-  const isCustomized = Object.keys(preferences).length > 0 && Object.values(preferences).some(val => {
-    return val && 
-           val !== 'Standard' && 
-           val !== 'Theory' && 
-           val !== 'General' && 
-           val !== 'Academic' && 
-           val !== '30m' && 
-           val !== '5' && 
-           val !== 'Friendly';
-  });
-
-  if (!isCustomized) {
-    // Check for existing similar course
-    const q = query(coursesCol, where('normalizedTopic', '==', normalizedTopic), where('level', '==', level));
-    const existingSnap = await getDocs(q);
-    
-    if (!existingSnap.empty) {
-      const existingCourse = existingSnap.docs[0].data();
+      // 2. Course Template Cache Check
+      const templateKey = buildCourseCacheKey(topic, level, preferences);
+      const templateRef = doc(db, 'courseTemplates', templateKey);
       
-      // Clone the course for the new user
-      const clonedCourse = {
-        ...existingCourse,
-        userId,
-        progress: 0,
-        createdAt: new Date().toISOString()
-      };
-      
-      const docRef = await addDoc(coursesCol, clonedCourse);
-      await updateUserStats(userId, { activeCoursesCount: increment(1) });
-      await logActivity(userId, `Created course: ${clonedCourse.title} (Cloned)`, 'school', 'text-blue-500');
-      
-      return { id: docRef.id, ...clonedCourse };
-    }
-  }
+      let cachedTemplate = null;
+      try {
+        const templateSnap = await getDoc(templateRef);
+        if (templateSnap.exists() && templateSnap.data().templateVersion === CACHE_VERSION) {
+          cachedTemplate = templateSnap.data();
+          logCacheMetric('course', true, templateKey);
+        } else {
+          logCacheMetric('course', false, templateKey);
+        }
+      } catch (cacheErr) {
+        console.warn("Cache check error, proceeding with generation:", cacheErr);
+        logCacheMetric('course', false, templateKey);
+      }
 
-  const currentLocale = getLocale();
-  const languageName = currentLocale === 'ru' ? 'Russian' : 'English';
+      let courseDataToUse = null;
 
-  let prefString = '';
-  if (level === 'Advanced') {
-    prefString = `
+      if (cachedTemplate) {
+        courseDataToUse = {
+          title: cachedTemplate.title,
+          level: cachedTemplate.level,
+          hours: cachedTemplate.hours,
+          lessonsCount: cachedTemplate.lessonsCount,
+          gradient: cachedTemplate.gradient,
+          description: cachedTemplate.description,
+          nodes: cachedTemplate.nodes,
+          edges: cachedTemplate.edges
+        };
+      } else {
+        // AI Generation Pipeline
+        const currentLocale = getLocale();
+        const languageName = currentLocale === 'ru' ? 'Russian' : 'English';
+
+        let prefString = '';
+        if (level === 'Advanced') {
+          prefString = `
 Advanced Preferences:
 - Duration (Nodes count): ${preferences.duration || 'Standard (6-10 nodes)'}
 - Focus: ${preferences.focus || 'Theory'}
@@ -150,29 +155,29 @@ Advanced Preferences:
 - Tone: ${preferences.tone || 'Academic'}
 - Prerequisites to skip: ${preferences.prerequisites || 'None'}
 - Tech Stack: ${preferences.stack || 'Agnostic'}
-    `.trim();
-  } else {
-    const timeStr = preferences.dailyTime === '15m' ? '15 minutes per day' : preferences.dailyTime === '60m' ? '1 hour per day' : '30 minutes per day';
-    const styleStr = preferences.courseStyle === 'Simple' ? 'Simple and explain-like-I-am-5 style' : preferences.courseStyle === 'Gamified' ? 'Gamified / Fantasy style' : 'Friendly and conversational style';
-    prefString = `
+          `.trim();
+        } else {
+          const timeStr = preferences.dailyTime === '15m' ? '15 minutes per day' : preferences.dailyTime === '60m' ? '1 hour per day' : '30 minutes per day';
+          const styleStr = preferences.courseStyle === 'Simple' ? 'Simple and explain-like-I-am-5 style' : preferences.courseStyle === 'Gamified' ? 'Gamified / Fantasy style' : 'Friendly and conversational style';
+          prefString = `
 Learning Preferences:
 - Study pace limit: Designed for about ${timeStr}
 - Tone and style: ${styleStr}
 - Target number of flashcards per lesson: ${preferences.flashcardCount || '5'}
 ${preferences.duration ? `- Requested Duration: ${preferences.duration}` : ''}
-    `.trim();
-  }
+          `.trim();
+        }
 
-  let ragContext = '';
-  if (preferences && preferences.ragMode) {
-    if (preferences.ragType === 'pdf') {
-      ragContext = `\nSOURCE MATERIAL FOR GENERATION: The course structure and nodes MUST be generated based on the uploaded file contents: "${preferences.source}". Focus exclusively on topics covered in this material.`;
-    } else {
-      ragContext = `\nSOURCE MATERIAL FOR GENERATION: The course structure and nodes MUST be generated based on the YouTube lecture / documentation link: "${preferences.source}". Analyze the lecture content/link and generate matching lessons.`;
-    }
-  }
+        let ragContext = '';
+        if (preferences && preferences.ragMode) {
+          if (preferences.ragType === 'pdf') {
+            ragContext = `\nSOURCE MATERIAL FOR GENERATION: The course structure and nodes MUST be generated based on the uploaded file contents: "${preferences.source}". Focus exclusively on topics covered in this material.`;
+          } else {
+            ragContext = `\nSOURCE MATERIAL FOR GENERATION: The course structure and nodes MUST be generated based on the YouTube lecture / documentation link: "${preferences.source}". Analyze the lecture content/link and generate matching lessons.`;
+          }
+        }
 
-  const basePrompt = `You are an expert AI curriculum designer. Build a complete, highly structured learning roadmap for the topic: "${topic}" at difficulty level: "${level}".
+        const basePrompt = `You are an expert AI curriculum designer. Build a complete, highly structured learning roadmap for the topic: "${topic}" at difficulty level: "${level}".
 ${prefString}
 ${ragContext}
 
@@ -208,134 +213,147 @@ The response must be a valid JSON object matching this schema:
 4. Set the status of the first node (with no prerequisites) to "active" and all other nodes to "locked".
 5. Return ONLY the JSON object, with no markdown formatting tags. Do NOT wrap it in \`\`\`json \`\`\`. Do not include any explanations.`;
 
-  const MAX_RETRIES = 2;
-  let currentPrompt = basePrompt;
-  let attempt = 0;
+        const MAX_RETRIES = 2;
+        let currentPrompt = basePrompt;
+        let attempt = 0;
 
-  let finalCourseData = null;
-  let finalNodes = null;
-  let finalEdges = null;
+        while (attempt <= MAX_RETRIES) {
+          const textResponse = await callGroqWithRetry(null, currentPrompt, 'roadmap');
 
-  while (attempt <= MAX_RETRIES) {
-    const textResponse = await callGroqWithRetry(null, currentPrompt, 'roadmap');
+          if (!textResponse) {
+            if (attempt < MAX_RETRIES) {
+              attempt++;
+              continue;
+            }
+            throw new Error('Empty response from Groq API');
+          }
 
-    if (!textResponse) {
-      if (attempt < MAX_RETRIES) {
-        attempt++;
-        continue;
+          let cleanText = textResponse.trim();
+          cleanText = cleanText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+          cleanText = cleanText.replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+          
+          const firstBrace = cleanText.indexOf('{');
+          const lastBrace = cleanText.lastIndexOf('}');
+          if (firstBrace !== -1 && lastBrace !== -1) {
+            cleanText = cleanText.substring(firstBrace, lastBrace + 1);
+          }
+
+          let courseData;
+          try {
+            courseData = JSON.parse(cleanText);
+          } catch (err) {
+            console.error(`Attempt ${attempt + 1}: Failed to parse AI response as JSON. Raw response:`, textResponse);
+            if (attempt < MAX_RETRIES) {
+              attempt++;
+              currentPrompt = `${basePrompt}\n\nCRITICAL FIX: Your previous response was invalid JSON. Ensure you return valid JSON without syntax errors.`;
+              continue;
+            }
+            throw new Error('Invalid JSON format returned by AI. Please try again.');
+          }
+
+          const rawNodes = courseData.nodes || [];
+          const rawEdges = courseData.edges || [];
+
+          const validation = validateCourseGraph(rawNodes, rawEdges);
+
+          if (!validation.valid) {
+            console.warn(`Attempt ${attempt + 1}: Course graph validation failed with errors:`, validation.errors);
+            if (attempt < MAX_RETRIES) {
+              attempt++;
+              currentPrompt = `${basePrompt}\n\nCRITICAL FIX REQUIRED: Your previous course graph was invalid. Please fix the following errors:\n${validation.errors.map(err => `- ${err}`).join('\n')}`;
+              continue;
+            }
+            throw new Error(`Course graph validation failed after ${MAX_RETRIES + 1} attempts: ${validation.errors.join('; ')}`);
+          }
+
+          courseDataToUse = courseData;
+          break;
+        }
+
+        // Save newly generated course to template cache
+        try {
+          await setDoc(templateRef, {
+            templateVersion: CACHE_VERSION,
+            topic,
+            normalizedTopic,
+            level,
+            preferences,
+            title: courseDataToUse.title || topic,
+            category: courseDataToUse.category || 'General',
+            hours: courseDataToUse.hours || '10h',
+            lessonsCount: courseDataToUse.lessonsCount || (courseDataToUse.nodes || []).length * 3,
+            gradient: courseDataToUse.gradient || 'from-blue-500 to-indigo-600',
+            description: courseDataToUse.description || `Learning path for ${topic}`,
+            nodes: courseDataToUse.nodes,
+            edges: courseDataToUse.edges,
+            createdAt: new Date().toISOString(),
+            lastAccessedAt: new Date().toISOString()
+          });
+        } catch (saveCacheErr) {
+          console.warn("Failed to save template to cache:", saveCacheErr);
+        }
       }
-      throw new Error('Empty response from Groq API');
-    }
 
-    let cleanText = textResponse.trim();
-    // Strip markdown code blocks if the AI ignored the instruction
-    cleanText = cleanText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-    cleanText = cleanText.replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
-    
-    // Try to find JSON object bounds if there's trailing/leading text
-    const firstBrace = cleanText.indexOf('{');
-    const lastBrace = cleanText.lastIndexOf('}');
-    if (firstBrace !== -1 && lastBrace !== -1) {
-      cleanText = cleanText.substring(firstBrace, lastBrace + 1);
-    }
+      // Normalize nodes and edges to create unique instance IDs for this user
+      const courseIdPrefix = Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 4) + '-';
+      const idMap = new Map();
+      
+      courseDataToUse.nodes.forEach(node => {
+        const oldId = parseInt(node.id, 10);
+        if (!isNaN(oldId) && !idMap.has(oldId)) {
+          idMap.set(oldId, courseIdPrefix + oldId);
+        }
+      });
 
-    let courseData;
-    try {
-      courseData = JSON.parse(cleanText);
-    } catch (err) {
-      console.error(`Attempt ${attempt + 1}: Failed to parse AI response as JSON. Raw response:`, textResponse);
-      if (attempt < MAX_RETRIES) {
-        attempt++;
-        currentPrompt = `${basePrompt}\n\nCRITICAL FIX: Your previous response was invalid JSON. Ensure you return valid JSON without syntax errors.`;
-        continue;
-      }
-      throw new Error('Invalid JSON format returned by AI. Please try again.');
-    }
+      const nodes = courseDataToUse.nodes.map((node) => {
+        const oldId = parseInt(node.id, 10);
+        const newId = idMap.get(oldId) || (courseIdPrefix + oldId);
+        const hasPrereq = (courseDataToUse.edges || []).some(e => parseInt(e.to, 10) === oldId);
+        return {
+          ...node,
+          id: newId,
+          rawNodeId: oldId, // Keep reference to template raw node ID for lesson content lookup
+          status: hasPrereq ? 'locked' : 'active'
+        };
+      });
 
-    const rawNodes = courseData.nodes || [];
-    const rawEdges = courseData.edges || [];
+      const edges = (courseDataToUse.edges || [])
+        .map(e => {
+          const oldFrom = parseInt(e.from, 10);
+          const oldTo = parseInt(e.to, 10);
+          if (isNaN(oldFrom) || isNaN(oldTo)) return null;
+          return {
+            from: idMap.get(oldFrom) || (courseIdPrefix + oldFrom),
+            to: idMap.get(oldTo) || (courseIdPrefix + oldTo)
+          };
+        })
+        .filter(Boolean);
 
-    const validation = validateCourseGraph(rawNodes, rawEdges);
-
-    if (!validation.valid) {
-      console.warn(`Attempt ${attempt + 1}: Course graph validation failed with errors:`, validation.errors);
-      if (attempt < MAX_RETRIES) {
-        attempt++;
-        currentPrompt = `${basePrompt}\n\nCRITICAL FIX REQUIRED: Your previous course graph was invalid. Please fix the following errors:\n${validation.errors.map(err => `- ${err}`).join('\n')}`;
-        continue;
-      }
-      throw new Error(`Course graph validation failed after ${MAX_RETRIES + 1} attempts: ${validation.errors.join('; ')}`);
-    }
-
-    // Graph is valid!
-    finalCourseData = courseData;
-    break;
-  }
-
-  // Normalize nodes and edges to ensure unique IDs across the entire app
-  const courseIdPrefix = Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 4) + '-';
-  const idMap = new Map();
-  
-  finalCourseData.nodes.forEach(node => {
-    const oldId = parseInt(node.id, 10);
-    if (!isNaN(oldId) && !idMap.has(oldId)) {
-      idMap.set(oldId, courseIdPrefix + oldId);
-    }
-  });
-
-  const nodes = finalCourseData.nodes.map((node) => {
-    const oldId = parseInt(node.id, 10);
-    const newId = idMap.get(oldId) || (courseIdPrefix + oldId);
-    // Find if this node has any prerequisites pointing to it (using old IDs from AI)
-    const hasPrereq = (finalCourseData.edges || []).some(e => parseInt(e.to, 10) === oldId);
-    return {
-      ...node,
-      id: newId,
-      status: hasPrereq ? 'locked' : 'active'
-    };
-  });
-
-  const edges = (finalCourseData.edges || [])
-    .map(e => {
-      const oldFrom = parseInt(e.from, 10);
-      const oldTo = parseInt(e.to, 10);
-      if (isNaN(oldFrom) || isNaN(oldTo)) return null;
-      return {
-        from: idMap.get(oldFrom) || (courseIdPrefix + oldFrom),
-        to: idMap.get(oldTo) || (courseIdPrefix + oldTo)
+      // Create course object for user in Firestore
+      const newCourse = {
+        userId,
+        courseTemplateId: templateKey,
+        topic: topic,
+        normalizedTopic: normalizedTopic,
+        title: courseDataToUse.title || topic,
+        category: '✨ Сгенерировано ИИ',
+        level: courseDataToUse.level || level,
+        hours: courseDataToUse.hours || '10h',
+        lessonsCount: courseDataToUse.lessonsCount || nodes.length * 3,
+        gradient: courseDataToUse.gradient || 'from-blue-500 to-indigo-600',
+        description: courseDataToUse.description || `Learning path for ${topic}`,
+        nodes,
+        edges,
+        preferences,
+        progress: 0,
+        createdAt: new Date().toISOString()
       };
-    })
-    .filter(Boolean);
 
-  // Create course object for Firestore
-  const newCourse = {
-    userId,
-    topic: topic,
-    normalizedTopic: normalizedTopic,
-    title: finalCourseData.title || topic,
-    category: '✨ Сгенерировано ИИ',
-    level: finalCourseData.level || level,
-    hours: finalCourseData.hours || '10h',
-    lessonsCount: finalCourseData.lessonsCount || nodes.length * 3,
-    gradient: finalCourseData.gradient || 'from-blue-500 to-indigo-600',
-    description: finalCourseData.description || `Learning path for ${topic}`,
-    nodes,
-    edges,
-    preferences,
-    progress: 0,
-    createdAt: new Date().toISOString()
-  };
+      const docRef = await addDoc(coursesCol, newCourse);
+      await updateUserStats(userId, { activeCoursesCount: increment(1) });
+      await logActivity(userId, `Created course: ${newCourse.title}`, 'school', 'text-blue-500');
 
-  // Save to Firestore
-  const docRef = await addDoc(coursesCol, newCourse);
-  
-  // Update user stats (increment active courses)
-  await updateUserStats(userId, { activeCoursesCount: increment(1) });
-  
-  // Log activity
-  await logActivity(userId, `Created course: ${newCourse.title}`, 'school', 'text-blue-500');
-
-  return { id: docRef.id, ...newCourse };
+      return { id: docRef.id, ...newCourse };
     } finally {
       inFlightGenerations.delete(lockKey);
     }
@@ -347,36 +365,74 @@ The response must be a valid JSON object matching this schema:
 
 // 1.5 Generate Lesson Content
 export async function generateLessonContent(courseId, nodeId, courseTitle, topicLabel, topicDesc, preferences = {}) {
+  const courseRef = doc(db, 'courses', courseId);
+  const snap = await getDoc(courseRef);
+  if (!snap.exists()) throw new Error('Course not found');
 
-  const currentLocale = getLocale();
-  const languageName = currentLocale === 'ru' ? 'Russian' : 'English';
-
-  let prefString = '';
-  let flashcardInstruction = 'include 3-5 flashcards';
+  const courseData = snap.data();
+  const targetNode = (courseData.nodes || []).find(n => String(n.id) === String(nodeId));
   
-  if (preferences.dailyTime || preferences.flashcardCount || preferences.courseStyle) {
-    const timeStr = preferences.dailyTime === '15m' ? '15 minutes per day' : preferences.dailyTime === '60m' ? '1 hour per day' : '30 minutes per day';
-    const styleStr = preferences.courseStyle === 'Simple' ? 'Simple and explain-like-I-am-5 style' : preferences.courseStyle === 'Gamified' ? 'Gamified / Fantasy style' : 'Friendly and conversational style';
-    prefString = `
+  // If content is already generated on the user node, return it immediately
+  if (targetNode && targetNode.content) {
+    return targetNode.content;
+  }
+
+  const courseTemplateId = courseData.courseTemplateId || buildCourseCacheKey(courseData.topic || courseTitle, courseData.level || 'Intermediate', preferences);
+  const rawNodeId = targetNode?.rawNodeId || targetNode?.id || nodeId;
+  const lessonKey = buildLessonCacheKey(rawNodeId);
+
+  // Check lesson cache in courseTemplates/{templateId}/lessons/{lessonKey}
+  let cachedContent = null;
+  let lessonDocRef = null;
+
+  if (courseTemplateId) {
+    try {
+      lessonDocRef = doc(db, 'courseTemplates', courseTemplateId, 'lessons', lessonKey);
+      const lessonSnap = await getDoc(lessonDocRef);
+      if (lessonSnap.exists() && lessonSnap.data().content) {
+        cachedContent = lessonSnap.data().content;
+        logCacheMetric('lesson', true, `${courseTemplateId}/${lessonKey}`);
+      } else {
+        logCacheMetric('lesson', false, `${courseTemplateId}/${lessonKey}`);
+      }
+    } catch (cacheErr) {
+      console.warn("Lesson cache check error, proceeding with generation:", cacheErr);
+      logCacheMetric('lesson', false, `${courseTemplateId}/${lessonKey}`);
+    }
+  }
+
+  let finalContent = cachedContent;
+
+  if (!finalContent) {
+    const currentLocale = getLocale();
+    const languageName = currentLocale === 'ru' ? 'Russian' : 'English';
+
+    let prefString = '';
+    let flashcardInstruction = 'include 3-5 flashcards';
+    
+    if (preferences.dailyTime || preferences.flashcardCount || preferences.courseStyle) {
+      const timeStr = preferences.dailyTime === '15m' ? '15 minutes per day' : preferences.dailyTime === '60m' ? '1 hour per day' : '30 minutes per day';
+      const styleStr = preferences.courseStyle === 'Simple' ? 'Simple and explain-like-I-am-5 style' : preferences.courseStyle === 'Gamified' ? 'Gamified / Fantasy style' : 'Friendly and conversational style';
+      prefString = `
 Learning Preferences:
 - Study pace: Designed for a study speed of ${timeStr}
 - Style and Tone: Use a ${styleStr} to write the content
-    `.trim();
-    
-    if (preferences.flashcardCount) {
-      flashcardInstruction = `include EXACTLY ${preferences.flashcardCount} flashcards`;
-    }
-  } else {
-    prefString = `
+      `.trim();
+      
+      if (preferences.flashcardCount) {
+        flashcardInstruction = `include EXACTLY ${preferences.flashcardCount} flashcards`;
+      }
+    } else {
+      prefString = `
 Advanced Preferences:
 - Focus: ${preferences.focus || 'Theory'}
 - Goal: ${preferences.goal || 'General'}
 - Tone: ${preferences.tone || 'Academic'}
 - Tech Stack: ${preferences.stack || 'Agnostic'}
-    `.trim();
-  }
+      `.trim();
+    }
 
-  const prompt = `You are an expert tutor. Write a comprehensive, highly detailed lesson in Markdown format for the topic: "${topicLabel}".
+    const prompt = `You are an expert tutor. Write a comprehensive, highly detailed lesson in Markdown format for the topic: "${topicLabel}".
 This lesson is part of a larger course called "${courseTitle}".
 Topic context: ${topicDesc}
 ${prefString}
@@ -398,25 +454,35 @@ Def: [A concise, 1-2 sentence definition]
 ---
 Make it highly educational, long, and detailed so the user can genuinely learn from it.`;
 
-  const textResponse = await callGroqWithRetry(null, prompt, 'ai_question');
+    const textResponse = await callGroqWithRetry(null, prompt, 'ai_question');
 
-  if (!textResponse) throw new Error('Empty response from Groq API');
+    if (!textResponse) throw new Error('Empty response from Groq API');
+    finalContent = textResponse;
 
-  // Save the generated content directly to the specific node in Firestore
-  const courseRef = doc(db, 'courses', courseId);
-  const snap = await getDoc(courseRef);
-  if (snap.exists()) {
-    const data = snap.data();
-    const updatedNodes = data.nodes.map(n => {
-      if (String(n.id) === String(nodeId)) {
-        return { ...n, content: textResponse };
+    // Save generated lesson to template cache for other users
+    if (lessonDocRef) {
+      try {
+        await setDoc(lessonDocRef, {
+          rawNodeId,
+          content: finalContent,
+          createdAt: new Date().toISOString()
+        }, { merge: true });
+      } catch (saveCacheErr) {
+        console.warn("Failed to save lesson template content to cache:", saveCacheErr);
       }
-      return n;
-    });
-    await updateDoc(courseRef, { nodes: updatedNodes });
+    }
   }
 
-  return textResponse;
+  // Update content on user's specific node in Firestore
+  const updatedNodes = (courseData.nodes || []).map(n => {
+    if (String(n.id) === String(nodeId)) {
+      return { ...n, content: finalContent };
+    }
+    return n;
+  });
+  await updateDoc(courseRef, { nodes: updatedNodes });
+
+  return finalContent;
 }
 
 
@@ -765,7 +831,23 @@ export async function getRecentActivities(userId, maxLimit = 5) {
     .slice(0, maxLimit);
 }
 
-export async function generateELI5Content(originalContent) {
+export async function generateELI5Content(originalContent, courseTemplateId = null, rawNodeId = null) {
+  let lessonDocRef = null;
+  if (courseTemplateId && rawNodeId) {
+    try {
+      const lessonKey = buildLessonCacheKey(rawNodeId);
+      lessonDocRef = doc(db, 'courseTemplates', courseTemplateId, 'lessons', lessonKey);
+      const lessonSnap = await getDoc(lessonDocRef);
+      if (lessonSnap.exists() && lessonSnap.data().eli5Content) {
+        logCacheMetric('eli5', true, `${courseTemplateId}/${lessonKey}`);
+        return lessonSnap.data().eli5Content;
+      } else {
+        logCacheMetric('eli5', false, `${courseTemplateId}/${lessonKey}`);
+      }
+    } catch (e) {
+      console.warn("ELI5 cache check error:", e);
+    }
+  }
 
   const currentLocale = getLocale();
   let languageName = 'English';
@@ -783,7 +865,17 @@ ${originalContent}
 
   const textResponse = await callGroqWithRetry(null, prompt, 'ai_question');
   if (!textResponse) throw new Error('Empty response from Groq API');
-  return textResponse.trim();
+  const result = textResponse.trim();
+
+  if (lessonDocRef) {
+    try {
+      await setDoc(lessonDocRef, { eli5Content: result }, { merge: true });
+    } catch (e) {
+      console.warn("Failed to cache ELI5 content:", e);
+    }
+  }
+
+  return result;
 }
 
 export async function generateRealWorldExample(topicLabel, topicDesc) {
