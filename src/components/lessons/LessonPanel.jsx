@@ -162,24 +162,46 @@ export default function LessonPanel({
     setCodeReviewResult('');
     try {
       const prompt = `You are an expert software developer and security auditor.
-Analyze the following Go/programming code submitted by a student for the lesson: "${sanitizeUserInput(selectedNode.label, 200)}".
+Analyze the following code submitted by a student for the lesson: "${sanitizeUserInput(selectedNode.label, 200)}".
 Topic description: "${sanitizeUserInput(selectedNode.desc, 400)}"
 Practice assignment: "${sanitizeUserInput(practiceAssignment, 500)}"
 
 Student Code:
-\`\`\`go
+\`\`\`
 ${sanitizeCode(practiceCode)}
 \`\`\`
 
 INSTRUCTIONS:
-Provide a highly thorough, detailed code review in the Russian language. Include the following sections using Markdown formatting:
-1. **Корректность и логика**: Проверьте на наличие синтаксических ошибок, компиляции или логических багов.
-2. **Стиль и стандарты (Code-Style)**: Укажите, насколько код идиоматичен для Go (например, именование, обработка ошибок, структура).
-3. **Безопасность и уязвимости**: Укажите на возможные утечки памяти, состояния гонки, небезопасные указатели или переполнения.
-4. **Вердикт**: Принят ли код (Пройдено / Не пройдено) и краткое резюме.`;
+Provide a thorough code review.
+1. "passed": boolean (true ONLY if the student's code is correct, compiles logically, and satisfies the assignment without critical bugs; false otherwise).
+2. "feedback": A detailed code review in Russian formatted in Markdown including:
+   - **Корректность и логика**: Проверьте на синтаксические и логические ошибки.
+   - **Стиль и стандарты (Code-Style)**: Оцените читаемость и стиль.
+   - **Безопасность и уязвимости**: Укажите на возможные баги или состояния гонки.
+   - **Вердикт**: Окончательный вердикт (Пройдено / Не пройдено) и краткое резюме.
+
+Return ONLY a valid JSON object:
+{
+  "passed": true,
+  "feedback": "Full markdown text of code review..."
+}`;
+
       const result = await callGroqWithRetry(null, prompt, 'ai_question');
-      setCodeReviewResult(result);
-      await addXP(40, 'AI Code Review пройден', 'code_review_passed', { nodeId: selectedNode.id });
+      let parsed;
+      try {
+        parsed = parseAIJson(result);
+      } catch (parseErr) {
+        const isPassed = /пройдено/i.test(result) && !/не пройдено/i.test(result);
+        parsed = { passed: isPassed, feedback: result };
+      }
+
+      const feedbackText = parsed.feedback || result;
+      setCodeReviewResult(feedbackText);
+
+      // Award XP ONLY if verdict is passed (true)
+      if (parsed.passed) {
+        await addXP(40, 'AI Code Review пройден', 'code_review_passed', { nodeId: selectedNode.id });
+      }
     } catch (e) {
       console.error(e);
       if (e instanceof AIParsingError || e?.name === 'AIParsingError') {
