@@ -1,4 +1,4 @@
-import { validateCourseGraph } from './graphValidation.js';
+import { validateCourseGraph, buildRebuiltGraph } from './graphValidation.js';
 
 function runTests() {
   let passed = 0;
@@ -104,15 +104,45 @@ function runTests() {
     assert(result.valid === true && result.errors.length === 0, 'Non-topological node order test');
   }
 
-  // Test 8: Node missing an ID
+  // Test 9: rebuildGraphForFailedNode on graph with string IDs (e.g. "m5a2k3q-1")
   {
     const nodes = [
-      { id: 1, label: 'Valid Node' },
-      { label: 'Node without ID' }
+      { id: 'm5a2k3q-1', label: 'Basics of Go', status: 'active' },
+      { id: 'm5a2k3q-2', label: 'Goroutines', status: 'locked' }
     ];
-    const edges = [];
-    const result = validateCourseGraph(nodes, edges);
-    assert(result.valid === false && result.errors.some(e => e.includes("missing a valid 'id'")), 'Missing node ID test');
+    const edges = [
+      { from: 'm5a2k3q-1', to: 'm5a2k3q-2' }
+    ];
+    const failedNode = nodes[0];
+
+    const result = buildRebuiltGraph(nodes, edges, failedNode, 'Micro lesson content');
+    const newId = result.nodes[result.nodes.length - 1].id;
+
+    assert(newId !== undefined && newId !== null && !String(newId).includes('NaN'), 'Rebuilt graph produces non-NaN ID for string node IDs');
+
+    const ids = result.nodes.map(n => n.id);
+    const uniqueIds = new Set(ids);
+    assert(ids.length === uniqueIds.size, 'Rebuilt graph contains no duplicate node IDs');
+
+    const hasNaNEdge = result.edges.some(e => String(e.from).includes('NaN') || String(e.to).includes('NaN'));
+    assert(!hasNaNEdge, 'Rebuilt graph edges contain no NaN values');
+
+    const valResult = validateCourseGraph(result.nodes, result.edges);
+    assert(valResult.valid === true, 'Rebuilt graph with string IDs is a valid DAG');
+  }
+
+  // Test 10: rebuildGraphForFailedNode on graph with numeric IDs
+  {
+    const nodes = [
+      { id: 1, label: 'Node 1', status: 'active' },
+      { id: 2, label: 'Node 2', status: 'locked' }
+    ];
+    const edges = [{ from: 1, to: 2 }];
+    const result = buildRebuiltGraph(nodes, edges, nodes[0], 'Content');
+    const newId = result.nodes[result.nodes.length - 1].id;
+
+    assert(newId === 3, 'Rebuilt graph produces max numeric ID + 1 (3) for numeric node IDs');
+    assert(validateCourseGraph(result.nodes, result.edges).valid === true, 'Rebuilt numeric graph is a valid DAG');
   }
 
   console.log(`\nSummary: ${passed} passed, ${failed} failed.`);

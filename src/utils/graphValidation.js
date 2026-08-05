@@ -140,3 +140,74 @@ export function validateCourseGraph(nodes, edges) {
     errors
   };
 }
+
+/**
+ * Helper to generate a unique ID for a newly inserted micro-node.
+ * Handles numeric IDs (1, 2, 3) as well as string/UUID IDs ("m5a2k3q-1").
+ */
+export function generateNextNodeId(existingNodes) {
+  if (!Array.isArray(existingNodes) || existingNodes.length === 0) {
+    return 1;
+  }
+  const numericIds = existingNodes
+    .map(n => n && n.id !== undefined && n.id !== null ? Number(n.id) : NaN)
+    .filter(id => !isNaN(id) && isFinite(id));
+
+  // If ALL existing nodes have numeric IDs (or numeric string IDs), use max + 1
+  if (numericIds.length === existingNodes.length && numericIds.length > 0) {
+    const maxVal = Math.max(...numericIds);
+    return typeof existingNodes[0].id === 'string' ? String(maxVal + 1) : maxVal + 1;
+  }
+
+  // If string/UUID IDs exist (e.g. "m5a2k3q-1"), use crypto.randomUUID()
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `node_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+}
+
+/**
+ * Pure transformation logic for rebuilding graph on a failed node.
+ * Separated from Firestore I/O for clean testing and maintainability.
+ */
+export function buildRebuiltGraph(courseNodes, courseEdges, failedNode, aiGeneratedContent) {
+  const nodes = Array.isArray(courseNodes) ? courseNodes : [];
+  const edges = Array.isArray(courseEdges) ? courseEdges : [];
+  const failedIdStr = String(failedNode.id);
+
+  const alreadyExists = nodes.some(n => n.label && n.label.includes(`Работа над ошибками: ${failedNode.label}`));
+  if (alreadyExists) return { nodes, edges };
+
+  const newId = generateNextNodeId(nodes);
+
+  const microNode = {
+    id: newId,
+    label: `🔍 Работа над ошибками: ${failedNode.label}`,
+    desc: `Автоматически сгенерированный микро-модуль для закрытия пробелов по теме "${failedNode.label}".`,
+    hours: '0.5h',
+    lessons: 1,
+    category: 'Работа над ошибками',
+    status: 'active',
+    content: aiGeneratedContent
+  };
+
+  const updatedEdges = [
+    ...edges.filter(e => String(e.from) !== failedIdStr),
+    { from: failedNode.id, to: newId },
+    ...edges.filter(e => String(e.from) === failedIdStr).map(e => ({ from: newId, to: e.to }))
+  ];
+
+  const updatedNodes = nodes.map(n => {
+    if (String(n.id) === failedIdStr) {
+      return { ...n, status: 'completed' };
+    }
+    const dependsOnFailedNode = edges.some(e => String(e.from) === failedIdStr && String(e.to) === String(n.id));
+    if (dependsOnFailedNode) {
+      return { ...n, status: 'locked' };
+    }
+    return n;
+  });
+
+  const finalNodes = [...updatedNodes, microNode];
+  return { nodes: finalNodes, edges: updatedEdges };
+}

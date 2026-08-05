@@ -17,7 +17,11 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { getLocale } from '../i18n.js';
-import { validateCourseGraph } from '../utils/graphValidation.js';
+import { 
+  validateCourseGraph, 
+  generateNextNodeId, 
+  buildRebuiltGraph 
+} from '../utils/graphValidation.js';
 import { 
   buildCourseCacheKey, 
   buildLessonCacheKey, 
@@ -1161,6 +1165,8 @@ export function markdownToSlides(markdown) {
   });
 }
 
+export { generateNextNodeId, buildRebuiltGraph };
+
 export async function rebuildGraphForFailedNode(courseId, nodeId) {
   const course = await getCourseById(courseId);
   const failedNode = course.nodes.find(n => String(n.id) === String(nodeId));
@@ -1169,8 +1175,6 @@ export async function rebuildGraphForFailedNode(courseId, nodeId) {
   // Check if a micro-module for this node already exists to avoid duplicates
   const alreadyExists = course.nodes.some(n => n.label.includes(`Работа над ошибками: ${failedNode.label}`));
   if (alreadyExists) return course;
-
-  const newId = Math.max(...course.nodes.map(n => n.id)) + 1;
 
   const currentLocale = getLocale();
   let languageName = 'English';
@@ -1192,35 +1196,7 @@ CRITICAL INSTRUCTION: Respond entirely in ${languageName}.`;
     aiGeneratedContent = `## Микро-модуль для закрытия пробелов: ${failedNode.label}\n\nЗдесь собраны ключевые моменты и пояснения по теме "${failedNode.label}". Пожалуйста, перечитайте основные материалы и обратитесь к AI-ассистенту за дополнительными вопросами.`;
   }
 
-  const microNode = {
-    id: newId,
-    label: `🔍 Работа над ошибками: ${failedNode.label}`,
-    desc: `Автоматически сгенерированный микро-модуль для закрытия пробелов по теме "${failedNode.label}".`,
-    hours: '0.5h',
-    lessons: 1,
-    category: 'Работа над ошибками',
-    status: 'active',
-    content: aiGeneratedContent
-  };
-
-  const updatedEdges = [
-    ...course.edges.filter(e => String(e.from) !== String(failedNode.id)),
-    { from: parseInt(failedNode.id, 10), to: newId },
-    ...course.edges.filter(e => String(e.from) === String(failedNode.id)).map(e => ({ from: newId, to: parseInt(e.to, 10) }))
-  ];
-
-  const updatedNodes = course.nodes.map(n => {
-    if (String(n.id) === String(failedNode.id)) {
-      return { ...n, status: 'completed' };
-    }
-    const dependsOnFailedNode = course.edges.some(e => String(e.from) === String(failedNode.id) && String(e.to) === String(n.id));
-    if (dependsOnFailedNode) {
-      return { ...n, status: 'locked' };
-    }
-    return n;
-  });
-
-  const finalNodes = [...updatedNodes, microNode];
+  const { nodes: finalNodes, edges: updatedEdges } = buildRebuiltGraph(course.nodes, course.edges, failedNode, aiGeneratedContent);
 
   const courseRef = doc(db, 'courses', courseId);
   await updateDoc(courseRef, {
