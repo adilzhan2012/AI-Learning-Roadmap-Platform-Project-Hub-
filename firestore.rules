@@ -50,11 +50,19 @@ service cloud.firestore {
       }
       
       // --- Quiz Results ---
+      // TODO: Full security requires moving quiz answer evaluation and passed flag computation to a Cloud Function (submitQuizAnswers) that evaluates student answers against server-side answer keys.
       match /quizResults/{quizId} {
         allow read: if isOwner(userId) || isAdmin();
-        // Write allowed for the owner (quiz submission), but validate structure
+        // Write allowed for owner with structure and type/range validation
         allow create, update: if isOwner(userId)
-          && request.resource.data.userId == userId;
+          && request.resource.data.userId == userId
+          && (!('score' in request.resource.data) || (request.resource.data.score is int && request.resource.data.score >= 0 && request.resource.data.score <= 100))
+          && (!('passed' in request.resource.data) || (request.resource.data.passed is bool));
+      }
+
+      // --- Homework Submissions ---
+      match /homeworkSubmissions/{docId} {
+        allow read, write: if isOwner(userId) || isAdmin();
       }
       
       // --- Activities ---
@@ -81,6 +89,17 @@ service cloud.firestore {
       // Allow reading courses for cloning (template courses with no userId or shared flag)
       allow read: if isAuth() && resource.data.isTemplate == true;
     }
+
+    // --- Course Templates Cache ---
+    match /courseTemplates/{templateId} {
+      allow read: if isAuth();
+      allow create, update: if isAuth()
+        && (!('title' in request.resource.data) || request.resource.data.title is string);
+      
+      match /lessons/{lessonId} {
+        allow read, write: if isAuth();
+      }
+    }
     
     // --- Settings (admin-only) ---
     match /settings/{docId} {
@@ -106,10 +125,12 @@ service cloud.firestore {
     match /certificates/{certId} {
       // Certificates verification is public (anyone can verify by certId)
       allow read: if true;
-      // Allow authenticated user to create certificate for themselves
+      // Allow authenticated user to create certificate ONLY IF they own the course and course progress is 100%
       allow create: if isAuth() 
         && request.resource.data.userId == request.auth.uid
-        && request.resource.data.keys().hasAll(['userId', 'courseId', 'certId']);
+        && request.resource.data.keys().hasAll(['userId', 'courseId', 'certId'])
+        && get(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.userId == request.auth.uid
+        && get(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.progress == 100;
       // Certificates are immutable: cannot be modified or deleted by clients
       allow update, delete: if false;
     }
