@@ -612,9 +612,9 @@ export default function Insights() {
               </div>
 
               {/* X Axis Labels */}
-              <div className="flex justify-between mt-3 text-[10px] font-mono text-on-surface-variant px-1 select-none">
+              <div className="flex justify-between mt-3 text-[10px] font-mono text-on-surface-variant px-1 select-none w-full min-w-0">
                 {labels.map((label, i) => (
-                  <span key={i}>{label}</span>
+                  <span key={i} className={i % 2 !== 0 && labels.length > 7 ? 'hidden sm:block' : ''}>{label}</span>
                 ))}
               </div>
             </div>

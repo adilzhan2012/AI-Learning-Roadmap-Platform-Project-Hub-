@@ -71,20 +71,20 @@ function ResourceCard({ resource, onClick, isLocked }) {
           {typeInfo.label}
         </span>
 
-        <div className="p-6 flex flex-col h-full">
-          <div className="flex items-center gap-2 text-on-surface-variant mb-4">
+        <div className="p-4 md:p-6 flex flex-col h-full">
+          <div className="flex items-center gap-2 text-on-surface-variant mb-3 md:mb-4">
             <Icon className="w-4 h-4" strokeWidth={1.5} />
             <span className="text-[10px] uppercase tracking-wider font-mono font-bold">{t(typeInfo.labelKey)}</span>
           </div>
           
-          <h3 className="text-base font-bold text-on-surface leading-tight mb-2 group-hover:text-on-surface transition-colors font-clash line-clamp-2">
+          <h3 className="text-base font-bold text-on-surface leading-tight mb-1.5 md:mb-2 group-hover:text-on-surface transition-colors font-clash line-clamp-2">
             {resource.title}
           </h3>
-          <p className="text-xs text-on-surface-variant leading-relaxed mb-6 flex-1 line-clamp-3">
+          <p className="text-xs text-on-surface-variant leading-relaxed mb-4 md:mb-6 flex-1 line-clamp-3">
             {resource.desc}
           </p>
           
-          <div className="flex flex-wrap gap-1.5 mb-6">
+          <div className="flex flex-wrap gap-1.5 mb-4 md:mb-6">
             {resource.tags.map(tag => (
               <span key={tag} className="bg-surface-container text-on-surface-variant border border-outline-variant text-[9px] font-mono font-bold rounded-[4px] px-2 py-0.5 uppercase tracking-wider">
                 {tag}
@@ -92,8 +92,8 @@ function ResourceCard({ resource, onClick, isLocked }) {
             ))}
           </div>
 
-          <div className="flex items-center justify-between pt-4 border-t border-outline mt-auto">
-            <div className="flex items-center gap-3 text-[10px] text-on-surface-variant font-mono">
+          <div className="flex items-center justify-between pt-3 md:pt-4 border-t border-outline mt-auto">
+            <div className="flex items-center gap-2 text-[10px] text-on-surface-variant font-mono">
               {resource.author && <span className="flex items-center gap-1"><User className="w-3.5 h-3.5" strokeWidth={1.5} />{resource.author}</span>}
               {resource.meta && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" strokeWidth={1.5} />{resource.meta}</span>}
             </div>
@@ -220,7 +220,7 @@ export default function Resources() {
       initial="hidden"
       animate="show"
       variants={containerVariants}
-      className="max-w-[2000px] mx-auto text-on-background font-sans p-4 md:p-6"
+      className="max-w-[2000px] mx-auto text-on-background font-sans p-4 md:p-6 w-full min-w-0 overflow-x-hidden"
     >
       <motion.div variants={cardVariants} className="mb-10">
         <h1 className="text-4xl font-bold font-clash text-on-surface mb-2 tracking-tight">{t('resources.title')}</h1>
@@ -285,7 +285,7 @@ export default function Resources() {
           <p className="text-xs text-on-surface-variant/60 mt-1">Создайте хотя бы один курс, чтобы сгенерировать библиотеку ресурсов.</p>
         </div>
       ) : (
-        <div className="flex flex-col lg:flex-row gap-8">
+        <div className="flex flex-col lg:flex-row gap-8 w-full min-w-0">
           {/* Narrow Left Column Filters (20% width) */}
           <div className="w-full lg:w-48 flex-shrink-0 space-y-6">
             <div className="bg-surface border border-outline rounded-[16px] p-4">
@@ -320,7 +320,7 @@ export default function Resources() {
           </div>
 
           {/* Right Column Catalog Content (80% width) */}
-          <div className="flex-1 space-y-6">
+          <div className="flex-1 space-y-6 min-w-0 w-full">
             {/* Search + Tabs Bar */}
             <div className="space-y-4">
               {/* Borderless bottom line search field */}

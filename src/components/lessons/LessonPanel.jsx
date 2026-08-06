@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
   CheckCircle,
@@ -64,6 +64,26 @@ export default function LessonPanel({
   const [failedConcepts, setFailedConcepts] = useState([]);
   const [consecutiveFailsCount, setConsecutiveFailsCount] = useState(0);
 
+  const contentRef = useRef(null);
+  const { plan, checkLimit, incrementUsage, usage } = usePlanLimits();
+  const { selection, clear } = useTextSelection(contentRef);
+
+  // Added missing states
+  const [isELI5, setIsELI5] = useState(false);
+  const [eli5Generating, setEli5Generating] = useState(false);
+  const [insight, setInsight] = useState('');
+  const [insightGenerating, setInsightGenerating] = useState(false);
+  const [showSlides, setShowSlides] = useState(false);
+  const [adaptationBanner, setAdaptationBanner] = useState(false);
+  const [nonUltraAdaptationHint, setNonUltraAdaptationHint] = useState(false);
+  const [practiceCode, setPracticeCode] = useState('');
+  const [practiceAssignment, setPracticeAssignment] = useState('');
+  const [reviewingCode, setReviewingCode] = useState(false);
+  const [codeReviewResult, setCodeReviewResult] = useState('');
+  const [generatingAssignment, setGeneratingAssignment] = useState(false);
+  const [showPractice, setShowPractice] = useState(false);
+  const [isUpgradeModalOpen, setUpgradeModalOpen] = useState(false);
+
   const handleReviewSection = (headingText) => {
     if (!contentRef.current || !headingText) return;
     const elements = contentRef.current.querySelectorAll('h1, h2, h3, h4');
@@ -78,6 +98,31 @@ export default function LessonPanel({
       setTimeout(() => {
         target.classList.remove('bg-indigo-500/20');
       }, 3000);
+    }
+  };
+
+  const handleGenerateContent = async () => {
+    if (generating || !selectedNode || !selectedCourse) return;
+    setGenerating(true);
+    setGenError('');
+    try {
+      const content = await generateLessonContent(
+        selectedCourse.id, 
+        selectedNode.id, 
+        selectedCourse.title, 
+        selectedNode.label, 
+        selectedNode.desc
+      );
+      if (content) {
+        const updatedNode = { ...selectedNode, content };
+        // Pass the updated node up so the UI re-renders with the new content
+        onNodeUpdated(updatedNode, selectedCourse);
+      }
+    } catch (e) {
+      console.error("Error generating lesson:", e);
+      setGenError("Не удалось сгенерировать урок. Пожалуйста, попробуйте еще раз.");
+    } finally {
+      setGenerating(false);
     }
   };
 
@@ -690,39 +735,71 @@ Provide a code boilerplate template at the end.`;
             </div>
           </div>
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center p-6 text-center">
-            <div className="max-w-md w-full bg-zinc-100 dark:bg-zinc-800-lowest border border-zinc-200 dark:border-zinc-700 p-8 rounded-3xl shadow-xl flex flex-col items-center">
-              <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 border border-primary/20">
+          <div className="absolute inset-0 flex items-center justify-center p-6 text-center z-50">
+            <motion.div 
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              className="max-w-md w-full bg-surface/90 backdrop-blur-xl border border-outline/50 p-8 rounded-[2rem] shadow-2xl flex flex-col items-center relative overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-50" />
+
+              <motion.div 
+                animate={generating ? { rotate: 360 } : {}}
+                transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                className="w-20 h-20 bg-surface-container rounded-2xl flex items-center justify-center mb-6 border border-outline relative z-10 shadow-inner"
+              >
                 {generating ? (
-                  <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                  <Loader2 className="w-8 h-8 text-primary animate-spin" />
                 ) : (
-                  <Sparkles className="w-10 h-10 text-primary" />
+                  <Sparkles className="w-8 h-8 text-primary" />
                 )}
+              </motion.div>
+              
+              <h3 className="text-xl font-bold font-clash text-on-surface mb-3 relative z-10 leading-tight">
+                {t(selectedNode.label)}
+              </h3>
+              
+              <div className="text-sm text-on-surface-variant mb-8 leading-relaxed relative z-10">
+                <p className="mb-4">{t(selectedNode.desc)}</p>
+                <motion.p 
+                  animate={generating ? { opacity: [0.5, 1, 0.5] } : {}}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  className="font-mono text-xs text-primary font-medium"
+                >
+                  {generating ? 'Создаем персональный урок для вас...' : 'ИИ-ментор готов начать'}
+                </motion.p>
               </div>
-              <h3 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mb-3">{t(selectedNode.label)}</h3>
-              <p className="text-zinc-500 dark:text-zinc-400 mb-8 text-sm leading-relaxed">
-                {t(selectedNode.desc)}
-                <br/><br/>
-                {generating ? 'Создаем персональный урок для вас...' : 'ИИ-ментор готовит материал...'}
-              </p>
               
               {genError && (
-                <>
-                  <div className="w-full bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-xl mb-6 flex items-center gap-3 text-sm text-left">
+                <div className="w-full relative z-10">
+                  <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-xl mb-6 flex items-center gap-3 text-sm text-left">
                     <AlertCircle className="w-6 h-6 flex-shrink-0" />
                     <span>{genError}</span>
                   </div>
                   <motion.button 
-                    whileHover={{ scale: 1.02 }}
+                    whileHover={{ scale: 1.02, y: -2 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handleGenerateContent}
-                    className="w-full bg-primary text-on-primary py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-primary/25 transition-all flex items-center justify-center gap-3"
+                    className="w-full bg-primary text-on-primary py-3.5 rounded-xl font-bold text-sm shadow-lg hover:shadow-primary/25 transition-all flex items-center justify-center gap-2"
                   >
                     Повторить попытку
                   </motion.button>
-                </>
+                </div>
               )}
-            </div>
+              
+              {!generating && !genError && (
+                <motion.button 
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleGenerateContent}
+                  className="w-full relative z-10 bg-on-surface text-inverse-on-surface py-3.5 rounded-xl font-bold text-sm shadow-xl transition-all flex items-center justify-center gap-2 font-sans"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Сгенерировать урок
+                </motion.button>
+              )}
+            </motion.div>
           </div>
         )}
       </div>

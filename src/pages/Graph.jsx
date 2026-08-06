@@ -796,64 +796,24 @@ Respond in Russian. Keep your reply concise and professional.`;
         }
       `}</style>
 
-      {/* Top Header Card */}
+      {/* Compact Top Header */}
       <div 
-        className={`mb-5 flex-shrink-0 flex flex-col gap-4 p-5 md:p-6 border rounded-[24px] font-sans transition-all ${
+        className={`mb-3 flex-shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 md:p-4 border rounded-[16px] font-sans transition-all z-20 ${
           isLightTheme 
-            ? 'bg-white border-zinc-200 text-zinc-900 shadow-md' 
-            : 'bg-[#141417]/80 backdrop-blur-xl border-zinc-800/80 text-zinc-100 shadow-[0_8px_30px_rgb(0,0,0,0.2)]'
+            ? 'bg-white border-zinc-200 text-zinc-900 shadow-sm' 
+            : 'bg-[#141417]/90 backdrop-blur-md border-zinc-800/80 text-zinc-100'
         }`}
       >
-        {/* Row 1: Title, Course Info & Main Controls */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-start md:items-center gap-4">
-            <div className={`w-12 h-12 rounded-[16px] flex items-center justify-center shrink-0 shadow-inner ${
-              isLightTheme ? 'bg-gradient-to-br from-violet-500/10 to-indigo-500/20 text-violet-600 border border-violet-200' : 'bg-gradient-to-br from-violet-500/20 to-indigo-500/10 text-violet-400 border border-violet-500/20'
-            }`}>
-              <Trophy className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-lg font-extrabold font-clash tracking-wide m-0">{t('graph.title') || 'Knowledge graph'}</h2>
-                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/30 uppercase tracking-wider">
-                  Интерактивная карта
-                </span>
-              </div>
-              <p className={`text-xs mt-1 font-medium flex items-center gap-2 flex-wrap ${
-                isLightTheme ? 'text-zinc-600' : 'text-zinc-400'
-              }`}>
-                <span className="font-bold text-on-surface">{selectedCourse ? t(selectedCourse.title) : ''}</span>
-                <span>•</span>
-                <span>{totalNodesCount} тем</span>
-                <span>•</span>
-                <span>~{totalEstimatedHours} ч. обучения</span>
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-3 self-end md:self-auto">
-            <button
-              onClick={() => {
-                setHistoryModalFilterNodeId(null);
-                setHistoryModalOpen(true);
-              }}
-              className={`flex items-center justify-center gap-2 border px-4 py-2.5 rounded-[14px] text-xs font-bold transition-all shadow-sm ${
-                isLightTheme 
-                  ? 'bg-zinc-100 hover:bg-zinc-200/80 border-zinc-200 text-zinc-800' 
-                  : 'bg-zinc-900/90 hover:bg-zinc-800 border-zinc-800 text-zinc-200'
-              }`}
-            >
-              <Clock className="w-4 h-4 text-violet-400" />
-              <span>История тестов</span>
-            </button>
-
+        <div className="flex flex-col md:flex-row md:items-center gap-4 flex-1">
+          {/* Course Selector */}
+          <div className="flex items-center gap-2">
             <select 
               value={selectedCourse?.id || ''} 
               onChange={handleCourseChange}
-              className={`border rounded-[14px] px-4 py-2.5 text-xs font-bold font-sans focus:outline-none focus:border-violet-500 shadow-sm cursor-pointer transition-all ${
+              className={`border rounded-[10px] px-3 py-2 text-xs font-bold font-sans focus:outline-none focus:border-violet-500 shadow-sm cursor-pointer transition-all ${
                 isLightTheme 
                   ? 'bg-zinc-100 hover:bg-zinc-200/80 border-zinc-200 text-zinc-800' 
-                  : 'bg-zinc-900/90 hover:bg-zinc-800 border-zinc-800 text-zinc-200'
+                  : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-200'
               }`}
             >
               {courses.map(c => (
@@ -861,171 +821,67 @@ Respond in Russian. Keep your reply concise and professional.`;
               ))}
             </select>
           </div>
-        </div>
 
-        {/* Divider */}
-        <div className={`h-px w-full ${isLightTheme ? 'bg-zinc-200' : 'bg-zinc-800/80'}`} />
-
-        {/* Row 2: Gamification Stats Grid & Legend ("что то ещё было" + "пространство") */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3 items-stretch">
-          
-          {/* Stat 1: Course Progress */}
-          <div className={`flex flex-col justify-between p-3.5 rounded-[16px] border ${
-            isLightTheme ? 'bg-zinc-50/80 border-zinc-200' : 'bg-zinc-900/40 border-zinc-800/60'
-          }`}>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className={`text-[10px] font-semibold uppercase tracking-wider ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>Прогресс курса</span>
-              <span className="text-xs font-black font-mono text-violet-400">{courseProgressPct}%</span>
-            </div>
-            <div className="space-y-1">
-              <div className={`w-full h-2 rounded-full overflow-hidden ${isLightTheme ? 'bg-zinc-200' : 'bg-zinc-800'}`}>
+          {/* Progress Inline */}
+          {selectedCourse && (
+            <div className="flex items-center gap-3 flex-1 max-w-md w-full">
+              <span className={`text-[10px] font-bold uppercase tracking-wider hidden sm:block ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                Прогресс {courseProgressPct}%
+              </span>
+              <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${isLightTheme ? 'bg-zinc-200' : 'bg-zinc-800'}`}>
                 <div 
                   className="h-full bg-gradient-to-r from-violet-600 to-indigo-500 rounded-full transition-all duration-500"
                   style={{ width: `${courseProgressPct}%` }}
                 />
               </div>
-              <p className={`text-[10px] font-medium text-right ${isLightTheme ? 'text-zinc-600' : 'text-zinc-400'}`}>
-                {completedNodesCount} из {totalNodesCount} тем пройдено
-              </p>
-            </div>
-
-            {courseProgressPct === 100 && (
-              <div className="mt-2 pt-2 border-t border-indigo-500/20">
-                {certLoading ? (
-                  <div className="flex items-center justify-center gap-2 py-1 text-xs text-indigo-400 font-medium">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Генерация PDF...</span>
-                  </div>
+              
+              {/* Certificate Button inline if 100% */}
+              {courseProgressPct === 100 && (
+                certLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
                 ) : certData ? (
-                  <div className="flex items-center gap-1.5 justify-between">
-                    {certData.fileUrl ? (
-                      <a
-                        href={certData.fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[11px] font-bold transition-all shadow-sm"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        <span>Скачать PDF</span>
-                      </a>
-                    ) : (
-                      <a
-                        href={`#/verify/${certData.certId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[11px] font-bold transition-all shadow-sm"
-                      >
-                        <Award className="w-3.5 h-3.5" />
-                        <span>Посмотреть сертификат</span>
-                      </a>
-                    )}
-                    <a
-                      href={`#/verify/${certData.certId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 rounded-lg flex items-center justify-center"
-                      title="Проверить подлинность"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  </div>
+                   <a href={certData.fileUrl || `#/verify/${certData.certId}`} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 rounded-lg transition-colors" title="Сертификат">
+                     <Award className="w-4 h-4" />
+                   </a>
                 ) : (
-                  <div className="flex flex-col items-center gap-1 w-full">
-                    <button
-                      type="button"
-                      onClick={handleGetCertificate}
-                      className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white font-bold text-xs rounded-lg transition-all shadow-md active:scale-95"
-                    >
-                      <Award className="w-4 h-4 text-amber-200" />
-                      <span>Получить сертификат</span>
-                    </button>
-                    {plan === 'FREE' && (
-                      <span className="text-[9px] text-zinc-500 dark:text-zinc-400 text-center leading-tight mt-1">
-                        Upgrade to Pro для QR-верификации и PDF
-                      </span>
-                    )}
-                  </div>
-                )}
-                {certError && <p className="text-[10px] text-rose-400 mt-1 text-center">{certError}</p>}
-              </div>
-            )}
-          </div>
-
-          {/* Stat 2: Estimated Hours */}
-          <div className={`flex flex-col justify-between p-3.5 rounded-[16px] border ${
-            isLightTheme ? 'bg-zinc-50/80 border-zinc-200' : 'bg-zinc-900/40 border-zinc-800/60'
-          }`}>
-            <div className="flex items-center justify-between mb-1">
-              <span className={`text-[10px] font-semibold uppercase tracking-wider ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>Общее время</span>
-              <span className="text-xs font-black font-mono text-indigo-400">~{totalEstimatedHours} ч.</span>
-            </div>
-            <p className={`text-[11px] font-medium ${isLightTheme ? 'text-zinc-700' : 'text-zinc-300'}`}>
-              Изучено: <strong className="text-on-surface font-mono">~{completedHours} ч.</strong>
-            </p>
-          </div>
-
-          {/* Stat 3: XP & Level */}
-          {userLevelData ? (
-            <div className={`flex flex-col justify-between p-3.5 rounded-[16px] border ${
-              isLightTheme ? 'bg-zinc-50/80 border-zinc-200' : 'bg-zinc-900/40 border-zinc-800/60'
-            }`}>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className={`text-[10px] font-semibold uppercase tracking-wider ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>Уровень {userLevelData.current.level}</span>
-                <span className="text-[11px] font-bold text-amber-400">{userLevelData.current.title}</span>
-              </div>
-              <div className="space-y-1">
-                <div className={`w-full h-2 rounded-full overflow-hidden ${isLightTheme ? 'bg-zinc-200' : 'bg-zinc-800'}`}>
-                  <div 
-                    className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full transition-all duration-500"
-                    style={{ width: `${userLevelData.progress}%` }}
-                  />
-                </div>
-                <p className={`text-[10px] font-mono text-right ${isLightTheme ? 'text-zinc-600' : 'text-zinc-400'}`}>
-                  {userLevelData.progress.toFixed(0)}% до следующего
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className={`flex flex-col justify-between p-3.5 rounded-[16px] border ${
-              isLightTheme ? 'bg-zinc-50/80 border-zinc-200' : 'bg-zinc-900/40 border-zinc-800/60'
-            }`}>
-              <span className={`text-[10px] font-semibold uppercase tracking-wider ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>Статус ученика</span>
-              <p className="text-xs font-bold text-amber-400">Активный участник</p>
+                  <button onClick={handleGetCertificate} className="p-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-lg transition-colors" title="Получить сертификат">
+                    <Award className="w-4 h-4" />
+                  </button>
+                )
+              )}
             </div>
           )}
+        </div>
 
-          {/* Stat 4: Streak */}
-          <div className={`flex items-center gap-3 p-3.5 rounded-[16px] border ${
-            isLightTheme ? 'bg-zinc-50/80 border-zinc-200' : 'bg-zinc-900/40 border-zinc-800/60'
-          }`}>
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500/20 to-red-500/10 border border-orange-500/30 flex items-center justify-center shrink-0">
-              <Flame className="w-5 h-5 text-orange-500 animate-bounce" />
-            </div>
-            <div>
-              <span className={`text-[10px] font-semibold uppercase tracking-wider block ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>Активность</span>
-              <span className="text-sm font-black text-orange-500 font-mono">{userProfile?.streakDays || 1} дн. подряд</span>
-            </div>
+        <div className="flex items-center justify-between md:justify-end gap-3 mt-1 md:mt-0">
+          {/* Legend Inline */}
+          <div className="flex items-center gap-2 mr-2">
+            {[
+              { bgClass: 'bg-[#ffe100] border-black', label: 'Темы' },
+              { bgClass: 'bg-[#1a1a1a] border-zinc-700', label: 'Практика' },
+              { bgClass: isLightTheme ? 'bg-[#f4f4f5] border-zinc-300' : 'bg-[#27272a] border-zinc-800', label: 'Блок' }
+            ].map(({ bgClass, label }) => (
+              <div key={label} className="flex items-center gap-1" title={label}>
+                <div className={`w-2.5 h-2.5 rounded-sm border ${bgClass}`} />
+                <span className={`text-[9px] font-medium hidden sm:block ${isLightTheme ? 'text-zinc-600' : 'text-zinc-400'}`}>{label}</span>
+              </div>
+            ))}
           </div>
 
-          {/* Stat 5: Legend */}
-          <div className={`flex flex-col justify-center p-3.5 rounded-[16px] border sm:col-span-2 lg:col-span-4 xl:col-span-1 ${
-            isLightTheme ? 'bg-zinc-50/80 border-zinc-200' : 'bg-zinc-900/40 border-zinc-800/60'
-          }`}>
-            <span className={`text-[10px] font-semibold uppercase tracking-wider mb-2 ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>Легенда карты</span>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-              {[
-                { bgClass: 'bg-[#ffe100] border-black', label: 'Темы' },
-                { bgClass: 'bg-[#1a1a1a] border-zinc-700', label: 'Практика' },
-                { bgClass: isLightTheme ? 'bg-[#f4f4f5] border-zinc-300' : 'bg-[#27272a] border-zinc-800', label: 'Заблокировано' }
-              ].map(({ bgClass, label }) => (
-                <div key={label} className="flex items-center gap-1.5">
-                  <div className={`w-3.5 h-3.5 rounded-md border ${bgClass}`} />
-                  <span className={`text-[11px] font-medium ${isLightTheme ? 'text-zinc-700' : 'text-zinc-300'}`}>{label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
+          <button
+            onClick={() => {
+              setHistoryModalFilterNodeId(null);
+              setHistoryModalOpen(true);
+            }}
+            className={`flex items-center justify-center gap-1.5 border px-3 py-1.5 rounded-[10px] text-xs font-bold transition-all shadow-sm ${
+              isLightTheme 
+                ? 'bg-zinc-100 hover:bg-zinc-200/80 border-zinc-200 text-zinc-800' 
+                : 'bg-zinc-900/90 hover:bg-zinc-800 border-zinc-800 text-zinc-200'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5 text-violet-400" />
+            <span className="hidden sm:inline">История</span>
+          </button>
         </div>
       </div>
 
@@ -1037,7 +893,7 @@ Respond in Russian. Keep your reply concise and professional.`;
             isLightTheme 
               ? 'bg-zinc-50 border-zinc-200 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]' 
               : 'bg-[#0f172a] border-outline'
-          } border rounded-[20px] overflow-y-auto overflow-x-auto relative flex flex-col p-8 items-center custom-scrollbar`}
+          } border rounded-[20px] overflow-y-auto overflow-x-auto relative flex flex-col p-8 items-center custom-scrollbar overscroll-none touch-pan-x touch-pan-y`}
           ref={containerRef}
         >
           {/* Static Roadmap Layout (Centered) */}
@@ -1224,7 +1080,7 @@ Respond in Russian. Keep your reply concise and professional.`;
         </div>
 
         {/* Right Detail Sidebar Panel */}
-        <motion.div className="w-full lg:w-80 flex-shrink-0 flex flex-col h-full max-h-full overflow-hidden">
+        <motion.div className={`${!selectedNode ? 'hidden lg:flex' : 'flex'} w-full lg:w-80 flex-shrink-0 flex-col ${selectedNode ? 'h-[50vh] lg:h-full max-h-[50vh]' : 'h-auto max-h-[40vh] lg:h-full'} lg:max-h-full overflow-hidden relative`}>
           <AnimatePresence mode="wait">
             {selectedNode ? (
               <motion.div 
@@ -1238,9 +1094,19 @@ Respond in Russian. Keep your reply concise and professional.`;
                 }`}
               >
                 {/* Header */}
-                <div className={`p-4 border-b ${isLightTheme ? 'border-zinc-200 bg-zinc-100/50' : 'border-white/10 bg-on-surface/5'}`}>
+                <div className={`p-4 border-b relative ${isLightTheme ? 'border-zinc-200 bg-zinc-100/50' : 'border-white/10 bg-on-surface/5'}`}>
+                  {/* Close button (visible on all screens, especially useful on mobile) */}
+                  <button 
+                    onClick={() => setSelectedNode(null)}
+                    className={`absolute top-4 right-4 p-1.5 rounded-full transition-colors ${
+                      isLightTheme ? 'hover:bg-zinc-200 text-zinc-500' : 'hover:bg-white/10 text-zinc-400'
+                    }`}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                  
                   {/* Level Badge */}
-                  <span className={`inline-flex items-center text-[9px] font-mono font-bold px-2 py-0.5 rounded-[6px] border mb-2 uppercase tracking-wider ${
+                  <span className={`inline-flex items-center text-[9px] font-mono font-bold px-2 py-0.5 rounded-[6px] border mb-2 uppercase tracking-wider pr-6 ${
                     isLightTheme ? 'bg-violet-100 text-violet-700 border-violet-200' : 'bg-violet-500/20 text-violet-300 border-violet-500/30'
                   }`}>
                     {selectedNode.level || 'Intermediate'}
@@ -1354,7 +1220,7 @@ Respond in Russian. Keep your reply concise and professional.`;
               <motion.div 
                 key="placeholder"
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className={`${isLightTheme ? 'bg-zinc-50 border-zinc-200 text-zinc-500' : 'bg-slate-900/50 border-white/10 text-zinc-400 backdrop-blur-xl'} border rounded-[20px] p-6 h-full flex flex-col items-center justify-center text-center font-sans shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] animate-fade-in-up`}
+                className={`${isLightTheme ? 'bg-zinc-50 border-zinc-200 text-zinc-500' : 'bg-slate-900/50 border-white/10 text-zinc-400 backdrop-blur-xl'} border rounded-[20px] p-6 lg:h-full flex flex-col items-center justify-center text-center font-sans shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] animate-fade-in-up overflow-y-auto`}
               >
                 <div className={`w-16 h-16 border rounded-[16px] flex items-center justify-center mb-6 ${isLightTheme ? 'bg-zinc-100 border-zinc-200' : 'bg-zinc-950/40 border-white/5'}`}>
                   <Pointer className="w-6 h-6 opacity-40" strokeWidth={1.5} />

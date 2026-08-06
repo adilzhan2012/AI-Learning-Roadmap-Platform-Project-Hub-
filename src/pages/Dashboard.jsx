@@ -107,7 +107,10 @@ export default function Dashboard() {
   const getCachedStats = () => {
     try {
       const cached = localStorage.getItem('cached_stats');
-      if (cached) return JSON.parse(cached);
+      if (cached && cached !== 'null' && cached !== 'undefined') {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed === 'object') return parsed;
+      }
     } catch (e) {}
     return {
       activeCoursesCount: 0,
@@ -137,16 +140,20 @@ export default function Dashboard() {
       if (currentUser) {
         try {
           const fetchedStats = await getUserStats(currentUser.uid);
-          const fetchedCourses = await getUserCourses(currentUser.uid);
-          const fetchedCerts = await getUserAllCertificates(currentUser.uid);
+          const fetchedCourses = await getUserCourses(currentUser.uid) || [];
+          const fetchedCerts = await getUserAllCertificates(currentUser.uid) || [];
           
-          // Dynamically compute active courses to fix any database desyncs
-          fetchedStats.activeCoursesCount = fetchedCourses.length;
-          fetchedStats.certificatesCount = fetchedCerts.length;
-          
-          setStats(fetchedStats);
-          localStorage.setItem('cached_stats', JSON.stringify(fetchedStats));
-          localStorage.setItem('cached_profile', JSON.stringify(fetchedStats));
+          if (fetchedStats) {
+            // Dynamically compute active courses to fix any database desyncs
+            fetchedStats.activeCoursesCount = fetchedCourses.length;
+            fetchedStats.certificatesCount = fetchedCerts.length;
+            
+            setStats(fetchedStats);
+            localStorage.setItem('cached_stats', JSON.stringify(fetchedStats));
+            localStorage.setItem('cached_profile', JSON.stringify(fetchedStats));
+          } else {
+            setStats(getCachedStats());
+          }
 
           setCourses(fetchedCourses);
 
@@ -205,7 +212,7 @@ export default function Dashboard() {
       initial="hidden"
       animate="show"
       variants={staggerContainer}
-      className="max-w-[2000px] mx-auto space-y-8 text-on-background font-sans"
+      className="w-full min-w-0 max-w-[2000px] mx-auto space-y-8 text-on-background font-sans"
     >
       <RepeatReminder />
 
@@ -222,10 +229,10 @@ export default function Dashboard() {
               transition={{ delay: 0.1 }}
               className="text-3xl md:text-[56px] font-bold text-on-surface mb-4 tracking-tight leading-none font-clash"
             >
-              {t(getGreetingKey(), { name: stats.firstName || 'Learner', defaultValue: t('dashboard.welcome', { name: stats.firstName || 'Learner' }) })}
+              {t(getGreetingKey(), { name: stats?.firstName || 'Learner', defaultValue: t('dashboard.welcome', { name: stats?.firstName || 'Learner' }) })}
             </motion.h1>
             <p className="text-sm text-on-surface-variant mb-6 md:mb-8 leading-relaxed mx-auto md:mx-0 max-w-lg">
-              {t('dashboard.streakDesc', { streak: stats.streakDays || 1 })}
+              {t('dashboard.streakDesc', { streak: stats?.streakDays || 1 })}
             </p>
             <motion.button
               whileTap={{ scale: 0.98 }}
@@ -299,7 +306,7 @@ export default function Dashboard() {
           <div>
             <p className="text-xs text-on-surface-variant mb-2 font-sans">Активные курсы</p>
             <h3 className="text-4xl font-bold text-on-surface font-mono">
-              <AnimatedNumber value={stats.activeCoursesCount || 0} />
+              <AnimatedNumber value={stats?.activeCoursesCount || 0} />
             </h3>
           </div>
           
@@ -315,7 +322,7 @@ export default function Dashboard() {
           <div>
             <p className="text-xs text-on-surface-variant mb-2 font-sans">{t('dashboard.stats.hours')}</p>
             <h3 className="text-4xl font-bold text-on-surface font-mono">
-              <AnimatedNumber value={stats.hoursLearned || 0} />
+              <AnimatedNumber value={stats?.hoursLearned || 0} />
             </h3>
           </div>
           <p className="text-xs text-on-surface-variant font-sans">Часы обучения</p>
@@ -326,7 +333,7 @@ export default function Dashboard() {
           <div>
             <p className="text-xs text-on-surface-variant mb-2 font-sans">{t('dashboard.stats.certs')}</p>
             <h3 className="text-4xl font-bold text-on-surface font-mono">
-              <AnimatedNumber value={stats.certificatesCount || 0} />
+              <AnimatedNumber value={stats?.certificatesCount || 0} />
             </h3>
           </div>
           <p className="text-xs text-on-surface-variant font-sans">Сертификаты</p>
@@ -337,13 +344,13 @@ export default function Dashboard() {
           <div>
             <p className="text-xs text-on-surface-variant mb-2 font-sans">{t('dashboard.stats.streak')}</p>
             <h3 className="text-4xl font-bold text-on-surface font-mono">
-              {stats.streakDays || 1}
+              {stats?.streakDays || 1}
             </h3>
           </div>
           
           <div className="flex gap-1.5 mt-2">
             {Array.from({ length: 7 }).map((_, i) => {
-              const isActive = i < (stats.streakDays || 1);
+              const isActive = i < (stats?.streakDays || 1);
               return (
                 <div 
                   key={i} 
@@ -516,7 +523,7 @@ export default function Dashboard() {
             <div className="absolute inset-0 bg-primary/10 rounded-full blur-2xl group-hover:bg-primary/20 transition-colors" />
             <div className="relative z-10 w-24 h-24 rounded-full bg-surface-container border border-outline flex items-center justify-center">
               <div className="flex flex-col items-center justify-center font-sans">
-                <span className="text-3xl font-bold text-on-surface font-mono">{stats.certificatesCount || 0}</span>
+                <span className="text-3xl font-bold text-on-surface font-mono">{stats?.certificatesCount || 0}</span>
                 <span className="text-[10px] font-bold text-on-surface-variant mt-1 uppercase tracking-widest">Получено</span>
               </div>
             </div>
@@ -549,11 +556,11 @@ export default function Dashboard() {
             
             <div className="bg-surface-container/20 border border-outline rounded-lg p-2 flex items-center gap-2 mb-4">
               <div className="p-1 rounded bg-surface border border-outline text-on-surface">
-                <LeagueIcon leagueId={stats.currentLeague || (plan === 'FREE' ? 'graphite' : 'quartz')} className="w-4 h-4" />
+                <LeagueIcon leagueId={stats?.currentLeague || (plan === 'FREE' ? 'graphite' : 'quartz')} className="w-4 h-4" />
               </div>
               <div className="text-left">
                 <p className="text-xs font-bold text-on-surface">
-                  {stats.currentLeague === 'silicon' ? 'Кремний' : stats.currentLeague === 'graphite' ? 'Графит' : stats.currentLeague === 'quartz' ? 'Кварц' : stats.currentLeague === 'obsidian' ? 'Обсидиан' : stats.currentLeague === 'platinum' ? 'Платина' : 'Титан'}
+                  {stats?.currentLeague === 'silicon' ? 'Кремний' : stats?.currentLeague === 'graphite' ? 'Графит' : stats?.currentLeague === 'quartz' ? 'Кварц' : stats?.currentLeague === 'obsidian' ? 'Обсидиан' : stats?.currentLeague === 'platinum' ? 'Платина' : 'Титан'}
                 </p>
                 <p className="text-[9px] text-on-surface-variant">Нажмите, чтобы открыть таблицу</p>
               </div>

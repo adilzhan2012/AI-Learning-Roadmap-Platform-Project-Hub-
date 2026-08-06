@@ -252,7 +252,7 @@ export default function Topbar() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.98 }}
                   transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-                  className="absolute right-0 mt-2 w-[300px] sm:w-80 bg-surface-container border border-outline-variant rounded-[16px] z-[90] flex flex-col max-h-96 font-sans shadow-2xl overflow-hidden"
+                  className="fixed sm:absolute top-[70px] sm:top-full right-4 sm:right-0 sm:mt-2 w-[calc(100vw-2rem)] max-w-[320px] sm:max-w-none sm:w-80 bg-surface-container border border-outline-variant rounded-[16px] z-[90] flex flex-col max-h-[80vh] sm:max-h-96 font-sans shadow-2xl overflow-hidden"
                 >
                   <div className="p-4 border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
                     <h3 className="font-bold text-on-surface text-xs">Уведомления</h3>

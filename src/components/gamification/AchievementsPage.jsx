@@ -87,7 +87,7 @@ export default function AchievementsPage() {
   }
 
   return (
-    <div className="max-w-[2000px] mx-auto min-h-[calc(100vh-4.5rem)] text-on-background font-sans p-4 md:p-6">
+    <div className="max-w-[2000px] mx-auto min-h-[calc(100vh-4.5rem)] text-on-background font-sans p-4 md:p-6 w-full min-w-0 overflow-x-hidden">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold font-clash text-on-surface mb-2 flex items-center">
@@ -208,7 +208,7 @@ export default function AchievementsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 10 }}
                 transition={{ duration: 0.15 }}
-                className="space-y-6"
+                className="space-y-6 w-full min-w-0"
               >
                 {/* Category Tabs */}
                 <div className="flex overflow-x-auto pb-3 gap-2 scrollbar-thin">
