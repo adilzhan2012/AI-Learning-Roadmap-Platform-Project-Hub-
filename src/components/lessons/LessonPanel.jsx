@@ -83,6 +83,7 @@ export default function LessonPanel({
   const [generatingAssignment, setGeneratingAssignment] = useState(false);
   const [showPractice, setShowPractice] = useState(false);
   const [isUpgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [isMobileMentorOpen, setIsMobileMentorOpen] = useState(false);
 
   const handleReviewSection = (headingText) => {
     if (!contentRef.current || !headingText) return;
@@ -483,6 +484,15 @@ Provide a code boilerplate template at the end.`;
               )}
 
               <button 
+                onClick={() => setIsMobileMentorOpen(true)}
+                className="lg:hidden flex items-center gap-2 px-3 py-1.5 hover:bg-indigo-500/10 text-indigo-400 border border-indigo-500/25 rounded-full transition-colors font-medium text-sm"
+                title="Ментор"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span className="hidden md:inline">Ментор</span>
+              </button>
+
+              <button 
                 onClick={handleRealWorldInsight}
                 disabled={insightGenerating}
                 className="flex items-center gap-2 px-3 py-1.5 hover:bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 rounded-full transition-colors font-medium text-sm border border-yellow-500/20 disabled:opacity-50"
@@ -840,15 +850,21 @@ Provide a code boilerplate template at the end.`;
 
       {/* Contextual AI Mentor Panel (Hidden in Zen Mode) */}
       {!isZenMode && (
-        <ContextualMentor 
-          selectedNode={selectedNode}
-          selectedCourse={selectedCourse}
-          plan={plan}
-          usage={usage}
-          checkLimit={checkLimit}
-          incrementUsage={incrementUsage}
-          setUpgradeModalOpen={setUpgradeModalOpen}
-        />
+        <div className={`
+          fixed inset-0 z-50 lg:static lg:block
+          ${isMobileMentorOpen ? 'block' : 'hidden'}
+        `}>
+          <ContextualMentor 
+            selectedNode={selectedNode}
+            selectedCourse={selectedCourse}
+            plan={plan}
+            usage={usage}
+            checkLimit={checkLimit}
+            incrementUsage={incrementUsage}
+            setUpgradeModalOpen={setUpgradeModalOpen}
+            onClose={() => setIsMobileMentorOpen(false)}
+          />
+        </div>
       )}
     </div>
   );
