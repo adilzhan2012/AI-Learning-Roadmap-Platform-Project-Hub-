@@ -11,7 +11,8 @@ export default function ContextualMentor({
   usage, 
   checkLimit, 
   incrementUsage, 
-  setUpgradeModalOpen 
+  setUpgradeModalOpen,
+  onClose
 }) {
   const [messages, setMessages] = useState([
     {
@@ -109,11 +110,21 @@ INSTRUCTIONS:
           </div>
           <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">Умный Наставник</span>
         </div>
-        {!isFree && (
-          <span className="text-[9px] font-black tracking-widest text-indigo-300 border border-indigo-500/35 px-2 py-0.5 rounded bg-indigo-500/10 uppercase">
-            {plan}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {!isFree && (
+            <span className="text-[9px] font-black tracking-widest text-indigo-300 border border-indigo-500/35 px-2 py-0.5 rounded bg-indigo-500/10 uppercase">
+              {plan}
+            </span>
+          )}
+          {onClose && (
+            <button 
+              onClick={onClose}
+              className="lg:hidden p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-500 dark:text-zinc-400"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Chat Area */}
