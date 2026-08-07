@@ -112,10 +112,11 @@ const calculateLevel = (xp) => {
  * across all usageTypes within a single Firestore transaction (runTransaction).
  * Fixes race conditions across parallel calls for all usageTypes.
  */
-async function processUsageLimitAndCounter(db, admin, userId, usageType, todayStr, monthStr) {
+async function processUsageLimitAndCounter(db, admin, userId, usageType, todayStr, monthStr, lessonId = null) {
   if (!usageType) return { plan: 'FREE', updatedUsageCount: 0 };
 
   const subRef = db.collection('users').doc(userId).collection('subscription').doc('details');
+  const lessonUsageRef = lessonId ? db.collection('users').doc(userId).collection('lessonUsage').doc(String(lessonId)) : null;
 
   try {
     return await db.runTransaction(async (txn) => {
@@ -124,11 +125,32 @@ async function processUsageLimitAndCounter(db, admin, userId, usageType, todaySt
       const plan = data.plan || 'FREE';
 
       const currentRoadmaps = data.roadmapsGenerated || 0;
+      const currentRoadmapsMonth = data.roadmapsMonthStart || monthStr;
+      const currentRoadmapsThisMonth = currentRoadmapsMonth === monthStr ? (data.roadmapsGeneratedThisMonth || 0) : 0;
+
       const currentAiQ = data.lastQuestionDate === todayStr ? (data.aiQuestionsUsed || 0) : 0;
       const currentMentor = data.lastMentorDate === todayStr ? (data.mentorMessagesUsed || 0) : 0;
       const currentHwMonth = data.homeworkMonthStart || monthStr;
       const currentHwReviews = currentHwMonth === monthStr ? (data.homeworkReviewsUsed || 0) : 0;
       const currentUltraTokens = data.ultraTokensUsed || 0;
+
+      // Handle contextual mentor per lesson for FREE plan
+      if (usageType === 'contextual_mentor_message' && lessonUsageRef) {
+        const lessonSnap = await txn.get(lessonUsageRef);
+        const lessonData = lessonSnap.exists ? lessonSnap.data() : {};
+        const lessonMessagesUsed = lessonData.messagesUsed || 0;
+
+        if (plan === 'FREE' && lessonMessagesUsed >= 3) {
+          throw new HttpsError('failed-precondition', 'LESSON_MENTOR_LIMIT_EXCEEDED');
+        }
+
+        txn.set(lessonUsageRef, {
+          messagesUsed: admin.firestore.FieldValue.increment(1),
+          lastUsedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        return { plan, updatedUsageCount: lessonMessagesUsed + 1, remainingLessonMessages: Math.max(0, 3 - (lessonMessagesUsed + 1)) };
+      }
 
       // Check plan limits
       if (plan === 'FREE') {
@@ -156,6 +178,9 @@ async function processUsageLimitAndCounter(db, admin, userId, usageType, todaySt
       }
 
       if (plan === 'PRO') {
+        if (usageType === 'roadmap' && currentRoadmapsThisMonth >= 2) {
+          throw new HttpsError('failed-precondition', 'PRO_ROADMAP_LIMIT_EXCEEDED');
+        }
         if (usageType === 'homework_review' && currentHwReviews >= 30) {
           throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
         }
@@ -174,6 +199,10 @@ async function processUsageLimitAndCounter(db, admin, userId, usageType, todaySt
       if (usageType === 'roadmap') {
         updatedUsageCount = currentRoadmaps + 1;
         updates.roadmapsGenerated = admin.firestore.FieldValue.increment(1);
+        updates.roadmapsGeneratedThisMonth = currentRoadmapsMonth === monthStr
+          ? admin.firestore.FieldValue.increment(1)
+          : 1;
+        updates.roadmapsMonthStart = monthStr;
       } else if (usageType === 'ai_question') {
         updatedUsageCount = data.lastQuestionDate === todayStr ? currentAiQ + 1 : 1;
         updates.aiQuestionsUsed = data.lastQuestionDate === todayStr
@@ -222,7 +251,7 @@ exports.aiProxy = onCall(
       );
     }
 
-    const { prompt, messages: clientMessages, usageType, modelName } = request.data;
+    const { prompt, messages: clientMessages, usageType, modelName, lessonId } = request.data;
     // fix/critical-round1: поддерживаем messages[] для разделения system/user ролей.
     // Это структурная защита от prompt injection — сильнее, чем только санитизация текста.
     if (!prompt && (!clientMessages || !Array.isArray(clientMessages) || clientMessages.length === 0)) {
@@ -240,12 +269,7 @@ exports.aiProxy = onCall(
     const todayStr = new Date().toISOString().split('T')[0];
     const monthStr = todayStr.substring(0, 7);
 
-    // --------------------------------------------------------------------------
-    // fix/perf-cost-round3 (Item 2):
-    // Чтение, проверка лимита и инкремент счётчика выполняются АТОМАРНО
-    // в одной Firestore транзакции через единый helper processUsageLimitAndCounter.
-    // --------------------------------------------------------------------------
-    const transactionResult = await processUsageLimitAndCounter(db, admin, userId, usageType, todayStr, monthStr);
+    const transactionResult = await processUsageLimitAndCounter(db, admin, userId, usageType, todayStr, monthStr, lessonId);
 
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
@@ -1313,4 +1337,34 @@ exports.getLeaderboard = onCall(async (request) => {
     console.error('Error fetching leaderboard:', error);
     throw new HttpsError('internal', 'Failed to fetch leaderboard data.');
   }
+});
+
+// ----------------------------------------------------
+// Secure saveMentorFeedback Cloud Function (Item 6)
+// ----------------------------------------------------
+exports.saveMentorFeedback = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Must be authenticated");
+  }
+
+  const { messageId, queryText, replyText, rating, modelName, context } = request.data;
+  const userId = request.auth.uid;
+
+  if (!rating || ![-1, 1].includes(rating)) {
+    throw new HttpsError("invalid-argument", "Rating must be 1 (like) or -1 (dislike)");
+  }
+
+  const feedbackRef = db.collection("mentorFeedback").doc();
+  await feedbackRef.set({
+    userId,
+    messageId: messageId || null,
+    queryText: queryText || "",
+    replyText: replyText || "",
+    rating,
+    modelName: modelName || "llama-3.3-70b-versatile",
+    context: context || "general",
+    createdAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+
+  return { success: true };
 });

@@ -78,8 +78,15 @@ export const usePlanLimits = () => {
               newHomeworkReviewsUsed = 0;
             }
 
+            let newRoadmapsGeneratedThisMonth = data.roadmapsGeneratedThisMonth || 0;
+            if (data.roadmapsMonthStart !== monthStr) {
+              newRoadmapsGeneratedThisMonth = 0;
+            }
+
           setUsage({ 
             roadmapsGenerated: data.roadmapsGenerated || 0, 
+            roadmapsGeneratedThisMonth: newRoadmapsGeneratedThisMonth,
+            roadmapsMonthStart: monthStr,
             aiQuestionsUsed: newAiQuestionsUsed,
             lastQuestionDate: todayStr,
             mentorMessagesUsed: newMentorMessagesUsed,
@@ -144,10 +151,11 @@ export const usePlanLimits = () => {
     }
 
     if (type === 'roadmap') {
-      const limitVal = plan === 'ULTRA' 
-        ? PLAN_LIMITS.ULTRA.maxActiveRoadmaps 
-        : (plan === 'PRO' ? PLAN_LIMITS.PRO.maxActiveRoadmaps : PLAN_LIMITS.FREE.maxActiveRoadmaps);
-      if (usage.roadmapsGenerated >= limitVal) {
+      if (plan === 'FREE' && usage.roadmapsGenerated >= PLAN_LIMITS.FREE.maxActiveRoadmaps) {
+        setUpgradeModalOpen(true);
+        return false;
+      }
+      if (plan === 'PRO' && (usage.roadmapsGeneratedThisMonth || 0) >= PLAN_LIMITS.PRO.aiRoadmapsPerMonth) {
         setUpgradeModalOpen(true);
         return false;
       }

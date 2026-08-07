@@ -6,12 +6,14 @@ export const PLAN_LIMITS = {
     onboardingDays: 7,
     onboardingMessagesTotal: 20,
     aiMentorPerDay: 5, // после онбординга
+    contextualMentorPerLesson: 3,
     homeworkReviewsPerMonth: 2,
     allowedDifficulties: ['beginner'],
     allowedCardCounts: [3, 5],
     features: [
       '1 активный курс',
       '5 AI-вопросов в день',
+      '3 вопроса ИИ на каждый урок',
       '2 проверки домашки в месяц',
       'Базовая генерация пути'
     ]
@@ -20,6 +22,7 @@ export const PLAN_LIMITS = {
     priceNumeric: 500,
     price: '₽ 500 / месяц',
     maxActiveRoadmaps: Infinity,
+    aiRoadmapsPerMonth: 2,
     aiQuestionsPerDay: Infinity,
     aiMentorPerDay: 40, // Мягкий лимит сообщений в день
     homeworkReviewsPerMonth: 30,
@@ -27,6 +30,8 @@ export const PLAN_LIMITS = {
     allowedCardCounts: [3, 5, 8],
     features: [
       'Безлимитные курсы',
+      '2 AI-генерации курсов в месяц',
+      'Безлимитный AI-ментор по урокам',
       'Безлимитные AI-вопросы',
       '30 проверок домашки в месяц',
       'Улучшенный промпт генерации',
@@ -37,6 +42,7 @@ export const PLAN_LIMITS = {
     priceNumeric: 1500,
     price: '₽ 1500 / месяц',
     maxActiveRoadmaps: Infinity,
+    aiRoadmapsPerMonth: Infinity,
     aiQuestionsPerDay: Infinity,
     aiMentorTokensPerDay: 300000, // Бюджет токенов в день
     homeworkReviewsPerMonth: Infinity,

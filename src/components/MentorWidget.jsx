@@ -13,16 +13,19 @@ import {
   Lock,
   Menu,
   Edit2,
-  Plus
+  Plus,
+  BrainCircuit
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { auth, db } from '../firebase.js';
+import { auth, db, functions } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
+import { httpsCallable } from 'firebase/functions';
 import { doc, getDoc, setDoc, collection, query, orderBy, getDocs, deleteDoc } from 'firebase/firestore';
 import { callGroqWithRetry, getUserCourses, getUserStats, generateCourseAndSave } from '../services/courseService.js';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import { PLAN_LIMITS } from '../constants/planLimits.js';
 import ReactMarkdown from 'react-markdown';
+import MentorBubble from './MentorBubble.jsx';
 
 export default function MentorWidget() {
   const navigate = useNavigate();
@@ -37,9 +40,44 @@ export default function MentorWidget() {
   const [courseGenerating, setCourseGenerating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [generatedTopics, setGeneratedTopics] = useState(new Set());
-  
+  const [timeRemaining, setTimeRemaining] = useState('');
+  const [feedbacks, setFeedbacks] = useState({});
+
   const { plan, usage, checkLimit, incrementUsage, isUpgradeModalOpen, setUpgradeModalOpen } = usePlanLimits();
   const isProSoftCapped = plan === 'PRO' && (usage.mentorMessagesUsed || 0) >= PLAN_LIMITS.PRO.aiMentorPerDay;
+
+  // Calculate live countdown timer to 00:00 UTC for soft-cap reset
+  useEffect(() => {
+    const updateCountdown = () => {
+      const now = new Date();
+      const nextUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
+      const diffMs = nextUtc.getTime() - now.getTime();
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      setTimeRemaining(`${hours}ч ${mins}м`);
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleFeedback = async (msgId, replyContent, rating) => {
+    setFeedbacks(prev => ({ ...prev, [msgId]: rating }));
+    try {
+      const saveFn = httpsCallable(functions, 'saveMentorFeedback');
+      await saveFn({
+        messageId: msgId,
+        queryText: "",
+        replyText: replyContent,
+        rating,
+        modelName: isProSoftCapped ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile',
+        context: 'global_widget'
+      });
+    } catch (e) {
+      console.error("Failed to save mentor feedback:", e);
+    }
+  };
   
   const regTime = new Date(auth.currentUser?.metadata?.creationTime || new Date()).getTime();
   const nowTime = new Date().getTime();
@@ -76,7 +114,7 @@ export default function MentorWidget() {
     return () => unsubscribe();
   }, []);
 
-  // Load mentor session history from Firestore if Pro/Ultra
+  // Load mentor session history from Firestore if Pro/Ultra or 48h LocalStorage for Free
   useEffect(() => {
     if (!user || loading) return;
     
@@ -125,8 +163,19 @@ export default function MentorWidget() {
           console.error("Failed to load mentor sessions:", e);
         }
       } else {
-        // FREE users get a single local session
-        setMessages([]);
+        // FREE users get a single local session persisted in localStorage for 48 hours
+        try {
+          const savedMessages = localStorage.getItem('free_mentor_messages');
+          const savedTimestamp = parseInt(localStorage.getItem('free_mentor_timestamp') || '0', 10);
+          const FORTY_EIGHT_HOURS = 48 * 60 * 60 * 1000;
+          if (savedMessages && (Date.now() - savedTimestamp < FORTY_EIGHT_HOURS)) {
+            setMessages(JSON.parse(savedMessages));
+          } else {
+            setMessages([]);
+          }
+        } catch (err) {
+          setMessages([]);
+        }
         setSessions([]);
         setActiveSessionId('free_local');
       }
@@ -307,9 +356,9 @@ export default function MentorWidget() {
         ? courses.map(c => `- ${c.title} (${c.level}, Прогресс: ${c.progress}%)`).join('\n')
         : 'Нет активных курсов.';
 
-      let ultraInstruction = '';
+      let planCourseInstruction = '';
       if (plan === 'ULTRA') {
-        ultraInstruction = `
+        planCourseInstruction = `
 ULTRA SUBSCRIBER SPECIAL ABILITY - INTERACTIVE ROADMAP BRIEFING:
 If the user wants to learn a new topic, prepare for an interview, or create a syllabus (e.g. "Хочу подтянуть Go для backend-разработки"):
 1. CRITICAL: You MUST FIRST guide them through an interactive briefing. Ask 2-3 clarifying questions about their background, their schedule, and their exact goals. Do NOT output any JSON draft until they have answered your questions.
@@ -351,6 +400,31 @@ Ask them if the modules look good or if they want to adjust anything.
 }
 \`\`\`
 This will trigger the automatic course generation. Keep the JSON blocks valid.`;
+      } else if (plan === 'PRO') {
+        planCourseInstruction = `
+PRO SUBSCRIBER ABILITY - DIRECT COURSE PROPOSAL:
+If the user asks to create a course or learn a topic (e.g. "составь курс по React"):
+1. Immediately output a proposed course JSON block matching:
+\`\`\`json
+{
+  "action": "propose_course",
+  "topic": "Тема курса",
+  "level": "Intermediate",
+  "preferences": {
+    "dailyTime": "30m",
+    "courseStyle": "Practical",
+    "flashcardCount": "5",
+    "prerequisites": "Basic skills",
+    "duration": "1 month"
+  },
+  "modules": [
+    "Модуль 1",
+    "Модуль 2",
+    "Модуль 3"
+  ]
+}
+\`\`\`
+2. In text, tell them you generated a standard roadmap for them. Add a note: "Подсказка: На подписке **ULTRA** я могу провести персональный бриф из 3 вопросов и подстроить программу под твой график и стек."`;
       }
 
       const systemPrompt = `You are an expert AI Mentor on the learning platform yourway.co.
@@ -370,10 +444,12 @@ INSTRUCTIONS:
 5. Address the user by name, but ONLY ONCE at the very beginning of the conversation. Do NOT repeat greetings like "Привет, Имя" or "Добрый день" in every single message. Just jump straight into answering the question.
 6. IMPORTANT LIMITATION: If the user asks to create, design, compose, or write a course syllabus, roadmap, or study plan (e.g., "составь курс", "сделай программу обучения"):
    - If they are on plan "ULTRA", guide them through the interactive briefing (as instructed below).
-   - If they are on "FREE" or "PRO" plan, you MUST politely refuse to draft or write the syllabus. Explain that personalized course generation, interactive syllabus briefings, and materials-based roadmaps (RAG) are exclusive to the ULTRA plan. Suggest they upgrade to ULTRA to unlock this capability.
+   - If they are on plan "PRO", generate the direct course proposal as instructed below.
+   - If they are on plan "FREE", you MUST politely refuse to draft or write the syllabus. Explain that personalized course generation, interactive syllabus briefings, and materials-based roadmaps (RAG) are exclusive to PRO and ULTRA plans. Suggest they upgrade to PRO or ULTRA to unlock this capability.
 7. IMPORTANT: Do NOT assume the user wants to discuss their existing courses unless they explicitly mention them. If they ask to "create a course" or "learn a new topic", they are asking for a NEW course, so IGNORE the existing enrolled roadmaps.
 8. REMEMBER THE CONTEXT: You must continue the conversation based on the 'Conversation History' provided below. Do not repeat questions you already asked.
-${ultraInstruction}`;
+9. WOW FACTOR - PERSONALIZED ANALOGIES: When explaining complex technical concepts (like concurrency, pointers, algorithms, state management), use vivid real-world analogies tailored to everyday situations to make the explanation unforgettable.
+${planCourseInstruction}`;
 
       const isComplexQuery = text.length > 200 || text.toLowerCase().includes('объясни') || text.toLowerCase().includes('почему') || text.toLowerCase().includes('ошибка');
       const selectedModel = isProSoftCapped 
@@ -398,6 +474,12 @@ ${ultraInstruction}`;
 
       setMessages(prev => {
         const next = [...prev, assistantMessage];
+        if (plan === 'FREE') {
+          try {
+            localStorage.setItem('free_mentor_messages', JSON.stringify(next));
+            localStorage.setItem('free_mentor_timestamp', Date.now().toString());
+          } catch (e) {}
+        }
         if ((plan === 'PRO' || plan === 'ULTRA') && user && activeSessionId) {
           const docRef = doc(db, 'users', user.uid, 'mentorSessions', activeSessionId);
           setDoc(docRef, { messages: next }, { merge: true }).then(() => {
@@ -421,11 +503,20 @@ ${ultraInstruction}`;
 
     } catch (err) {
       console.error("Mentor widget chat error:", err);
-      setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: '⚠️ Не удалось связаться с AI Наставником. Пожалуйста, попробуйте еще раз.'
-      }]);
+      const errMsg = err?.message || err?.details || '';
+      if (errMsg.includes('PRO_ROADMAP_LIMIT_EXCEEDED') || errMsg.includes('PRO_ROADMAP')) {
+        setMessages(prev => [...prev, {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: '⚠️ Достигнут лимит (2 AI-курса в месяц) для тарифа **PRO**. Перейдите на тариф **ULTRA** для неограниченной генерации курсов!'
+        }]);
+      } else {
+        setMessages(prev => [...prev, {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: '⚠️ Не удалось связаться с AI Наставником. Пожалуйста, попробуйте еще раз.'
+        }]);
+      }
     } finally {
       setGenerating(false);
     }
@@ -488,8 +579,27 @@ ${ultraInstruction}`;
   const isPublicRoute = ['/', '/login', '/register'].includes(location.pathname);
   if (isPublicRoute || !user) return null;
 
+  const totalLimit = plan === 'ULTRA' 
+    ? PLAN_LIMITS.ULTRA.aiMentorTokensPerDay 
+    : plan === 'PRO'
+      ? PLAN_LIMITS.PRO.aiMentorPerDay
+      : (isFreeOnboarding ? PLAN_LIMITS.FREE.onboardingMessagesTotal : PLAN_LIMITS.FREE.aiMentorPerDay);
+
+  const currentUsed = plan === 'ULTRA'
+    ? (usage.ultraTokensUsed || 0)
+    : (usage.mentorMessagesUsed || 0);
+
+  const remainingPercent = Math.max(0, Math.min(100, ((totalLimit - currentUsed) / totalLimit) * 100));
+
   return (
     <>
+      {/* Mentor Bubble Component */}
+      <MentorBubble 
+        isOpen={isOpen} 
+        onOpenMentor={() => setIsOpen(true)} 
+        streakDays={profile?.streakDays || 0}
+      />
+
       {/* Floating Action Button */}
       <AnimatePresence>
         {!isOpen && (
@@ -498,10 +608,29 @@ ${ultraInstruction}`;
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0, opacity: 0, y: 50 }}
             onClick={() => setIsOpen(true)}
-            className="fixed bottom-6 right-6 z-[90] w-14 h-14 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 border border-indigo-400/30 flex items-center justify-center text-on-surface shadow-[0_8px_30px_rgb(99,102,241,0.4)] hover:scale-105 active:scale-95 transition-all select-none group"
+            className="fixed bottom-6 right-6 z-[90] h-14 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 border border-indigo-400/30 flex items-center justify-center text-on-surface shadow-[0_8px_30px_rgb(99,102,241,0.4)] hover:scale-105 active:scale-95 transition-all select-none group px-4 gap-2.5"
           >
-            <span className="absolute inset-0 rounded-full bg-indigo-500/20 animate-ping group-hover:animate-none" />
-            <Sparkles className="w-6 h-6 animate-pulse group-hover:scale-110 transition-transform" />
+            {/* SVG Progress Ring */}
+            <div className="relative w-7 h-7 flex items-center justify-center">
+              <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 36 36">
+                <circle cx="18" cy="18" r="15.5" stroke="currentColor" strokeWidth="2.5" className="text-white/20" fill="transparent" />
+                <circle
+                  cx="18" cy="18" r="15.5"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  className="text-indigo-300 transition-all duration-500"
+                  fill="transparent"
+                  strokeDasharray={97.39}
+                  strokeDashoffset={97.39 - (97.39 * remainingPercent) / 100}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <BrainCircuit className="w-4 h-4 text-white animate-pulse group-hover:scale-110 transition-transform relative z-10" />
+            </div>
+
+            <span className="hidden sm:inline-block text-xs font-bold tracking-wide text-white">
+              AI Наставник
+            </span>
           </motion.button>
         )}
       </AnimatePresence>
@@ -533,7 +662,7 @@ ${ultraInstruction}`;
                     <Menu className="w-6 h-6" />
                   </button>
                   <div className="hidden sm:flex w-8 h-8 rounded-lg bg-indigo-500/10 items-center justify-center border border-indigo-500/20">
-                    <Sparkles className="w-5 h-5 text-indigo-400" />
+                    <BrainCircuit className="w-5 h-5 text-indigo-400" />
                   </div>
                   <span className="text-base font-bold text-on-surface tracking-tight flex items-center gap-2">
                     AI Ментор
@@ -672,6 +801,27 @@ ${ultraInstruction}`;
                                   {cleanContent}
                                 </ReactMarkdown>
                               </div>
+                              {isAssistant && msg.id !== 'welcome' && (
+                                <div className="flex items-center gap-2 mt-2 pt-1 border-t border-outline-variant/30">
+                                  <button
+                                    onClick={() => handleFeedback(msg.id, cleanContent, 1)}
+                                    className={`text-xs px-2 py-0.5 rounded-lg border transition-colors ${feedbacks[msg.id] === 1 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-bold' : 'bg-surface-container border-outline-variant text-on-surface-variant hover:text-emerald-400'}`}
+                                    title="Полезный ответ"
+                                  >
+                                    👍
+                                  </button>
+                                  <button
+                                    onClick={() => handleFeedback(msg.id, cleanContent, -1)}
+                                    className={`text-xs px-2 py-0.5 rounded-lg border transition-colors ${feedbacks[msg.id] === -1 ? 'bg-rose-500/20 text-rose-400 border-rose-500/30 font-bold' : 'bg-surface-container border-outline-variant text-on-surface-variant hover:text-rose-400'}`}
+                                    title="Непонятный ответ"
+                                  >
+                                    👎
+                                  </button>
+                                  {feedbacks[msg.id] && (
+                                    <span className="text-[10px] text-indigo-400 font-medium animate-in fade-in">Спасибо за отзыв!</span>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           )}
 
@@ -739,12 +889,12 @@ ${ultraInstruction}`;
 
                   {/* Input Bar */}
                   {isProSoftCapped && (
-                    <div className="px-3 py-1 bg-amber-500/10 border-t border-outline-variant text-[9px] text-amber-600 dark:text-amber-500 flex items-center justify-between select-none shrink-0 w-full">
-                      <span>⚠️ Достигнут лимит Grok Mini. Используется Llama.</span>
+                    <div className="px-3 py-1.5 bg-amber-500/10 border-t border-outline-variant text-[10px] text-amber-600 dark:text-amber-400 flex items-center justify-between select-none shrink-0 w-full">
+                      <span>⚡ Дневной лимит вопросов повышенной точности исчерпан. Используется базовая модель Llama 3.1 8B. Сброс через <strong>{timeRemaining}</strong> (00:00 UTC).</span>
                       <button 
                         type="button"
                         onClick={() => { setIsOpen(false); navigate('/pricing'); }} 
-                        className="font-bold underline hover:text-amber-500 dark:hover:text-amber-400"
+                        className="font-bold underline hover:text-amber-500 dark:hover:text-amber-300 shrink-0 ml-2"
                       >
                         В Ultra
                       </button>
