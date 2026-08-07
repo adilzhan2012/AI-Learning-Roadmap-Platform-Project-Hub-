@@ -285,9 +285,9 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
         <label className="block text-xs font-bold text-on-surface-variant mb-2">Глубина курса (Длительность)</label>
         <div className="space-y-2">
           {[
-            { id: 'Express', title: 'Экспресс-погружение', desc: 'Только суть. 3-5 самых важных тем.' },
-            { id: 'Standard', title: 'Стандартный трек', desc: 'Сбалансированный курс. 6-10 тем.' },
-            { id: 'Deep Dive', title: 'Мастер-класс (Deep Dive)', desc: 'Глубокий разбор с механикой под капотом. 12-15 тем.' }
+            { id: 'Express', title: 'Экспресс-погружение', desc: 'Только суть. Ровно 5 самых важных тем.' },
+            { id: 'Standard', title: 'Стандартный трек', desc: 'Сбалансированный курс. Ровно 8 тем.' },
+            { id: 'Deep Dive', title: 'Мастер-класс (Deep Dive)', desc: 'Глубокий разбор с механикой под капотом. Ровно 12 тем.' }
           ].map((d, idx) => {
             const isLocked = plan === 'FREE' && idx > 0;
             return (

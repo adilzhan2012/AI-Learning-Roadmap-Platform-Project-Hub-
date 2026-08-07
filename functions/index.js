@@ -152,6 +152,11 @@ async function processUsageLimitAndCounter(db, admin, userId, usageType, todaySt
         return { plan, updatedUsageCount: lessonMessagesUsed + 1, remainingLessonMessages: Math.max(0, 3 - (lessonMessagesUsed + 1)) };
       }
 
+      // Skip limit check for topic_moderation
+      if (usageType === 'topic_moderation') {
+        return { plan, updatedUsageCount: 0 };
+      }
+
       // Check plan limits
       if (plan === 'FREE') {
         if (usageType === 'roadmap' && currentRoadmaps >= 1) {
@@ -193,16 +198,12 @@ async function processUsageLimitAndCounter(db, admin, userId, usageType, todaySt
       }
 
       // Atomic counter updates & calculation of server usage count
+      // Note: 'roadmap' counters are NOT incremented here; they are incremented atomically via consumeRoadmapQuota on successful course creation or cache hit.
       const updates = {};
       let updatedUsageCount = 0;
 
       if (usageType === 'roadmap') {
-        updatedUsageCount = currentRoadmaps + 1;
-        updates.roadmapsGenerated = admin.firestore.FieldValue.increment(1);
-        updates.roadmapsGeneratedThisMonth = currentRoadmapsMonth === monthStr
-          ? admin.firestore.FieldValue.increment(1)
-          : 1;
-        updates.roadmapsMonthStart = monthStr;
+        updatedUsageCount = currentRoadmaps;
       } else if (usageType === 'ai_question') {
         updatedUsageCount = data.lastQuestionDate === todayStr ? currentAiQ + 1 : 1;
         updates.aiQuestionsUsed = data.lastQuestionDate === todayStr
@@ -1368,3 +1369,68 @@ exports.saveMentorFeedback = onCall(async (request) => {
 
   return { success: true };
 });
+
+// ----------------------------------------------------
+// Centralized Roadmap Quota Management Functions (Item 1)
+// ----------------------------------------------------
+exports.checkRoadmapQuota = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Must be authenticated");
+  }
+  const userId = request.auth.uid;
+  const todayStr = new Date().toISOString().split('T')[0];
+  const monthStr = todayStr.substring(0, 7);
+
+  const subRef = db.doc(`users/${userId}/subscription/details`);
+  const snap = await subRef.get();
+  const data = snap.exists ? snap.data() : {};
+  const plan = data.plan || 'FREE';
+  const currentRoadmaps = data.roadmapsGenerated || 0;
+  const currentRoadmapsThisMonth = data.roadmapsMonthStart === monthStr ? (data.roadmapsGeneratedThisMonth || 0) : 0;
+
+  if (plan === 'FREE' && currentRoadmaps >= 1) {
+    throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
+  }
+  if (plan === 'PRO' && currentRoadmapsThisMonth >= 2) {
+    throw new HttpsError('failed-precondition', 'PRO_ROADMAP_LIMIT_EXCEEDED');
+  }
+
+  return { success: true, plan, currentRoadmaps, currentRoadmapsThisMonth };
+});
+
+exports.consumeRoadmapQuota = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Must be authenticated");
+  }
+  const userId = request.auth.uid;
+  const todayStr = new Date().toISOString().split('T')[0];
+  const monthStr = todayStr.substring(0, 7);
+
+  return await db.runTransaction(async (txn) => {
+    const subRef = db.doc(`users/${userId}/subscription/details`);
+    const snap = await txn.get(subRef);
+    const data = snap.exists ? snap.data() : {};
+    const plan = data.plan || 'FREE';
+    const currentRoadmaps = data.roadmapsGenerated || 0;
+    const currentRoadmapsThisMonth = data.roadmapsMonthStart === monthStr ? (data.roadmapsGeneratedThisMonth || 0) : 0;
+
+    if (plan === 'FREE' && currentRoadmaps >= 1) {
+      throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
+    }
+    if (plan === 'PRO' && currentRoadmapsThisMonth >= 2) {
+      throw new HttpsError('failed-precondition', 'PRO_ROADMAP_LIMIT_EXCEEDED');
+    }
+
+    const updates = {
+      roadmapsGenerated: admin.firestore.FieldValue.increment(1),
+      roadmapsGeneratedThisMonth: data.roadmapsMonthStart === monthStr
+        ? admin.firestore.FieldValue.increment(1)
+        : 1,
+      roadmapsMonthStart: monthStr
+    };
+
+    txn.set(subRef, updates, { merge: true });
+    return { success: true, plan, updatedUsageCount: currentRoadmaps + 1 };
+  });
+});
+

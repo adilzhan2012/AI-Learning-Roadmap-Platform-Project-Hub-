@@ -112,10 +112,10 @@ function generateFallbackModules(topic, level, preferences) {
   const cap = clean.charAt(0).toUpperCase() + clean.slice(1);
   const dur = preferences?.duration || 'Standard';
 
-  let count = 6;
-  if (dur === 'Express') count = 4;
-  else if (dur === 'Deep Dive' || dur === 'Masterclass') count = 13;
-  else count = 6;
+  let count = 8;
+  if (dur === 'Express') count = 5;
+  else if (dur === 'Deep Dive' || dur === 'Masterclass') count = 12;
+  else count = 8;
 
   const list = [
     `1. Введение и базовый контекст ${cap}`,
@@ -136,14 +136,17 @@ function generateFallbackModules(topic, level, preferences) {
 }
 
 export default function CourseGraphThinking({
-  topic = "Курс",
+  topic = "",
   level = "Beginner",
   preferences = null,
   nodes = null,
   isGenerating = false,
   onComplete = null,
   showReplay = false,
+  isLightTheme = false,
 }) {
+  const isLight = isLightTheme || (typeof document !== 'undefined' && document.documentElement.classList.contains('light'));
+
   const [phase, setPhase] = useState("prompt");
   const [cycle, setCycle] = useState(0);
   const [chainStep, setChainStep] = useState(0);
@@ -231,23 +234,18 @@ export default function CourseGraphThinking({
     }
   }, [phase]);
 
-  // Handle auto-completion navigation when phase reaches 'done'
+  const hasCompletedRef = useRef(false);
+
+  // Handle completion: when isGenerating becomes false (AI generation finished), complete immediately!
   useEffect(() => {
-    if (phase === "done" && onComplete) {
-      if (!isGenerating) {
-        const navTimer = setTimeout(() => {
-          onComplete();
-        }, 400);
-        return () => clearTimeout(navTimer);
-      } else {
-        // Fallback: If AI API call is taking longer, transition automatically after 2.5s guard timeout
-        const guardTimer = setTimeout(() => {
-          onComplete();
-        }, 2500);
-        return () => clearTimeout(guardTimer);
-      }
+    if (!onComplete || hasCompletedRef.current) return;
+
+    if (!isGenerating) {
+      hasCompletedRef.current = true;
+      setPhase("done");
+      onComplete();
     }
-  }, [phase, isGenerating, onComplete]);
+  }, [isGenerating, onComplete]);
 
   const phaseIndex = ["prompt", "branching", "converging", "cards", "done"].indexOf(phase);
 
@@ -408,13 +406,15 @@ export default function CourseGraphThinking({
                 return (
                   <div
                     key={`${thread.id}-lbl-${segIdx}`}
-                    className={`absolute text-[11px] font-semibold tracking-wide px-2 py-0.5 rounded-md bg-[#0D1322]/90 border border-white/10 shadow-lg whitespace-nowrap transition-all duration-300 ${
+                    className={`absolute text-[11px] font-semibold tracking-wide px-2 py-0.5 rounded-md ${
+                      isLight ? 'bg-white/95 border-zinc-200 shadow-md' : 'bg-[#0D1322]/90 border-white/10 shadow-lg'
+                    } border whitespace-nowrap transition-all duration-300 ${
                       phaseIndex >= 1 ? "opacity-100 scale-100" : "opacity-0 scale-95"
                     }`}
                     style={{
                       left: `${leftPct}%`,
                       top: `${topPct}%`,
-                      color: thread.color,
+                      color: isLight ? '#1e293b' : thread.color,
                       transform: isLeft ? "translate(-100%, -50%) translateX(-8px)" : "translate(0, -50%) translateX(8px)",
                       transitionDelay: `${drawDelay + SEG_DUR - 60}ms`,
                     }}
@@ -427,8 +427,10 @@ export default function CourseGraphThinking({
           </div>
 
           {/* Top Prompt Chip */}
-          <div className={`absolute left-1/2 top-4 -translate-x-1/2 z-30 transition-all duration-500 bg-[#131B2E] border border-slate-700 text-slate-100 text-xs font-bold px-4 py-2 rounded-full shadow-xl flex items-center gap-2 ${phase === 'prompt' ? 'opacity-100 translate-y-0' : 'opacity-80 -translate-y-1'}`}>
-            <Sparkles className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+          <div className={`absolute left-1/2 top-4 -translate-x-1/2 z-30 transition-all duration-500 ${
+            isLight ? 'bg-white border-zinc-300 text-zinc-900 shadow-md' : 'bg-[#131B2E] border-slate-700 text-slate-100 shadow-xl'
+          } border text-xs font-bold px-4 py-2 rounded-full flex items-center gap-2 ${phase === 'prompt' ? 'opacity-100 translate-y-0' : 'opacity-80 -translate-y-1'}`}>
+            <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
             <span>{promptText}</span>
           </div>
 
@@ -444,6 +446,10 @@ export default function CourseGraphThinking({
               let cardBgClasses = "bg-[#ffe100] text-black border-2 border-black font-bold shadow-md";
               if (isCheckpoint) {
                 cardBgClasses = "bg-[#1a1a1a] text-slate-100 border-2 border-black font-bold shadow-md";
+              } else if (node.isLocked) {
+                cardBgClasses = isLight 
+                  ? "bg-zinc-200 text-zinc-700 border border-zinc-300 font-semibold" 
+                  : "bg-[#27272a] text-zinc-400 border border-zinc-800 font-semibold";
               }
 
               return (
@@ -491,24 +497,30 @@ export default function CourseGraphThinking({
       </div>
 
       {/* Footer Status Bar */}
-      <div className="w-full max-w-[850px] mt-4 z-20 flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#0B0F19]/90 border border-white/10 p-4 rounded-xl backdrop-blur-md shadow-lg font-sans">
+      <div className={`w-full max-w-[850px] mt-4 z-20 flex flex-col sm:flex-row items-center justify-between gap-3 ${
+        isLight ? 'bg-white/95 border-zinc-200 text-zinc-900 shadow-md' : 'bg-[#0B0F19]/90 border-white/10 text-slate-200 shadow-lg'
+      } border p-4 rounded-xl backdrop-blur-md font-sans`}>
         <div className="flex items-center gap-3">
-          <div className={`w-3 h-3 rounded-full ${phase !== 'done' ? 'bg-blue-500 animate-ping' : 'bg-emerald-500'}`} />
-          <span className="text-xs sm:text-sm font-bold text-slate-200 font-clash tracking-wide">
-            {STATUS[phase]}
+          <div className={`w-3 h-3 rounded-full ${phase !== 'done' || isGenerating ? 'bg-blue-500 animate-ping' : 'bg-emerald-500'}`} />
+          <span className={`text-xs sm:text-sm font-bold ${isLight ? 'text-zinc-900' : 'text-slate-200'} font-clash tracking-wide`}>
+            {isGenerating && phase === 'done' ? 'ИИ завершает формирование модулей…' : STATUS[phase]}
           </span>
         </div>
 
         {phase === "branching" && (
-          <div className="text-xs font-semibold text-sky-400 bg-sky-500/10 border border-sky-500/20 px-3 py-1 rounded-full">
+          <div className="text-xs font-semibold text-sky-500 bg-sky-500/10 border border-sky-500/20 px-3 py-1 rounded-full">
             Нейросеть: поток {Math.min(chainStep, THREAD_COUNT)} / {THREAD_COUNT}
           </div>
         )}
 
         {phase === "done" && (
-          <div className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full flex items-center gap-1.5">
-            <Check className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Переходим к графу…</span>
+          <div className="text-xs font-semibold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full flex items-center gap-1.5">
+            {isGenerating ? (
+              <Loader2 className="w-3.5 h-3.5 text-emerald-500 animate-spin" />
+            ) : (
+              <Check className="w-3.5 h-3.5 text-emerald-500" />
+            )}
+            <span>{isGenerating ? 'Сохранение курса…' : 'Переходим к графу…'}</span>
           </div>
         )}
       </div>

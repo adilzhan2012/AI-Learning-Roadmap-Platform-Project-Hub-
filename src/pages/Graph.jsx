@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Network, Loader2, BookOpen, Clock, Brain, Pointer, ZoomIn, ZoomOut, RotateCcw, Lock,
-  Code, Terminal, Layers, Database, Cpu, Settings, Shield, Sliders, Globe, Star, Sparkles, Check, Flame, Trophy, Award, X, Download, ExternalLink, ShieldCheck
+  Code, Terminal, Layers, Database, Cpu, Settings, Shield, Sliders, Globe, Star, Sparkles, Check, Flame, Trophy, Award, X, Download, ExternalLink, ShieldCheck, ChevronDown
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { auth, db } from '../firebase.js';
@@ -229,6 +229,83 @@ const BackgroundParticles = () => {
   );
 };
 
+// Responsive Custom Course Selector Dropdown
+const CourseSelectorDropdown = ({ courses, selectedCourse, onSelectCourse, isLightTheme }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, []);
+
+  return (
+    <div className="relative w-full md:w-auto min-w-[200px] max-w-full" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs font-bold font-sans rounded-[12px] border shadow-sm transition-all ${
+          isLightTheme 
+            ? 'bg-zinc-100 hover:bg-zinc-200/80 border-zinc-200 text-zinc-900' 
+            : 'bg-zinc-900/90 hover:bg-zinc-800 border-zinc-800 text-zinc-100'
+        }`}
+      >
+        <span className="truncate max-w-[240px] sm:max-w-xs md:max-w-sm text-left">
+          {selectedCourse ? t(selectedCourse.title || 'Выбрать курс') : 'Курсы не найдены'}
+        </span>
+        <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-violet-500' : 'text-zinc-400'}`} />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.98 }}
+            transition={{ duration: 0.15 }}
+            className={`absolute top-full left-0 right-0 md:right-auto md:w-72 mt-1.5 py-1 z-50 rounded-[14px] border shadow-2xl backdrop-blur-xl max-h-60 overflow-y-auto custom-scrollbar ${
+              isLightTheme 
+                ? 'bg-white/95 border-zinc-200 text-zinc-900 shadow-zinc-300/50' 
+                : 'bg-[#18181b]/95 border-zinc-800 text-zinc-100 shadow-black/80'
+            }`}
+          >
+            {courses.map((course) => {
+              const isSelected = course.id === selectedCourse?.id;
+              return (
+                <button
+                  key={course.id}
+                  type="button"
+                  onClick={() => {
+                    onSelectCourse(course.id);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 text-xs font-semibold text-left transition-colors ${
+                    isSelected 
+                      ? (isLightTheme ? 'bg-violet-500/10 text-violet-600 font-bold' : 'bg-violet-500/20 text-violet-300 font-bold') 
+                      : (isLightTheme ? 'hover:bg-zinc-100 text-zinc-700' : 'hover:bg-zinc-800/80 text-zinc-300')
+                  }`}
+                >
+                  <span className="truncate flex-1">{t(course.title)}</span>
+                  {isSelected && <Check className="w-3.5 h-3.5 text-violet-500 shrink-0 stroke-[2.5]" />}
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 export default function Graph() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -255,6 +332,7 @@ export default function Graph() {
 
   const [generatedNodes, setGeneratedNodes] = useState(null);
   const [generatedCourseResult, setGeneratedCourseResult] = useState(null);
+  const generatedCourseResultRef = useRef(null);
   const [generationError, setGenerationError] = useState('');
   const hasTriggeredGenRef = useRef(false);
 
@@ -263,12 +341,32 @@ export default function Graph() {
     if (!generatingCourseState || hasTriggeredGenRef.current) return;
     hasTriggeredGenRef.current = true;
 
+    // Clear location.state immediately so page refresh (F5) will never re-trigger generation
+    try {
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+    } catch (e) {
+      // ignore
+    }
+
     let isMounted = true;
     async function runGeneration() {
       try {
         const { topic, level, preferences, userUid } = generatingCourseState;
-        const uid = userUid || auth.currentUser?.uid;
-        if (!uid) return;
+        let uid = userUid || auth.currentUser?.uid;
+
+        // If auth is still loading, wait for auth.currentUser
+        if (!uid) {
+          uid = await new Promise((resolve) => {
+            const unsub = onAuthStateChanged(auth, (u) => {
+              unsub();
+              resolve(u?.uid || null);
+            });
+          });
+        }
+
+        if (!uid) {
+          throw new Error('Пользователь не авторизован. Пожалуйста, войдите в аккаунт.');
+        }
 
         const generated = await generateCourseAndSave(uid, topic, level, preferences);
         if (incrementUsage) {
@@ -276,6 +374,7 @@ export default function Graph() {
         }
 
         if (isMounted) {
+          generatedCourseResultRef.current = generated;
           setGeneratedNodes(generated.nodes || []);
           setGeneratedCourseResult(generated);
           localStorage.setItem('selected_course_id', generated.id);
@@ -285,25 +384,46 @@ export default function Graph() {
       } catch (err) {
         console.error("Error generating course on graph page:", err);
         if (isMounted) {
-          setGenerationError(err.message || 'Ошибка генерации курса. Попробуйте еще раз.');
+          setGenerationError(err.userMessage || err.message || 'Ошибка генерации курса. Попробуйте еще раз.');
         }
       }
     }
 
     runGeneration();
-    return () => { isMounted = false; };
+    return () => { 
+      isMounted = false; 
+      hasTriggeredGenRef.current = false;
+    };
   }, [generatingCourseState]);
 
   const handleGenerationAnimationComplete = () => {
-    if (generatedCourseResult) {
-      localStorage.setItem('selected_course_id', generatedCourseResult.id);
-      setSelectedCourse(generatedCourseResult);
+    const courseToSelect = generatedCourseResultRef.current || generatedCourseResult;
+    if (courseToSelect) {
+      localStorage.setItem('selected_course_id', courseToSelect.id);
+      setSelectedCourse(courseToSelect);
+      setCourses(prev => [courseToSelect, ...prev.filter(c => c.id !== courseToSelect.id)]);
     }
     setGeneratingCourseState(null);
     setGeneratedNodes(null);
     setGeneratedCourseResult(null);
+    generatedCourseResultRef.current = null;
     setGenerationError('');
+    try {
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+    } catch (e) {
+      // ignore
+    }
   };
+
+  // Safety fallback: if course is generated but overlay is still up after 3s, force close overlay
+  useEffect(() => {
+    if (generatedCourseResult && generatingCourseState) {
+      const fallbackTimer = setTimeout(() => {
+        handleGenerationAnimationComplete();
+      }, 3000);
+      return () => clearTimeout(fallbackTimer);
+    }
+  }, [generatedCourseResult, generatingCourseState]);
 
   // Draggable node states
   const [draggedOffsets, setDraggedOffsets] = useState({});
@@ -416,6 +536,21 @@ export default function Graph() {
       try {
         const fetched = await getUserCourses(user.uid);
         if (isMounted) {
+          // If a new course is being generated right now, preserve generated selection
+          if (generatedCourseResultRef.current || generatingCourseState) {
+            setCourses(prev => {
+              const currentNew = generatedCourseResultRef.current || selectedCourse;
+              if (currentNew && currentNew.id) {
+                return [currentNew, ...fetched.filter(c => c.id !== currentNew.id)];
+              }
+              return fetched;
+            });
+            if (generatedCourseResultRef.current) {
+              setSelectedCourse(generatedCourseResultRef.current);
+            }
+            return;
+          }
+
           const savedCourseId = localStorage.getItem('selected_course_id');
           let activeCourse = fetched.find(c => c.id === savedCourseId);
 
@@ -754,8 +889,8 @@ Respond in Russian. Keep your reply concise and professional.`;
   const svgWidth = Math.max(bounds.maxX + 600, window.innerWidth * 2.2);
   const svgHeight = Math.max(bounds.maxY + 600, window.innerHeight * 2.2);
 
-  const visibleNodes = selectedCourse.nodes.filter(n => !hiddenNodeIds.has(n.id));
-  const visibleEdges = selectedCourse.edges.filter(e => !hiddenNodeIds.has(e.from) && !hiddenNodeIds.has(e.to));
+  const visibleNodes = selectedCourse?.nodes ? selectedCourse.nodes.filter(n => !hiddenNodeIds.has(n.id)) : [];
+  const visibleEdges = selectedCourse?.edges ? selectedCourse.edges.filter(e => !hiddenNodeIds.has(e.from) && !hiddenNodeIds.has(e.to)) : [];
 
   const totalNodesCount = selectedCourse?.nodes?.length || 0;
   const completedNodesCount = selectedCourse?.nodes?.filter(n => n.status === 'completed').length || 0;
@@ -806,21 +941,17 @@ Respond in Russian. Keep your reply concise and professional.`;
       >
         <div className="flex flex-col md:flex-row md:items-center gap-4 flex-1">
           {/* Course Selector */}
-          <div className="flex items-center gap-2">
-            <select 
-              value={selectedCourse?.id || ''} 
-              onChange={handleCourseChange}
-              className={`border rounded-[10px] px-3 py-2 text-xs font-bold font-sans focus:outline-none focus:border-violet-500 shadow-sm cursor-pointer transition-all ${
-                isLightTheme 
-                  ? 'bg-zinc-100 hover:bg-zinc-200/80 border-zinc-200 text-zinc-800' 
-                  : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-200'
-              }`}
-            >
-              {courses.map(c => (
-                <option key={c.id} value={c.id} className={isLightTheme ? 'bg-white text-zinc-900' : 'bg-zinc-950 text-zinc-100'}>{t(c.title)}</option>
-              ))}
-            </select>
-          </div>
+          <CourseSelectorDropdown 
+            courses={courses}
+            selectedCourse={selectedCourse}
+            onSelectCourse={(courseId) => {
+              const course = courses.find(c => c.id === courseId);
+              setSelectedCourse(course || null);
+              setSelectedNode(null);
+              localStorage.setItem('selected_course_id', courseId);
+            }}
+            isLightTheme={isLightTheme}
+          />
 
           {/* Progress Inline */}
           {selectedCourse && (
@@ -1451,7 +1582,7 @@ Respond in Russian. Keep your reply concise and professional.`;
             initial={{ opacity: 1 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, filter: 'blur(10px)', transition: { duration: 0.65, ease: 'easeInOut' } }}
-            className="fixed inset-0 z-[200] bg-[#070913] overflow-hidden flex flex-col items-center justify-center"
+            className={`fixed inset-0 z-[200] ${isLightTheme ? 'bg-zinc-50 text-zinc-900' : 'bg-[#070913] text-white'} overflow-hidden flex flex-col items-center justify-center`}
           >
             <CourseGraphThinking
               topic={generatingCourseState.topic}
@@ -1460,6 +1591,7 @@ Respond in Russian. Keep your reply concise and professional.`;
               nodes={generatedNodes}
               isGenerating={!generatedCourseResult && !generationError}
               onComplete={handleGenerationAnimationComplete}
+              isLightTheme={isLightTheme}
             />
             {generationError && (
               <div className="mt-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold text-center w-full max-w-md relative z-30">
