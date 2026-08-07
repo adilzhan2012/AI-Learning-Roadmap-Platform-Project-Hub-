@@ -1,4 +1,5 @@
 export const CACHE_VERSION = 1;
+export const PROMPT_VERSION = 2;
 
 /**
  * Normalizes a string by trimming, converting to lower case, and removing excess whitespace.
@@ -12,10 +13,54 @@ export function normalizeString(str) {
 }
 
 /**
+ * Normalizes a topic string by removing common filler/stop words in Russian and English
+ * to maximize cache hit rate for equivalent topics (e.g. "Курс по React Hooks" -> "react hooks").
+ */
+export function normalizeTopic(topic) {
+  if (!topic) return '';
+  let norm = normalizeString(topic);
+
+  const stopWords = [
+    /(?:^|\s)курс по(?:\s|$)/gi,
+    /(?:^|\s)курс(?:\s|$)/gi,
+    /(?:^|\s)обучение(?:\s|$)/gi,
+    /(?:^|\s)руководство по(?:\s|$)/gi,
+    /(?:^|\s)для начинающих(?:\s|$)/gi,
+    /(?:^|\s)для новичков(?:\s|$)/gi,
+    /(?:^|\s)с нуля(?:\s|$)/gi,
+    /(?:^|\s)с 0(?:\s|$)/gi,
+    /(?:^|\s)основы(?:\s|$)/gi,
+    /(?:^|\s)course on(?:\s|$)/gi,
+    /(?:^|\s)course(?:\s|$)/gi,
+    /(?:^|\s)tutorial on(?:\s|$)/gi,
+    /(?:^|\s)tutorial(?:\s|$)/gi,
+    /(?:^|\s)for beginners(?:\s|$)/gi,
+    /(?:^|\s)from scratch(?:\s|$)/gi,
+    /(?:^|\s)basics of(?:\s|$)/gi,
+    /(?:^|\s)basics(?:\s|$)/gi
+  ];
+
+  stopWords.forEach(regex => {
+    norm = norm.replace(regex, ' ');
+  });
+
+  return norm.trim().replace(/\s+/g, ' ') || normalizeString(topic);
+}
+
+/**
  * Builds a deterministic cache key for a course template based on topic, level, preferences, and locale.
  */
 export function buildCourseCacheKey(topic, level, preferences = {}) {
-  const normTopic = normalizeString(topic);
+  if (
+    preferences.ragMode ||
+    preferences.isPrivate ||
+    preferences.hasUserSourceMaterial ||
+    preferences.isPersonalized
+  ) {
+    return null;
+  }
+
+  const normTopic = normalizeTopic(topic);
   const normLevel = normalizeString(level);
   let locale = 'ru';
   if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
@@ -27,7 +72,7 @@ export function buildCourseCacheKey(topic, level, preferences = {}) {
   const focus = normalizeString(preferences.focus || preferences.goal || 'default');
   const stack = normalizeString(preferences.stack || 'default');
 
-  const rawKey = `course_v${CACHE_VERSION}_${locale}_${normTopic}_${normLevel}_${duration}_${style}_${focus}_${stack}`;
+  const rawKey = `course_v${CACHE_VERSION}_p${PROMPT_VERSION}_${locale}_${normTopic}_${normLevel}_${duration}_${style}_${focus}_${stack}`;
   
   // Replace non-alphanumeric chars with underscore for a clean Firestore doc ID
   return rawKey.replace(/[^a-z0-9_-]/gi, '_').substring(0, 150);
