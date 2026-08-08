@@ -18,13 +18,17 @@ import { useNavigate } from 'react-router-dom';
 import { 
   generateHomeworkWithRubric, 
   reviewHomeworkSubmission, 
-  getHomeworkState 
+  getHomeworkState,
+  saveHomeworkChatHistory,
+  callGroqWithRetry
 } from '../../services/courseService.js';
 import { useXP } from '../../hooks/useXP.js';
 import { usePlanLimits } from '../../hooks/usePlanLimits.js';
 import { PLAN_LIMITS } from '../../constants/planLimits.js';
 import UpgradeModal from '../shared/UpgradeModal.jsx';
 import { AIParsingError } from '../../utils/aiResponseParser.js';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function HomeworkSection({ courseId, nodeId, lessonContent, topicLabel, topicDesc }) {
   const navigate = useNavigate();
@@ -39,6 +43,11 @@ export default function HomeworkSection({ courseId, nodeId, lessonContent, topic
   const [status, setStatus] = useState('not_started'); // 'not_started' | 'submitted' | 'reviewed'
   const [showHistory, setShowHistory] = useState(false);
   const [error, setError] = useState('');
+  const [chatHistory, setChatHistory] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [isHomeworkOpen, setIsHomeworkOpen] = useState(false);
+  const [isMentorOpen, setIsMentorOpen] = useState(false);
 
   const monthlyLimit = PLAN_LIMITS[plan]?.homeworkReviewsPerMonth ?? 2;
   const reviewsUsed = usage?.homeworkReviewsUsed || 0;
@@ -54,6 +63,9 @@ export default function HomeworkSection({ courseId, nodeId, lessonContent, topic
         if (existingState && isMounted) {
           setSubmission(existingState.submission || '');
           setStatus(existingState.status || 'not_started');
+          if (existingState.chatHistory) {
+            setChatHistory(existingState.chatHistory);
+          }
           if (existingState.feedback) {
             setReviewResult({
               score: existingState.score,
@@ -87,6 +99,42 @@ export default function HomeworkSection({ courseId, nodeId, lessonContent, topic
       initHomework();
     }
   }, [courseId, nodeId, lessonContent, topicLabel, topicDesc]);
+
+  const handleChatSubmit = async (e) => {
+    e.preventDefault();
+    if (!chatInput.trim() || chatLoading) return;
+    
+    const userMessage = chatInput.trim();
+    setChatInput('');
+    const newHistory = [...chatHistory, { role: 'user', content: userMessage }];
+    setChatHistory(newHistory);
+    setChatLoading(true);
+
+    try {
+      const prompt = `You are a Socratic AI mentor for a user doing their homework. 
+The user is currently studying the following topic: "${topicLabel}".
+Here is the lesson content they just read:
+${lessonContent.substring(0, 2000)}...
+
+Here is the homework task they need to complete:
+${promptData?.prompt}
+
+The user's question:
+"${userMessage}"
+
+CRITICAL INSTRUCTION: You MUST act as a Socratic mentor. Do NOT solve the homework for them. Do NOT give them the direct answer. Instead, give them hints, point out where to look, or ask them a leading question to guide them to the answer. Answer in Russian, be very supportive, friendly, and concise.`;
+
+      const resText = await callGroqWithRetry(null, prompt, 'ai_chat');
+      const updatedHistory = [...newHistory, { role: 'assistant', content: resText }];
+      setChatHistory(updatedHistory);
+      await saveHomeworkChatHistory(courseId, nodeId, updatedHistory);
+    } catch (err) {
+      console.error("Chat error:", err);
+      setChatHistory([...newHistory, { role: 'assistant', content: "Произошла ошибка при обращении к ИИ-наставнику. Попробуйте еще раз." }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!submission.trim() || reviewing || !promptData) return;
@@ -180,20 +228,26 @@ export default function HomeworkSection({ courseId, nodeId, lessonContent, topic
   }
 
   return (
-    <div className="bg-surface/80 border border-white/10 rounded-3xl p-5 md:p-7 my-8 shadow-xl relative overflow-hidden">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10 mb-5">
+    <div className="bg-surface/80 border border-white/10 rounded-3xl p-5 md:p-7 my-8 shadow-xl relative overflow-hidden transition-all duration-300">
+      {/* Header (Clickable Toggle) */}
+      <button 
+        onClick={() => setIsHomeworkOpen(!isHomeworkOpen)}
+        className="w-full text-left flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10 mb-5 hover:bg-white/5 p-3 rounded-2xl transition-colors -m-3"
+      >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+          <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
             <FileText className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-extrabold text-base text-on-surface">Интерактивная Домашка</h3>
+            <h3 className="font-extrabold text-base text-on-surface flex items-center gap-2">
+              Интерактивная Домашка
+              {isHomeworkOpen ? <ChevronUp className="w-4 h-4 text-zinc-500" /> : <ChevronDown className="w-4 h-4 text-zinc-500" />}
+            </h3>
             <p className="text-xs text-on-surface-variant">Проверка ИИ-ревьюером по критериям</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {/* Monthly plan limit indicator */}
           {monthlyLimit !== Infinity && (
             <div className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 ${
@@ -225,13 +279,17 @@ export default function HomeworkSection({ courseId, nodeId, lessonContent, topic
             </span>
           )}
         </div>
-      </div>
+      </button>
 
-      {/* Assignment Task Prompt */}
-      {promptData?.prompt && (
+      {isHomeworkOpen && (
+        <div className="mt-5 animate-in fade-in slide-in-from-top-4 duration-300">
+          {/* Assignment Task Prompt */}
+          {promptData?.prompt && (
         <div className="bg-zinc-100 dark:bg-black/30 rounded-2xl p-4 mb-5 border border-zinc-200 dark:border-white/5 text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
           <p className="font-bold text-xs uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2">📌 Задание</p>
-          <div className="whitespace-pre-wrap">{promptData.prompt}</div>
+          <div className="prose prose-sm dark:prose-invert prose-indigo max-w-none prose-p:leading-relaxed">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{promptData.prompt}</ReactMarkdown>
+          </div>
         </div>
       )}
 
@@ -397,6 +455,89 @@ export default function HomeworkSection({ courseId, nodeId, lessonContent, topic
           </motion.div>
         )}
       </AnimatePresence>
+      </div>
+      )}
+
+      {/* ULTRA AI Mentor Chat */}
+      {promptData?.prompt && (
+        <div className="mt-8 border-t border-white/10 pt-6">
+          <button 
+            onClick={() => setIsMentorOpen(!isMentorOpen)}
+            className="w-full text-left flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2 hover:bg-white/5 p-3 -mx-3 rounded-2xl transition-colors"
+          >
+            <h3 className="font-extrabold text-sm text-on-surface flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-indigo-400" />
+              ИИ-Наставник (ULTRA)
+              {isMentorOpen ? <ChevronUp className="w-4 h-4 text-zinc-500 ml-1" /> : <ChevronDown className="w-4 h-4 text-zinc-500 ml-1" />}
+            </h3>
+            {plan !== 'ULTRA' && (
+              <span className="text-[10px] font-bold px-2 py-1 bg-amber-500/20 text-amber-400 rounded-md border border-amber-500/30">
+                Доступно на тарифе ULTRA
+              </span>
+            )}
+          </button>
+          
+          {isMentorOpen && (
+            <div className="animate-in fade-in slide-in-from-top-4 duration-300">
+              {plan === 'ULTRA' ? (
+            <div className="bg-surface/50 border border-white/5 rounded-2xl overflow-hidden flex flex-col h-[300px]">
+              <div className="flex-1 p-4 overflow-y-auto space-y-3">
+                {chatHistory.length === 0 ? (
+                  <p className="text-xs text-zinc-500 text-center mt-10">Задайте вопрос по домашнему заданию, и ИИ-наставник поможет вам (но не решит за вас!).</p>
+                ) : (
+                  chatHistory.map((msg, i) => (
+                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-br-sm' : 'bg-zinc-800 text-zinc-200 rounded-bl-sm border border-white/5'}`}>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                      </div>
+                    </div>
+                  ))
+                )}
+                {chatLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-zinc-800 border border-white/5 p-3 rounded-2xl rounded-bl-sm flex items-center gap-2 text-zinc-400">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span className="text-[10px]">Наставник думает...</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <form onSubmit={handleChatSubmit} className="p-3 bg-black/40 border-t border-white/5 flex gap-2">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  placeholder="Задайте вопрос по заданию..."
+                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  disabled={chatLoading}
+                />
+                <button
+                  type="submit"
+                  disabled={chatLoading || !chatInput.trim()}
+                  className="w-10 h-10 shrink-0 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl flex items-center justify-center transition-colors"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div className="bg-black/30 border border-white/5 p-6 rounded-2xl text-center relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-yellow-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed relative z-10 mb-4">
+                На тарифе ULTRA вы можете задавать любые вопросы по домашнему заданию персональному ИИ-ментору, который выступит в роли вашего личного преподавателя.
+              </p>
+              <button
+                onClick={() => setUpgradeModalOpen(true)}
+                className="px-5 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-amber-400 font-bold text-xs rounded-xl transition-all relative z-10 border border-white/5"
+              >
+                Подключить ULTRA
+              </button>
+            </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <UpgradeModal 
         isOpen={isUpgradeModalOpen} 

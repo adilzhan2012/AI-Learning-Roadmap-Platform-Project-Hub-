@@ -26,6 +26,8 @@ import { generateLessonContent, updateNodeStatus, generateELI5Content, generateR
 import { sanitizeUserInput, sanitizeCode } from '../../utils/sanitizeUserInput.js';
 import { AIParsingError } from '../../utils/aiResponseParser.js';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import MermaidDiagram from '../shared/MermaidDiagram.jsx';
 import Flashcard from './Flashcard.jsx';
 import ContextualMentor from './ContextualMentor.jsx';
 import HomeworkSection from './HomeworkSection.jsx';
@@ -583,7 +585,7 @@ Provide a code boilerplate template at the end.`;
               </motion.div>
             )}
 
-            <div className={`p-8 md:p-12 flex-1 w-full mx-auto prose dark:prose-invert prose-primary prose-base md:prose-lg prose-p:leading-[1.8] prose-li:leading-[1.8] tracking-normal font-sans ${isZenMode ? 'max-w-2xl' : 'max-w-3xl'}`}>
+            <div className={`p-8 md:p-12 flex-1 w-full mx-auto prose dark:prose-invert prose-primary prose-base md:prose-lg prose-p:leading-[1.8] prose-li:leading-[1.8] tracking-normal font-sans max-w-none`}>
               <MotivationalWidget variant="lesson" />
 
               <div className="flex items-center gap-2 mb-6 opacity-70 border-b border-white/10 pb-4">
@@ -594,7 +596,24 @@ Provide a code boilerplate template at the end.`;
               {images.map((keyword, idx) => <DynamicImage key={idx} keyword={keyword} />)}
 
               <div ref={contentRef} className="relative">
-                <ReactMarkdown>{displayContent}</ReactMarkdown>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    code({ node, inline, className, children, ...props }) {
+                      const match = /language-(\w+)/.exec(className || '');
+                      if (!inline && match && match[1] === 'mermaid') {
+                        return <MermaidDiagram chart={String(children).replace(/\n$/, '')} />;
+                      }
+                      return (
+                        <code className={className} {...props}>
+                          {children}
+                        </code>
+                      );
+                    }
+                  }}
+                >
+                  {displayContent}
+                </ReactMarkdown>
                 {selection && (
                   <SelectionPopover
                     selection={selection}
@@ -687,7 +706,7 @@ Provide a code boilerplate template at the end.`;
                           <span className="text-[10px] font-black text-indigo-400 uppercase tracking-wider">Результат AI Code Review</span>
                         </div>
                         <div className="prose prose-invert prose-xs text-left">
-                          <ReactMarkdown>
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
                             {codeReviewResult}
                           </ReactMarkdown>
                         </div>

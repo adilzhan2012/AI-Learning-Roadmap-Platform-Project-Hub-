@@ -579,9 +579,10 @@ Requirements:
 1. Start with an engaging H1 title.
 2. Provide a deep, step-by-step explanation of the concepts.
 3. Include relevant examples, analogies, or code snippets if applicable.
-4. Use formatting (bolding, lists, blockquotes) to make it highly readable.
+4. Use rich markdown formatting (bolding, lists, blockquotes) to make it highly readable.
 5. End with a short summary.
 6. The output should be pure markdown, suitable for rendering in a React-Markdown component.
+7. CRITICAL: You must include at least ONE Markdown table and ONE Mermaid diagram (using \`\`\`mermaid) to visually and structurally explain the concepts.
 7. CRITICAL: Add exactly ONE image placeholder right after the H1 title using this EXACT format: \`[IMAGE: English Keyword for Wikipedia Search]\` (e.g., \`[IMAGE: Python (programming language)]\` or \`[IMAGE: Arduino Uno]\`). Use highly specific nouns.
 8. CRITICAL: At the end of the lesson content, create a Practice section. Start it with an H2 heading "## Практика / Домашнее задание". Include 1-3 practical tasks.
 9. CRITICAL: At the very end of the file (after the homework), ${flashcardInstruction} for the most important key terms using EXACTLY this text format:
@@ -914,6 +915,14 @@ export async function getHomeworkState(courseId, nodeId) {
   if (!hwSnap.exists()) return null;
   return hwSnap.data();
 }
+
+export async function saveHomeworkChatHistory(courseId, nodeId, chatHistory) {
+  const userId = auth.currentUser?.uid;
+  if (!userId) return;
+  const hwRef = doc(db, 'users', userId, 'homeworkSubmissions', `${courseId}_${nodeId}`);
+  await setDoc(hwRef, { chatHistory }, { merge: true });
+}
+
 export async function getUserCourses(userId) {
   const coursesCol = collection(db, 'courses');
   const q = query(coursesCol, where('userId', '==', userId));

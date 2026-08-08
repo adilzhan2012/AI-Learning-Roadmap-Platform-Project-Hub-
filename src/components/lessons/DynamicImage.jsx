@@ -72,7 +72,7 @@ export default function DynamicImage({ keyword }) {
           <img 
             src={imgUrl} 
             alt={description} 
-            className="w-full aspect-video md:aspect-[21/9] object-cover object-center transform transition-transform duration-700 group-hover:scale-105"
+            className="w-full aspect-video md:aspect-[21/9] object-cover object-center transform transition-transform duration-700 group-hover:scale-105 dark:opacity-90 dark:brightness-[0.85] hover:dark:opacity-100 hover:dark:brightness-100"
             loading="lazy"
           />
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 pt-12 opacity-0 group-hover:opacity-100 transition-opacity">
