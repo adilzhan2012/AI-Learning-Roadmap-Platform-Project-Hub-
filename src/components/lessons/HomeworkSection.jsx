@@ -143,10 +143,39 @@ export default function HomeworkSection({ courseId, nodeId, lessonContent, topic
 
   if (loading) {
     return (
-      <div className="bg-surface/50 border border-white/10 rounded-2xl p-6 text-center my-6">
-        <Loader2 className="w-6 h-6 animate-spin mx-auto text-indigo-400 mb-2" />
-        <p className="text-xs text-on-surface-variant">Подготовка интерактивного задания...</p>
-      </div>
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-gradient-to-br from-indigo-50/50 to-purple-50/50 dark:from-indigo-950/20 dark:to-purple-950/20 border border-indigo-100 dark:border-indigo-500/20 rounded-3xl p-10 text-center my-6 relative overflow-hidden"
+      >
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+          className="absolute -top-12 -right-12 text-indigo-500/5 dark:text-indigo-400/5"
+        >
+          <Sparkles className="w-48 h-48" />
+        </motion.div>
+        <motion.div 
+          animate={{ y: [0, -10, 0] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 mx-auto flex items-center justify-center shadow-lg shadow-indigo-500/30 mb-5 relative z-10"
+        >
+          <Sparkles className="w-8 h-8 text-white" />
+        </motion.div>
+        <h4 className="font-extrabold text-lg text-zinc-900 dark:text-white mb-2 relative z-10">Генерируем индивидуальное задание</h4>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400 relative z-10">Искусственный интеллект анализирует материал и составляет вопросы...</p>
+        
+        <div className="mt-8 flex justify-center gap-2.5 relative z-10">
+          {[0, 1, 2].map(i => (
+            <motion.div
+              key={i}
+              className="w-2.5 h-2.5 rounded-full bg-indigo-500"
+              animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
+              transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.2 }}
+            />
+          ))}
+        </div>
+      </motion.div>
     );
   }
 
@@ -200,8 +229,8 @@ export default function HomeworkSection({ courseId, nodeId, lessonContent, topic
 
       {/* Assignment Task Prompt */}
       {promptData?.prompt && (
-        <div className="bg-black/30 rounded-2xl p-4 mb-5 border border-white/5 text-sm leading-relaxed text-zinc-200">
-          <p className="font-bold text-xs uppercase tracking-wider text-indigo-400 mb-2">📌 Задание</p>
+        <div className="bg-zinc-100 dark:bg-black/30 rounded-2xl p-4 mb-5 border border-zinc-200 dark:border-white/5 text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
+          <p className="font-bold text-xs uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2">📌 Задание</p>
           <div className="whitespace-pre-wrap">{promptData.prompt}</div>
         </div>
       )}
@@ -231,7 +260,7 @@ export default function HomeworkSection({ courseId, nodeId, lessonContent, topic
 
       {/* Student Submission Text Area */}
       <div className="space-y-3 mb-5">
-        <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+        <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-400 uppercase tracking-wider">
           Ваше решение / Ответ
         </label>
         <textarea
@@ -239,7 +268,7 @@ export default function HomeworkSection({ courseId, nodeId, lessonContent, topic
           value={submission}
           onChange={(e) => setSubmission(e.target.value)}
           placeholder="Напишите ваш ответ, код или разбор решения здесь..."
-          className="w-full bg-surface-container/60 border border-white/10 focus:border-indigo-500/50 rounded-2xl p-4 text-sm text-on-surface placeholder:text-zinc-500 focus:outline-none transition-all resize-y font-mono"
+          className="w-full bg-white dark:bg-zinc-900/60 border border-zinc-300 dark:border-zinc-700/50 focus:border-indigo-500 rounded-2xl p-4 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:placeholder:text-zinc-600 focus:outline-none transition-all resize-y font-mono shadow-inner"
         />
 
         {error && (

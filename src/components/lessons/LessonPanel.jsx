@@ -34,6 +34,8 @@ import SlideViewer from './SlideViewer.jsx';
 import DynamicImage from './DynamicImage.jsx';
 import SelectionPopover from '../shared/SelectionPopover.jsx';
 import { useTextSelection } from '../../hooks/useTextSelection.js';
+import MotivationalWidget from '../shared/MotivationalWidget.jsx';
+
 const cleanContentText = (text) => {
   if (!text) return '';
   return text
@@ -582,6 +584,8 @@ Provide a code boilerplate template at the end.`;
             )}
 
             <div className={`p-8 md:p-12 flex-1 w-full mx-auto prose dark:prose-invert prose-primary prose-base md:prose-lg prose-p:leading-[1.8] prose-li:leading-[1.8] tracking-normal font-sans ${isZenMode ? 'max-w-2xl' : 'max-w-3xl'}`}>
+              <MotivationalWidget variant="lesson" />
+
               <div className="flex items-center gap-2 mb-6 opacity-70 border-b border-white/10 pb-4">
                 <Clock className="w-4 h-4 text-primary" />
                 <span className="text-sm font-medium tracking-wide">Время на чтение: ~{readingTime} мин</span>
@@ -745,41 +749,58 @@ Provide a code boilerplate template at the end.`;
             </div>
           </div>
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center p-6 text-center z-50">
+          <div className="absolute inset-0 flex items-center justify-center p-6 text-center z-50 bg-background/90 backdrop-blur-xl">
             <motion.div 
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-              className="max-w-md w-full bg-surface/90 backdrop-blur-xl border border-outline/50 p-8 rounded-[2rem] shadow-2xl flex flex-col items-center relative overflow-hidden"
+              className="max-w-md w-full bg-gradient-to-br from-indigo-50/50 to-purple-50/50 dark:from-indigo-950/20 dark:to-purple-950/20 border border-indigo-100 dark:border-indigo-500/20 p-10 rounded-[2rem] shadow-2xl flex flex-col items-center relative overflow-hidden"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-50" />
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                className="absolute -top-12 -right-12 text-indigo-500/5 dark:text-indigo-400/5"
+              >
+                <Sparkles className="w-48 h-48" />
+              </motion.div>
 
               <motion.div 
-                animate={generating ? { rotate: 360 } : {}}
-                transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-                className="w-20 h-20 bg-surface-container rounded-2xl flex items-center justify-center mb-6 border border-outline relative z-10 shadow-inner"
+                animate={generating ? { y: [0, -10, 0] } : {}}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 mx-auto flex items-center justify-center shadow-lg shadow-indigo-500/30 mb-6 relative z-10"
               >
                 {generating ? (
-                  <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                  <Sparkles className="w-10 h-10 text-white" />
                 ) : (
-                  <Sparkles className="w-8 h-8 text-primary" />
+                  <BrainCircuit className="w-10 h-10 text-white" />
                 )}
               </motion.div>
               
-              <h3 className="text-xl font-bold font-clash text-on-surface mb-3 relative z-10 leading-tight">
-                {t(selectedNode.label)}
+              <h3 className="text-xl font-bold font-clash text-zinc-900 dark:text-white mb-3 relative z-10 leading-tight">
+                {generating ? 'Создаем персональный урок...' : t(selectedNode.label)}
               </h3>
               
-              <div className="text-sm text-on-surface-variant mb-8 leading-relaxed relative z-10">
-                <p className="mb-4">{t(selectedNode.desc)}</p>
-                <motion.p 
-                  animate={generating ? { opacity: [0.5, 1, 0.5] } : {}}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                  className="font-mono text-xs text-primary font-medium"
-                >
-                  {generating ? 'Создаем персональный урок для вас...' : 'ИИ-ментор готов начать'}
-                </motion.p>
+              <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-8 leading-relaxed relative z-10">
+                {generating ? (
+                  <p>Искусственный интеллект анализирует материал и готовит индивидуальную программу...</p>
+                ) : (
+                  <p>{t(selectedNode.desc)}</p>
+                )}
               </div>
+
+              {generating && (
+                <div className="flex justify-center gap-2.5 relative z-10 mb-4">
+                  {[0, 1, 2].map(i => (
+                    <motion.div
+                      key={i}
+                      className="w-2.5 h-2.5 rounded-full bg-indigo-500"
+                      animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
+                      transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.2 }}
+                    />
+                  ))}
+                </div>
+              )}
+
               
               {genError && (
                 <div className="w-full relative z-10">

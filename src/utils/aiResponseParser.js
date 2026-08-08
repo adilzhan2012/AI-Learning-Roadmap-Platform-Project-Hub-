@@ -42,6 +42,45 @@ export function parseAIJson(text) {
     clean = clean.substring(start, end + 1);
   }
 
+  // Sanitize unescaped control characters (like newlines) inside JSON string values
+  let inString = false;
+  let isEscaped = false;
+  let sanitized = '';
+  for (let i = 0; i < clean.length; i++) {
+    const char = clean[i];
+    if (inString) {
+      if (char === '"' && !isEscaped) {
+        inString = false;
+        sanitized += char;
+      } else if (char === '\\') {
+        isEscaped = !isEscaped;
+        sanitized += char;
+      } else if (char === '\n') {
+        sanitized += '\\n';
+        isEscaped = false;
+      } else if (char === '\r') {
+        sanitized += '\\r';
+        isEscaped = false;
+      } else if (char === '\t') {
+        sanitized += '\\t';
+        isEscaped = false;
+      } else if (char.charCodeAt(0) < 32) {
+        // Strip other unescaped control characters that are invalid in JSON strings
+        isEscaped = false;
+      } else {
+        isEscaped = false;
+        sanitized += char;
+      }
+    } else {
+      if (char === '"') {
+        inString = true;
+        isEscaped = false;
+      }
+      sanitized += char;
+    }
+  }
+  clean = sanitized;
+
   try {
     return JSON.parse(clean);
   } catch (cause) {

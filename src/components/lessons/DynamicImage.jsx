@@ -41,7 +41,7 @@ export default function DynamicImage({ keyword }) {
           throw new Error("No Wikipedia page found for this keyword.");
         }
       } catch (err) {
-        console.error("Failed to fetch image from Wikipedia:", err);
+        // Silently fail to avoid console spam
         if (isMounted) {
           setError(true);
           setLoading(false);
@@ -61,18 +61,18 @@ export default function DynamicImage({ keyword }) {
   }
 
   return (
-    <div className="my-8 rounded-2xl overflow-hidden bg-surface-container border border-outline-variant shadow-lg relative group">
+    <div className="my-10 w-full rounded-2xl overflow-hidden bg-zinc-100 dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 shadow-xl relative group transition-all duration-500 hover:shadow-2xl hover:border-zinc-300 dark:hover:border-white/20 ring-1 ring-black/5 dark:ring-white/5">
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 text-on-surface-variant">
           <Loader2 className="w-8 h-8 animate-spin mb-4 text-primary" />
           <p className="text-sm font-medium">Поиск иллюстрации...</p>
         </div>
       ) : (
-        <div className="relative">
+        <div className="relative overflow-hidden bg-zinc-200 dark:bg-black/50">
           <img 
             src={imgUrl} 
             alt={description} 
-            className="w-full max-h-[500px] object-cover object-center"
+            className="w-full aspect-video md:aspect-[21/9] object-cover object-center transform transition-transform duration-700 group-hover:scale-105"
             loading="lazy"
           />
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 pt-12 opacity-0 group-hover:opacity-100 transition-opacity">

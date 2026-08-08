@@ -33,6 +33,7 @@ import CertificatesModal from '../components/shared/CertificatesModal.jsx';
 import RepeatReminder from '../components/shared/RepeatReminder.jsx';
 import { t, useLocale } from '../i18n.js';
 import { LeagueIcon } from './Leagues.jsx';
+import MotivationalWidget from '../components/shared/MotivationalWidget.jsx';
 
 const staggerContainer = {
   hidden: { opacity: 0 },
@@ -298,6 +299,11 @@ export default function Dashboard() {
           </button>
         </motion.div>
       )}
+
+      {/* Motivational Widget */}
+      <motion.div variants={itemVariants}>
+        <MotivationalWidget variant="dashboard" />
+      </motion.div>
 
       {/* Asymmetric Metrics Grid (Stretched to 12 columns full width) */}
       <motion.div variants={staggerContainer} className="grid grid-cols-12 gap-6">
