@@ -34,6 +34,7 @@ import {
 import { parseAIJson, AIParsingError } from '../utils/aiResponseParser.js';
 import { validateOrFallbackGradient, validateLessonContent, logPipelineMetric, sanitizeImageKeyword } from '../utils/coursePipelineUtils.js';
 import { determineResourceType } from './resourceService.js';
+import { classifyCourseSubject, formatCourseHours } from '../utils/courseSubjectClassifier.js';
 
 export function withTimeout(promise, ms = 50000, customErrorMessage = 'Превышено время ожидания ответа ИИ.') {
   return new Promise((resolve, reject) => {
@@ -452,16 +453,20 @@ The response must be a valid JSON object matching this schema:
       const isPrivateCourse = !templateKey || Boolean(preferences.ragMode || preferences.isPrivate || preferences.hasUserSourceMaterial || preferences.isPersonalized);
 
       // Create course object for user in Firestore
+      const courseTitle = courseDataToUse.title || topic;
+      const courseSubject = classifyCourseSubject(topic, courseTitle, nodes);
+
       const newCourse = {
         userId,
         courseTemplateId: templateKey || null,
         isPrivate: isPrivateCourse,
         topic: topic,
         normalizedTopic: normalizedTopic,
-        title: courseDataToUse.title || topic,
+        title: courseTitle,
+        subject: courseSubject,
         category: '✨ Сгенерировано ИИ',
         level: courseDataToUse.level || level,
-        hours: courseDataToUse.hours || '10h',
+        hours: formatCourseHours(courseDataToUse.hours || preferences.duration || '10h'),
         lessonsCount: courseDataToUse.lessonsCount || nodes.length * 3,
         gradient: courseDataToUse.gradient || 'from-blue-500 to-indigo-600',
         description: courseDataToUse.description || `Learning path for ${topic}`,
@@ -924,7 +929,21 @@ export async function getUserCourses(userId) {
   const coursesCol = collection(db, 'courses');
   const q = query(coursesCol, where('userId', '==', userId));
   const snap = await getDocs(q);
-  const courses = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const courses = snap.docs.map(docSnap => {
+    const data = docSnap.data();
+    const courseId = docSnap.id;
+    let subject = data.subject;
+
+    if (!subject) {
+      subject = classifyCourseSubject(data.topic || '', data.title || '', data.nodes || []);
+      // Lazy fallback update to Firestore in background
+      updateDoc(doc(db, 'courses', courseId), { subject }).catch(err => {
+        console.warn(`Failed lazy subject update for course ${courseId}:`, err);
+      });
+    }
+
+    return { id: courseId, ...data, subject };
+  });
   return courses.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
