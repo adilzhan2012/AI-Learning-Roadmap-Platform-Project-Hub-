@@ -152,7 +152,7 @@ function CourseCard({
         layout
         variants={cardVariants}
         onClick={handleCardClick}
-        className={`relative bg-white dark:bg-[#1A1A1C] rounded-[20px] shadow-sm dark:shadow-none border p-4 flex flex-col sm:flex-row items-center gap-4 transition-all duration-300 hover:shadow-lg cursor-pointer group ${
+        className={`relative bg-white dark:bg-[#1A1A1C] rounded-[20px] shadow-sm dark:shadow-none border p-4 flex flex-col md:flex-row items-center gap-4 transition-all duration-300 hover:shadow-lg cursor-pointer group ${
           theme.borderClass
         } ${
           isSelected 
@@ -171,12 +171,12 @@ function CourseCard({
           </div>
         )}
 
-        <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-[14px] bg-gradient-to-br ${theme.accentGradient} flex items-center justify-center overflow-hidden flex-shrink-0 relative shadow-md ${isSelectionMode ? 'ml-6' : ''}`}>
-          <SubjectIcon className="w-6 h-6 sm:w-7 sm:h-7 text-white drop-shadow-md relative z-10" strokeWidth={1.75} />
+        <div className={`w-14 h-14 md:w-16 md:h-16 rounded-[14px] bg-gradient-to-br ${theme.accentGradient} flex items-center justify-center overflow-hidden flex-shrink-0 relative shadow-md ${isSelectionMode ? 'ml-6' : ''}`}>
+          <SubjectIcon className="w-6 h-6 md:w-7 md:h-7 text-white drop-shadow-md relative z-10" strokeWidth={1.75} />
         </div>
         
-        <div className="flex-1 min-w-0 text-center sm:text-left flex flex-col justify-center w-full">
-          <div className="flex items-center gap-1.5 flex-wrap justify-center sm:justify-start mb-1.5">
+        <div className="flex-1 min-w-0 text-center md:text-left flex flex-col justify-center w-full">
+          <div className="flex items-center gap-1.5 flex-wrap justify-center md:justify-start mb-1.5">
             {course.isPinned && (
               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
                 <Pin className="w-3 h-3 fill-amber-500" />
@@ -201,7 +201,7 @@ function CourseCard({
           )}
         </div>
 
-        <div className="w-full sm:w-36 flex-shrink-0 flex flex-col justify-center px-2 sm:px-0">
+        <div className="w-full md:w-40 flex-shrink-0 flex flex-col justify-center px-2 md:px-0">
           <div className="flex justify-between text-xs mb-1.5">
             <span className="text-zinc-500 dark:text-zinc-400 font-medium">{isCompleted ? t('courses.completed') : t('courses.inProgress')}</span>
             <span className="text-zinc-900 dark:text-white font-bold">{course.progress || 0}%</span>
@@ -214,7 +214,7 @@ function CourseCard({
           </div>
         </div>
 
-        <div className="flex items-center gap-3 flex-shrink-0 text-xs text-zinc-600 dark:text-zinc-300 font-medium justify-center sm:justify-end">
+        <div className="flex items-center gap-4 flex-shrink-0 text-xs text-zinc-600 dark:text-zinc-300 font-medium justify-center md:justify-end">
           <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-zinc-400" strokeWidth={1.5} /> {formattedHours}</span>
           <span className="flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5 text-zinc-400" strokeWidth={1.5} /> {course.nodes?.length || 0}</span>
         </div>
@@ -262,13 +262,13 @@ function CourseCard({
               <Check className="w-3.5 h-3.5 stroke-[3]" />
             </div>
           ) : (
-            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs font-bold border shadow-sm ${theme.bgBadgeClass}`}>
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border shadow-sm ${theme.bgBadgeClass}`}>
               <SubjectIcon className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
               <span className="truncate">{course.subject || 'Общее'}</span>
             </span>
           )}
           
-          <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 bg-white dark:bg-white/5 border border-zinc-200 dark:border-white/10 px-2.5 py-0.5 sm:py-1 rounded-full shadow-2xs shrink-0">
+          <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 bg-white dark:bg-white/5 border border-zinc-200 dark:border-white/10 px-2.5 py-1 rounded-full shadow-2xs shrink-0">
             {translatedLevel}
           </span>
 
@@ -615,13 +615,13 @@ export default function Courses() {
       className="max-w-[2000px] mx-auto text-zinc-900 dark:text-white font-sans pb-24 relative px-4 sm:px-6"
     >
       {/* Top Header */}
-      <motion.div variants={cardVariants} className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <motion.div variants={cardVariants} className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-bold font-clash text-zinc-900 dark:text-white mb-1.5 sm:mb-2 tracking-tight">Курсы</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold font-clash text-zinc-900 dark:text-white mb-1 tracking-tight">Курсы</h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-xs sm:text-sm max-w-xl">{t('courses.subtitle')}</p>
         </div>
         
-        <div className="flex items-center gap-2.5 sm:gap-3">
+        <div className="flex items-center gap-2.5">
           {userCourses.length > 0 && (
             <button
               onClick={() => {
@@ -631,7 +631,7 @@ export default function Courses() {
                   setIsSelectionMode(true);
                 }
               }}
-              className={`flex-1 sm:flex-none justify-center px-3.5 sm:px-4 py-2.5 rounded-[12px] font-bold text-xs transition-all flex items-center gap-2 font-sans border shadow-sm ${
+              className={`flex-1 sm:flex-none justify-center px-4 py-2.5 rounded-[12px] font-bold text-xs transition-all flex items-center gap-2 font-sans border shadow-sm ${
                 isSelectionMode 
                   ? 'bg-indigo-600 border-indigo-500 text-white shadow-md' 
                   : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-white/15 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700'
@@ -671,12 +671,12 @@ export default function Courses() {
           </button>
         </motion.div>
       ) : (
-        /* Full Width Redesigned Catalog Layout with Horizontal Filters */
+        /* Full Width Catalog Layout */
         <div className="space-y-4 sm:space-y-6">
           {/* Top Control Bar: Status Tabs, Search, Sort & View Mode */}
-          <motion.div variants={cardVariants} className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4 border-b border-zinc-200 dark:border-white/10 pb-4">
+          <motion.div variants={cardVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-200 dark:border-white/10 pb-4">
             {/* Status Capsule Tabs */}
-            <div className="segmented-container w-full sm:w-auto overflow-x-auto no-scrollbar scrollbar-none flex-nowrap">
+            <div className="segmented-container max-w-full overflow-x-auto no-scrollbar">
               {[
                 { id: 'all', label: 'Все' },
                 { id: 'active', label: 'В процессе' },
@@ -696,9 +696,9 @@ export default function Courses() {
             </div>
 
             {/* Search, Sort Dropdown & View Mode Switcher */}
-            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 sm:gap-3 w-full lg:w-auto">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
               {/* Search input */}
-              <div className="relative w-full sm:w-56">
+              <div className="relative flex-1 sm:w-60">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" strokeWidth={1.5} />
                 <input 
                   type="text" 
@@ -709,122 +709,126 @@ export default function Courses() {
                 />
               </div>
 
-              {/* Sorting Dropdown */}
-              <div className="relative flex-1 sm:flex-initial min-w-0 flex items-center">
-                <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="w-full appearance-none bg-white dark:bg-[#1A1A1C] border border-zinc-300 dark:border-white/15 text-zinc-800 dark:text-zinc-200 rounded-[12px] py-2 pl-8 pr-7 text-xs font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer shadow-2xs truncate"
-                >
-                  <option value="date_desc">Новые сначала</option>
-                  <option value="date_asc">Старые сначала</option>
-                  <option value="title_asc">По алфавиту (А–Я)</option>
-                  <option value="title_desc">По алфавиту (Я–А)</option>
-                  <option value="progress_desc">По прогрессу (высокий → низкий)</option>
-                  <option value="progress_asc">По прогрессу (низкий → высокий)</option>
-                </select>
-              </div>
+              <div className="flex items-center gap-2.5">
+                {/* Sorting Dropdown */}
+                <div className="relative flex-1 sm:w-48 min-w-0">
+                  <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="w-full appearance-none bg-white dark:bg-[#1A1A1C] border border-zinc-300 dark:border-white/15 text-zinc-800 dark:text-zinc-200 rounded-[12px] py-2 pl-8 pr-7 text-xs font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer shadow-2xs truncate"
+                  >
+                    <option value="date_desc">Новые сначала</option>
+                    <option value="date_asc">Старые сначала</option>
+                    <option value="title_asc">По алфавиту (А–Я)</option>
+                    <option value="title_desc">По алфавиту (Я–А)</option>
+                    <option value="progress_desc">По прогрессу (высокий → низкий)</option>
+                    <option value="progress_asc">По прогрессу (низкий → высокий)</option>
+                  </select>
+                </div>
 
-              {/* View Mode Toggle Switcher */}
-              <div className="flex bg-zinc-100 dark:bg-zinc-800/80 rounded-[12px] p-1 border border-zinc-200 dark:border-white/10 shadow-2xs shrink-0">
-                <button 
-                  onClick={() => setViewMode('grid')}
-                  className={`p-1.5 rounded-[8px] transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm border border-zinc-200/60 dark:border-white/10' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
-                  title="Сетка"
-                >
-                  <Grid className="w-4 h-4" strokeWidth={1.5} />
-                </button>
-                <button 
-                  onClick={() => setViewMode('list')}
-                  className={`p-1.5 rounded-[8px] transition-all ${viewMode === 'list' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm border border-zinc-200/60 dark:border-white/10' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
-                  title="Список"
-                >
-                  <ListIcon className="w-4 h-4" strokeWidth={1.5} />
-                </button>
+                {/* View Mode Toggle Switcher */}
+                <div className="flex bg-zinc-100 dark:bg-zinc-800/80 rounded-[12px] p-1 border border-zinc-200 dark:border-white/10 shadow-2xs shrink-0">
+                  <button 
+                    onClick={() => setViewMode('grid')}
+                    className={`p-1.5 rounded-[8px] transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm border border-zinc-200/60 dark:border-white/10' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
+                    title="Сетка"
+                  >
+                    <Grid className="w-4 h-4" strokeWidth={1.5} />
+                  </button>
+                  <button 
+                    onClick={() => setViewMode('list')}
+                    className={`p-1.5 rounded-[8px] transition-all ${viewMode === 'list' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm border border-zinc-200/60 dark:border-white/10' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
+                    title="Список"
+                  >
+                    <ListIcon className="w-4 h-4" strokeWidth={1.5} />
+                  </button>
+                </div>
               </div>
             </div>
           </motion.div>
 
-          {/* Horizontal Chip Filter Rows (Horizontally Scrollable on Mobile) */}
-          <motion.div variants={cardVariants} className="space-y-3 bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-[18px] p-3 sm:p-4 shadow-sm overflow-hidden">
+          {/* Horizontal Chip Filter Rows */}
+          <motion.div variants={cardVariants} className="space-y-4 bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-[18px] p-4 shadow-sm">
             {/* Subject Chips */}
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scrollbar-none py-1 -mx-1 px-1 touch-pan-x flex-nowrap">
-              <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mr-1 flex items-center gap-1 shrink-0">
-                <Filter className="w-3.5 h-3.5" />
-                Тема:
-              </span>
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-2 flex items-center gap-1.5">
+                <Filter className="w-3.5 h-3.5 text-indigo-500" />
+                <span>Тема курса</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => setSelectedSubjects([])}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                    selectedSubjects.length === 0 
+                      ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' 
+                      : 'bg-zinc-50 dark:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-indigo-400'
+                  }`}
+                >
+                  Все темы
+                </button>
 
-              <button
-                onClick={() => setSelectedSubjects([])}
-                className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
-                  selectedSubjects.length === 0 
-                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' 
-                    : 'bg-zinc-50 dark:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-indigo-400'
-                }`}
-              >
-                Все темы
-              </button>
-
-              {availableSubjects.map(subj => {
-                const isSelected = selectedSubjects.includes(subj);
-                return (
-                  <button
-                    key={subj}
-                    onClick={() => toggleSubjectChip(subj)}
-                    className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-xl text-xs font-medium transition-all border ${
-                      isSelected
-                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
-                        : 'bg-zinc-50 dark:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-indigo-400'
-                    }`}
-                  >
-                    {subj}
-                  </button>
-                );
-              })}
+                {availableSubjects.map(subj => {
+                  const isSelected = selectedSubjects.includes(subj);
+                  return (
+                    <button
+                      key={subj}
+                      onClick={() => toggleSubjectChip(subj)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all border ${
+                        isSelected
+                          ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
+                          : 'bg-zinc-50 dark:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-indigo-400'
+                      }`}
+                    >
+                      {subj}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Level Chips */}
-            <div className="flex items-center gap-2 border-t border-zinc-100 dark:border-white/5 pt-3 overflow-x-auto no-scrollbar scrollbar-none py-1 -mx-1 px-1 touch-pan-x flex-nowrap">
-              <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mr-1 shrink-0">
-                Сложность:
-              </span>
+            <div className="border-t border-zinc-100 dark:border-white/5 pt-3">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-2">
+                <span>Сложность</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => setSelectedLevels([])}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                    selectedLevels.length === 0 
+                      ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' 
+                      : 'bg-zinc-50 dark:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-indigo-400'
+                  }`}
+                >
+                  Любая сложность
+                </button>
 
-              <button
-                onClick={() => setSelectedLevels([])}
-                className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
-                  selectedLevels.length === 0 
-                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' 
-                    : 'bg-zinc-50 dark:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-indigo-400'
-                }`}
-              >
-                Любая сложность
-              </button>
-
-              {availableLevels.map(lvl => {
-                const isSelected = selectedLevels.includes(lvl);
-                const translated = t('level.' + lvl);
-                return (
-                  <button
-                    key={lvl}
-                    onClick={() => toggleLevelChip(lvl)}
-                    className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-xl text-xs font-medium transition-all border ${
-                      isSelected
-                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
-                        : 'bg-zinc-50 dark:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-indigo-400'
-                    }`}
-                  >
-                    {translated}
-                  </button>
-                );
-              })}
+                {availableLevels.map(lvl => {
+                  const isSelected = selectedLevels.includes(lvl);
+                  const translated = t('level.' + lvl);
+                  return (
+                    <button
+                      key={lvl}
+                      onClick={() => toggleLevelChip(lvl)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all border ${
+                        isSelected
+                          ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
+                          : 'bg-zinc-50 dark:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-indigo-400'
+                      }`}
+                    >
+                      {translated}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </motion.div>
 
           {/* Catalog Grid / List */}
           <motion.div 
             layout 
-            className={viewMode === 'list' ? 'flex flex-col gap-4 pb-8' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 pb-8'}
+            className={viewMode === 'list' ? 'flex flex-col gap-4 pb-8' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 pb-8'}
           >
             <AnimatePresence mode="popLayout">
               {sortedFilteredCourses.map((course) => (
