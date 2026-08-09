@@ -24,15 +24,6 @@ export const SUBJECT_NAMES = {
 
 const KEYWORD_RULES = [
   {
-    subject: SUBJECT_NAMES.AI,
-    keywords: [
-      'ai', 'artificial intelligence', 'machine learning', 'ml', 'deep learning',
-      'neural', 'nlp', 'computer vision', 'data science', 'llm', 'gemini', 'gpt',
-      'transformer', 'нейросеть', 'нейронн', 'искусственн', 'интеллект', 'машинн',
-      'обучени', 'дата сайнс', 'модель', 'модели'
-    ]
-  },
-  {
     subject: SUBJECT_NAMES.WEB,
     keywords: [
       'web', 'html', 'css', 'react', 'vue', 'angular', 'next.js', 'nextjs', 'node',
@@ -42,11 +33,21 @@ const KEYWORD_RULES = [
     ]
   },
   {
+    subject: SUBJECT_NAMES.AI,
+    keywords: [
+      'artificial intelligence', 'machine learning', 'deep learning',
+      'neural', 'nlp', 'computer vision', 'data science', 'llm', 'gemini', 'gpt',
+      'transformer', 'нейросеть', 'нейронн', 'искусственн', 'интеллект', 'машинн',
+      'обучени', 'дата сайнс', 'модель'
+    ],
+    wordExactKeywords: ['ai', 'ml']
+  },
+  {
     subject: SUBJECT_NAMES.PROGRAMMING,
     keywords: [
       'programming', 'python', 'c++', 'cpp', 'c#', 'java', 'rust', 'go', 'golang',
       'swift', 'kotlin', 'algorithm', 'data structure', 'git', 'linux', 'docker',
-      'sql', 'postgres', 'database', 'oop', 'ооп', 'алгоритм', 'программ', 'код',
+      'sql', 'postgres', 'database', 'ооп', 'алгоритм', 'программ', 'код',
       'разработк', 'баз данных', 'структур данных'
     ]
   },
@@ -62,10 +63,11 @@ const KEYWORD_RULES = [
   {
     subject: SUBJECT_NAMES.DESIGN,
     keywords: [
-      'design', 'figma', 'ui', 'ux', 'graphic', 'animation', 'blender', '3d',
+      'design', 'figma', 'graphic', 'animation', 'blender', '3d',
       'typography', 'photoshop', 'illustrator', 'дизайн', 'интерфейс', 'макет',
       'анимаци', 'график'
-    ]
+    ],
+    wordExactKeywords: ['ui', 'ux']
   },
   {
     subject: SUBJECT_NAMES.BUSINESS,
@@ -103,6 +105,17 @@ export function classifyCourseSubject(topic = '', title = '', nodes = []) {
   ].filter(Boolean).join(' ').toLowerCase();
 
   for (const rule of KEYWORD_RULES) {
+    // 1. Check exact word keywords (e.g. 'ai', 'ml', 'ui', 'ux')
+    if (rule.wordExactKeywords) {
+      for (const ekw of rule.wordExactKeywords) {
+        const regex = new RegExp(`\\b${ekw}\\b`, 'i');
+        if (regex.test(combinedText)) {
+          return rule.subject;
+        }
+      }
+    }
+
+    // 2. Check substring keywords
     for (const kw of rule.keywords) {
       if (combinedText.includes(kw.toLowerCase())) {
         return rule.subject;
@@ -198,7 +211,7 @@ export function getSubjectTheme(subject) {
  * Resolves bug where "Express" / "Standard" / "Deep Dive" or raw English strings leakage occurred.
  */
 export function formatCourseHours(rawHours) {
-  if (!rawHours) return '0 ч';
+  if (!rawHours || rawHours === 'null' || rawHours === 'undefined') return '0 ч';
   
   const val = String(rawHours).trim();
 
