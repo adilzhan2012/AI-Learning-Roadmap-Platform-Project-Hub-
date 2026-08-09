@@ -7,7 +7,6 @@ import {
   BookOpen, 
   Loader2,
   Sparkles,
-  Network,
   Trash2,
   Grid,
   List as ListIcon,
@@ -16,9 +15,10 @@ import {
   ExternalLink,
   Pin,
   CheckSquare,
-  Square,
   Check,
-  X
+  X,
+  ArrowUpDown,
+  Filter
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase.js';
@@ -27,6 +27,7 @@ import { getUserCourses, deleteCourse, toggleCoursePin, requestCourseCertificate
 import { t } from '../i18n.js';
 import CourseGeneratorModal from '../components/CourseGeneratorModal.jsx';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
+import { getSubjectTheme, formatCourseHours } from '../utils/courseSubjectClassifier.js';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -90,6 +91,8 @@ function CourseCard({
   onSelectToggle
 }) {
   const navigate = useNavigate();
+  const theme = getSubjectTheme(course.subject);
+  const SubjectIcon = theme.icon;
 
   const handleCardClick = (e) => {
     if (isSelectionMode) {
@@ -112,8 +115,7 @@ function CourseCard({
   };
 
   const isCompleted = course.progress === 100;
-  const cardGradient = course.gradient || 'from-indigo-500 to-purple-600';
-  const isAi = course.category === '✨ Сгенерировано ИИ';
+  const formattedHours = formatCourseHours(course.hours);
 
   const [cert, setCert] = useState(null);
   const [certLoading, setCertLoading] = useState(false);
@@ -142,6 +144,8 @@ function CourseCard({
     }
   };
 
+  const translatedLevel = t('level.' + ((course.level ? (course.level.charAt(0).toUpperCase() + course.level.slice(1).toLowerCase()) : 'Beginner'))).startsWith('level.') ? course.level : t('level.' + ((course.level ? (course.level.charAt(0).toUpperCase() + course.level.slice(1).toLowerCase()) : 'Beginner')));
+
   if (viewMode === 'list') {
     return (
       <motion.div
@@ -149,11 +153,13 @@ function CourseCard({
         variants={cardVariants}
         onClick={handleCardClick}
         className={`relative bg-white dark:bg-[#1A1A1C] rounded-[20px] shadow-sm dark:shadow-none border p-4 flex flex-col md:flex-row items-center gap-5 transition-all duration-300 hover:shadow-lg cursor-pointer group ${
+          theme.borderClass
+        } ${
           isSelected 
-            ? 'border-indigo-500 ring-2 ring-indigo-500 bg-indigo-500/5 dark:bg-indigo-500/10' 
+            ? 'ring-2 ring-indigo-500 bg-indigo-500/5 dark:bg-indigo-500/10' 
             : course.isPinned
             ? 'border-amber-400/60 dark:border-amber-400/40 bg-amber-500/5'
-            : 'border-gray-100 dark:border-white/5 hover:border-zinc-300 dark:hover:border-white/20'
+            : 'border-zinc-200 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20'
         }`}
       >
         {/* Selection Checkbox Overlay */}
@@ -165,13 +171,8 @@ function CourseCard({
           </div>
         )}
 
-        <div className={`w-20 h-20 rounded-[14px] bg-gradient-to-br ${cardGradient} flex items-center justify-center overflow-hidden flex-shrink-0 relative shadow-inner ${isSelectionMode ? 'ml-6' : ''}`}>
-          <div className="absolute inset-0 bg-white/20 dark:bg-black/20 mix-blend-overlay"></div>
-          {isAi ? (
-            <Sparkles className="w-8 h-8 text-white drop-shadow-md relative z-10" strokeWidth={1.5} />
-          ) : (
-            <Brain className="w-8 h-8 text-white drop-shadow-md relative z-10" strokeWidth={1.5} />
-          )}
+        <div className={`w-16 h-16 rounded-[14px] bg-gradient-to-br ${theme.accentGradient} flex items-center justify-center overflow-hidden flex-shrink-0 relative shadow-md ${isSelectionMode ? 'ml-6' : ''}`}>
+          <SubjectIcon className="w-7 h-7 text-white drop-shadow-md relative z-10" strokeWidth={1.75} />
         </div>
         
         <div className="flex-1 min-w-0 text-center md:text-left flex flex-col justify-center">
@@ -182,40 +183,46 @@ function CourseCard({
                 Закреплен
               </span>
             )}
-            <span className={`text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full ${isAi ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400'}`}>
-              {course.category}
+            <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${theme.bgBadgeClass}`}>
+              <SubjectIcon className="w-3 h-3" strokeWidth={2} />
+              {course.subject || 'Общее'}
             </span>
-            <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 px-2 py-1 rounded-full border border-gray-200 dark:border-white/10">
-              {t('level.' + ((course.level ? (course.level.charAt(0).toUpperCase() + course.level.slice(1).toLowerCase()) : 'Beginner'))).startsWith('level.') ? course.level : t('level.' + ((course.level ? (course.level.charAt(0).toUpperCase() + course.level.slice(1).toLowerCase()) : 'Beginner')))}
+            <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-white/5 px-2.5 py-0.5 rounded-full border border-zinc-200 dark:border-white/10">
+              {translatedLevel}
             </span>
           </div>
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate font-clash">
+          <h3 className="text-base font-bold text-zinc-900 dark:text-white truncate font-clash group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
             {t(course.title)}
           </h3>
+          {course.description && (
+            <p className="text-xs text-zinc-600 dark:text-zinc-300 truncate max-w-xl font-sans mt-0.5">
+              {course.description}
+            </p>
+          )}
         </div>
 
         <div className="w-40 flex-shrink-0 flex flex-col justify-center px-4 md:px-0">
           <div className="flex justify-between text-xs mb-2">
-            <span className="text-gray-500 dark:text-gray-400 font-medium">{isCompleted ? t('courses.completed') : t('courses.inProgress')}</span>
-            <span className="text-gray-900 dark:text-white font-bold">{course.progress || 0}%</span>
+            <span className="text-zinc-500 dark:text-zinc-400 font-medium">{isCompleted ? t('courses.completed') : t('courses.inProgress')}</span>
+            <span className="text-zinc-900 dark:text-white font-bold">{course.progress || 0}%</span>
           </div>
-          <div className="w-full h-2.5 bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden shadow-inner">
+          <div className="w-full h-2 bg-zinc-100 dark:bg-white/5 rounded-full overflow-hidden shadow-inner">
             <div 
               style={{ width: `${course.progress || 0}%` }}
-              className={`h-full bg-gradient-to-r ${cardGradient} rounded-full transition-all duration-1000`}
+              className={`h-full bg-gradient-to-r ${theme.accentGradient} rounded-full transition-all duration-1000`}
             />
           </div>
         </div>
 
-        <div className="flex items-center gap-5 flex-shrink-0 text-sm text-gray-500 dark:text-gray-400 font-medium justify-center md:justify-end px-2">
-          <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-gray-400" strokeWidth={1.5} /> {course.hours || '0h'}</span>
-          <span className="flex items-center gap-1.5"><BookOpen className="w-4 h-4 text-gray-400" strokeWidth={1.5} /> {course.nodes?.length || 0}</span>
+        <div className="flex items-center gap-4 flex-shrink-0 text-xs text-zinc-600 dark:text-zinc-300 font-medium justify-center md:justify-end px-2">
+          <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-zinc-400" strokeWidth={1.5} /> {formattedHours}</span>
+          <span className="flex items-center gap-1.5"><BookOpen className="w-4 h-4 text-zinc-400" strokeWidth={1.5} /> {course.nodes?.length || 0}</span>
         </div>
 
         <div className="flex items-center gap-1.5">
           <button 
             onClick={handlePin}
-            className={`p-2.5 rounded-xl transition-all ${course.isPinned ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : 'bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-400 hover:text-amber-400'}`}
+            className={`p-2.5 rounded-xl transition-all ${course.isPinned ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : 'bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-400 hover:text-amber-400'}`}
             title={course.isPinned ? "Открепить" : "Закрепить"}
           >
             <Pin className={`w-4 h-4 ${course.isPinned ? 'fill-amber-500' : ''}`} strokeWidth={2} />
@@ -237,108 +244,103 @@ function CourseCard({
       layout
       variants={cardVariants}
       onClick={handleCardClick}
-      className={`relative bg-white dark:bg-[#1A1A1C] rounded-[24px] shadow-sm dark:shadow-none border overflow-hidden transition-all duration-300 hover:shadow-xl cursor-pointer flex flex-col h-full group ${
+      className={`relative bg-white dark:bg-[#1A1A1C] rounded-[22px] shadow-sm dark:shadow-none border overflow-hidden transition-all duration-300 hover:shadow-xl cursor-pointer flex flex-col h-full group ${
+        theme.borderClass
+      } ${
         isSelected 
-          ? 'border-indigo-500 ring-2 ring-indigo-500 bg-indigo-500/5' 
+          ? 'ring-2 ring-indigo-500 bg-indigo-500/5' 
           : course.isPinned
           ? 'border-amber-400/60 dark:border-amber-400/30'
-          : 'border-gray-100 dark:border-white/5 hover:border-zinc-300 dark:hover:border-white/20'
+          : 'border-zinc-200 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20'
       }`}
     >
-      <div className={`relative h-36 bg-gradient-to-br ${cardGradient} p-5 flex flex-col justify-between shrink-0 overflow-hidden`}>
-        {/* Abstract shapes */}
-        <div className="absolute -top-12 -right-12 w-32 h-32 bg-white/20 dark:bg-black/20 rounded-full blur-2xl mix-blend-overlay"></div>
-        <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-white/20 dark:bg-black/20 rounded-full blur-xl mix-blend-overlay"></div>
-        
-        {/* Header Controls */}
-        <div className="relative z-10 flex justify-between items-start">
-          <div className="flex items-center gap-1.5">
-            {isSelectionMode ? (
-              <div className={`w-6 h-6 rounded-lg border flex items-center justify-center backdrop-blur-md transition-all ${isSelected ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-black/30 border-white/40 text-transparent'}`}>
-                <Check className="w-4 h-4 stroke-[3]" />
-              </div>
-            ) : (
-              <span className={`inline-flex items-center backdrop-blur-md bg-white/20 dark:bg-black/20 border border-white/20 text-[10px] font-bold text-white px-2.5 py-1 rounded-full tracking-wider uppercase shadow-sm`}>
-                {course.category}
-              </span>
-            )}
-            {course.isPinned && (
-              <span className="inline-flex items-center gap-1 backdrop-blur-md bg-amber-500/30 border border-amber-300/40 text-amber-200 text-[10px] font-bold px-2.5 py-1 rounded-full">
-                <Pin className="w-3 h-3 fill-amber-300" />
-                Закреплен
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <button 
-              onClick={handlePin}
-              className={`p-2 backdrop-blur-md rounded-xl transition-all border ${course.isPinned ? 'bg-amber-500/40 border-amber-300 text-amber-200' : 'bg-black/20 hover:bg-black/40 border-white/10 text-white/80 hover:text-white'}`}
-              title={course.isPinned ? "Открепить" : "Закрепить"}
-            >
-              <Pin className={`w-3.5 h-3.5 ${course.isPinned ? 'fill-amber-300' : ''}`} strokeWidth={2} />
-            </button>
-            <button 
-              onClick={handleDelete}
-              className="p-2 backdrop-blur-md bg-black/20 hover:bg-red-500/90 text-white rounded-xl transition-all border border-white/10"
-              title="Удалить курс"
-            >
-              <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />
-            </button>
-          </div>
-        </div>
-        
-        <div className="relative z-10 flex justify-between items-end mt-4">
-          <div className="p-2.5 bg-white/20 dark:bg-black/20 backdrop-blur-md rounded-2xl border border-white/20 shadow-lg">
-            {isAi ? (
-              <Sparkles className="w-6 h-6 text-white" strokeWidth={1.5} />
-            ) : (
-              <Brain className="w-6 h-6 text-white" strokeWidth={1.5} />
-            )}
-          </div>
-          <span className="text-[11px] font-medium text-white/90 bg-black/20 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
-            {t('level.' + ((course.level ? (course.level.charAt(0).toUpperCase() + course.level.slice(1).toLowerCase()) : 'Beginner'))).startsWith('level.') ? course.level : t('level.' + ((course.level ? (course.level.charAt(0).toUpperCase() + course.level.slice(1).toLowerCase()) : 'Beginner')))}
+      {/* Top Header Card Section */}
+      <div className="p-5 pb-3 flex items-center justify-between gap-2 border-b border-zinc-100 dark:border-white/5 bg-zinc-50/50 dark:bg-white/[0.02]">
+        <div className="flex items-center gap-2 flex-wrap">
+          {isSelectionMode ? (
+            <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-black/20 border-zinc-400 text-transparent'}`}>
+              <Check className="w-3.5 h-3.5 stroke-[3]" />
+            </div>
+          ) : (
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-sm ${theme.bgBadgeClass}`}>
+              <SubjectIcon className="w-3.5 h-3.5" strokeWidth={2} />
+              {course.subject || 'Общее'}
+            </span>
+          )}
+          
+          <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 bg-white dark:bg-white/5 border border-zinc-200 dark:border-white/10 px-2.5 py-1 rounded-full shadow-2xs">
+            {translatedLevel}
           </span>
+
+          {course.isPinned && (
+            <span className="inline-flex items-center gap-1 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
+              <Pin className="w-3 h-3 fill-amber-500" />
+              Закреплен
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1">
+          <button 
+            onClick={handlePin}
+            className={`p-1.5 rounded-lg transition-all border ${course.isPinned ? 'bg-amber-500/20 border-amber-500/30 text-amber-500' : 'bg-white dark:bg-white/5 hover:bg-zinc-100 dark:hover:bg-white/10 border-zinc-200 dark:border-white/10 text-zinc-400 hover:text-amber-500'}`}
+            title={course.isPinned ? "Открепить" : "Закрепить"}
+          >
+            <Pin className={`w-3.5 h-3.5 ${course.isPinned ? 'fill-amber-500' : ''}`} strokeWidth={2} />
+          </button>
+          <button 
+            onClick={handleDelete}
+            className="p-1.5 bg-white dark:bg-white/5 hover:bg-red-500 text-zinc-400 hover:text-white rounded-lg transition-all border border-zinc-200 dark:border-white/10"
+            title="Удалить курс"
+          >
+            <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />
+          </button>
         </div>
       </div>
 
-      <div className="p-6 flex-1 flex flex-col bg-white dark:bg-[#1A1A1C]">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white leading-snug mb-2 font-clash line-clamp-2">
-          {t(course.title)}
-        </h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 line-clamp-2 leading-relaxed">
-          {course.description || ''}
-        </p>
+      {/* Card Content */}
+      <div className="p-5 flex-1 flex flex-col justify-between bg-white dark:bg-[#1A1A1C]">
+        <div>
+          <h3 className="text-lg font-bold text-zinc-900 dark:text-white leading-snug mb-2 font-clash line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+            {t(course.title)}
+          </h3>
+          <p className="text-xs text-zinc-600 dark:text-zinc-300 mb-5 line-clamp-2 leading-relaxed font-sans">
+            {course.description || 'Учебный курс и интерактивная дорожная карта знания.'}
+          </p>
+        </div>
 
-        <div className="mt-auto space-y-4">
+        <div className="space-y-4 pt-2">
+          {/* Progress */}
           <div>
-            <div className="flex items-center justify-between mb-2 text-xs font-medium">
-              <span className="text-gray-500 dark:text-gray-400">{isCompleted ? t('courses.completed') : t('courses.inProgress')}</span>
-              <span className="text-gray-900 dark:text-white font-bold">{course.progress || 0}%</span>
+            <div className="flex items-center justify-between mb-1.5 text-xs font-semibold">
+              <span className="text-zinc-500 dark:text-zinc-400">{isCompleted ? t('courses.completed') : t('courses.inProgress')}</span>
+              <span className="text-zinc-900 dark:text-white font-bold">{course.progress || 0}%</span>
             </div>
-            <div className="w-full h-2 bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden shadow-inner">
+            <div className="w-full h-2 bg-zinc-100 dark:bg-white/5 rounded-full overflow-hidden shadow-inner">
               <div 
-                className={`h-full bg-gradient-to-r ${cardGradient} rounded-full transition-all duration-1000`}
+                className={`h-full bg-gradient-to-r ${theme.accentGradient} rounded-full transition-all duration-1000`}
                 style={{ width: `${course.progress || 0}%` }}
               />
             </div>
           </div>
           
-          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 font-medium border-t border-gray-100 dark:border-white/5 pt-4">
+          {/* Bottom metadata */}
+          <div className="flex items-center justify-between text-xs text-zinc-600 dark:text-zinc-300 font-medium border-t border-zinc-100 dark:border-white/5 pt-3.5">
             <span className="flex items-center gap-1.5">
-              <div className="p-1.5 bg-gray-50 dark:bg-white/5 rounded-lg">
+              <div className="p-1 bg-zinc-100 dark:bg-white/5 rounded-md text-zinc-400">
                 <Clock className="w-3.5 h-3.5" strokeWidth={2} />
               </div>
-              {course.hours || '0h'}
+              {formattedHours}
             </span>
             <span className="flex items-center gap-1.5">
-              <div className="p-1.5 bg-gray-50 dark:bg-white/5 rounded-lg">
+              <div className="p-1 bg-zinc-100 dark:bg-white/5 rounded-md text-zinc-400">
                 <BookOpen className="w-3.5 h-3.5" strokeWidth={2} />
               </div>
               {course.nodes?.length || 0} {t('courses.lessons')}
             </span>
           </div>
 
+          {/* Certificate options if 100% completed */}
           {isCompleted && (
             <div className="pt-2" onClick={e => e.stopPropagation()}>
               {certLoading ? (
@@ -361,7 +363,7 @@ function CourseCard({
                     href={`#/verify/${cert.certId}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-2 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-white rounded-xl"
+                    className="p-2 bg-zinc-100 dark:bg-white/10 hover:bg-zinc-200 dark:hover:bg-white/20 text-zinc-700 dark:text-white rounded-xl"
                     title="Проверить"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
@@ -407,10 +409,13 @@ export default function Courses() {
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Filters & layout modes matching Apple style
+  // Layout & Navigation controls
   const [statusTab, setStatusTab] = useState('all'); // 'all' | 'active' | 'completed'
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
-  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [sortBy, setSortBy] = useState('date_desc'); // 'date_desc' | 'date_asc' | 'title_asc' | 'title_desc' | 'progress_desc' | 'progress_asc'
+
+  // Filter chips state
+  const [selectedSubjects, setSelectedSubjects] = useState([]);
   const [selectedLevels, setSelectedLevels] = useState([]);
 
   useEffect(() => {
@@ -528,39 +533,65 @@ export default function Courses() {
     setSelectedCourseIds(new Set());
   };
 
-  // Dynamic filter values
-  const availableCategories = Array.from(new Set(userCourses.map(c => c.category).filter(Boolean)));
+  // Dynamic filter lists
+  const availableSubjects = Array.from(new Set(userCourses.map(c => c.subject).filter(Boolean)));
   const availableLevels = ['Beginner', 'Intermediate', 'Advanced'];
 
-  const toggleCategory = (cat) => {
-    setSelectedCategories(prev => 
-      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
+  const toggleSubjectChip = (subj) => {
+    setSelectedSubjects(prev =>
+      prev.includes(subj) ? prev.filter(s => s !== subj) : [...prev, subj]
     );
   };
 
-  const toggleLevel = (lvl) => {
-    setSelectedLevels(prev => 
+  const toggleLevelChip = (lvl) => {
+    setSelectedLevels(prev =>
       prev.includes(lvl) ? prev.filter(l => l !== lvl) : [...prev, lvl]
     );
   };
 
+  // Filter logic
   const filteredCourses = userCourses.filter(course => {
-    const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (course.subject || '').toLowerCase().includes(searchQuery.toLowerCase());
     
     let matchesStatus = true;
-    if (statusTab === 'active') matchesStatus = course.progress < 100;
-    else if (statusTab === 'completed') matchesStatus = course.progress === 100;
+    if (statusTab === 'active') matchesStatus = (course.progress || 0) < 100;
+    else if (statusTab === 'completed') matchesStatus = (course.progress || 0) === 100;
 
-    const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(course.category);
-    const matchesLevel = selectedLevels.length === 0 || selectedLevels.includes((course.level ? (course.level.charAt(0).toUpperCase() + course.level.slice(1).toLowerCase()) : 'Beginner'));
+    // OR logic inside subject group
+    const matchesSubject = selectedSubjects.length === 0 || selectedSubjects.includes(course.subject);
 
-    return matchesSearch && matchesStatus && matchesCategory && matchesLevel;
+    // OR logic inside level group
+    const normalizedCourseLevel = course.level ? (course.level.charAt(0).toUpperCase() + course.level.slice(1).toLowerCase()) : 'Beginner';
+    const matchesLevel = selectedLevels.length === 0 || selectedLevels.includes(normalizedCourseLevel);
+
+    // AND logic between groups
+    return matchesSearch && matchesStatus && matchesSubject && matchesLevel;
   });
 
-  // Sort pinned courses to the very top of the list
+  // Sorting logic (pinned always on top)
   const sortedFilteredCourses = [...filteredCourses].sort((a, b) => {
     if (a.isPinned && !b.isPinned) return -1;
     if (!a.isPinned && b.isPinned) return 1;
+
+    if (sortBy === 'date_desc') {
+      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+    }
+    if (sortBy === 'date_asc') {
+      return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+    }
+    if (sortBy === 'title_asc') {
+      return (a.title || '').localeCompare(b.title || '');
+    }
+    if (sortBy === 'title_desc') {
+      return (b.title || '').localeCompare(a.title || '');
+    }
+    if (sortBy === 'progress_desc') {
+      return (b.progress || 0) - (a.progress || 0);
+    }
+    if (sortBy === 'progress_asc') {
+      return (a.progress || 0) - (b.progress || 0);
+    }
     return 0;
   });
 
@@ -584,11 +615,12 @@ export default function Courses() {
       className="max-w-[2000px] mx-auto text-zinc-900 dark:text-white font-sans pb-24 relative"
     >
       {/* Top Header */}
-      <motion.div variants={cardVariants} className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <motion.div variants={cardVariants} className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-4xl font-bold font-clash text-zinc-900 dark:text-white mb-2 tracking-tight">Курсы</h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm max-w-xl">{t('courses.subtitle')}</p>
         </div>
+        
         <div className="flex items-center gap-3">
           {userCourses.length > 0 && (
             <button
@@ -599,10 +631,10 @@ export default function Courses() {
                   setIsSelectionMode(true);
                 }
               }}
-              className={`px-4 py-3 rounded-[12px] font-bold text-xs transition-all flex items-center gap-2 font-sans border ${
+              className={`px-4 py-2.5 rounded-[12px] font-bold text-xs transition-all flex items-center gap-2 font-sans border shadow-sm ${
                 isSelectionMode 
                   ? 'bg-indigo-600 border-indigo-500 text-white shadow-md' 
-                  : 'bg-white dark:bg-[#1A1A1C] border-zinc-200 dark:border-white/10 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/10'
+                  : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-white/15 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700'
               }`}
             >
               <CheckSquare className="w-4 h-4" />
@@ -611,7 +643,7 @@ export default function Courses() {
           )}
           <button
             onClick={() => setShowGenModal(true)}
-            className="bg-zinc-900 !text-white hover:bg-zinc-800 dark:bg-white dark:!text-zinc-900 dark:hover:bg-zinc-200 px-6 py-3 rounded-[12px] font-bold text-xs transition-colors whitespace-nowrap flex items-center gap-2 font-sans"
+            className="bg-zinc-900 !text-white hover:bg-zinc-800 dark:bg-white dark:!text-zinc-900 dark:hover:bg-zinc-200 px-6 py-2.5 rounded-[12px] font-bold text-xs transition-colors whitespace-nowrap flex items-center gap-2 font-sans shadow-sm"
           >
             <Sparkles className="w-4 h-4 fill-current" />
             {t('dashboard.generateCourse')}
@@ -639,160 +671,193 @@ export default function Courses() {
           </button>
         </motion.div>
       ) : (
-        /* Main Catalog Layout with Filter Column */
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Narrow Left Column Filters (20% width) */}
-          <div className="w-full lg:w-48 flex-shrink-0 space-y-6">
-            <div className="bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-[16px] p-4 space-y-6">
-              {/* Category Filter */}
-              <div>
-                <h4 className="text-[10px] font-bold uppercase tracking-tight text-zinc-500 dark:text-zinc-400 mb-3 font-sans">Категории</h4>
-                <div className="space-y-2">
-                  {availableCategories.length === 0 ? (
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">Категории отсутствуют</p>
-                  ) : (
-                    availableCategories.map(cat => (
-                      <label key={cat} className="flex items-center gap-3 cursor-pointer group select-none">
-                        <div className="relative">
-                          <input 
-                            type="checkbox" 
-                            checked={selectedCategories.includes(cat)} 
-                            onChange={() => toggleCategory(cat)} 
-                            className="sr-only" 
-                          />
-                          <div className={`w-4 h-4 border rounded-[6px] transition-all flex items-center justify-center ${selectedCategories.includes(cat) ? "bg-indigo-600 border-indigo-600 text-white" : "border-zinc-300 dark:border-zinc-600 group-hover:border-indigo-400 bg-transparent"}`}>
-                            {selectedCategories.includes(cat) && (
-                              <svg viewBox="0 0 10 10" className="w-2 h-2 stroke-current stroke-[2] fill-none">
-                                <polyline points="2,5.5 4,7.5 8,2.5" />
-                              </svg>
-                            )}
-                          </div>
-                        </div>
-                        <span className={`text-xs transition-colors truncate max-w-[120px] ${cat === '✨ Сгенерировано ИИ' ? 'bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-indigo-400 font-extrabold group-hover:opacity-80' : 'text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-900 dark:text-white'}`}>{cat}</span>
-                      </label>
-                    ))
-                  )}
-                </div>
+        /* Full Width Redesigned Catalog Layout with Horizontal Filters */
+        <div className="space-y-6">
+          {/* Top Control Bar: Status Tabs, Search, Sort & View Mode */}
+          <motion.div variants={cardVariants} className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-zinc-200 dark:border-white/10 pb-4">
+            {/* Status Capsule Tabs */}
+            <div className="segmented-container">
+              {[
+                { id: 'all', label: 'Все' },
+                { id: 'active', label: 'В процессе' },
+                { id: 'completed', label: 'Завершённые' }
+              ].map(tab => {
+                const isActive = statusTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setStatusTab(tab.id)}
+                    className={`segmented-item ${isActive ? 'active' : ''}`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Search, Sort Dropdown & View Mode Switcher */}
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Search input */}
+              <div className="relative w-full sm:w-56">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" strokeWidth={1.5} />
+                <input 
+                  type="text" 
+                  placeholder={t('courses.search') || 'Поиск...'}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-white dark:bg-[#1A1A1C] border border-zinc-300 dark:border-white/15 rounded-[12px] py-2 pl-9 pr-3 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-indigo-500 transition-colors shadow-2xs"
+                />
               </div>
 
-              {/* Difficulty Level Filter */}
-              <div className="border-t border-zinc-200 dark:border-white/10 pt-4">
-                <h4 className="text-[10px] font-bold uppercase tracking-tight text-zinc-500 dark:text-zinc-400 mb-3 font-sans">Сложность</h4>
-                <div className="space-y-2">
-                  {availableLevels.map(lvl => (
-                    <label key={lvl} className="flex items-center gap-3 cursor-pointer group select-none">
-                      <div className="relative">
-                        <input 
-                          type="checkbox" 
-                          checked={selectedLevels.includes(lvl)} 
-                          onChange={() => toggleLevel(lvl)} 
-                          className="sr-only" 
-                        />
-                        <div className={`w-4 h-4 border rounded-[6px] transition-all flex items-center justify-center ${selectedLevels.includes(lvl) ? "bg-indigo-600 border-indigo-600 text-white" : "border-zinc-300 dark:border-zinc-600 group-hover:border-indigo-400 bg-transparent"}`}>
-                          {selectedLevels.includes(lvl) && (
-                            <svg viewBox="0 0 10 10" className="w-2 h-2 stroke-current stroke-[2] fill-none">
-                              <polyline points="2,5.5 4,7.5 8,2.5" />
-                            </svg>
-                          )}
-                        </div>
-                      </div>
-                      <span className="text-xs text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-900 dark:text-white transition-colors">{t('level.' + lvl)}</span>
-                    </label>
-                  ))}
-                </div>
+              {/* Sorting Dropdown */}
+              <div className="relative flex items-center">
+                <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="appearance-none bg-white dark:bg-[#1A1A1C] border border-zinc-300 dark:border-white/15 text-zinc-800 dark:text-zinc-200 rounded-[12px] py-2 pl-8 pr-8 text-xs font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer shadow-2xs"
+                >
+                  <option value="date_desc">Новые сначала</option>
+                  <option value="date_asc">Старые сначала</option>
+                  <option value="title_asc">По алфавиту (А–Я)</option>
+                  <option value="title_desc">По алфавиту (Я–А)</option>
+                  <option value="progress_desc">По прогрессу (высокий → низкий)</option>
+                  <option value="progress_asc">По прогрессу (низкий → высокий)</option>
+                </select>
+              </div>
+
+              {/* View Mode Toggle Switcher */}
+              <div className="flex bg-zinc-100 dark:bg-zinc-800/80 rounded-[12px] p-1 border border-zinc-200 dark:border-white/10 shadow-2xs">
+                <button 
+                  onClick={() => setViewMode('grid')}
+                  className={`p-1.5 rounded-[8px] transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm border border-zinc-200/60 dark:border-white/10' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
+                  title="Сетка"
+                >
+                  <Grid className="w-4 h-4" strokeWidth={1.5} />
+                </button>
+                <button 
+                  onClick={() => setViewMode('list')}
+                  className={`p-1.5 rounded-[8px] transition-all ${viewMode === 'list' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm border border-zinc-200/60 dark:border-white/10' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
+                  title="Список"
+                >
+                  <ListIcon className="w-4 h-4" strokeWidth={1.5} />
+                </button>
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          {/* Right Column Catalog Content (80% width) */}
-          <div className="flex-1 space-y-6">
-            {/* Filter Bar: Tabs & View Swapper */}
-            <motion.div variants={cardVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-200 dark:border-white/10 pb-4">
-              {/* Segmented capsule tabs for status */}
-              <div className="segmented-container">
-                {[
-                  { id: 'all', label: 'Все' },
-                  { id: 'active', label: 'В процессе' },
-                  { id: 'completed', label: 'Завершённые' }
-                ].map(tab => {
-                  const isActive = statusTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setStatusTab(tab.id)}
-                      className={`segmented-item ${isActive ? 'active' : ''}`}
-                    >
-                      {tab.label}
-                    </button>
-                  );
-                })}
-              </div>
+          {/* Horizontal Chip Filter Rows */}
+          <motion.div variants={cardVariants} className="space-y-3 bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-[18px] p-4 shadow-sm">
+            {/* Subject Chips */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mr-2 flex items-center gap-1.5">
+                <Filter className="w-3.5 h-3.5" />
+                Тема:
+              </span>
 
-              {/* Search input + Segmented Layout View switcher */}
-              <div className="flex items-center gap-4">
-                <div className="relative w-48 md:w-60">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 dark:text-zinc-400" strokeWidth={1.5} />
-                  <input 
-                    type="text" 
-                    placeholder={t('courses.search') || 'Поиск...'}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-[12px] py-1.5 pl-8 pr-3 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-[rgba(255,255,255,0.3)] transition-colors"
-                  />
-                </div>
-                
-                {/* Segmented control view toggle switcher */}
-                <div className="flex bg-white dark:bg-[#1A1A1C] rounded-[10px] p-0.5 border border-zinc-200 dark:border-white/10">
-                  <button 
-                    onClick={() => setViewMode('grid')}
-                    className={`p-1.5 rounded-[8px] transition-colors ${viewMode === 'grid' ? 'bg-zinc-900 dark:bg-white !text-white dark:!text-zinc-900' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
-                    title="Сетка"
+              <button
+                onClick={() => setSelectedSubjects([])}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                  selectedSubjects.length === 0 
+                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' 
+                    : 'bg-zinc-50 dark:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-indigo-400'
+                }`}
+              >
+                Все темы
+              </button>
+
+              {availableSubjects.map(subj => {
+                const isSelected = selectedSubjects.includes(subj);
+                return (
+                  <button
+                    key={subj}
+                    onClick={() => toggleSubjectChip(subj)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all border ${
+                      isSelected
+                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
+                        : 'bg-zinc-50 dark:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-indigo-400'
+                    }`}
                   >
-                    <Grid className="w-4 h-4" strokeWidth={1.5} />
+                    {subj}
                   </button>
-                  <button 
-                    onClick={() => setViewMode('list')}
-                    className={`p-1.5 rounded-[8px] transition-colors ${viewMode === 'list' ? 'bg-zinc-900 dark:bg-white !text-white dark:!text-zinc-900' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
-                    title="Список"
-                  >
-                    <ListIcon className="w-4 h-4" strokeWidth={1.5} />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
+                );
+              })}
+            </div>
 
-            {/* Catalog Grid / List */}
-            <motion.div 
-              layout 
-              className={viewMode === 'list' ? 'flex flex-col gap-4 pb-8' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-8'}
-            >
-              <AnimatePresence mode="popLayout">
-                {sortedFilteredCourses.map((course) => (
-                  <CourseCard 
-                    key={course.id} 
-                    course={course} 
-                    onDelete={setCourseToDelete}
-                    onTogglePin={handleTogglePin}
-                    viewMode={viewMode}
-                    plan={plan}
-                    isSelectionMode={isSelectionMode}
-                    isSelected={selectedCourseIds.has(course.id)}
-                    onSelectToggle={toggleSelectCourse}
-                  />
-                ))}
-              </AnimatePresence>
-              
-              {sortedFilteredCourses.length === 0 && (
-                <motion.div 
-                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="col-span-full py-20 flex flex-col items-center justify-center text-zinc-500 dark:text-zinc-400"
+            {/* Level Chips */}
+            <div className="flex flex-wrap items-center gap-2 border-t border-zinc-100 dark:border-white/5 pt-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mr-2">
+                Сложность:
+              </span>
+
+              <button
+                onClick={() => setSelectedLevels([])}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                  selectedLevels.length === 0 
+                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' 
+                    : 'bg-zinc-50 dark:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-indigo-400'
+                }`}
+              >
+                Любая сложность
+              </button>
+
+              {availableLevels.map(lvl => {
+                const isSelected = selectedLevels.includes(lvl);
+                const translated = t('level.' + lvl);
+                return (
+                  <button
+                    key={lvl}
+                    onClick={() => toggleLevelChip(lvl)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all border ${
+                      isSelected
+                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
+                        : 'bg-zinc-50 dark:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-indigo-400'
+                    }`}
+                  >
+                    {translated}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+
+          {/* Catalog Grid / List */}
+          <motion.div 
+            layout 
+            className={viewMode === 'list' ? 'flex flex-col gap-4 pb-8' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-8'}
+          >
+            <AnimatePresence mode="popLayout">
+              {sortedFilteredCourses.map((course) => (
+                <CourseCard 
+                  key={course.id} 
+                  course={course} 
+                  onDelete={setCourseToDelete}
+                  onTogglePin={handleTogglePin}
+                  viewMode={viewMode}
+                  plan={plan}
+                  isSelectionMode={isSelectionMode}
+                  isSelected={selectedCourseIds.has(course.id)}
+                  onSelectToggle={toggleSelectCourse}
+                />
+              ))}
+            </AnimatePresence>
+            
+            {sortedFilteredCourses.length === 0 && (
+              <motion.div 
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="col-span-full py-20 flex flex-col items-center justify-center text-zinc-500 dark:text-zinc-400 bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-[20px]"
+              >
+                <Search className="w-12 h-12 mb-4 opacity-20" strokeWidth={1.5} />
+                <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{t('courses.noMatching') || 'Курсов по выбранным фильтрам не найдено'}</p>
+                <button 
+                  onClick={() => { setSelectedSubjects([]); setSelectedLevels([]); setSearchQuery(''); setStatusTab('all'); }}
+                  className="mt-3 text-xs text-indigo-500 hover:underline font-medium"
                 >
-                  <Search className="w-12 h-12 mb-4 opacity-20" strokeWidth={1.5} />
-                  <p className="text-xs font-semibold">{t('courses.noMatching') || 'Совпадений не найдено'}</p>
-                </motion.div>
-              )}
-            </motion.div>
-          </div>
+                  Сбросить все фильтры
+                </button>
+              </motion.div>
+            )}
+          </motion.div>
         </div>
       )}
 
