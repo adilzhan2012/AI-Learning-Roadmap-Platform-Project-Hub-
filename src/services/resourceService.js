@@ -295,6 +295,7 @@ export async function saveResourceRating(userId, resourceId, rating = 'like') {
  */
 export async function getResourceRatings(resourceId) {
   try {
+    if (!auth.currentUser || !resourceId) return { total: 0, utilityPercentage: null, likes: 0, dislikes: 0 };
     const aggRef = doc(db, 'resourceRatingsAggregated', String(resourceId));
     const snap = await getDoc(aggRef);
     if (snap.exists()) {
@@ -308,7 +309,7 @@ export async function getResourceRatings(resourceId) {
       };
     }
   } catch (e) {
-    console.warn("getResourceRatings error:", e);
+    // Graceful fallback: fail silently if collection is uncreated or rules are pending deployment
   }
   return { total: 0, utilityPercentage: null, likes: 0, dislikes: 0 };
 }
