@@ -13,22 +13,26 @@ import {
   Search,
   Lock,
   Loader2,
-  Laptop
+  Laptop,
+  Sparkles,
+  Star
 } from 'lucide-react';
 import { t, useLocale } from '../i18n.js';
 import { auth } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
-import { getUserCourses } from '../services/courseService.js';
+import { getUserCourses, getUserStats } from '../services/courseService.js';
 import { useNavigate } from 'react-router-dom';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import ResourceModal from '../components/resources/ResourceModal.jsx';
+import ExternalResourceModal from '../components/resources/ExternalResourceModal.jsx';
+import { determineResourceType, getResourceAccess, fetchCuratedExternalResources, getResourceRatings } from '../services/resourceService.js';
 
 const RESOURCE_TYPES = {
-  article:    { icon: FileText,   label: 'PDF',   labelKey: 'resources.tabs.articles' },
-  video:      { icon: PlayCircle, label: 'VIDEO', labelKey: 'resources.tabs.videos' },
-  cheatsheet: { icon: FileCode2,  label: 'CODE',  labelKey: 'resources.tabs.cheatsheets' },
-  repository: { icon: GitBranch,  label: 'LINK',  labelKey: 'resources.tabs.repos' },
-  project:    { icon: Laptop,     label: 'PROJ',  labelKey: 'resources.tabs.projects' },
+  article:    { icon: FileText,   badgeKey: 'resources.badges.article',    tabKey: 'resources.tabs.articles', estimate: '5 мин чтение' },
+  video:      { icon: PlayCircle, badgeKey: 'resources.badges.video',      tabKey: 'resources.tabs.videos', estimate: '10 мин просмотр' },
+  cheatsheet: { icon: FileCode2,  badgeKey: 'resources.badges.cheatsheet', tabKey: 'resources.tabs.cheatsheets', estimate: '3 мин шпаргалка' },
+  repository: { icon: GitBranch,  badgeKey: 'resources.badges.repository', tabKey: 'resources.tabs.repos', estimate: '15 мин код' },
+  project:    { icon: Laptop,     badgeKey: 'resources.badges.project',    tabKey: 'resources.tabs.projects', estimate: '20 мин практика' },
 };
 
 const containerVariants = {
@@ -42,10 +46,23 @@ const cardVariants = {
   exit: { opacity: 0, y: 10, transition: { duration: 0.15 } }
 };
 
-function ResourceCard({ resource, onClick, isLocked }) {
+function ResourceCard({ resource, onClick, isLocked, userPlan }) {
   const [bookmarked, setBookmarked] = useState(false);
+  const [utilityInfo, setUtilityInfo] = useState(null);
+
   const typeInfo = RESOURCE_TYPES[resource.type] || RESOURCE_TYPES.article;
   const Icon = typeInfo.icon;
+
+  useEffect(() => {
+    let isMounted = true;
+    const resId = resource.id || `${resource.courseId}_${resource.nodeId}`;
+    getResourceRatings(resId).then(info => {
+      if (isMounted && info.utilityPercentage !== null) {
+        setUtilityInfo(info.utilityPercentage);
+      }
+    });
+    return () => { isMounted = false; };
+  }, [resource]);
 
   return (
     <motion.div 
@@ -56,28 +73,37 @@ function ResourceCard({ resource, onClick, isLocked }) {
         isLocked ? 'pointer-events-auto' : ''
       }`}
     >
-      {/* Centered lock icon over locked card */}
+      {/* Centered Lock Banner for locked cards */}
       {isLocked && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/20 backdrop-blur-[1px]">
-          <div className="w-10 h-10 bg-surface/80 border border-[rgba(255,255,255,0.1)] rounded-xl flex items-center justify-center text-on-surface shadow-lg">
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/60 backdrop-blur-[2px] p-4 text-center">
+          <div className="w-10 h-10 bg-surface/90 border border-white/10 rounded-2xl flex items-center justify-center text-amber-400 shadow-xl mb-2">
             <Lock className="w-4.5 h-4.5" strokeWidth={1.5} />
           </div>
+          <span className="text-xs font-bold text-white mb-1">Доступно в PRO</span>
+          <span className="text-[10px] text-on-surface-variant max-w-[160px]">Разблокируйте полный курс и все материалы</span>
         </div>
       )}
 
       <div className={`flex flex-col h-full ${isLocked ? 'opacity-40 select-none pointer-events-none' : ''}`}>
-        {/* Corner type badge */}
-        <span className="absolute top-4 right-4 bg-surface-container border border-outline text-[9px] font-mono font-bold text-on-surface px-2 py-0.5 rounded-[4px] tracking-wider uppercase z-10">
-          {typeInfo.label}
+        {/* Corner Type Badge */}
+        <span className="absolute top-4 right-4 bg-surface-container border border-outline text-[9px] font-mono font-bold text-on-surface px-2.5 py-0.5 rounded-[6px] tracking-wider uppercase z-10">
+          {t(typeInfo.badgeKey)}
         </span>
 
         <div className="p-4 md:p-6 flex flex-col h-full">
-          <div className="flex items-center gap-2 text-on-surface-variant mb-3 md:mb-4">
-            <Icon className="w-4 h-4" strokeWidth={1.5} />
-            <span className="text-[10px] uppercase tracking-wider font-mono font-bold">{t(typeInfo.labelKey)}</span>
+          <div className="flex items-center justify-between text-on-surface-variant mb-3 md:mb-4">
+            <div className="flex items-center gap-2">
+              <Icon className="w-4 h-4 text-indigo-400" strokeWidth={1.5} />
+              <span className="text-[10px] uppercase tracking-wider font-mono font-bold">{t(typeInfo.tabKey)}</span>
+            </div>
+            {utilityInfo !== null && (
+              <span className="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded font-bold">
+                {utilityInfo}% полезности
+              </span>
+            )}
           </div>
           
-          <h3 className="text-base font-bold text-on-surface leading-tight mb-1.5 md:mb-2 group-hover:text-on-surface transition-colors font-clash line-clamp-2">
+          <h3 className="text-base font-bold text-on-surface leading-tight mb-1.5 md:mb-2 group-hover:text-indigo-300 transition-colors font-clash line-clamp-2">
             {resource.title}
           </h3>
           <p className="text-xs text-on-surface-variant leading-relaxed mb-4 md:mb-6 flex-1 line-clamp-3">
@@ -94,8 +120,7 @@ function ResourceCard({ resource, onClick, isLocked }) {
 
           <div className="flex items-center justify-between pt-3 md:pt-4 border-t border-outline mt-auto">
             <div className="flex items-center gap-2 text-[10px] text-on-surface-variant font-mono">
-              {resource.author && <span className="flex items-center gap-1"><User className="w-3.5 h-3.5" strokeWidth={1.5} />{resource.author}</span>}
-              {resource.meta && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" strokeWidth={1.5} />{resource.meta}</span>}
+              <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" strokeWidth={1.5} />{typeInfo.estimate}</span>
             </div>
             <button 
               onClick={(e) => { e.stopPropagation(); setBookmarked(!bookmarked); }}
@@ -122,48 +147,57 @@ const TABS = [
 export default function Resources() {
   const locale = useLocale();
   const navigate = useNavigate();
-  const { plan, loading: planLoading } = usePlanLimits();
+  const { plan, loading: planLoading, setUpgradeModalOpen } = usePlanLimits();
+  const [userProfile, setUserProfile] = useState({});
   const [activeTab, setActiveTab] = useState('All');
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [lockedModalOpen, setLockedModalOpen] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(5);
+  const [visibleCount, setVisibleCount] = useState(6);
+  
+  // Active modals state
   const [activeResource, setActiveResource] = useState(null);
+  const [externalModalData, setExternalModalData] = useState(null); // { resource, externalData, loading }
 
   useEffect(() => {
-    setVisibleCount(5);
+    setVisibleCount(6);
   }, [activeTab, searchQuery, selectedCategories]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
-          const courses = await getUserCourses(user.uid);
+          const [courses, stats] = await Promise.all([
+            getUserCourses(user.uid),
+            getUserStats(user.uid).catch(() => ({}))
+          ]);
+          setUserProfile(stats || {});
+
           const newResources = [];
           let idCounter = 1;
           
           courses.forEach(course => {
             if (course.nodes) {
-              course.nodes.forEach(node => {
-                const typeModulo = idCounter % 5;
-                let rType = 'article';
-                if (typeModulo === 0) rType = 'video';
-                else if (typeModulo === 1) rType = 'cheatsheet';
-                else if (typeModulo === 2) rType = 'repository';
-                else if (typeModulo === 3) rType = 'project';
+              course.nodes.forEach((node, nodeIdx) => {
+                // Lazy-fallback for node resource types
+                const resourceTypes = node.resourceTypes || determineResourceType(node);
                 
-                newResources.push({
-                  id: idCounter++,
-                  type: rType,
-                  title: t(node.label),
-                  desc: t(node.desc) || 'Учебные материалы, сгенерированные AI-ассистентом для углублённого изучения темы.',
-                  tags: [t(course.title)],
-                  author: 'AI Mentor',
-                  meta: t('nav.lessons'),
-                  courseId: course.id,
-                  nodeId: node.id
+                resourceTypes.forEach((rType, typeIdx) => {
+                  newResources.push({
+                    id: `${course.id}_${node.id}_${typeIdx}`,
+                    numericId: idCounter++,
+                    type: rType,
+                    title: t(node.label),
+                    desc: node.desc || `Практические и теоретические материалы ИИ-ментора по теме ${t(node.label)}.`,
+                    tags: [t(course.title)],
+                    courseId: course.id,
+                    nodeId: node.id,
+                    rawNode: node,
+                    nodeIdx,
+                    typeIdx
+                  });
                 });
               });
             }
@@ -206,11 +240,38 @@ export default function Resources() {
     return matchesSearch && matchesTab && matchesCategory;
   });
 
+  const handleCardClick = async (resource, isLocked) => {
+    if (isLocked) {
+      setUpgradeModalOpen(true);
+      return;
+    }
+
+    if (resource.type === 'video' || resource.type === 'repository') {
+      setExternalModalData({ resource, externalData: null, loading: true });
+      try {
+        const ext = await fetchCuratedExternalResources({
+          topicLabel: resource.title,
+          courseTitle: resource.tags[0],
+          lessonContent: resource.rawNode?.content,
+          resourceType: resource.type,
+          userPlan: plan,
+          existingCandidates: resource.rawNode?.externalCandidates
+        });
+        setExternalModalData({ resource, externalData: ext, loading: false });
+      } catch (err) {
+        console.warn("External fetch error:", err);
+        setExternalModalData({ resource, externalData: { candidates: [], isPersonalized: false }, loading: false });
+      }
+    } else {
+      setActiveResource(resource);
+    }
+  };
+
   if (loading || planLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-4.5rem)] bg-background text-on-surface">
-        <Loader2 className="w-8 h-8 animate-spin text-on-surface mb-2" />
-        <p className="text-sm text-on-surface-variant font-mono">Загрузка ресурсов...</p>
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-400 mb-2" />
+        <p className="text-sm text-on-surface-variant font-mono">Загрузка адаптивной библиотеки ресурсов...</p>
       </div>
     );
   }
@@ -222,71 +283,73 @@ export default function Resources() {
       variants={containerVariants}
       className="max-w-[2000px] mx-auto text-on-background font-sans p-4 md:p-6 w-full min-w-0 overflow-x-hidden"
     >
-      <motion.div variants={cardVariants} className="mb-10">
-        <h1 className="text-4xl font-bold font-clash text-on-surface mb-2 tracking-tight">{t('resources.title')}</h1>
-        <p className="text-sm text-on-surface-variant max-w-xl">{t('resources.subtitle')}</p>
+      <motion.div variants={cardVariants} className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-bold font-clash text-on-surface mb-2 tracking-tight">{t('resources.title')}</h1>
+          <p className="text-sm text-on-surface-variant max-w-xl">{t('resources.subtitle')}</p>
+        </div>
+        <div className="flex items-center gap-2 text-xs font-mono text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-xl self-start md:self-auto">
+          <Sparkles className="w-3.5 h-3.5" /> Тариф: <span className="font-bold text-white uppercase">{plan}</span>
+        </div>
       </motion.div>
 
-      {/* Featured Resource */}
+      {/* Featured Resource Header Card */}
       {resources.length > 0 && (
         <motion.div 
           onClick={() => {
-            const isFeaturedLocked = plan === 'FREE';
-            if (isFeaturedLocked) {
-              setLockedModalOpen(true);
-              return;
-            }
-            if (resources[0].type === 'video') {
-              window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(resources[0].tags[0] + ' ' + resources[0].title + ' tutorial')}`, '_blank');
-            } else if (resources[0].type === 'repository') {
-              window.open(`https://github.com/search?q=${encodeURIComponent(resources[0].title)}`, '_blank');
-            } else {
-              setActiveResource(resources[0]);
-            }
+            const access = getResourceAccess(plan, 0, 1);
+            handleCardClick(resources[0], access.isLocked);
           }}
           variants={cardVariants} 
-          className="bg-surface border border-outline rounded-[16px] p-6 md:p-8 mb-10 flex flex-col md:flex-row gap-8 items-center relative overflow-hidden group cursor-pointer hover:border-[rgba(255,255,255,0.3)] transition-colors"
+          className="bg-surface border border-outline rounded-[24px] p-6 md:p-8 mb-10 flex flex-col md:flex-row gap-8 items-center relative overflow-hidden group cursor-pointer hover:border-indigo-500/40 transition-all shadow-xl"
         >
-          {/* Featured resource is the first material and is unlocked */}
-          
-          {/* Grayscale geometry card decoration */}
-          <div className="w-full md:w-48 h-32 rounded-[12px] bg-surface-container/40 border border-outline flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-            <svg className="absolute inset-0 w-full h-full text-on-surface opacity-10 stroke-current stroke-[0.5] fill-none" viewBox="0 0 100 40" preserveAspectRatio="none">
-              <line x1="0" y1="0" x2="100" y2="40" />
-              <line x1="0" y1="40" x2="100" y2="0" />
-              <circle cx="50" cy="20" r="10" />
-            </svg>
-            <BookOpen className="w-10 h-10 text-on-surface opacity-40 relative z-10" strokeWidth={1.5} />
+          {/* Glassmorphic Glow background element */}
+          <div className="absolute -top-24 -right-24 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-indigo-500/20 transition-all" />
+
+          {/* Featured Visual Thumbnail */}
+          <div className="w-full md:w-56 h-36 rounded-[16px] bg-indigo-950/40 border border-indigo-500/20 flex flex-col items-center justify-center flex-shrink-0 relative overflow-hidden group-hover:scale-[1.02] transition-transform">
+            <BookOpen className="w-10 h-10 text-indigo-400 mb-2 relative z-10" strokeWidth={1.5} />
+            <span className="text-[10px] font-mono text-indigo-300 font-bold tracking-wider z-10">РЕКОМЕНДУЕМОЕ ЧТЕНИЕ</span>
           </div>
-          <div className="flex-1 min-w-0">
-            <span className="text-[9px] font-mono font-bold text-inverse-on-surface bg-on-surface rounded-[4px] px-2.5 py-0.5 inline-block mb-3 uppercase tracking-tight">{t('resources.featured')}</span>
-            <h2 className="text-xl font-bold text-on-surface mb-2 group-hover:text-on-surface transition-colors font-clash truncate">{resources[0].title}</h2>
+
+          <div className="flex-1 min-w-0 z-10">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-[9px] font-mono font-bold text-inverse-on-surface bg-on-surface rounded-[4px] px-2.5 py-0.5 inline-block uppercase tracking-tight">
+                {t('resources.featured')}
+              </span>
+              <span className="text-[9px] font-mono text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded font-bold">
+                {resources[0].tags[0]}
+              </span>
+            </div>
+
+            <h2 className="text-xl md:text-2xl font-bold text-on-surface mb-2 group-hover:text-indigo-300 transition-colors font-clash truncate">
+              {resources[0].title}
+            </h2>
             <p className="text-xs text-on-surface-variant leading-relaxed mb-6 max-w-2xl line-clamp-2">
               {resources[0].desc}
             </p>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <button className="bg-on-surface hover:bg-surface-container text-inverse-on-surface rounded-[12px] px-5 py-2.5 text-xs font-bold transition-colors flex items-center gap-2 self-start font-sans">
+              <button className="bg-on-surface hover:bg-white text-inverse-on-surface rounded-[12px] px-5 py-2.5 text-xs font-bold transition-colors flex items-center gap-2 self-start font-sans">
                 <BookOpen className="w-4 h-4" strokeWidth={1.5} /> {t('resources.readNow')}
               </button>
               <div className="flex gap-4 text-[10px] font-mono text-on-surface-variant">
-                <span className="flex items-center gap-1.5"><User className="w-4 h-4" strokeWidth={1.5} /> {resources[0].author}</span>
-                <span className="flex items-center gap-1.5"><Clock className="w-4 h-4" strokeWidth={1.5} /> {resources[0].meta}</span>
+                <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-indigo-400" strokeWidth={1.5} /> 5 мин чтения</span>
               </div>
             </div>
           </div>
         </motion.div>
       )}
 
-      {/* Catalog layout with narrow left filters */}
+      {/* Catalog Layout */}
       {resources.length === 0 ? (
         <div className="py-20 text-center bg-surface border border-outline rounded-[16px] text-on-surface-variant font-sans">
           <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-20" strokeWidth={1.5} />
           <p className="text-sm font-semibold">Нет доступных ресурсов</p>
-          <p className="text-xs text-on-surface-variant/60 mt-1">Создайте хотя бы один курс, чтобы сгенерировать библиотеку ресурсов.</p>
+          <p className="text-xs text-on-surface-variant/60 mt-1">Создайте хотя бы один курс, чтобы сформировать ИИ-библиотеку ресурсов.</p>
         </div>
       ) : (
         <div className="flex flex-col lg:flex-row gap-8 w-full min-w-0">
-          {/* Narrow Left Column Filters (20% width) */}
+          {/* Left Column Filters */}
           <div className="w-full lg:w-48 flex-shrink-0 space-y-6">
             <div className="bg-surface border border-outline rounded-[16px] p-4">
               <h4 className="text-[10px] font-bold uppercase tracking-tight text-on-surface-variant mb-3 font-sans">Курсы</h4>
@@ -319,23 +382,22 @@ export default function Resources() {
             </div>
           </div>
 
-          {/* Right Column Catalog Content (80% width) */}
+          {/* Right Column Catalog Content */}
           <div className="flex-1 space-y-6 min-w-0 w-full">
             {/* Search + Tabs Bar */}
             <div className="space-y-4">
-              {/* Borderless bottom line search field */}
               <div className="relative border border-outline rounded-xl bg-surface focus-within:border-white focus-within:bg-surface-container-high transition-all py-3 px-4 shadow-sm flex items-center gap-3">
                 <Search className="w-4 h-4 text-on-surface-variant" strokeWidth={1.5} />
                 <input
                   type="text"
-                  placeholder="Поиск ресурсов..."
+                  placeholder="Поиск по адаптивным ресурсам..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full bg-transparent text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none"
                 />
               </div>
 
-              {/* iOS Segmented Control Tabs */}
+              {/* Tabs */}
               <div className="segmented-container w-full overflow-x-auto pb-0.5">
                 {TABS.map((tab) => {
                   const isActive = activeTab === tab.id;
@@ -358,31 +420,24 @@ export default function Resources() {
                 {(() => {
                   const seenCourseIds = {};
                   const displayedResources = activeTab === 'All' ? filteredResources.slice(0, visibleCount) : filteredResources;
+
                   return displayedResources.map((resource) => {
                     const cId = resource.courseId;
                     if (!seenCourseIds[cId]) {
                       seenCourseIds[cId] = 0;
                     }
                     seenCourseIds[cId]++;
-                    const isLocked = plan === 'FREE' && seenCourseIds[cId] > 1;
+                    
+                    // Central access check
+                    const access = getResourceAccess(plan, resource.typeIdx, seenCourseIds[cId]);
+
                     return (
                       <ResourceCard 
                         key={resource.id} 
                         resource={resource} 
-                        isLocked={isLocked}
-                        onClick={() => {
-                          if (isLocked) {
-                            setLockedModalOpen(true);
-                            return;
-                          }
-                          if (resource.type === 'video') {
-                            window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(resource.tags[0] + ' ' + resource.title + ' tutorial')}`, '_blank');
-                          } else if (resource.type === 'repository') {
-                            window.open(`https://github.com/search?q=${encodeURIComponent(resource.title)}`, '_blank');
-                          } else {
-                            setActiveResource(resource);
-                          }
-                        }}
+                        isLocked={access.isLocked}
+                        userPlan={plan}
+                        onClick={() => handleCardClick(resource, access.isLocked)}
                       />
                     );
                   });
@@ -392,10 +447,10 @@ export default function Resources() {
               {activeTab === 'All' && filteredResources.length > visibleCount && (
                 <div className="col-span-full flex justify-center mt-2 mb-4">
                   <button 
-                    onClick={() => setVisibleCount(prev => prev + 10)}
+                    onClick={() => setVisibleCount(prev => prev + 9)}
                     className="bg-surface-container-high hover:bg-[#3C3C3E] text-white px-6 py-2.5 rounded-xl text-xs font-bold transition-colors border border-outline shadow-sm"
                   >
-                    Показать остальные
+                    Показать остальные материалы
                   </button>
                 </div>
               )}
@@ -411,56 +466,38 @@ export default function Resources() {
         </div>
       )}
 
-      {/* Resource Locked Upsell Modal */}
-      <AnimatePresence>
-        {lockedModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setLockedModalOpen(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.98 }}
-              className="relative bg-surface border border-outline w-full max-w-sm rounded-[2rem] p-6 shadow-2xl z-10 text-center"
-            >
-              <div className="w-12 h-12 bg-on-surface/5 border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Lock className="w-5 h-5 text-on-surface" strokeWidth={1.5} />
-              </div>
-              <h3 className="text-lg font-bold text-on-surface mb-2">Ресурс доступен в Pro</h3>
-              <p className="text-xs text-on-surface-variant mb-6 leading-relaxed">
-                Этот материал является эксклюзивной Pro-частью вашего курса. Обновите тарифный план для получения безлимитного доступа ко всем ресурсам.
-              </p>
-              <div className="space-y-3">
-                <button
-                  onClick={() => {
-                    setLockedModalOpen(false);
-                    navigate('/pricing');
-                  }}
-                  className="w-full py-3 rounded-xl font-bold bg-on-surface text-inverse-on-surface hover:bg-[#F5F5F7] transition-all text-xs"
-                >
-                  Узнать о Pro
-                </button>
-                <button
-                  onClick={() => setLockedModalOpen(false)}
-                  className="w-full py-3 rounded-xl font-bold bg-transparent border border-outline text-on-surface hover:bg-[rgba(255,255,255,0.04)] transition-all text-xs"
-                >
-                  Понятно
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-      
-      {/* Dynamic AI Resource Modal */}
+      {/* Dynamic AI Resource Modal for Projects, Cheatsheets, Articles */}
       <AnimatePresence>
         {activeResource && (
-          <ResourceModal resource={activeResource} onClose={() => setActiveResource(null)} />
+          <ResourceModal 
+            resource={activeResource} 
+            userProfile={userProfile}
+            onClose={() => setActiveResource(null)} 
+          />
+        )}
+      </AnimatePresence>
+
+      {/* External Curated Recommendations Modal for Videos and Repositories */}
+      <AnimatePresence>
+        {externalModalData && (
+          <ExternalResourceModal 
+            resource={externalModalData.resource}
+            externalData={externalModalData.externalData}
+            loading={externalModalData.loading}
+            userPlan={plan}
+            onClose={() => setExternalModalData(null)}
+            onRefreshAlternative={async () => {
+              setExternalModalData(prev => ({ ...prev, loading: true }));
+              const ext = await fetchCuratedExternalResources({
+                topicLabel: externalModalData.resource.title,
+                courseTitle: externalModalData.resource.tags[0],
+                lessonContent: externalModalData.resource.rawNode?.content,
+                resourceType: externalModalData.resource.type,
+                userPlan: plan
+              });
+              setExternalModalData(prev => ({ ...prev, externalData: ext, loading: false }));
+            }}
+          />
         )}
       </AnimatePresence>
     </motion.main>
