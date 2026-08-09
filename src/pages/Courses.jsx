@@ -168,7 +168,7 @@ function CourseCard({
   onSelectToggle
 }) {
   const navigate = useNavigate();
-  const theme = getSubjectTheme(course.subject);
+  const theme = getSubjectTheme(course.subject, course.topic, course.title, course.nodes);
   const SubjectIcon = theme.icon;
 
   const handleCardClick = (e) => {
