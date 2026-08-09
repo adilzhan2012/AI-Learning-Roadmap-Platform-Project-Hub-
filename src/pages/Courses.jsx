@@ -152,7 +152,7 @@ function CourseCard({
         layout
         variants={cardVariants}
         onClick={handleCardClick}
-        className={`relative bg-white dark:bg-[#1A1A1C] rounded-[20px] shadow-sm dark:shadow-none border p-4 flex flex-col md:flex-row items-center gap-5 transition-all duration-300 hover:shadow-lg cursor-pointer group ${
+        className={`relative bg-white dark:bg-[#1A1A1C] rounded-[20px] shadow-sm dark:shadow-none border p-4 flex flex-col sm:flex-row items-center gap-4 transition-all duration-300 hover:shadow-lg cursor-pointer group ${
           theme.borderClass
         } ${
           isSelected 
@@ -171,12 +171,12 @@ function CourseCard({
           </div>
         )}
 
-        <div className={`w-16 h-16 rounded-[14px] bg-gradient-to-br ${theme.accentGradient} flex items-center justify-center overflow-hidden flex-shrink-0 relative shadow-md ${isSelectionMode ? 'ml-6' : ''}`}>
-          <SubjectIcon className="w-7 h-7 text-white drop-shadow-md relative z-10" strokeWidth={1.75} />
+        <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-[14px] bg-gradient-to-br ${theme.accentGradient} flex items-center justify-center overflow-hidden flex-shrink-0 relative shadow-md ${isSelectionMode ? 'ml-6' : ''}`}>
+          <SubjectIcon className="w-6 h-6 sm:w-7 sm:h-7 text-white drop-shadow-md relative z-10" strokeWidth={1.75} />
         </div>
         
-        <div className="flex-1 min-w-0 text-center md:text-left flex flex-col justify-center">
-          <div className="flex items-center gap-2 flex-wrap justify-center md:justify-start mb-1.5">
+        <div className="flex-1 min-w-0 text-center sm:text-left flex flex-col justify-center w-full">
+          <div className="flex items-center gap-1.5 flex-wrap justify-center sm:justify-start mb-1.5">
             {course.isPinned && (
               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
                 <Pin className="w-3 h-3 fill-amber-500" />
@@ -201,8 +201,8 @@ function CourseCard({
           )}
         </div>
 
-        <div className="w-40 flex-shrink-0 flex flex-col justify-center px-4 md:px-0">
-          <div className="flex justify-between text-xs mb-2">
+        <div className="w-full sm:w-36 flex-shrink-0 flex flex-col justify-center px-2 sm:px-0">
+          <div className="flex justify-between text-xs mb-1.5">
             <span className="text-zinc-500 dark:text-zinc-400 font-medium">{isCompleted ? t('courses.completed') : t('courses.inProgress')}</span>
             <span className="text-zinc-900 dark:text-white font-bold">{course.progress || 0}%</span>
           </div>
@@ -214,25 +214,25 @@ function CourseCard({
           </div>
         </div>
 
-        <div className="flex items-center gap-4 flex-shrink-0 text-xs text-zinc-600 dark:text-zinc-300 font-medium justify-center md:justify-end px-2">
-          <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-zinc-400" strokeWidth={1.5} /> {formattedHours}</span>
-          <span className="flex items-center gap-1.5"><BookOpen className="w-4 h-4 text-zinc-400" strokeWidth={1.5} /> {course.nodes?.length || 0}</span>
+        <div className="flex items-center gap-3 flex-shrink-0 text-xs text-zinc-600 dark:text-zinc-300 font-medium justify-center sm:justify-end">
+          <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-zinc-400" strokeWidth={1.5} /> {formattedHours}</span>
+          <span className="flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5 text-zinc-400" strokeWidth={1.5} /> {course.nodes?.length || 0}</span>
         </div>
 
         <div className="flex items-center gap-1.5">
           <button 
             onClick={handlePin}
-            className={`p-2.5 rounded-xl transition-all ${course.isPinned ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : 'bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-400 hover:text-amber-400'}`}
+            className={`p-2 rounded-xl transition-all ${course.isPinned ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : 'bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-400 hover:text-amber-400'}`}
             title={course.isPinned ? "Открепить" : "Закрепить"}
           >
-            <Pin className={`w-4 h-4 ${course.isPinned ? 'fill-amber-500' : ''}`} strokeWidth={2} />
+            <Pin className={`w-3.5 h-3.5 ${course.isPinned ? 'fill-amber-500' : ''}`} strokeWidth={2} />
           </button>
           <button 
             onClick={handleDelete}
-            className="p-2.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all"
+            className="p-2 bg-red-50 dark:bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all"
             title="Удалить курс"
           >
-            <Trash2 className="w-4 h-4" strokeWidth={2} />
+            <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />
           </button>
         </div>
       </motion.div>
@@ -255,32 +255,32 @@ function CourseCard({
       }`}
     >
       {/* Top Header Card Section */}
-      <div className="p-5 pb-3 flex items-center justify-between gap-2 border-b border-zinc-100 dark:border-white/5 bg-zinc-50/50 dark:bg-white/[0.02]">
-        <div className="flex items-center gap-2 flex-wrap">
+      <div className="p-4 sm:p-5 pb-3 flex items-center justify-between gap-2 border-b border-zinc-100 dark:border-white/5 bg-zinc-50/50 dark:bg-white/[0.02]">
+        <div className="flex items-center gap-1.5 flex-wrap min-w-0 flex-1">
           {isSelectionMode ? (
             <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-black/20 border-zinc-400 text-transparent'}`}>
               <Check className="w-3.5 h-3.5 stroke-[3]" />
             </div>
           ) : (
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-sm ${theme.bgBadgeClass}`}>
-              <SubjectIcon className="w-3.5 h-3.5" strokeWidth={2} />
-              {course.subject || 'Общее'}
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs font-bold border shadow-sm ${theme.bgBadgeClass}`}>
+              <SubjectIcon className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
+              <span className="truncate">{course.subject || 'Общее'}</span>
             </span>
           )}
           
-          <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 bg-white dark:bg-white/5 border border-zinc-200 dark:border-white/10 px-2.5 py-1 rounded-full shadow-2xs">
+          <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 bg-white dark:bg-white/5 border border-zinc-200 dark:border-white/10 px-2.5 py-0.5 sm:py-1 rounded-full shadow-2xs shrink-0">
             {translatedLevel}
           </span>
 
           {course.isPinned && (
-            <span className="inline-flex items-center gap-1 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
+            <span className="inline-flex items-center gap-1 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0">
               <Pin className="w-3 h-3 fill-amber-500" />
               Закреплен
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           <button 
             onClick={handlePin}
             className={`p-1.5 rounded-lg transition-all border ${course.isPinned ? 'bg-amber-500/20 border-amber-500/30 text-amber-500' : 'bg-white dark:bg-white/5 hover:bg-zinc-100 dark:hover:bg-white/10 border-zinc-200 dark:border-white/10 text-zinc-400 hover:text-amber-500'}`}
@@ -299,12 +299,12 @@ function CourseCard({
       </div>
 
       {/* Card Content */}
-      <div className="p-5 flex-1 flex flex-col justify-between bg-white dark:bg-[#1A1A1C]">
+      <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between bg-white dark:bg-[#1A1A1C]">
         <div>
-          <h3 className="text-lg font-bold text-zinc-900 dark:text-white leading-snug mb-2 font-clash line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+          <h3 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white leading-snug mb-2 font-clash line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
             {t(course.title)}
           </h3>
-          <p className="text-xs text-zinc-600 dark:text-zinc-300 mb-5 line-clamp-2 leading-relaxed font-sans">
+          <p className="text-xs text-zinc-600 dark:text-zinc-300 mb-4 sm:mb-5 line-clamp-2 leading-relaxed font-sans">
             {course.description || 'Учебный курс и интерактивная дорожная карта знания.'}
           </p>
         </div>
@@ -612,16 +612,16 @@ export default function Courses() {
       initial="hidden"
       animate="show"
       variants={containerVariants}
-      className="max-w-[2000px] mx-auto text-zinc-900 dark:text-white font-sans pb-24 relative"
+      className="max-w-[2000px] mx-auto text-zinc-900 dark:text-white font-sans pb-24 relative px-4 sm:px-6"
     >
       {/* Top Header */}
-      <motion.div variants={cardVariants} className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <motion.div variants={cardVariants} className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-bold font-clash text-zinc-900 dark:text-white mb-2 tracking-tight">Курсы</h1>
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm max-w-xl">{t('courses.subtitle')}</p>
+          <h1 className="text-3xl sm:text-4xl font-bold font-clash text-zinc-900 dark:text-white mb-1.5 sm:mb-2 tracking-tight">Курсы</h1>
+          <p className="text-zinc-500 dark:text-zinc-400 text-xs sm:text-sm max-w-xl">{t('courses.subtitle')}</p>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3">
           {userCourses.length > 0 && (
             <button
               onClick={() => {
@@ -631,22 +631,22 @@ export default function Courses() {
                   setIsSelectionMode(true);
                 }
               }}
-              className={`px-4 py-2.5 rounded-[12px] font-bold text-xs transition-all flex items-center gap-2 font-sans border shadow-sm ${
+              className={`flex-1 sm:flex-none justify-center px-3.5 sm:px-4 py-2.5 rounded-[12px] font-bold text-xs transition-all flex items-center gap-2 font-sans border shadow-sm ${
                 isSelectionMode 
                   ? 'bg-indigo-600 border-indigo-500 text-white shadow-md' 
                   : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-white/15 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700'
               }`}
             >
-              <CheckSquare className="w-4 h-4" />
-              {isSelectionMode ? 'Отмена выбора' : 'Выбрать элементы'}
+              <CheckSquare className="w-4 h-4 shrink-0" />
+              <span className="truncate">{isSelectionMode ? 'Отмена' : 'Выбрать'}</span>
             </button>
           )}
           <button
             onClick={() => setShowGenModal(true)}
-            className="bg-zinc-900 !text-white hover:bg-zinc-800 dark:bg-white dark:!text-zinc-900 dark:hover:bg-zinc-200 px-6 py-2.5 rounded-[12px] font-bold text-xs transition-colors whitespace-nowrap flex items-center gap-2 font-sans shadow-sm"
+            className="flex-1 sm:flex-none justify-center bg-zinc-900 !text-white hover:bg-zinc-800 dark:bg-white dark:!text-zinc-900 dark:hover:bg-zinc-200 px-5 sm:px-6 py-2.5 rounded-[12px] font-bold text-xs transition-colors whitespace-nowrap flex items-center gap-2 font-sans shadow-sm"
           >
-            <Sparkles className="w-4 h-4 fill-current" />
-            {t('dashboard.generateCourse')}
+            <Sparkles className="w-4 h-4 fill-current shrink-0" />
+            <span>{t('dashboard.generateCourse')}</span>
           </button>
         </div>
       </motion.div>
@@ -672,11 +672,11 @@ export default function Courses() {
         </motion.div>
       ) : (
         /* Full Width Redesigned Catalog Layout with Horizontal Filters */
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Top Control Bar: Status Tabs, Search, Sort & View Mode */}
-          <motion.div variants={cardVariants} className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-zinc-200 dark:border-white/10 pb-4">
+          <motion.div variants={cardVariants} className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4 border-b border-zinc-200 dark:border-white/10 pb-4">
             {/* Status Capsule Tabs */}
-            <div className="segmented-container">
+            <div className="segmented-container w-full sm:w-auto overflow-x-auto no-scrollbar scrollbar-none flex-nowrap">
               {[
                 { id: 'all', label: 'Все' },
                 { id: 'active', label: 'В процессе' },
@@ -687,7 +687,7 @@ export default function Courses() {
                   <button
                     key={tab.id}
                     onClick={() => setStatusTab(tab.id)}
-                    className={`segmented-item ${isActive ? 'active' : ''}`}
+                    className={`segmented-item whitespace-nowrap ${isActive ? 'active' : ''}`}
                   >
                     {tab.label}
                   </button>
@@ -696,7 +696,7 @@ export default function Courses() {
             </div>
 
             {/* Search, Sort Dropdown & View Mode Switcher */}
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 sm:gap-3 w-full lg:w-auto">
               {/* Search input */}
               <div className="relative w-full sm:w-56">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" strokeWidth={1.5} />
@@ -710,12 +710,12 @@ export default function Courses() {
               </div>
 
               {/* Sorting Dropdown */}
-              <div className="relative flex items-center">
+              <div className="relative flex-1 sm:flex-initial min-w-0 flex items-center">
                 <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="appearance-none bg-white dark:bg-[#1A1A1C] border border-zinc-300 dark:border-white/15 text-zinc-800 dark:text-zinc-200 rounded-[12px] py-2 pl-8 pr-8 text-xs font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer shadow-2xs"
+                  className="w-full appearance-none bg-white dark:bg-[#1A1A1C] border border-zinc-300 dark:border-white/15 text-zinc-800 dark:text-zinc-200 rounded-[12px] py-2 pl-8 pr-7 text-xs font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer shadow-2xs truncate"
                 >
                   <option value="date_desc">Новые сначала</option>
                   <option value="date_asc">Старые сначала</option>
@@ -727,7 +727,7 @@ export default function Courses() {
               </div>
 
               {/* View Mode Toggle Switcher */}
-              <div className="flex bg-zinc-100 dark:bg-zinc-800/80 rounded-[12px] p-1 border border-zinc-200 dark:border-white/10 shadow-2xs">
+              <div className="flex bg-zinc-100 dark:bg-zinc-800/80 rounded-[12px] p-1 border border-zinc-200 dark:border-white/10 shadow-2xs shrink-0">
                 <button 
                   onClick={() => setViewMode('grid')}
                   className={`p-1.5 rounded-[8px] transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm border border-zinc-200/60 dark:border-white/10' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
@@ -746,18 +746,18 @@ export default function Courses() {
             </div>
           </motion.div>
 
-          {/* Horizontal Chip Filter Rows */}
-          <motion.div variants={cardVariants} className="space-y-3 bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-[18px] p-4 shadow-sm">
+          {/* Horizontal Chip Filter Rows (Horizontally Scrollable on Mobile) */}
+          <motion.div variants={cardVariants} className="space-y-3 bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-[18px] p-3 sm:p-4 shadow-sm overflow-hidden">
             {/* Subject Chips */}
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mr-2 flex items-center gap-1.5">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scrollbar-none py-1 -mx-1 px-1 touch-pan-x flex-nowrap">
+              <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mr-1 flex items-center gap-1 shrink-0">
                 <Filter className="w-3.5 h-3.5" />
                 Тема:
               </span>
 
               <button
                 onClick={() => setSelectedSubjects([])}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
                   selectedSubjects.length === 0 
                     ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' 
                     : 'bg-zinc-50 dark:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-indigo-400'
@@ -772,7 +772,7 @@ export default function Courses() {
                   <button
                     key={subj}
                     onClick={() => toggleSubjectChip(subj)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all border ${
+                    className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-xl text-xs font-medium transition-all border ${
                       isSelected
                         ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
                         : 'bg-zinc-50 dark:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-indigo-400'
@@ -785,14 +785,14 @@ export default function Courses() {
             </div>
 
             {/* Level Chips */}
-            <div className="flex flex-wrap items-center gap-2 border-t border-zinc-100 dark:border-white/5 pt-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mr-2">
+            <div className="flex items-center gap-2 border-t border-zinc-100 dark:border-white/5 pt-3 overflow-x-auto no-scrollbar scrollbar-none py-1 -mx-1 px-1 touch-pan-x flex-nowrap">
+              <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mr-1 shrink-0">
                 Сложность:
               </span>
 
               <button
                 onClick={() => setSelectedLevels([])}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
                   selectedLevels.length === 0 
                     ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' 
                     : 'bg-zinc-50 dark:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-indigo-400'
@@ -808,7 +808,7 @@ export default function Courses() {
                   <button
                     key={lvl}
                     onClick={() => toggleLevelChip(lvl)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all border ${
+                    className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-xl text-xs font-medium transition-all border ${
                       isSelected
                         ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
                         : 'bg-zinc-50 dark:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-indigo-400'
@@ -824,7 +824,7 @@ export default function Courses() {
           {/* Catalog Grid / List */}
           <motion.div 
             layout 
-            className={viewMode === 'list' ? 'flex flex-col gap-4 pb-8' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-8'}
+            className={viewMode === 'list' ? 'flex flex-col gap-4 pb-8' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 pb-8'}
           >
             <AnimatePresence mode="popLayout">
               {sortedFilteredCourses.map((course) => (
@@ -845,10 +845,10 @@ export default function Courses() {
             {sortedFilteredCourses.length === 0 && (
               <motion.div 
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="col-span-full py-20 flex flex-col items-center justify-center text-zinc-500 dark:text-zinc-400 bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-[20px]"
+                className="col-span-full py-16 sm:py-20 flex flex-col items-center justify-center text-zinc-500 dark:text-zinc-400 bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-[20px] text-center px-4"
               >
-                <Search className="w-12 h-12 mb-4 opacity-20" strokeWidth={1.5} />
-                <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{t('courses.noMatching') || 'Курсов по выбранным фильтрам не найдено'}</p>
+                <Search className="w-10 h-10 sm:w-12 sm:h-12 mb-3 opacity-20" strokeWidth={1.5} />
+                <p className="text-xs sm:text-sm font-semibold text-zinc-700 dark:text-zinc-300">{t('courses.noMatching') || 'Курсов по выбранным фильтрам не найдено'}</p>
                 <button 
                   onClick={() => { setSelectedSubjects([]); setSelectedLevels([]); setSearchQuery(''); setStatusTab('all'); }}
                   className="mt-3 text-xs text-indigo-500 hover:underline font-medium"
@@ -868,9 +868,9 @@ export default function Courses() {
             initial={{ y: 60, opacity: 0, scale: 0.95 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: 60, opacity: 0, scale: 0.95 }}
-            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[90] bg-zinc-900/95 dark:bg-[#1A1A1C]/95 backdrop-blur-xl border border-zinc-700 dark:border-white/15 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-4 text-xs font-bold font-sans"
+            className="fixed bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 z-[90] bg-zinc-900/95 dark:bg-[#1A1A1C]/95 backdrop-blur-xl border border-zinc-700 dark:border-white/15 text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl shadow-2xl flex items-center gap-3 sm:gap-4 text-xs font-bold font-sans max-w-[92vw] overflow-x-auto no-scrollbar"
           >
-            <div className="flex items-center gap-2 pr-3 border-r border-white/15">
+            <div className="flex items-center gap-1.5 sm:gap-2 pr-3 border-r border-white/15 shrink-0">
               <CheckSquare className="w-4 h-4 text-indigo-400" />
               <span>Выбрано: {selectedCourseIds.size}</span>
             </div>
@@ -878,31 +878,31 @@ export default function Courses() {
             <button
               onClick={handleBulkPinToggle}
               disabled={selectedCourseIds.size === 0}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 disabled:opacity-50 rounded-xl transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 disabled:opacity-50 rounded-xl transition-all shrink-0"
             >
               <Pin className={`w-3.5 h-3.5 ${allSelectedArePinned ? 'fill-amber-400 text-amber-400' : 'text-amber-300'}`} />
-              <span>{allSelectedArePinned ? 'Открепить выбранные' : 'Закрепить выбранные'}</span>
+              <span className="whitespace-nowrap">{allSelectedArePinned ? 'Открепить' : 'Закрепить'}</span>
             </button>
 
             <button
               onClick={() => setIsBulkDeleteModalOpen(true)}
               disabled={selectedCourseIds.size === 0}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 disabled:opacity-50 rounded-xl transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 disabled:opacity-50 rounded-xl transition-all shrink-0"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span>Удалить ({selectedCourseIds.size})</span>
+              <span className="whitespace-nowrap">Удалить ({selectedCourseIds.size})</span>
             </button>
 
             <button
               onClick={toggleSelectAll}
-              className="px-3 py-1.5 text-zinc-400 hover:text-white transition-all"
+              className="px-2.5 py-1.5 text-zinc-400 hover:text-white transition-all shrink-0 whitespace-nowrap"
             >
               {selectedCourseIds.size === sortedFilteredCourses.length ? 'Снять выделение' : 'Выбрать все'}
             </button>
 
             <button
               onClick={exitSelectionMode}
-              className="p-1.5 hover:bg-white/10 rounded-lg text-zinc-400 hover:text-white transition-all ml-1"
+              className="p-1.5 hover:bg-white/10 rounded-lg text-zinc-400 hover:text-white transition-all ml-1 shrink-0"
               title="Закрыть выбор"
             >
               <X className="w-4 h-4" />
