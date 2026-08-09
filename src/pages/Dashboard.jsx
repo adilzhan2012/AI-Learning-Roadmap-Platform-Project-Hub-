@@ -16,7 +16,8 @@ import {
   Sparkles, 
   Loader2,
   Lock,
-  FileBadge
+  FileBadge,
+  Crown
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase.js';
@@ -34,6 +35,7 @@ import RepeatReminder from '../components/shared/RepeatReminder.jsx';
 import { t, useLocale } from '../i18n.js';
 import { LeagueIcon } from './Leagues.jsx';
 import MotivationalWidget from '../components/shared/MotivationalWidget.jsx';
+import { getSubjectTheme } from '../utils/courseSubjectClassifier.js';
 
 const staggerContainer = {
   hidden: { opacity: 0 },
@@ -60,6 +62,22 @@ const iconMap = {
   play: PlayCircle,
   activity: Activity
 };
+
+function getActivityBadgeStyle(iconType) {
+  switch (iconType) {
+    case 'check_circle':
+    case 'school':
+      return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20';
+    case 'emoji_events':
+    case 'trophy':
+      return 'bg-reward-subtle text-reward-text border-reward-border';
+    case 'quiz':
+    case 'help':
+      return 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20';
+    default:
+      return 'bg-accent-subtle text-accent-text border-accent-border';
+  }
+}
 
 function AnimatedNumber({ value }) {
   const [count, setCount] = useState(0);
@@ -145,7 +163,6 @@ export default function Dashboard() {
           const fetchedCerts = await getUserAllCertificates(currentUser.uid) || [];
           
           if (fetchedStats) {
-            // Dynamically compute active courses to fix any database desyncs
             fetchedStats.activeCoursesCount = fetchedCourses.length;
             fetchedStats.certificatesCount = fetchedCerts.length;
             
@@ -202,11 +219,23 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-background text-on-background gap-4 font-sans w-full">
-        <Loader2 className="w-8 h-8 animate-spin text-on-surface" />
+        <Loader2 className="w-8 h-8 animate-spin text-accent" />
         <p className="text-sm font-medium">{t('insights.loading')}</p>
       </div>
     );
   }
+
+  const leagueNameMap = {
+    silicon: 'Кремний',
+    graphite: 'Графит',
+    quartz: 'Кварц',
+    obsidian: 'Обсидиан',
+    platinum: 'Платина',
+    titan: 'Титан'
+  };
+
+  const currentLeagueId = stats?.currentLeague || (plan === 'FREE' ? 'graphite' : 'quartz');
+  const leagueName = leagueNameMap[currentLeagueId] || 'Кварц';
 
   return (
     <motion.div 
@@ -220,7 +249,7 @@ export default function Dashboard() {
       {/* Hero Banner with large abstract Apple Visual */}
       <motion.div 
         variants={itemVariants}
-        className="relative overflow-hidden rounded-[16px] bg-surface border border-outline p-6 md:p-12"
+        className="relative overflow-hidden rounded-[18px] bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 p-6 md:p-12 shadow-sm"
       >
         <div className="flex flex-col md:flex-row justify-between items-center gap-6 md:gap-8 relative z-10">
           <div className="flex-1 w-full max-w-2xl text-center md:text-left">
@@ -228,27 +257,28 @@ export default function Dashboard() {
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1 }}
-              className="text-3xl md:text-[56px] font-bold text-on-surface mb-4 tracking-tight leading-none font-clash"
+              className="text-3xl md:text-[52px] font-bold text-zinc-900 dark:text-white mb-4 tracking-tight leading-none font-clash"
             >
               {t(getGreetingKey(), { name: stats?.firstName || 'Learner', defaultValue: t('dashboard.welcome', { name: stats?.firstName || 'Learner' }) })}
             </motion.h1>
-            <p className="text-sm text-on-surface-variant mb-6 md:mb-8 leading-relaxed mx-auto md:mx-0 max-w-lg">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6 md:mb-8 leading-relaxed mx-auto md:mx-0 max-w-lg">
               {t('dashboard.streakDesc', { streak: stats?.streakDays || 1 })}
             </p>
             <motion.button
               whileTap={{ scale: 0.98 }}
               onClick={() => setShowGenModal(true)}
-              className="bg-on-surface hover:bg-surface-container text-inverse-on-surface px-6 py-3 rounded-[12px] font-bold text-xs transition-colors mx-auto md:mx-0 block md:inline-block"
+              className="bg-accent hover:bg-accent-hover text-white px-6 py-3 rounded-[12px] font-bold text-xs transition-colors mx-auto md:mx-0 flex items-center gap-2 shadow-md justify-center"
             >
-              {t('dashboard.generateCourse')}
+              <Sparkles className="w-4 h-4 fill-current shrink-0" />
+              <span>{t('dashboard.generateCourse')}</span>
             </motion.button>
           </div>
-          {/* Detailed abstract geometric mesh (35-40% width) */}
+
           <div className="w-[35%] max-w-[280px] aspect-square flex-shrink-0 hidden md:block select-none">
-            <svg viewBox="0 0 200 200" className="w-full h-full text-on-surface opacity-30 stroke-current stroke-[0.5] fill-none overflow-visible">
+            <svg viewBox="0 0 200 200" className="w-full h-full text-zinc-900 dark:text-white opacity-25 stroke-current stroke-[0.5] fill-none overflow-visible">
               <defs>
                 <linearGradient id="appleHeroGrad" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.6" />
+                  <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.6" />
                   <stop offset="50%" stopColor="#8E8E93" stopOpacity="0.2" />
                   <stop offset="100%" stopColor="#1C1C1E" stopOpacity="0" />
                 </linearGradient>
@@ -267,11 +297,6 @@ export default function Dashboard() {
                   <line key={i} x1="100" y1="100" x2={x2} y2={y2} stroke="url(#appleHeroGrad)" />
                 );
               })}
-              
-              <path d="M 10 100 Q 50 20 100 100 T 190 100" stroke="url(#appleHeroGrad)" strokeWidth="1" />
-              <path d="M 10 100 Q 50 180 100 100 T 190 100" stroke="url(#appleHeroGrad)" strokeWidth="1" />
-              <path d="M 100 10 Q 180 50 100 100 T 100 190" stroke="url(#appleHeroGrad)" strokeWidth="1" />
-              <path d="M 100 10 Q 20 50 100 100 T 100 190" stroke="url(#appleHeroGrad)" strokeWidth="1" />
             </svg>
           </div>
         </div>
@@ -281,19 +306,19 @@ export default function Dashboard() {
       {plan === 'FREE' && (
         <motion.div
           variants={itemVariants}
-          className="bg-surface border border-outline border-l-[4px] border-l-[#FFFFFF] rounded-[16px] p-6 flex flex-col md:flex-row gap-6 items-center justify-between shadow-sm"
+          className="bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 border-l-[4px] border-l-accent rounded-[16px] p-6 flex flex-col md:flex-row gap-6 items-center justify-between shadow-sm"
         >
           <div className="flex-1 text-left">
-            <h3 className="text-sm font-bold text-on-surface flex items-center gap-1.5 font-clash">
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 font-clash">
               Разблокируйте полную силу обучения с PRO подпиской
             </h3>
-            <p className="text-xs text-on-surface-variant mt-1 leading-relaxed max-w-xl">
-              Получите безлимитную генерацию курсов, AI-ментора с памятью о сессиях, полную аналитику прогресса и доступ к Diamond & Master лигам.
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed max-w-xl">
+              Получите безлимитную генерацию курсов, AI-ментора с памятью о сессиях, полную аналитику прогресса и доступ к высшим лигам.
             </p>
           </div>
           <button
             onClick={() => navigate('/pricing')}
-            className="w-full md:w-auto bg-on-surface hover:bg-surface-container text-inverse-on-surface rounded-[12px] px-5 py-2.5 text-xs font-bold transition-all font-sans whitespace-nowrap self-start md:self-auto text-center"
+            className="w-full md:w-auto bg-accent hover:bg-accent-hover text-white rounded-[12px] px-5 py-2.5 text-xs font-bold transition-all font-sans whitespace-nowrap self-start md:self-auto text-center shadow-sm"
           >
             Узнать больше
           </button>
@@ -305,52 +330,53 @@ export default function Dashboard() {
         <MotivationalWidget variant="dashboard" />
       </motion.div>
 
-      {/* Asymmetric Metrics Grid (Stretched to 12 columns full width) */}
+      {/* Asymmetric Metrics Grid */}
       <motion.div variants={staggerContainer} className="grid grid-cols-12 gap-6">
-        {/* Large Active Courses Card (col-span-6) */}
-        <div className="col-span-12 lg:col-span-6 bg-surface border border-outline rounded-[16px] p-6 flex flex-col justify-between h-44 relative overflow-hidden group">
+        {/* Large Active Courses Card */}
+        <div className="col-span-12 lg:col-span-6 bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-[18px] p-6 flex flex-col justify-between h-44 relative overflow-hidden group shadow-sm">
           <div>
-            <p className="text-xs text-on-surface-variant mb-2 font-sans">Активные курсы</p>
-            <h3 className="text-4xl font-bold text-on-surface font-mono">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2 font-sans font-medium">Активные курсы</p>
+            <h3 className="text-4xl font-bold text-accent font-mono">
               <AnimatedNumber value={stats?.activeCoursesCount || 0} />
             </h3>
           </div>
           
           <div className="h-8 w-full mt-4 opacity-40 group-hover:opacity-75 transition-opacity duration-300">
-            <svg className="w-full h-full stroke-on-surface stroke-[1] fill-none overflow-visible" viewBox="0 0 100 20" preserveAspectRatio="none">
+            <svg className="w-full h-full stroke-accent stroke-[1.5] fill-none overflow-visible" viewBox="0 0 100 20" preserveAspectRatio="none">
               <path d="M0,15 L15,10 L30,17 L45,5 L60,12 L75,3 L90,15 L100,8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
         </div>
 
-        {/* Hours Learned (col-span-2) */}
-        <div className="col-span-12 sm:col-span-4 lg:col-span-2 bg-surface border border-outline rounded-[16px] p-6 flex flex-col justify-between h-44">
+        {/* Hours Learned */}
+        <div className="col-span-12 sm:col-span-4 lg:col-span-2 bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-[18px] p-6 flex flex-col justify-between h-44 shadow-sm">
           <div>
-            <p className="text-xs text-on-surface-variant mb-2 font-sans">{t('dashboard.stats.hours')}</p>
-            <h3 className="text-4xl font-bold text-on-surface font-mono">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2 font-sans font-medium">{t('dashboard.stats.hours')}</p>
+            <h3 className="text-4xl font-bold text-zinc-900 dark:text-white font-mono">
               <AnimatedNumber value={stats?.hoursLearned || 0} />
             </h3>
           </div>
-          <p className="text-xs text-on-surface-variant font-sans">Часы обучения</p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 font-sans">Часы обучения</p>
         </div>
 
-        {/* Certificates (col-span-2) */}
-        <div className="col-span-12 sm:col-span-4 lg:col-span-2 bg-surface border border-outline rounded-[16px] p-6 flex flex-col justify-between h-44">
+        {/* Certificates */}
+        <div className="col-span-12 sm:col-span-4 lg:col-span-2 bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-[18px] p-6 flex flex-col justify-between h-44 shadow-sm">
           <div>
-            <p className="text-xs text-on-surface-variant mb-2 font-sans">{t('dashboard.stats.certs')}</p>
-            <h3 className="text-4xl font-bold text-on-surface font-mono">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2 font-sans font-medium">{t('dashboard.stats.certs')}</p>
+            <h3 className="text-4xl font-bold text-zinc-900 dark:text-white font-mono">
               <AnimatedNumber value={stats?.certificatesCount || 0} />
             </h3>
           </div>
-          <p className="text-xs text-on-surface-variant font-sans">Сертификаты</p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 font-sans">Сертификаты</p>
         </div>
 
-        {/* Streaks (col-span-2) */}
-        <div className="col-span-12 sm:col-span-4 lg:col-span-2 bg-surface border border-outline rounded-[16px] p-6 flex flex-col justify-between h-44">
+        {/* Streaks (Reward Amber Token) */}
+        <div className="col-span-12 sm:col-span-4 lg:col-span-2 bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-[18px] p-6 flex flex-col justify-between h-44 shadow-sm">
           <div>
-            <p className="text-xs text-on-surface-variant mb-2 font-sans">{t('dashboard.stats.streak')}</p>
-            <h3 className="text-4xl font-bold text-on-surface font-mono">
-              {stats?.streakDays || 1}
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2 font-sans font-medium">{t('dashboard.stats.streak')}</p>
+            <h3 className="text-4xl font-bold text-reward-text font-mono flex items-center gap-1.5">
+              <span>{stats?.streakDays || 1}</span>
+              <Flame className="w-6 h-6 text-reward-text fill-reward-text" />
             </h3>
           </div>
           
@@ -360,7 +386,7 @@ export default function Dashboard() {
               return (
                 <div 
                   key={i} 
-                  className={`w-2 h-2 rounded-full ${isActive ? 'bg-on-surface border border-[#FFFFFF]' : 'bg-transparent border border-outline'}`}
+                  className={`w-2 h-2 rounded-full transition-all ${isActive ? 'bg-reward-text shadow-xs' : 'bg-zinc-200 dark:bg-white/10'}`}
                   title={`День ${i + 1}`}
                 />
               );
@@ -372,15 +398,15 @@ export default function Dashboard() {
       {/* Horizontal Custom Course CTA Card */}
       <motion.div 
         variants={itemVariants} 
-        className="bg-surface border border-outline rounded-[16px] p-6 flex flex-col md:flex-row gap-6 items-center justify-between"
+        className="bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-[18px] p-6 flex flex-col md:flex-row gap-6 items-center justify-between shadow-sm"
       >
         <div className="flex-1">
-          <h2 className="text-base font-bold text-on-background font-clash">{t('dashboard.generateCustom')}</h2>
-          <p className="text-xs text-on-surface-variant mt-1">{t('dashboard.generateCustomDesc')}</p>
+          <h2 className="text-base font-bold text-zinc-900 dark:text-white font-clash">{t('dashboard.generateCustom')}</h2>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{t('dashboard.generateCustomDesc')}</p>
         </div>
         <button 
           onClick={() => setShowGenModal(true)}
-          className="w-full md:w-auto border border-[#FFFFFF] hover:bg-on-surface text-on-surface hover:text-inverse-on-surface px-6 py-3 rounded-[12px] font-bold text-xs transition-all whitespace-nowrap font-sans text-center"
+          className="w-full md:w-auto bg-accent hover:bg-accent-hover text-white px-6 py-3 rounded-[12px] font-bold text-xs transition-all whitespace-nowrap font-sans text-center shadow-sm"
         >
           {t('dashboard.buildRoadmap')}
         </button>
@@ -389,119 +415,125 @@ export default function Dashboard() {
       {/* Courses Row */}
       <motion.div variants={itemVariants} className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
-          <h2 className="text-xl sm:text-2xl font-bold font-clash text-on-surface">Ваши курсы дорожных карт</h2>
-          <button onClick={() => navigate('/courses')} className="text-xs font-bold text-on-surface hover:text-on-surface/80 flex items-center gap-1 group font-sans">
+          <h2 className="text-xl sm:text-2xl font-bold font-clash text-zinc-900 dark:text-white">Ваши курсы дорожных карт</h2>
+          <button onClick={() => navigate('/courses')} className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 group font-sans">
             {t('dashboard.viewAllCatalog')} <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
         
         {courses.length === 0 ? (
-          <div className="bg-surface border border-dashed border-outline rounded-[16px] p-10 text-center flex flex-col items-center justify-center">
-            <BookOpen className="w-12 h-12 text-on-surface-variant mb-4 opacity-50" strokeWidth={1} />
-            <p className="text-on-surface-variant font-medium mb-4">{t('dashboard.noCourses')}</p>
+          <div className="bg-white dark:bg-[#1A1A1C] border border-dashed border-zinc-300 dark:border-white/15 rounded-[18px] p-10 text-center flex flex-col items-center justify-center">
+            <BookOpen className="w-12 h-12 text-zinc-400 mb-4 opacity-50" strokeWidth={1} />
+            <p className="text-zinc-500 dark:text-zinc-400 font-medium mb-4">{t('dashboard.noCourses')}</p>
             <button 
               onClick={() => setShowGenModal(true)}
-              className="bg-on-surface hover:bg-surface-container text-inverse-on-surface px-5 py-2.5 rounded-[12px] text-xs font-bold transition-colors"
+              className="bg-accent hover:bg-accent-hover text-white px-5 py-2.5 rounded-[12px] text-xs font-bold transition-colors shadow-sm"
             >
               {t('dashboard.generateFirst')}
             </button>
           </div>
         ) : (
-          <div className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-thin">
-            {courses.map((course, idx) => (
-              <motion.div 
-                key={course.id}
-                whileHover={{ y: -3 }}
-                onClick={() => {
-                  if (plan === 'FREE' && idx > 0) {
-                    navigate('/pricing');
-                    return;
-                  }
-                  localStorage.setItem('selected_course_id', course.id);
-                  navigate('/graph');
-                }}
-                className="min-w-[300px] max-w-[300px] flex-shrink-0 bg-surface border border-outline rounded-[16px] overflow-hidden transition-all duration-200 cursor-pointer snap-start relative"
-              >
-                {/* Lock overlay for archived courses on Free plan */}
-                {plan === 'FREE' && idx > 0 && (
-                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/75 backdrop-blur-[2px] p-6 text-center select-none">
-                    <Lock className="w-6 h-6 text-on-surface mb-2" strokeWidth={1.5} />
-                    <span className="text-[11px] font-bold text-on-surface uppercase tracking-wider mb-1">Архивировано (FREE)</span>
-                    <p className="text-[10px] text-on-surface-variant leading-tight">Перейдите на PRO, чтобы разблокировать этот курс</p>
-                  </div>
-                )}
-                <div className="h-24 bg-surface-container/50 border-b border-outline relative overflow-hidden flex items-center justify-center">
-                  <svg className="absolute inset-0 w-full h-full text-on-surface opacity-10 stroke-current stroke-[0.5] fill-none" viewBox="0 0 100 40" preserveAspectRatio="none">
-                    <line x1="0" y1="0" x2="100" y2="40" />
-                    <line x1="0" y1="40" x2="100" y2="0" />
-                    <line x1="50" y1="0" x2="50" y2="40" />
-                    <circle cx="50" cy="20" r="8" />
-                  </svg>
-                  <Brain className="w-8 h-8 text-on-surface opacity-40 relative z-10" strokeWidth={1.5} />
-                </div>
-                <div className="p-6">
-                  {/* Category tag: allowed uppercase, small tracking */}
-                  <span className="text-[9px] font-mono font-bold text-on-surface-variant tracking-tight uppercase">
-                    {course.category}
-                  </span>
-                  <h3 className="text-base font-bold text-on-surface mt-1 mb-1 line-clamp-1 font-clash">{t(course.title)}</h3>
-                  <p className="text-xs text-on-surface-variant mb-6 font-sans">{course.level}</p>
-                  
-                  <div className="flex justify-between text-[11px] font-mono mb-2">
-                    <span className="text-on-surface-variant font-sans">Прогресс</span>
-                    <span className="text-on-surface font-bold font-mono">{course.progress || 0}%</span>
-                  </div>
-                  <div className="w-full h-[2px] bg-surface-container border border-outline-variant rounded-sm overflow-hidden">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${course.progress || 0}%` }}
-                      transition={{ duration: 1, delay: 0.2 + (idx * 0.05) }}
-                      className="h-full bg-on-surface"
-                    />
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+          <div className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-none">
+            {courses.map((course, idx) => {
+              const theme = getSubjectTheme(course.subject, course.topic, course.title, course.nodes);
+              const SubjectIcon = theme.icon;
 
-            {/* Dash placeholder to complete visual layout on wide screens if courses <= 2 */}
+              return (
+                <motion.div 
+                  key={course.id}
+                  whileHover={{ y: -3 }}
+                  onClick={() => {
+                    if (plan === 'FREE' && idx > 0) {
+                      navigate('/pricing');
+                      return;
+                    }
+                    localStorage.setItem('selected_course_id', course.id);
+                    navigate('/graph');
+                  }}
+                  className={`min-w-[300px] max-w-[300px] flex-shrink-0 bg-white dark:bg-[#1A1A1C] border ${theme.borderClass} border-zinc-200 dark:border-white/10 rounded-[20px] overflow-hidden transition-all duration-200 cursor-pointer snap-start relative shadow-sm hover:shadow-md`}
+                >
+                  {/* Lock overlay for archived courses on Free plan */}
+                  {plan === 'FREE' && idx > 0 && (
+                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/75 backdrop-blur-[2px] p-6 text-center select-none text-white">
+                      <Lock className="w-6 h-6 text-white mb-2" strokeWidth={1.5} />
+                      <span className="text-[11px] font-bold uppercase tracking-wider mb-1">Архивировано (FREE)</span>
+                      <p className="text-[10px] text-zinc-300 leading-tight">Перейдите на PRO, чтобы разблокировать этот курс</p>
+                    </div>
+                  )}
+
+                  {/* Course Header Banner with Subject Theme */}
+                  <div className="p-4 border-b border-zinc-100 dark:border-white/5 bg-zinc-50/50 dark:bg-white/[0.02] flex items-center justify-between gap-2">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border shadow-2xs ${theme.bgBadgeClass}`}>
+                      <SubjectIcon className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
+                      <span className="truncate max-w-[140px]">{theme.subject}</span>
+                    </span>
+                    <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 bg-white dark:bg-white/5 border border-zinc-200 dark:border-white/10 px-2 py-0.5 rounded-full">
+                      {course.level || 'Beginner'}
+                    </span>
+                  </div>
+
+                  <div className="p-5">
+                    <h3 className="text-base font-bold text-zinc-900 dark:text-white mt-0.5 mb-1 line-clamp-1 font-clash">{t(course.title)}</h3>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-5 font-sans line-clamp-2">{course.description || 'Интерактивная дорожная карта знания.'}</p>
+                    
+                    <div className="flex justify-between text-[11px] font-mono mb-2">
+                      <span className="text-zinc-500 dark:text-zinc-400 font-sans">Прогресс</span>
+                      <span className="text-zinc-900 dark:text-white font-bold font-mono">{course.progress || 0}%</span>
+                    </div>
+                    <div className="w-full h-[3px] bg-zinc-100 dark:bg-white/5 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${course.progress || 0}%` }}
+                        transition={{ duration: 1, delay: 0.2 + (idx * 0.05) }}
+                        className={`h-full bg-gradient-to-r ${theme.accentGradient} rounded-full`}
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+
+            {/* Dash placeholder to complete visual layout */}
             {courses.length > 0 && courses.length <= 2 && (
               <div 
                 onClick={() => setShowGenModal(true)}
-                className="min-w-[300px] max-w-[300px] flex-shrink-0 bg-transparent border-2 border-dashed border-outline hover:border-[rgba(255,255,255,0.3)] rounded-[16px] flex flex-col items-center justify-center h-[208px] transition-colors cursor-pointer group"
+                className="min-w-[300px] max-w-[300px] flex-shrink-0 bg-transparent border-2 border-dashed border-zinc-300 dark:border-white/15 hover:border-indigo-400 rounded-[20px] flex flex-col items-center justify-center h-[208px] transition-colors cursor-pointer group"
               >
-                <span className="text-3xl text-on-surface-variant group-hover:text-on-surface transition-colors font-sans mb-1 font-light">+</span>
-                <span className="text-xs text-on-surface-variant group-hover:text-on-surface transition-colors font-sans">Создать новый курс</span>
+                <span className="text-3xl text-zinc-400 group-hover:text-indigo-500 transition-colors font-sans mb-1 font-light">+</span>
+                <span className="text-xs text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors font-sans font-medium">Создать новый курс</span>
               </div>
             )}
           </div>
         )}
       </motion.div>
 
-      {/* Activity, Goal & Leagues Teaser Grid (Stretched across full width) */}
+      {/* Activity, Goal & Leagues Teaser Grid */}
       <motion.div variants={staggerContainer} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Recent Activity (1/3 width) */}
-        <motion.div variants={itemVariants} className="lg:col-span-1 bg-surface border border-outline rounded-[16px] p-6 flex flex-col justify-between min-h-[360px]">
+        {/* Recent Activity */}
+        <motion.div variants={itemVariants} className="lg:col-span-1 bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-[18px] p-6 flex flex-col justify-between min-h-[360px] shadow-sm">
           <div>
-            <h2 className="text-base font-bold text-on-surface mb-6 font-sans">Недавняя активность</h2>
+            <h2 className="text-base font-bold text-zinc-900 dark:text-white mb-5 font-sans">Недавняя активность</h2>
             {activities.length === 0 ? (
-              <p className="text-on-surface-variant text-xs py-4">Активность отсутствует</p>
+              <p className="text-zinc-500 dark:text-zinc-400 text-xs py-4">Активность отсутствует</p>
             ) : (
               <div className="space-y-3">
                 {activities.slice(0, 4).map((activity, idx) => {
                   const IconComponent = iconMap[activity.icon] || Activity;
+                  const badgeStyle = getActivityBadgeStyle(activity.icon);
+
                   return (
                     <div 
                       key={activity.id || idx}
-                      className="flex items-center gap-4 p-2.5 rounded-[12px] border border-transparent hover:bg-surface-container/40 transition-all cursor-default"
+                      className="flex items-center gap-3.5 p-2.5 rounded-[12px] border border-transparent hover:bg-zinc-50 dark:hover:bg-white/5 transition-all cursor-default"
                     >
-                      <div className="p-2 rounded-[8px] bg-surface-container border border-outline text-on-surface">
-                        <IconComponent className="w-4 h-4" strokeWidth={1.5} />
+                      <div className={`p-2 rounded-[10px] border shadow-2xs ${badgeStyle}`}>
+                        <IconComponent className="w-4 h-4" strokeWidth={1.75} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-medium text-on-background truncate">{activity.title}</h4>
+                        <h4 className="text-xs font-semibold text-zinc-900 dark:text-white truncate">{activity.title}</h4>
                       </div>
-                      <span className="text-[10px] text-on-surface-variant font-mono whitespace-nowrap">
+                      <span className="text-[10px] text-zinc-400 font-mono whitespace-nowrap">
                         {new Date(activity.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                       </span>
                     </div>
@@ -512,85 +544,82 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
-        {/* Certificates Card (1/3 width) replaces Weekly Goal */}
+        {/* Certificates Card */}
         <motion.div 
           variants={itemVariants} 
           onClick={() => setShowCertModal(true)}
-          className="lg:col-span-1 bg-surface border border-outline hover:border-white/20 transition-all rounded-[16px] p-6 flex flex-col items-center justify-between text-center min-h-[360px] cursor-pointer group"
+          className="lg:col-span-1 bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 hover:border-indigo-400/50 transition-all rounded-[18px] p-6 flex flex-col items-center justify-between text-center min-h-[360px] cursor-pointer group shadow-sm"
         >
           <div className="w-full flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-on-surface font-sans flex items-center gap-2">
-              <FileBadge className="w-4 h-4 text-on-surface-variant" strokeWidth={1.5} />
+            <h2 className="text-base font-bold text-zinc-900 dark:text-white font-sans flex items-center gap-2">
+              <FileBadge className="w-4 h-4 text-accent" strokeWidth={1.5} />
               Мои сертификаты
             </h2>
           </div>
           
           <div className="relative w-32 h-32 my-auto flex items-center justify-center">
-            <div className="absolute inset-0 bg-primary/10 rounded-full blur-2xl group-hover:bg-primary/20 transition-colors" />
-            <div className="relative z-10 w-24 h-24 rounded-full bg-surface-container border border-outline flex items-center justify-center">
+            <div className="absolute inset-0 bg-accent-subtle rounded-full blur-2xl group-hover:opacity-100 transition-opacity" />
+            <div className="relative z-10 w-24 h-24 rounded-full bg-zinc-50 dark:bg-white/5 border border-zinc-200 dark:border-white/10 flex items-center justify-center shadow-inner">
               <div className="flex flex-col items-center justify-center font-sans">
-                <span className="text-3xl font-bold text-on-surface font-mono">{stats?.certificatesCount || 0}</span>
-                <span className="text-[10px] font-bold text-on-surface-variant mt-1 uppercase tracking-widest">Получено</span>
+                <span className="text-3xl font-bold text-accent font-mono">{stats?.certificatesCount || 0}</span>
+                <span className="text-[9px] font-bold text-zinc-400 mt-0.5 uppercase tracking-widest">Получено</span>
               </div>
             </div>
             {/* Decorative orbit circle */}
             <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full -rotate-90 animate-[spin_10s_linear_infinite]">
-              <circle cx="50" cy="50" r="48" fill="none" stroke="currentColor" className="stroke-[1px] text-primary/30 stroke-dasharray-[4_8]" />
+              <circle cx="50" cy="50" r="48" fill="none" stroke="currentColor" className="stroke-[1.5px] text-accent/40 stroke-dasharray-[4_8]" />
             </svg>
           </div>
 
-          <div className="flex items-center justify-between w-full text-[10px] font-bold text-on-surface mt-4 border-t border-outline pt-3 group-hover:text-on-surface/80 transition-colors">
+          <div className="flex items-center justify-between w-full text-[11px] font-bold text-indigo-600 dark:text-indigo-400 mt-4 border-t border-zinc-100 dark:border-white/5 pt-3">
             <span>Смотреть все</span>
             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
           </div>
         </motion.div>
 
-        {/* Leagues Teaser (1/3 width) */}
+        {/* Leagues Teaser Widget */}
         <motion.div 
           variants={itemVariants} 
           onClick={() => navigate('/leagues')}
-          className="lg:col-span-1 bg-surface border border-outline hover:border-white/20 transition-all rounded-[16px] p-6 flex flex-col justify-between cursor-pointer group min-h-[360px]"
+          className="lg:col-span-1 bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 hover:border-indigo-400/50 transition-all rounded-[18px] p-6 flex flex-col justify-between cursor-pointer group min-h-[360px] shadow-sm"
         >
           <div className="w-full">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-on-surface font-sans flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-on-surface-variant" strokeWidth={1.5} />
+              <h2 className="text-base font-bold text-zinc-900 dark:text-white font-sans flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-reward-text" strokeWidth={1.5} />
                 Лига соревнований
               </h2>
-              <span className="text-[10px] font-mono font-bold text-on-surface-variant tabular-nums">{timeLeft}</span>
+              <span className="text-[10px] font-mono font-bold text-zinc-400 tabular-nums">{timeLeft}</span>
             </div>
             
-            <div className="bg-surface-container/20 border border-outline rounded-lg p-2 flex items-center gap-2 mb-4">
-              <div className="p-1 rounded bg-surface border border-outline text-on-surface">
-                <LeagueIcon leagueId={stats?.currentLeague || (plan === 'FREE' ? 'graphite' : 'quartz')} className="w-4 h-4" />
+            {/* Reward badge status for league */}
+            <div className="bg-reward-subtle border border-reward-border rounded-xl p-3 flex items-center gap-3 mb-4 shadow-2xs">
+              <div className="p-1.5 rounded-lg bg-white/60 dark:bg-black/40 text-reward-text shadow-2xs">
+                <LeagueIcon leagueId={currentLeagueId} className="w-4 h-4" />
               </div>
-              <div className="text-left">
-                <p className="text-xs font-bold text-on-surface">
-                  {stats?.currentLeague === 'silicon' ? 'Кремний' : stats?.currentLeague === 'graphite' ? 'Графит' : stats?.currentLeague === 'quartz' ? 'Кварц' : stats?.currentLeague === 'obsidian' ? 'Обсидиан' : stats?.currentLeague === 'platinum' ? 'Платина' : 'Титан'}
-                </p>
-                <p className="text-[9px] text-on-surface-variant">Нажмите, чтобы открыть таблицу</p>
+              <div className="text-left flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs font-bold text-reward-text font-clash">
+                    Лига {leagueName}
+                  </p>
+                  <Crown className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0" />
+                </div>
+                <p className="text-[10px] text-zinc-600 dark:text-zinc-300 truncate">Нажмите, чтобы открыть таблицу</p>
               </div>
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between p-2 rounded-lg text-xs bg-surface-container/20 border border-outline">
+              <div className="flex items-center justify-between p-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-white/5 border border-zinc-200 dark:border-white/10">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-on-surface w-4">1</span>
-                  <span className="text-on-surface font-bold truncate max-w-[100px]">{user?.displayName || 'Вы'}</span>
+                  <span className="font-mono text-zinc-900 dark:text-white font-bold w-4">1</span>
+                  <span className="text-zinc-900 dark:text-white font-bold truncate max-w-[110px]">{user?.displayName || 'Вы'}</span>
                 </div>
-                <span className="font-mono tabular-nums text-on-surface">{stats?.weeklyXP || 0} XP</span>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-lg text-xs bg-transparent border border-transparent opacity-50">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-on-surface-variant w-4">-</span>
-                  <span className="text-on-surface-variant truncate max-w-[100px]">Ожидание игроков...</span>
-                </div>
-                <span className="font-mono tabular-nums text-on-surface-variant">0 XP</span>
+                <span className="font-mono tabular-nums text-indigo-600 dark:text-indigo-400 font-bold">{stats?.weeklyXP || 0} XP</span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-[10px] font-bold text-on-surface mt-4 border-t border-outline pt-3 group-hover:text-on-surface/80 transition-colors">
+          <div className="flex items-center justify-between text-[11px] font-bold text-indigo-600 dark:text-indigo-400 mt-4 border-t border-zinc-100 dark:border-white/5 pt-3">
             <span>Смотреть всю группу</span>
             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
           </div>
