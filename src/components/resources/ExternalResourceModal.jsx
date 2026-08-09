@@ -79,18 +79,22 @@ export default function ExternalResourceModal({ resource, externalData, loading,
               <RefreshCw className="w-8 h-8 animate-spin text-indigo-400 mb-3" />
               <p className="text-sm font-mono text-on-surface-variant">Подбираем лучшие материалы и формируем ИИ-аннотации...</p>
             </div>
-          ) : candidates.length === 0 ? (
-            <div className="py-16 text-center">
-              <p className="text-sm text-on-surface-variant mb-4">Не удалось автоматически загрузить кандидатов.</p>
+          ) : (candidates.length === 0 || externalData?.fallbackToSearch) ? (
+            <div className="py-16 text-center max-w-md mx-auto">
+              <PlayCircle className="w-12 h-12 text-on-surface-variant mx-auto mb-3 opacity-30" />
+              <h3 className="text-sm font-bold text-white mb-2">Автоматический поиск видео</h3>
+              <p className="text-xs text-on-surface-variant mb-6 leading-relaxed">
+                В текущем окружении задействован честный режим поиска. Нажмите кнопку ниже для перехода к подборке уроков.
+              </p>
               <a 
-                href={isVideo 
+                href={externalData?.searchUrl || (isVideo 
                   ? `https://www.youtube.com/results?search_query=${encodeURIComponent(resource.tags?.[0] + ' ' + resource.title)}`
-                  : `https://github.com/search?q=${encodeURIComponent(resource.title)}`}
+                  : `https://github.com/search?q=${encodeURIComponent(resource.title)}`)}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-on-surface text-inverse-on-surface rounded-xl font-bold text-xs"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-on-surface hover:bg-white text-inverse-on-surface rounded-xl font-bold text-xs shadow-md transition-all"
               >
-                <ExternalLink className="w-4 h-4" /> Открыть прямой поиск
+                <ExternalLink className="w-4 h-4" /> Открыть поиск на {isVideo ? 'YouTube' : 'GitHub'}
               </a>
             </div>
           ) : (

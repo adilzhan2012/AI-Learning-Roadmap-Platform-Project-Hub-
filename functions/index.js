@@ -240,7 +240,8 @@ async function processUsageLimitAndCounter(db, admin, userId, usageType, todaySt
 
 exports.youtubeProxy = onCall(
   {
-    enforceAppCheck: true,
+    cors: true,
+    enforceAppCheck: false,
     maxInstances: 5,
     secrets: ["YOUTUBE_API_KEY"],
   },
