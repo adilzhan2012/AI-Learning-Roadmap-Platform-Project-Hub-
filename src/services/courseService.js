@@ -32,12 +32,8 @@ import {
   normalizeTopic
 } from '../utils/cacheUtils.js';
 import { parseAIJson, AIParsingError } from '../utils/aiResponseParser.js';
-import { 
-  validateOrFallbackGradient, 
-  validateLessonContent, 
-  logPipelineMetric, 
-  sanitizeImageKeyword 
-} from '../utils/coursePipelineUtils.js';
+import { validateOrFallbackGradient, validateLessonContent, logPipelineMetric, sanitizeImageKeyword } from '../utils/coursePipelineUtils.js';
+import { determineResourceType } from './resourceService.js';
 
 export function withTimeout(promise, ms = 50000, customErrorMessage = 'Превышено время ожидания ответа ИИ.') {
   return new Promise((resolve, reject) => {
@@ -436,6 +432,7 @@ The response must be a valid JSON object matching this schema:
           ...node,
           id: newId,
           rawNodeId: oldId, // Keep reference to template raw node ID for lesson content lookup
+          resourceTypes: node.resourceTypes || determineResourceType(node),
           status: hasPrereq ? 'locked' : 'active'
         };
       });

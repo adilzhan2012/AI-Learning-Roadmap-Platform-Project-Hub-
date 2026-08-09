@@ -18,7 +18,8 @@ import {
   Star
 } from 'lucide-react';
 import { t, useLocale } from '../i18n.js';
-import { auth } from '../firebase.js';
+import { auth, db } from '../firebase.js';
+import { doc, updateDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getUserCourses, getUserStats } from '../services/courseService.js';
 import { useNavigate } from 'react-router-dom';
@@ -180,8 +181,20 @@ export default function Resources() {
           
           courses.forEach(course => {
             if (course.nodes) {
-              course.nodes.forEach((node, nodeIdx) => {
-                // Lazy-fallback for node resource types
+              let needsUpdate = false;
+              const updatedNodes = course.nodes.map(node => {
+                if (!node.resourceTypes || node.resourceTypes.length === 0) {
+                  needsUpdate = true;
+                  return { ...node, resourceTypes: determineResourceType(node) };
+                }
+                return node;
+              });
+
+              if (needsUpdate && user?.uid && course.id) {
+                updateDoc(doc(db, 'courses', course.id), { nodes: updatedNodes }).catch(err => console.warn('Lazy migration updateDoc warning:', err));
+              }
+
+              updatedNodes.forEach((node, nodeIdx) => {
                 const resourceTypes = node.resourceTypes || determineResourceType(node);
                 
                 resourceTypes.forEach((rType, typeIdx) => {

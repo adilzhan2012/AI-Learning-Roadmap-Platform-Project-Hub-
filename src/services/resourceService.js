@@ -315,72 +315,71 @@ export async function getResourceRatings(resourceId) {
 
 /**
  * 10. Fetch Curated External Resources (Videos / Repositories)
- * Uses candidate caching on node to avoid API quota overuse.
- * Generates personalized AI annotations for PRO/ULTRA.
+ * Uses REAL GitHub Search API / YouTube Data API v3.
+ * If API keys are unavailable or API returns no items, triggers honest search fallback without hallucinating data.
  */
 export async function fetchCuratedExternalResources({ topicLabel, courseTitle, lessonContent, resourceType, userPlan = 'FREE', existingCandidates = null }) {
   const isVideo = resourceType === 'video';
   const queryTopic = `${topicLabel} ${courseTitle}`.trim();
-  
+  const searchFallbackUrl = isVideo 
+    ? `https://www.youtube.com/results?search_query=${encodeURIComponent(queryTopic + ' tutorial')}`
+    : `https://github.com/search?q=${encodeURIComponent(queryTopic)}`;
+
   let candidates = existingCandidates;
-  
-  // Synthesize candidates if not cached
+
+  // Fetch real candidates from APIs if not already cached
   if (!candidates || candidates.length === 0) {
-    if (isVideo) {
-      candidates = [
-        {
-          id: 'v1',
-          title: `Полное руководство по ${topicLabel}`,
-          author: 'Tech Course HD',
-          url: `https://www.youtube.com/results?search_query=${encodeURIComponent(queryTopic + ' tutorial')}`,
-          metrics: '120k просмотров • 4.9★',
-          desc: `Подробный разбор концепций ${topicLabel} с практическим программированием.`
-        },
-        {
-          id: 'v2',
-          title: `${topicLabel} за 15 минут`,
-          author: 'Quick Code',
-          url: `https://www.youtube.com/results?search_query=${encodeURIComponent(queryTopic + ' quick guide')}`,
-          metrics: '85k просмотров • 4.8★',
-          desc: `Сжатая выжимка самых важных принципов и примеров.`
-        },
-        {
-          id: 'v3',
-          title: `Архитектура и практики: ${topicLabel}`,
-          author: 'Senior Dev Talks',
-          url: `https://www.youtube.com/results?search_query=${encodeURIComponent(queryTopic + ' architecture')}`,
-          metrics: '45k просмотров • 5.0★',
-          desc: `Разбор реальных сценариев применения в продакшене.`
+    try {
+      if (isVideo) {
+        const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY;
+        if (!apiKey) {
+          // No API key configured -> honest fallback to search
+          return { candidates: [], isPersonalized: false, fallbackToSearch: true, searchUrl: searchFallbackUrl };
         }
-      ];
-    } else {
-      candidates = [
-        {
-          id: 'r1',
-          title: `${topicLabel.toLowerCase().replace(/\s+/g, '-')}-awesome-guide`,
-          author: 'awesome-community',
-          url: `https://github.com/search?q=${encodeURIComponent(queryTopic)}`,
-          metrics: '★ 3.4k stars • 450 forks',
-          desc: `Главный репозиторий с шаблонами, примерами и полезными утилитами.`
-        },
-        {
-          id: 'r2',
-          title: `starter-template-${topicLabel.toLowerCase().replace(/\s+/g, '-')}`,
-          author: 'dev-templates',
-          url: `https://github.com/search?q=${encodeURIComponent(topicLabel + ' starter template')}`,
-          metrics: '★ 1.8k stars • 210 forks',
-          desc: `Готовый стартовый шаблон проекта для быстрой практики.`
-        },
-        {
-          id: 'r3',
-          title: `production-examples-${topicLabel.toLowerCase().replace(/\s+/g, '-')}`,
-          author: 'enterprise-labs',
-          url: `https://github.com/search?q=${encodeURIComponent(topicLabel + ' production example')}`,
-          metrics: '★ 950 stars • 120 forks',
-          desc: `Примеры боевого кода с лучшими архитектурными паттернами.`
+
+        const ytUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=3&type=video&q=${encodeURIComponent(queryTopic + ' tutorial')}&key=${apiKey}`;
+        const res = await fetch(ytUrl);
+        const data = await res.json();
+
+        if (data.items && data.items.length > 0) {
+          candidates = data.items.map(item => ({
+            id: item.id?.videoId || Math.random().toString(36).substr(2, 6),
+            title: item.snippet?.title || topicLabel,
+            author: item.snippet?.channelTitle || 'YouTube Channel',
+            url: `https://www.youtube.com/watch?v=${item.id?.videoId}`,
+            metrics: 'YouTube Video',
+            desc: item.snippet?.description || `Видеоурок по теме ${topicLabel}.`
+          }));
+        } else {
+          return { candidates: [], isPersonalized: false, fallbackToSearch: true, searchUrl: searchFallbackUrl };
         }
-      ];
+      } else {
+        // GitHub Search API (Public, no API key required)
+        const ghUrl = `https://api.github.com/search/repositories?q=${encodeURIComponent(queryTopic)}&sort=stars&order=desc&per_page=3`;
+        const res = await fetch(ghUrl, { headers: { 'Accept': 'application/vnd.github.v3+json' } });
+        const data = await res.json();
+
+        if (data.items && data.items.length > 0) {
+          candidates = data.items.map(item => ({
+            id: String(item.id),
+            title: item.full_name || item.name,
+            author: item.owner?.login || 'GitHub',
+            url: item.html_url || `https://github.com/search?q=${encodeURIComponent(queryTopic)}`,
+            metrics: `★ ${item.stargazers_count || 0} stars • ${item.forks_count || 0} forks`,
+            desc: item.description || `Репозиторий с открытым кодом по теме ${topicLabel}.`
+          }));
+        } else {
+          return { candidates: [], isPersonalized: false, fallbackToSearch: true, searchUrl: searchFallbackUrl };
+        }
+      }
+    } catch (err) {
+      console.warn("External API fetch failed, falling back to direct search URL:", err);
+      return { candidates: [], isPersonalized: false, fallbackToSearch: true, searchUrl: searchFallbackUrl };
     }
+  }
+
+  if (!candidates || candidates.length === 0) {
+    return { candidates: [], isPersonalized: false, fallbackToSearch: true, searchUrl: searchFallbackUrl };
   }
 
   // If FREE plan, return candidate list directly without AI personalized annotations
@@ -388,7 +387,8 @@ export async function fetchCuratedExternalResources({ topicLabel, courseTitle, l
     return {
       candidates: candidates.map(c => ({ ...c, aiAnnotation: null })),
       isPersonalized: false,
-      fallbackToSearch: false
+      fallbackToSearch: false,
+      searchUrl: searchFallbackUrl
     };
   }
 
@@ -404,7 +404,7 @@ CRITICAL INSTRUCTION: For each candidate, provide a 1-2 sentence personalized ex
 Return ONLY valid JSON:
 {
   "items": [
-    { "id": "v1", "aiAnnotation": "Объяснение..." }
+    { "id": "${candidates[0]?.id}", "aiAnnotation": "Объяснение..." }
   ]
 }`;
 
@@ -425,7 +425,8 @@ Return ONLY valid JSON:
     return {
       candidates: annotatedCandidates,
       isPersonalized: true,
-      fallbackToSearch: false
+      fallbackToSearch: false,
+      searchUrl: searchFallbackUrl
     };
   } catch (err) {
     console.warn("Failed to generate AI annotations for external resources:", err);
@@ -435,7 +436,8 @@ Return ONLY valid JSON:
         aiAnnotation: `Рекомендуемый материал по теме ${topicLabel}.`
       })),
       isPersonalized: false,
-      fallbackToSearch: false
+      fallbackToSearch: false,
+      searchUrl: searchFallbackUrl
     };
   }
 }
