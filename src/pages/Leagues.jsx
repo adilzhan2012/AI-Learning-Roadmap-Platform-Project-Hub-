@@ -86,18 +86,30 @@ export default function Leagues({ embedded = false }) {
   const [timeLeft, setTimeLeft] = useState('');
   const [dbUsers, setDbUsers] = useState([]);
 
-  // 1. Load User Stats
+  // Helper to determine dynamic league based on XP if user document has no explicit currentLeague
+  const determineLeagueFromXP = (xp = 0, currentLeague) => {
+    if (currentLeague && ['silicon', 'graphite', 'quartz', 'obsidian', 'platinum', 'titan'].includes(currentLeague)) {
+      return currentLeague;
+    }
+    if (xp >= 10000) return 'titan';
+    if (xp >= 5000) return 'platinum';
+    if (xp >= 3000) return 'obsidian';
+    if (xp >= 1500) return 'quartz';
+    if (xp >= 500) return 'graphite';
+    return 'silicon';
+  };
+
+  // 1. Load User Stats & Leaderboard Users
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
         try {
           const s = await getUserStats(currentUser.uid);
-          // Set default league based on plan if none in db
-          const defaultLg = s.currentLeague || (plan === 'FREE' ? 'graphite' : 'quartz');
+          const userXP = s.xp || s.totalXPEarned || s.weeklyXP || 0;
+          const defaultLg = s.currentLeague || determineLeagueFromXP(userXP, s.currentLeague);
           setSelectedLeagueId(defaultLg);
           
-          // Make sure currentLeague is initialized in stats object
           setStats({
             ...s,
             currentLeague: defaultLg,
@@ -105,27 +117,60 @@ export default function Leagues({ embedded = false }) {
             demotionProtected: s.demotionProtected !== false
           });
 
-          // Fetch other users from Cloud Function
-          const getLeaderboard = httpsCallable(functions, 'getLeaderboard');
-          const lbRes = await getLeaderboard();
-          
-          if (lbRes.data && lbRes.data.success) {
-            const uList = lbRes.data.users
-              .filter(u => u.uid !== currentUser.uid)
-              .map(u => ({
-                id: u.uid,
-                name: u.username || u.firstName || 'Learner',
-                avatar: (u.username || u.firstName || 'L').charAt(0).toUpperCase(),
-                photoURL: u.photoURL,
-                avatarColor: u.avatarColor,
-                weeklyXP: u.weeklyXP || 0,
-                currentLeague: u.currentLeague || 'silicon',
-                isCurrentUser: false
-              }));
-            setDbUsers(uList);
-          } else {
-            setDbUsers([]);
+          let uList = [];
+
+          // Try fetching via Cloud Function first
+          try {
+            const getLeaderboard = httpsCallable(functions, 'getLeaderboard');
+            const lbRes = await getLeaderboard();
+            
+            if (lbRes.data && lbRes.data.success && Array.isArray(lbRes.data.users)) {
+              uList = lbRes.data.users
+                .filter(u => u.uid !== currentUser.uid)
+                .map(u => {
+                  const xpVal = u.weeklyXP || u.xp || u.totalXPEarned || 0;
+                  return {
+                    id: u.uid,
+                    name: u.username || (u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : 'Студент'),
+                    avatar: (u.username || u.firstName || 'S').charAt(0).toUpperCase(),
+                    photoURL: u.photoURL,
+                    avatarColor: u.avatarColor,
+                    weeklyXP: xpVal,
+                    currentLeague: determineLeagueFromXP(xpVal, u.currentLeague),
+                    isCurrentUser: false
+                  };
+                });
+            }
+          } catch (cfErr) {
+            console.warn("Cloud function getLeaderboard failed, falling back to direct Firestore fetch:", cfErr);
           }
+
+          // Fallback: Direct Firestore collection fetch if Cloud Function yielded no users or failed
+          if (uList.length === 0) {
+            try {
+              const snap = await getDocs(collection(db, 'users'));
+              snap.forEach(docSnap => {
+                if (docSnap.id !== currentUser.uid) {
+                  const u = docSnap.data();
+                  const xpVal = u.weeklyXP || u.xp || u.totalXPEarned || 0;
+                  uList.push({
+                    id: docSnap.id,
+                    name: u.username || (u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : 'Студент'),
+                    avatar: (u.username || u.firstName || 'S').charAt(0).toUpperCase(),
+                    photoURL: u.photoURL,
+                    avatarColor: u.avatarColor,
+                    weeklyXP: xpVal,
+                    currentLeague: determineLeagueFromXP(xpVal, u.currentLeague),
+                    isCurrentUser: false
+                  });
+                }
+              });
+            } catch (fsErr) {
+              console.error("Firestore user fetch error:", fsErr);
+            }
+          }
+
+          setDbUsers(uList);
         } catch (e) {
           console.error("Error loading league data:", e);
         } finally {
