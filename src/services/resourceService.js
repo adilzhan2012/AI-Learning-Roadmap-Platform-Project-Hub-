@@ -327,30 +327,23 @@ export async function fetchCuratedExternalResources({ topicLabel, courseTitle, l
 
   let candidates = existingCandidates;
 
-  // Fetch real candidates from APIs if not already cached
+  // Fetch real candidates from APIs / Cloud Functions if not already cached
   if (!candidates || candidates.length === 0) {
     try {
       if (isVideo) {
-        const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY;
-        if (!apiKey) {
-          // No API key configured -> honest fallback to search
-          return { candidates: [], isPersonalized: false, fallbackToSearch: true, searchUrl: searchFallbackUrl };
-        }
-
-        const ytUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=3&type=video&q=${encodeURIComponent(queryTopic + ' tutorial')}&key=${apiKey}`;
-        const res = await fetch(ytUrl);
-        const data = await res.json();
-
-        if (data.items && data.items.length > 0) {
-          candidates = data.items.map(item => ({
-            id: item.id?.videoId || Math.random().toString(36).substr(2, 6),
-            title: item.snippet?.title || topicLabel,
-            author: item.snippet?.channelTitle || 'YouTube Channel',
-            url: `https://www.youtube.com/watch?v=${item.id?.videoId}`,
-            metrics: 'YouTube Video',
-            desc: item.snippet?.description || `Видеоурок по теме ${topicLabel}.`
-          }));
-        } else {
+        // Call secure Cloud Function proxy (holds YOUTUBE_API_KEY server-side)
+        try {
+          const { functions } = await import('../firebase.js');
+          const { httpsCallable } = await import('firebase/functions');
+          const youtubeProxy = httpsCallable(functions, 'youtubeProxy');
+          const response = await youtubeProxy({ query: queryTopic });
+          if (response?.data?.items && response.data.items.length > 0) {
+            candidates = response.data.items;
+          } else {
+            return { candidates: [], isPersonalized: false, fallbackToSearch: true, searchUrl: searchFallbackUrl };
+          }
+        } catch (ytErr) {
+          console.warn("youtubeProxy Cloud Function unavailable, fallback to search URL:", ytErr);
           return { candidates: [], isPersonalized: false, fallbackToSearch: true, searchUrl: searchFallbackUrl };
         }
       } else {

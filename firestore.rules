@@ -72,6 +72,11 @@ service cloud.firestore {
         allow update, delete: if isAdmin();
       }
       
+      // --- Resource Ratings subcollection ---
+      match /resourceRatings/{resourceId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+      
       // --- Mentor Sessions ---
       match /mentorSessions/{sessionId} {
         allow read, write: if isOwner(userId) || isAdmin();
@@ -133,6 +138,12 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.progress == 100;
       // Certificates are immutable: cannot be modified or deleted by clients
       allow update, delete: if false;
+    }
+
+    // --- Resource Ratings Aggregated ---
+    match /resourceRatingsAggregated/{resourceId} {
+      allow read: if isAuth();
+      allow write: if isAuth();
     }
 
     // --- Admin Notifications ---

@@ -238,6 +238,48 @@ async function processUsageLimitAndCounter(db, admin, userId, usageType, todaySt
   }
 }
 
+exports.youtubeProxy = onCall(
+  {
+    enforceAppCheck: true,
+    maxInstances: 5,
+    secrets: ["YOUTUBE_API_KEY"],
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "The function must be called while authenticated.");
+    }
+    const { query } = request.data;
+    if (!query || typeof query !== "string") {
+      throw new HttpsError("invalid-argument", "Query string is required.");
+    }
+
+    const apiKey = process.env.YOUTUBE_API_KEY;
+    if (!apiKey) {
+      return { items: [], fallbackToSearch: true };
+    }
+
+    try {
+      const ytUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=3&type=video&q=${encodeURIComponent(query + ' tutorial')}&key=${apiKey}`;
+      const res = await fetch(ytUrl);
+      const data = await res.json();
+      if (data.items && data.items.length > 0) {
+        const candidates = data.items.map(item => ({
+          id: item.id?.videoId || Math.random().toString(36).substr(2, 6),
+          title: item.snippet?.title || query,
+          author: item.snippet?.channelTitle || 'YouTube Channel',
+          url: `https://www.youtube.com/watch?v=${item.id?.videoId}`,
+          metrics: 'YouTube Video',
+          desc: item.snippet?.description || `Видеоурок по теме ${query}.`
+        }));
+        return { items: candidates, fallbackToSearch: false };
+      }
+    } catch (err) {
+      console.error("[youtubeProxy] Error:", err);
+    }
+    return { items: [], fallbackToSearch: true };
+  }
+);
+
 exports.aiProxy = onCall(
   {
     enforceAppCheck: true,
