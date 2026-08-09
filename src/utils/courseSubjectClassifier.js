@@ -129,77 +129,79 @@ export function classifyCourseSubject(topic = '', title = '', nodes = []) {
 /**
  * Returns visual theme metadata for a subject category.
  */
-export function getSubjectTheme(subject) {
-  switch (subject) {
+export function getSubjectTheme(subject, fallbackTopic = '', fallbackTitle = '', fallbackNodes = []) {
+  const finalSubject = subject || classifyCourseSubject(fallbackTopic, fallbackTitle, fallbackNodes);
+
+  switch (finalSubject) {
     case SUBJECT_NAMES.WEB:
       return {
         subject: SUBJECT_NAMES.WEB,
-        borderClass: 'border-t-4 border-t-cyan-500',
-        bgBadgeClass: 'bg-cyan-500/10 dark:bg-cyan-500/15 border-cyan-500/30 text-cyan-600 dark:text-cyan-400',
+        borderClass: 'border-t-[3px] border-t-cyan-500',
+        bgBadgeClass: 'bg-cyan-500/10 dark:bg-cyan-500/15 border-cyan-500/30 text-cyan-700 dark:text-cyan-400',
         accentGradient: 'from-cyan-500 to-blue-600',
         icon: Globe
       };
     case SUBJECT_NAMES.PROGRAMMING:
       return {
         subject: SUBJECT_NAMES.PROGRAMMING,
-        borderClass: 'border-t-4 border-t-emerald-500',
-        bgBadgeClass: 'bg-emerald-500/10 dark:bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400',
-        accentGradient: 'from-emerald-500 to-teal-600',
+        borderClass: 'border-t-[3px] border-t-indigo-500',
+        bgBadgeClass: 'bg-indigo-500/10 dark:bg-indigo-500/15 border-indigo-500/30 text-indigo-700 dark:text-indigo-400',
+        accentGradient: 'from-indigo-500 to-blue-600',
         icon: Code2
       };
     case SUBJECT_NAMES.AI:
       return {
         subject: SUBJECT_NAMES.AI,
-        borderClass: 'border-t-4 border-t-violet-500',
-        bgBadgeClass: 'bg-violet-500/10 dark:bg-violet-500/15 border-violet-500/30 text-violet-600 dark:text-violet-400',
-        accentGradient: 'from-violet-500 to-purple-600',
+        borderClass: 'border-t-[3px] border-t-purple-500',
+        bgBadgeClass: 'bg-purple-500/10 dark:bg-purple-500/15 border-purple-500/30 text-purple-700 dark:text-purple-400',
+        accentGradient: 'from-purple-500 to-violet-600',
         icon: Brain
       };
     case SUBJECT_NAMES.MATH:
       return {
         subject: SUBJECT_NAMES.MATH,
-        borderClass: 'border-t-4 border-t-amber-500',
-        bgBadgeClass: 'bg-amber-500/10 dark:bg-amber-500/15 border-amber-500/30 text-amber-600 dark:text-amber-400',
-        accentGradient: 'from-amber-500 to-orange-600',
+        borderClass: 'border-t-[3px] border-t-emerald-500',
+        bgBadgeClass: 'bg-emerald-500/10 dark:bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-400',
+        accentGradient: 'from-emerald-500 to-teal-600',
         icon: Calculator
       };
     case SUBJECT_NAMES.DESIGN:
       return {
         subject: SUBJECT_NAMES.DESIGN,
-        borderClass: 'border-t-4 border-t-pink-500',
-        bgBadgeClass: 'bg-pink-500/10 dark:bg-pink-500/15 border-pink-500/30 text-pink-600 dark:text-pink-400',
+        borderClass: 'border-t-[3px] border-t-pink-500',
+        bgBadgeClass: 'bg-pink-500/10 dark:bg-pink-500/15 border-pink-500/30 text-pink-700 dark:text-pink-400',
         accentGradient: 'from-pink-500 to-rose-600',
         icon: Palette
       };
     case SUBJECT_NAMES.BUSINESS:
       return {
         subject: SUBJECT_NAMES.BUSINESS,
-        borderClass: 'border-t-4 border-t-blue-500',
-        bgBadgeClass: 'bg-blue-500/10 dark:bg-blue-500/15 border-blue-500/30 text-blue-600 dark:text-blue-400',
-        accentGradient: 'from-blue-500 to-indigo-600',
+        borderClass: 'border-t-[3px] border-t-amber-500',
+        bgBadgeClass: 'bg-amber-500/10 dark:bg-amber-500/15 border-amber-500/30 text-amber-700 dark:text-amber-400',
+        accentGradient: 'from-amber-500 to-orange-600',
         icon: Briefcase
       };
     case SUBJECT_NAMES.LANGUAGES:
       return {
         subject: SUBJECT_NAMES.LANGUAGES,
-        borderClass: 'border-t-4 border-t-teal-500',
-        bgBadgeClass: 'bg-teal-500/10 dark:bg-teal-500/15 border-teal-500/30 text-teal-600 dark:text-teal-400',
-        accentGradient: 'from-teal-500 to-emerald-600',
+        borderClass: 'border-t-[3px] border-t-sky-500',
+        bgBadgeClass: 'bg-sky-500/10 dark:bg-sky-500/15 border-sky-500/30 text-sky-700 dark:text-sky-400',
+        accentGradient: 'from-sky-500 to-blue-600',
         icon: Languages
       };
     case SUBJECT_NAMES.SCIENCE:
       return {
         subject: SUBJECT_NAMES.SCIENCE,
-        borderClass: 'border-t-4 border-t-indigo-500',
-        bgBadgeClass: 'bg-indigo-500/10 dark:bg-indigo-500/15 border-indigo-500/30 text-indigo-600 dark:text-indigo-400',
-        accentGradient: 'from-indigo-500 to-violet-600',
+        borderClass: 'border-t-[3px] border-t-teal-500',
+        bgBadgeClass: 'bg-teal-500/10 dark:bg-teal-500/15 border-teal-500/30 text-teal-700 dark:text-teal-400',
+        accentGradient: 'from-teal-500 to-emerald-600',
         icon: BookOpenCheck
       };
     default:
       return {
         subject: SUBJECT_NAMES.OTHER,
-        borderClass: 'border-t-4 border-t-zinc-400 dark:border-t-zinc-500',
-        bgBadgeClass: 'bg-zinc-500/10 dark:bg-zinc-500/15 border-zinc-500/30 text-zinc-600 dark:text-zinc-400',
+        borderClass: 'border-t-[3px] border-t-zinc-400 dark:border-t-zinc-500',
+        bgBadgeClass: 'bg-zinc-500/10 dark:bg-zinc-500/15 border-zinc-500/30 text-zinc-700 dark:text-zinc-400',
         accentGradient: 'from-zinc-500 to-slate-600',
         icon: Sparkles
       };
