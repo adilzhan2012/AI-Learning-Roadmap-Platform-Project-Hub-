@@ -1,19 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Sparkles, ChevronRight, ChevronLeft, Loader2, Quote } from 'lucide-react';
 import { callGeminiWithRetry } from '../../services/courseService.js';
 import { parseAIJson } from '../../utils/aiResponseParser.js';
 
 const FALLBACK_QUOTES = [
-  "Каждый написанный код делает тебя на шаг ближе к мастерству.",
-  "Ошибки — это не провал, это ступеньки к пониманию.",
-  "Маленький прогресс каждый день дает огромные результаты в долгосроке."
+  "Каждое новое знание приближает тебя к твоей мечте.",
+  "Ошибки — это не провал, это ступеньки к глубокому пониманию.",
+  "Маленький прогресс каждый день дает огромные результаты в будущем."
 ];
 
 export default function MotivationalWidget({ variant = 'dashboard' }) {
   const [quotes, setQuotes] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  const shouldReduceMotion = useReducedMotion();
+
+  const textTransition = shouldReduceMotion 
+    ? { duration: 0 } 
+    : { duration: 0.38, ease: "easeInOut" };
+
+  const textInitial = shouldReduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 };
+  const textAnimate = { opacity: 1, y: 0 };
+  const textExit = shouldReduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: -14 };
 
   useEffect(() => {
     let isMounted = true;
@@ -37,7 +47,7 @@ export default function MotivationalWidget({ variant = 'dashboard' }) {
       }
 
       try {
-        const prompt = `You are a technical mentor. Generate exactly 5 very short, highly inspiring and motivational phrases (1 sentence each) in Russian for a student learning software engineering. Return ONLY a valid JSON array of strings. Example: ["Фраза 1", "Фраза 2", "Фраза 3", "Фраза 4", "Фраза 5"]`;
+        const prompt = `You are an inspiring educational mentor. Generate exactly 5 very short, highly inspiring and motivational phrases (1 sentence each) in Russian for a student learning new subjects and skills. Return ONLY a valid JSON array of strings. Example: ["Фраза 1", "Фраза 2", "Фраза 3", "Фраза 4", "Фраза 5"]`;
         
         const res = await callGeminiWithRetry(null, prompt, 'ai_question');
         const parsed = parseAIJson(res);
@@ -81,8 +91,13 @@ export default function MotivationalWidget({ variant = 'dashboard' }) {
 
   return (
     <div className={containerClasses}>
+      {/* Animated Background Glow (fills the entire block) */}
+      <div className="absolute inset-0 rounded-[16px] overflow-hidden pointer-events-none z-0">
+        <div className="border-glow-element" />
+      </div>
+
       {/* Decorative Background */}
-      <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+      <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none z-0">
         <Quote className="w-24 h-24" />
       </div>
 
@@ -105,10 +120,10 @@ export default function MotivationalWidget({ variant = 'dashboard' }) {
             ) : (
               <motion.div
                 key={currentIndex}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.3 }}
+                initial={textInitial}
+                animate={textAnimate}
+                exit={textExit}
+                transition={textTransition}
                 className={`text-sm md:text-base font-bold font-clash ${textColor} leading-snug w-full pr-8`}
               >
                 "{quotes[currentIndex]}"
