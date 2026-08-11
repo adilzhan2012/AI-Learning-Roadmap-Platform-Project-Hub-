@@ -35,6 +35,31 @@ export default function Pricing() {
 
   // Email verification state
   const [verificationSent, setVerificationSent] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(auth.currentUser?.emailVerified || false);
+
+  useEffect(() => {
+    const checkVerification = async () => {
+      if (auth.currentUser && !auth.currentUser.emailVerified) {
+        try {
+          await auth.currentUser.reload();
+          setEmailVerified(auth.currentUser.emailVerified);
+        } catch (e) {
+          console.error('Error reloading user:', e);
+        }
+      } else if (auth.currentUser) {
+        setEmailVerified(auth.currentUser.emailVerified);
+      }
+    };
+
+    checkVerification();
+
+    const handleFocus = () => {
+      checkVerification();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
 
   const handleSendVerification = async () => {
     if (auth.currentUser) {
@@ -207,7 +232,7 @@ export default function Pricing() {
           Выберите подходящий уровень для достижения ваших целей обучения. Сгенерируйте индивидуальные курсы с использованием ИИ.
         </p>
 
-        {auth.currentUser && !auth.currentUser.emailVerified && (
+        {auth.currentUser && !emailVerified && (
           <motion.div 
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -217,13 +242,26 @@ export default function Pricing() {
               <h4 className="font-bold text-[#FF453A] text-sm">Email не подтвержден!</h4>
               <p className="text-xs text-[#FF453A]/80 mt-1">Для оформления подписки вам необходимо подтвердить почту.</p>
             </div>
-            <button 
-              onClick={handleSendVerification} 
-              disabled={verificationSent} 
-              className="px-4 py-2 w-full sm:w-auto bg-[#FF453A]/20 hover:bg-[#FF453A]/30 text-[#FF453A] rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap"
-            >
-              {verificationSent ? 'Письмо отправлено' : 'Отправить письмо'}
-            </button>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button 
+                onClick={async () => {
+                  if (auth.currentUser) {
+                    await auth.currentUser.reload();
+                    setEmailVerified(auth.currentUser.emailVerified);
+                  }
+                }} 
+                className="px-4 py-2 w-full sm:w-auto bg-transparent border border-[#FF453A]/30 hover:bg-[#FF453A]/10 text-[#FF453A] rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap"
+              >
+                Я подтвердил(а)
+              </button>
+              <button 
+                onClick={handleSendVerification} 
+                disabled={verificationSent} 
+                className="px-4 py-2 w-full sm:w-auto bg-[#FF453A]/20 hover:bg-[#FF453A]/30 text-[#FF453A] rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap"
+              >
+                {verificationSent ? 'Письмо отправлено' : 'Отправить письмо'}
+              </button>
+            </div>
           </motion.div>
         )}
 
