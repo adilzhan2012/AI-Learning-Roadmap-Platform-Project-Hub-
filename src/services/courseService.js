@@ -58,12 +58,12 @@ export function withTimeout(promise, ms = 50000, customErrorMessage = 'Прев�
 // fix/critical-round1: санитизация user input перед вставкой в AI-промпты
 import { sanitizeUserInput, sanitizeCode } from '../utils/sanitizeUserInput.js';
 
-// Helper to get Groq API Key is removed as it's now handled by Cloud Functions
+// Helper to get Gemini API Key is removed as it's now handled by Cloud Functions
 
 // Retry helper with exponential backoff and model fallback for 503/429/404 errors
 // Call our secure Cloud Function proxy
 // fix/critical-round1: принимает опциональный messages[] для разделения system/user ролей (защита от prompt injection)
-export async function callGroqWithRetry(apiKey, prompt, usageType, modelName, messages) {
+export async function callGeminiWithRetry(apiKey, prompt, usageType, modelName, messages) {
   try {
     const aiProxy = httpsCallable(functions, 'aiProxy');
     const payload = {};
@@ -119,7 +119,7 @@ export async function callGroqWithRetry(apiKey, prompt, usageType, modelName, me
 
 const inFlightGenerations = new Map();
 
-// 1. Generate Course using Gemini API (or Groq)
+// 1. Generate Course using Gemini API
 export async function generateCourseAndSave(userId, topic, level, preferences = {}) {
   const normalizedTopic = topic.toLowerCase().trim();
   const lockKey = `${userId}_${normalizedTopic}_${level}`;
@@ -206,7 +206,7 @@ export async function generateCourseAndSave(userId, topic, level, preferences = 
 Topic: "${sanitizeUserInput(topic, 300)}"
 Respond with strictly valid JSON: {"safe": boolean, "reason": "short explanation"}`;
           
-          const modResultText = await callGroqWithRetry(null, moderationPrompt, 'ai_question', 'llama-3.1-8b-instant');
+          const modResultText = await callGeminiWithRetry(null, moderationPrompt, 'ai_question', 'gemini-2.5-flash');
           const modResult = parseAIJson(modResultText);
           if (!modResult || modResult.safe === false) {
             const error = new Error('TOPIC_MODERATION_REJECTED');
@@ -332,14 +332,14 @@ The response must be a valid JSON object matching this schema:
         let attempt = 0;
 
         while (attempt <= MAX_RETRIES) {
-          const textResponse = await callGroqWithRetry(null, currentPrompt, 'roadmap');
+          const textResponse = await callGeminiWithRetry(null, currentPrompt, 'roadmap');
 
           if (!textResponse) {
             if (attempt < MAX_RETRIES) {
               attempt++;
               continue;
             }
-            throw new Error('Empty response from Groq API');
+            throw new Error('Empty response from Gemini API');
           }
 
           let courseData;
@@ -601,7 +601,7 @@ Make it highly educational, long, and detailed so the user can genuinely learn f
 
     while (lessonAttempt <= MAX_LESSON_RETRIES) {
       const textResponse = await withTimeout(
-        callGroqWithRetry(null, currentLessonPrompt, 'ai_question'),
+        callGeminiWithRetry(null, currentLessonPrompt, 'ai_question'),
         50000,
         'Превышено время ожидания генерации урока (50 сек). Пожалуйста, попробуйте еще раз.'
       );
@@ -611,7 +611,7 @@ Make it highly educational, long, and detailed so the user can genuinely learn f
           lessonAttempt++;
           continue;
         }
-        throw new Error('Empty response from Groq API');
+        throw new Error('Empty response from Gemini API');
       }
 
       const lessonVal = validateLessonContent(textResponse);
@@ -735,11 +735,11 @@ Return ONLY a valid JSON object:
 }`;
 
   const textResponse = await withTimeout(
-    callGroqWithRetry(null, prompt, 'ai_question'),
+    callGeminiWithRetry(null, prompt, 'ai_question'),
     50000,
     'Превышено время ожидания генерации задания (50 сек). Пожалуйста, попробуйте еще раз.'
   );
-  if (!textResponse) throw new Error('Empty response from Groq API');
+  if (!textResponse) throw new Error('Empty response from Gemini API');
 
   const parsed = parseAIJson(textResponse);
   const result = {
@@ -782,7 +782,7 @@ export async function reviewHomeworkSubmission(courseId, nodeId, submissionText,
   const currentLocale = getLocale();
   const languageName = currentLocale === 'ru' ? 'Russian' : 'English';
 
-  // fix/critical-round1: разделяем системный промпт и пользовательский input на отдельные Groq messages.
+  // fix/critical-round1: разделяем системный промпт и пользовательский input на отдельные Gemini messages.
   // submissionText помещается в user-role сообщение — структурная защита от prompt injection.
   const sanitizedSubmission = sanitizeUserInput(submissionText, 4000);
 
@@ -822,14 +822,14 @@ Return ONLY a valid JSON object:
 
   // fix/critical-round1: usageType изменён на 'homework_review' (отдельный серверный лимит, Фикс 4)
   const textResponse = await withTimeout(
-    callGroqWithRetry(null, null, 'homework_review', null, [
+    callGeminiWithRetry(null, null, 'homework_review', null, [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userMessage }
     ]),
     50000,
     'Превышено время ожидания проверки задания (50 сек). Пожалуйста, попробуйте еще раз.'
   );
-  if (!textResponse) throw new Error('Empty response from Groq API');
+  if (!textResponse) throw new Error('Empty response from Gemini API');
 
   const reviewResult = parseAIJson(textResponse);
 
@@ -851,7 +851,7 @@ Return ONLY a valid JSON object:
   }
 
   // fix/critical-round1 (ФИКС 4): клиентский инкремент homeworkReviewsUsed удалён.
-  // aiProxy теперь атомарно инкрементирует счётчик в runTransaction ДО вызова Groq API.
+  // aiProxy теперь атомарно инкрементирует счётчик в runTransaction ДО вызова Gemini API.
   // Клиентская версия была ненадёжной (race condition) и дублирующей.
 
   attempts.push({
@@ -1315,8 +1315,8 @@ Original Lesson:
 ${originalContent}
 `;
 
-  const textResponse = await callGroqWithRetry(null, prompt, 'ai_question');
-  if (!textResponse) throw new Error('Empty response from Groq API');
+  const textResponse = await callGeminiWithRetry(null, prompt, 'ai_question');
+  if (!textResponse) throw new Error('Empty response from Gemini API');
   const result = textResponse.trim();
 
   if (lessonDocRef) {
@@ -1341,8 +1341,8 @@ Provide exactly ONE highly engaging, mind-blowing, and realistic real-world exam
 Keep it to 2-3 sentences max. Do NOT use markdown headings.
 CRITICAL INSTRUCTION: Respond entirely in ${languageName}.`;
 
-  const textResponse = await callGroqWithRetry(null, prompt, 'ai_question');
-  if (!textResponse) throw new Error('Empty response from Groq API');
+  const textResponse = await callGeminiWithRetry(null, prompt, 'ai_question');
+  if (!textResponse) throw new Error('Empty response from Gemini API');
   return textResponse.trim();
 }
 
@@ -1382,7 +1382,7 @@ CRITICAL INSTRUCTION: Respond entirely in ${languageName}.`;
 
   let aiGeneratedContent = '';
   try {
-    aiGeneratedContent = await callGroqWithRetry(null, prompt, 'ai_question');
+    aiGeneratedContent = await callGeminiWithRetry(null, prompt, 'ai_question');
   } catch (e) {
     console.error("Failed to generate micro-module content via AI", e);
     aiGeneratedContent = `## Микро-модуль для закрытия пробелов: ${failedNode.label}\n\nЗдесь собраны ключевые моменты и пояснения по теме "${failedNode.label}". Пожалуйста, перечитайте основные материалы и обратитесь к AI-ассистенту за дополнительными вопросами.`;

@@ -13,10 +13,10 @@ const PROMPTS = {
     `Тема курса: "${ctx.topic}". Выделенный текст: "${sel}". Придумай одну запоминающуюся аналогию. 1-2 предложения.`,
 };
 
-import { callGroqWithRetry } from '../../services/courseService.js';
+import { callGeminiWithRetry } from '../../services/courseService.js';
 
-async function askGroqSimulatedStream(prompt, onChunk) {
-  const fullResponse = await callGroqWithRetry(null, prompt, 'ai_question');
+async function askGeminiSimulatedStream(prompt, onChunk) {
+  const fullResponse = await callGeminiWithRetry(null, prompt, 'ai_question');
   
   // Simulate streaming effect
   const chunkSize = 3;
@@ -58,7 +58,7 @@ export default function SelectionPopover({ selection, context, onClose, userId, 
     
     let isFirstChunk = true;
     try {
-      await askGroqSimulatedStream(prompt, (chunk) => {
+      await askGeminiSimulatedStream(prompt, (chunk) => {
         if (isFirstChunk && !hasClaimedRef.current && userId && nodeId) {
           hasClaimedRef.current = true;
           // Award XP

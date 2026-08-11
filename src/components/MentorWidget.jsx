@@ -21,7 +21,7 @@ import { auth, db, functions } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { doc, getDoc, setDoc, collection, query, orderBy, getDocs, deleteDoc } from 'firebase/firestore';
-import { callGroqWithRetry, getUserCourses, getUserStats, generateCourseAndSave } from '../services/courseService.js';
+import { callGeminiWithRetry, getUserCourses, getUserStats, generateCourseAndSave } from '../services/courseService.js';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import { PLAN_LIMITS } from '../constants/planLimits.js';
 import ReactMarkdown from 'react-markdown';
@@ -332,7 +332,7 @@ export default function MentorWidget() {
           // Trigger async smart rename if needed
           if (needsRename) {
             const prompt = `Сгенерируй очень короткий заголовок (максимум 3-4 слова) для диалога, отражающий суть вопроса. Вопрос: "${text}". Выведи только заголовок, без кавычек и точек.`;
-            callGroqWithRetry(null, prompt, 'llama-3.1-8b-instant').then(smartTitle => {
+            callGeminiWithRetry(null, prompt, 'gemini-2.5-flash').then(smartTitle => {
               if (smartTitle && smartTitle.trim()) {
                 const cleanTitle = smartTitle.trim().replace(/^["']|["']$/g, '').substring(0, 40);
                 setDoc(docRef, { title: cleanTitle }, { merge: true }).then(() => {
@@ -453,8 +453,8 @@ ${planCourseInstruction}`;
 
       const isComplexQuery = text.length > 200 || text.toLowerCase().includes('объясни') || text.toLowerCase().includes('почему') || text.toLowerCase().includes('ошибка');
       const selectedModel = isProSoftCapped 
-        ? 'llama-3.1-8b-instant' 
-        : (isComplexQuery ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant');
+        ? 'gemini-2.5-flash' 
+        : (isComplexQuery ? 'gemini-2.5-pro' : 'gemini-2.5-flash');
 
       const historyText = messages.slice(-6).map(m => {
         if (m.id === 'welcome' || !m.content) return '';
@@ -462,7 +462,7 @@ ${planCourseInstruction}`;
       }).filter(Boolean).join('\n\n');
 
       const fullPrompt = `${systemPrompt}\n\nConversation History:\n${historyText || 'No previous history.'}\n\nUser Question: ${text}`;
-      const responseText = await callGroqWithRetry(null, fullPrompt, 'mentor_message', selectedModel);
+      const responseText = await callGeminiWithRetry(null, fullPrompt, 'mentor_message', selectedModel);
 
       const parsedAction = parseJsonBlock(responseText);
       
