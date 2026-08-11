@@ -835,7 +835,7 @@ export default function Pricing() {
                       value={promoCode}
                       onChange={(e) => setPromoCode(e.target.value.trim().toUpperCase())}
                       placeholder="Введите промокод"
-                      className="w-full bg-surface-container/50 border border-outline rounded-xl px-4 py-3 text-sm text-on-surface font-mono outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all uppercase"
+                      className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white font-mono outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all uppercase"
                     />
                   </div>
 
