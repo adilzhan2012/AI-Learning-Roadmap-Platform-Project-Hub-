@@ -42,6 +42,9 @@ export default function Pricing() {
       if (auth.currentUser && !auth.currentUser.emailVerified) {
         try {
           await auth.currentUser.reload();
+          if (auth.currentUser.emailVerified) {
+            await auth.currentUser.getIdToken(true); // Force token refresh so backend sees it
+          }
           setEmailVerified(auth.currentUser.emailVerified);
         } catch (e) {
           console.error('Error reloading user:', e);
@@ -198,7 +201,7 @@ export default function Pricing() {
     setUpgrading(true);
     try {
       const updateSubFn = httpsCallable(functions, 'updateSubscription');
-      await updateSubFn({ plan: selectedUpgradePlan });
+      await updateSubFn({ plan: selectedUpgradePlan, promoCode });
       setUpgrading(false);
       window.location.reload();
     } catch (e) {
@@ -247,6 +250,9 @@ export default function Pricing() {
                 onClick={async () => {
                   if (auth.currentUser) {
                     await auth.currentUser.reload();
+                    if (auth.currentUser.emailVerified) {
+                      await auth.currentUser.getIdToken(true);
+                    }
                     setEmailVerified(auth.currentUser.emailVerified);
                   }
                 }} 

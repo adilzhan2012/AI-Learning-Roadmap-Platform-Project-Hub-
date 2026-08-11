@@ -827,21 +827,29 @@ exports.updateSubscription = onCall(async (request) => {
   // Downgrade to FREE is always allowed by the account owner (cancellation flow)
   const isDowngradeToFree = plan === "FREE";
 
-  // Upgrade to paid plan requires either admin Custom Claim or internal server token
+  // Upgrade to paid plan requires either admin Custom Claim, internal server token, or a valid promo code
   if (!isDowngradeToFree) {
     const isAdmin = request.auth.token.admin === true;
     const expectedToken = process.env.INTERNAL_ADMIN_TOKEN;
     const hasValidToken = expectedToken && internalToken && internalToken === expectedToken;
 
-    if (!isAdmin && !hasValidToken) {
+    let hasValidPromoCode = false;
+    if (request.data.promoCode) {
+      const promoSnap = await db.collection("promocodes").doc(request.data.promoCode).get();
+      if (promoSnap.exists && promoSnap.data().active) {
+        hasValidPromoCode = true;
+      }
+    }
+
+    if (!isAdmin && !hasValidToken && !hasValidPromoCode) {
       // Log suspicious attempt for monitoring
       console.error(
         `[SECURITY] Blocked unauthorized subscription upgrade attempt: uid=${userId} plan=${plan} ` +
-        `hasToken=${!!internalToken} isAdmin=${isAdmin}`
+        `hasToken=${!!internalToken} isAdmin=${isAdmin} hasPromoCode=${hasValidPromoCode}`
       );
       throw new HttpsError(
         "permission-denied",
-        "Subscription upgrades require payment verification. Please use the in-app payment flow."
+        "Subscription upgrades require payment verification or a valid promo code."
       );
     }
   }

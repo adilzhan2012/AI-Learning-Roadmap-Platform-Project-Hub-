@@ -19,8 +19,8 @@ service cloud.firestore {
     
     // --- Users ---
     match /users/{userId} {
-      // User can read own profile; admins can read any
-      allow read: if isOwner(userId) || isAdmin();
+      // User can read own profile; admins can read any; referrer can read referred users
+      allow read: if isOwner(userId) || isAdmin() || (isAuth() && resource.data.referredBy == request.auth.uid);
       
       // User can update own profile, but CANNOT change protected fields (role, subscription, XP, levels, etc.)
       allow update: if isOwner(userId)
