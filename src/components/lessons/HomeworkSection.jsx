@@ -20,7 +20,7 @@ import {
   reviewHomeworkSubmission, 
   getHomeworkState,
   saveHomeworkChatHistory,
-  callGroqWithRetry
+  callGeminiWithRetry
 } from '../../services/courseService.js';
 import { useXP } from '../../hooks/useXP.js';
 import { usePlanLimits } from '../../hooks/usePlanLimits.js';
@@ -124,7 +124,7 @@ The user's question:
 
 CRITICAL INSTRUCTION: You MUST act as a Socratic mentor. Do NOT solve the homework for them. Do NOT give them the direct answer. Instead, give them hints, point out where to look, or ask them a leading question to guide them to the answer. Answer in Russian, be very supportive, friendly, and concise.`;
 
-      const resText = await callGroqWithRetry(null, prompt, 'ai_chat');
+      const resText = await callGeminiWithRetry(null, prompt, 'ai_chat');
       const updatedHistory = [...newHistory, { role: 'assistant', content: resText }];
       setChatHistory(updatedHistory);
       await saveHomeworkChatHistory(courseId, nodeId, updatedHistory);

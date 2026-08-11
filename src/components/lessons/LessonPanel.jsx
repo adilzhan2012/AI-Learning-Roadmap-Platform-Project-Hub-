@@ -21,7 +21,7 @@ import { useQuiz } from '../../hooks/useQuiz.js';
 import { usePlanLimits } from '../../hooks/usePlanLimits.js';
 import QuizModal from '../quiz/QuizModal.jsx';
 import UpgradeModal from '../shared/UpgradeModal.jsx';
-import { generateLessonContent, updateNodeStatus, generateELI5Content, generateRealWorldExample, updateNodeFields, rebuildGraphForFailedNode, callGroqWithRetry } from '../../services/courseService.js';
+import { generateLessonContent, updateNodeStatus, generateELI5Content, generateRealWorldExample, updateNodeFields, rebuildGraphForFailedNode, callGeminiWithRetry } from '../../services/courseService.js';
 // fix/critical-round1: санитизация user input перед вставкой в промпты
 import { sanitizeUserInput, sanitizeCode } from '../../utils/sanitizeUserInput.js';
 import { AIParsingError } from '../../utils/aiResponseParser.js';
@@ -240,7 +240,7 @@ Return ONLY a valid JSON object:
   "feedback": "Full markdown text of code review..."
 }`;
 
-      const result = await callGroqWithRetry(null, prompt, 'ai_question');
+      const result = await callGeminiWithRetry(null, prompt, 'ai_question');
       let parsed;
       try {
         parsed = parseAIJson(result);
@@ -273,7 +273,7 @@ Return ONLY a valid JSON object:
     try {
       const prompt = `You are a technical mentor. Generate a short, realistic, 1-paragraph programming exercise in the Russian language matching this lesson's topic: "${selectedNode.label}" (${selectedNode.desc}). Focus on core Go concepts.
 Provide a code boilerplate template at the end.`;
-      const result = await callGroqWithRetry(null, prompt, 'ai_question');
+      const result = await callGeminiWithRetry(null, prompt, 'ai_question');
       setPracticeAssignment(result);
     } catch (e) {
       console.error(e);

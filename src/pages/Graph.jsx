@@ -8,7 +8,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { auth, db } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
-import { getUserCourses, callGroqWithRetry, requestCourseCertificate, getCourseCertificate, generateCourseAndSave } from '../services/courseService.js';
+import { getUserCourses, callGeminiWithRetry, requestCourseCertificate, getCourseCertificate, generateCourseAndSave } from '../services/courseService.js';
 import { t } from '../i18n.js';
 import LessonPanel from '../components/lessons/LessonPanel.jsx';
 import MasteryBlock from '../components/shared/MasteryBlock.jsx';
@@ -631,7 +631,7 @@ Topic description: "${selectedCourse?.description}"
 
 Please start the interview. Greet the student, state your name/role, and ask your first challenging technical question related to the course topic.
 Respond in Russian. Keep your introduction short and professional.`;
-      const result = await callGroqWithRetry(null, prompt, 'ai_question');
+      const result = await callGeminiWithRetry(null, prompt, 'ai_question');
       setInterviewMessages([{
         id: '1',
         role: 'assistant',
@@ -675,7 +675,7 @@ Provide a final detailed performance feedback report in the Russian language. In
 3. **Рекомендации**: На какие темы стоит обратить внимание.
 4. **Вердикт**: Готовность к реальному собеседованию (в процентах, например: "Готовность: 85%").
 Use Markdown formatting.`;
-        const feedback = await callGroqWithRetry(null, prompt, 'ai_question');
+        const feedback = await callGeminiWithRetry(null, prompt, 'ai_question');
         setInterviewFeedback(feedback);
         setInterviewStage('results');
         await addXP(100, 'AI Mock Interview завершено', 'mock_interview_completed', { nodeId: selectedNode?.id || selectedCourse?.id || 'interview' });
@@ -686,7 +686,7 @@ ${updatedMsgs.map(m => `${m.role === 'user' ? 'Студент' : 'Интервь
 
 Analyze the student's last response. Briefly comment on it (constructively) and ask the next technical or HR question to proceed.
 Respond in Russian. Keep your reply concise and professional.`;
-        const nextQuestion = await callGroqWithRetry(null, prompt, 'ai_question');
+        const nextQuestion = await callGeminiWithRetry(null, prompt, 'ai_question');
         setInterviewMessages([...updatedMsgs, {
           id: (Date.now() + 1).toString(),
           role: 'assistant',

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Sparkles, Lock, Crown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { callGroqWithRetry } from '../../services/courseService.js';
+import { callGeminiWithRetry } from '../../services/courseService.js';
 import { PLAN_LIMITS } from '../../constants/planLimits.js';
 import { functions } from '../../firebase.js';
 import { httpsCallable } from 'firebase/functions';
@@ -109,9 +109,9 @@ INSTRUCTIONS:
       const fullPrompt = `${systemPrompt}\n\nUser Question: ${userMessage.content}`;
       
       const isProSoftCapped = plan === 'PRO' && (usage.mentorMessagesUsed || 0) >= PLAN_LIMITS.PRO.aiMentorPerDay;
-      const selectedModel = isProSoftCapped ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile';
+      const selectedModel = isProSoftCapped ? 'gemini-2.5-flash' : 'gemini-2.5-pro';
 
-      const responseText = await callGroqWithRetry(
+      const responseText = await callGeminiWithRetry(
         null, 
         fullPrompt, 
         'contextual_mentor_message', 

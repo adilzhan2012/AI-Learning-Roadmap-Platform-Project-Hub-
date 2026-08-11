@@ -1,6 +1,7 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const Sentry = require("@sentry/google-cloud-serverless");
+const { GoogleAuth } = require("google-auth-library");
 
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
@@ -281,11 +282,22 @@ exports.youtubeProxy = onCall(
   }
 );
 
+// Map old Groq models to Gemini models for backwards compatibility
+function mapModelName(model) {
+  if (!model) return 'google/gemini-2.5-flash';
+  const m = model.toLowerCase();
+  if (m.startsWith('google/')) return model;
+  if (m.startsWith('gemini-')) return 'google/' + model;
+  if (m.includes('70b') || m.includes('mixtral') || m.includes('pro')) {
+    return 'google/gemini-2.5-pro';
+  }
+  return 'google/gemini-2.5-flash';
+}
+
 exports.aiProxy = onCall(
   {
     enforceAppCheck: true,
     maxInstances: 10,
-    secrets: ["GROQ_API_KEY"],
   },
   async (request) => {
     if (!request.auth) {
@@ -305,7 +317,7 @@ exports.aiProxy = onCall(
       );
     }
     // Build messages array: if explicit messages array provided, use it; otherwise wrap prompt
-    const groqMessages = clientMessages && clientMessages.length > 0
+    const geminiMessages = clientMessages && clientMessages.length > 0
       ? clientMessages
       : [{ role: "user", content: prompt }];
 
@@ -315,34 +327,55 @@ exports.aiProxy = onCall(
 
     const transactionResult = await processUsageLimitAndCounter(db, admin, userId, usageType, todayStr, monthStr, lessonId);
 
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) {
+    let token, projectId;
+    try {
+      const authClient = new GoogleAuth({
+        scopes: 'https://www.googleapis.com/auth/cloud-platform'
+      });
+      token = await authClient.getAccessToken();
+      projectId = await authClient.getProjectId();
+    } catch (authErr) {
       throw new HttpsError(
-        "failed-precondition",
-        "The server is missing the GROQ API KEY configuration."
+        "internal",
+        `Failed to retrieve Google Application Default Credentials: ${authErr.message}`
       );
     }
 
+    if (!token || !projectId) {
+      throw new HttpsError(
+        "failed-precondition",
+        "The server is missing Google credentials or project configuration."
+      );
+    }
+
+    const location = process.env.LOCATION || 'us-central1';
+    const vertexUrl = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/endpoints/openapi/chat/completions`;
+
     let lastError;
     const requestedModel = modelName || request.data.model;
-    const modelsToTry = requestedModel 
-      ? [requestedModel, "llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
-      : ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"];
+    const mappedRequestedModel = mapModelName(requestedModel);
+    const modelsToTry = Array.from(new Set([
+      mappedRequestedModel,
+      "google/gemini-2.5-flash",
+      "google/gemini-2.5-pro",
+      "google/gemini-1.5-flash",
+      "google/gemini-1.5-pro"
+    ]));
 
     const maxRetries = 5;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       for (const modelNameStr of modelsToTry) {
         try {
-          const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          const response = await fetch(vertexUrl, {
             method: "POST",
             headers: {
-              "Authorization": `Bearer ${apiKey}`,
+              "Authorization": `Bearer ${token}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
               model: modelNameStr,
-              messages: groqMessages,
+              messages: geminiMessages,
               temperature: 0.2,
             }),
           });
@@ -361,7 +394,7 @@ exports.aiProxy = onCall(
           if (usageType === 'mentor_message' && transactionResult?.plan === 'ULTRA') {
             try {
               const subRef = db.collection('users').doc(userId).collection('subscription').doc('details');
-              const msgLen = groqMessages.reduce((acc, m) => acc + (m.content || '').length, 0);
+              const msgLen = geminiMessages.reduce((acc, m) => acc + (m.content || '').length, 0);
               const promptTokens = Math.ceil(msgLen / 4);
               const replyTokens = Math.ceil(assistantReply.length / 4);
               await subRef.set({
@@ -403,8 +436,8 @@ exports.aiProxy = onCall(
             continue;
           }
 
-          if (errMsg.includes("Invalid API Key") || errMsg.includes("401")) {
-            throw new HttpsError("permission-denied", "Server API Key is invalid.");
+          if (errMsg.includes("Invalid API Key") || errMsg.includes("401") || errMsg.includes("403") || errMsg.includes("Permission denied")) {
+            throw new HttpsError("permission-denied", `Vertex AI permissions issue: ${errMsg}`);
           }
           
           break;
@@ -430,7 +463,7 @@ exports.aiProxy = onCall(
     }
 
     Sentry.captureException(lastError);
-    throw new HttpsError("internal", `Groq API error: ${finalErrMsg}`);
+    throw new HttpsError("internal", `Vertex AI Gemini API error: ${finalErrMsg}`);
   }
 );
 

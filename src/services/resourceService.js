@@ -1,6 +1,6 @@
 import { db, auth } from '../firebase.js';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { callGroqWithRetry } from './courseService.js';
+import { callGeminiWithRetry } from './courseService.js';
 import { parseAIJson } from '../utils/aiResponseParser.js';
 import { sanitizeUserInput, sanitizeCode } from '../utils/sanitizeUserInput.js';
 
@@ -97,9 +97,9 @@ export async function fetchResourceContext(userId, courseId, nodeId, userPlan = 
  */
 export function getAIModelForPlan(userPlan = 'FREE') {
   if (userPlan === 'PRO' || userPlan === 'ULTRA') {
-    return 'llama-3.3-70b-versatile';
+    return 'gemini-2.5-pro';
   }
-  return 'llama-3.1-8b-instant';
+  return 'gemini-2.5-flash';
 }
 
 /**
@@ -148,7 +148,7 @@ ${truncatedLesson ? `LESSON CONTEXT:\n${truncatedLesson}\n` : ''}${personalizati
 CRITICAL INSTRUCTION: Respond ENTIRELY in Russian language using Markdown. Use clear headings, practical examples, and engaging explanations.`;
   }
 
-  return await callGroqWithRetry(null, prompt, 'ai_question', modelName);
+  return await callGeminiWithRetry(null, prompt, 'ai_question', modelName);
 }
 
 /**
@@ -169,7 +169,7 @@ Include:
 2. Input/Output Requirements
 3. Starter Code Snippet at the end.`;
 
-  return await callGroqWithRetry(null, prompt, 'ai_question', modelName);
+  return await callGeminiWithRetry(null, prompt, 'ai_question', modelName);
 }
 
 /**
@@ -221,7 +221,7 @@ Evaluate the student code strictly and return ONLY a valid JSON object matching 
 
 Note: "passed" MUST be true if overallScore >= 70, otherwise false. Respond ENTIRELY in Russian.`;
 
-  const responseText = await callGroqWithRetry(null, prompt, 'ai_question', modelName);
+  const responseText = await callGeminiWithRetry(null, prompt, 'ai_question', modelName);
   try {
     return parseAIJson(responseText);
   } catch (err) {
@@ -403,7 +403,7 @@ Return ONLY valid JSON:
 }`;
 
     const modelName = getAIModelForPlan(userPlan);
-    const aiResp = await callGroqWithRetry(null, prompt, 'ai_question', modelName);
+    const aiResp = await callGeminiWithRetry(null, prompt, 'ai_question', modelName);
     const parsed = parseAIJson(aiResp);
 
     const annotationMap = {};

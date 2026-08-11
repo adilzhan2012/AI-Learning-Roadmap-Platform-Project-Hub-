@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, ChevronRight, ChevronLeft, Loader2, Quote } from 'lucide-react';
-import { callGroqWithRetry } from '../../services/courseService.js';
+import { callGeminiWithRetry } from '../../services/courseService.js';
 import { parseAIJson } from '../../utils/aiResponseParser.js';
 
 const FALLBACK_QUOTES = [
@@ -39,7 +39,7 @@ export default function MotivationalWidget({ variant = 'dashboard' }) {
       try {
         const prompt = `You are a technical mentor. Generate exactly 5 very short, highly inspiring and motivational phrases (1 sentence each) in Russian for a student learning software engineering. Return ONLY a valid JSON array of strings. Example: ["Фраза 1", "Фраза 2", "Фраза 3", "Фраза 4", "Фраза 5"]`;
         
-        const res = await callGroqWithRetry(null, prompt, 'ai_question');
+        const res = await callGeminiWithRetry(null, prompt, 'ai_question');
         const parsed = parseAIJson(res);
         
         if (Array.isArray(parsed) && parsed.length > 0 && isMounted) {

@@ -18,7 +18,7 @@ import { auth, db, functions } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { callGroqWithRetry, getUserCourses, getUserStats } from '../services/courseService.js';
+import { callGeminiWithRetry, getUserCourses, getUserStats } from '../services/courseService.js';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import { PLAN_LIMITS } from '../constants/planLimits.js';
 import ReactMarkdown from 'react-markdown';
@@ -152,7 +152,7 @@ export default function Mentor() {
         throw new Error('MISSING_API_KEY');
       }
 
-      // Build context-rich system prompt for Groq
+      // Build context-rich system prompt for Gemini
       const enrolledCoursesText = courses.length > 0 
         ? courses.map(c => `- ${c.title} (${c.level}, Прогресс: ${c.progress}%)`).join('\n')
         : 'Нет активных курсов.';
@@ -178,17 +178,16 @@ INSTRUCTIONS:
    - If they are on plan "ULTRA", guide them through the interactive briefing.
    - If they are on "FREE" or "PRO" plan, you MUST politely refuse to draft or write the syllabus. Explain that personalized course generation, interactive syllabus briefings, and materials-based roadmaps (RAG) are exclusive to the ULTRA plan. Suggest they upgrade to ULTRA to unlock this capability.`;
 
-      // Smart model routing: use Llama 3.1 8B for short queries to minimize token cost, Llama 3.3 70B for complex/deep responses
+      // Smart model routing: use Gemini 2.5 Flash for short queries, Gemini 2.5 Pro for complex/deep responses
       const isProSoftCapped = plan === 'PRO' && (usage.mentorMessagesUsed || 0) >= PLAN_LIMITS.PRO.aiMentorPerDay;
       const isComplexQuery = text.length > 200 || text.toLowerCase().includes('объясни') || text.toLowerCase().includes('почему') || text.toLowerCase().includes('ошибка');
       
-      // If PRO soft limit is exceeded, degrade model to basic Llama 3.1 8B
       const selectedModel = isProSoftCapped 
-        ? 'llama-3.1-8b-instant' 
-        : (isComplexQuery ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant');
+        ? 'gemini-2.5-flash' 
+        : (isComplexQuery ? 'gemini-2.5-pro' : 'gemini-2.5-flash');
 
       const fullPrompt = `${systemPrompt}\n\nUser Question: ${text}`;
-      const responseText = await callGroqWithRetry(apiKey, fullPrompt, 'mentor_message', selectedModel);
+      const responseText = await callGeminiWithRetry(apiKey, fullPrompt, 'mentor_message', selectedModel);
 
       const assistantMessage = {
         id: (Date.now() + 1).toString(),
@@ -217,7 +216,7 @@ INSTRUCTIONS:
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: '⚠️ Произошла ошибка при соединении с AI-ментором. Пожалуйста, убедитесь, что у вас настроен правильный Groq API Key в Настройках.'
+        content: '⚠️ Произошла ошибка при соединении с AI-ментором. Пожалуйста, убедитесь, что у вас настроен правильный Gemini API Key в Настройках.'
       }]);
     } finally {
       setGenerating(false);
@@ -393,7 +392,7 @@ INSTRUCTIONS:
               </h2>
               <span className="text-xs text-on-surface-variant flex items-center gap-1">
                 <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping" />
-                В сети • На базе Groq
+                В сети • На базе Gemini
               </span>
             </div>
           </div>
@@ -437,9 +436,9 @@ INSTRUCTIONS:
             <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-2xl flex gap-3 items-start text-sm">
               <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
               <div>
-                <h5 className="font-bold mb-1">API ключ Groq отсутствует</h5>
+                <h5 className="font-bold mb-1">API ключ Gemini отсутствует</h5>
                 <p className="text-xs text-red-500/80 leading-relaxed mb-3">
-                  Для работы AI-ментора необходимо указать ключ API. Вы можете получить его бесплатно на сайте Groq Console и вставить в личном кабинете.
+                  Для работы AI-ментора необходимо указать ключ API. Вы можете получить его в Google AI Studio и вставить в личном кабинете.
                 </p>
                 <button 
                   onClick={() => navigate('/settings')}
@@ -558,7 +557,7 @@ INSTRUCTIONS:
           <div className="flex flex-col flex-shrink-0 w-full">
             {isProSoftCapped && (
               <div className="px-6 py-2 bg-amber-500/10 border-t border-outline-variant/30 text-[11px] text-amber-500 flex items-center justify-between select-none">
-                <span className="font-medium">⚠️ Достигнут лимит Grok Mini. Чат переведен на упрощенную модель ИИ Llama.</span>
+                <span className="font-medium">⚠️ Достигнут лимит Gemini Pro. Чат переведен на упрощенную модель ИИ Flash.</span>
                 <button 
                   type="button" 
                   onClick={() => navigate('/pricing')} 
@@ -574,7 +573,7 @@ INSTRUCTIONS:
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 disabled={generating || apiKeyError}
-                placeholder={apiKeyError ? "Настройте Groq API Key для отправки сообщений..." : "Задайте вопрос AI-ментору..."}
+                placeholder={apiKeyError ? "Настройте Gemini API Key для отправки сообщений..." : "Задайте вопрос AI-ментору..."}
                 className="flex-1 bg-surface border border-outline-variant rounded-xl px-4 py-3 text-sm text-on-surface placeholder-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/45 focus:border-primary transition-all disabled:opacity-50"
               />
               <button
