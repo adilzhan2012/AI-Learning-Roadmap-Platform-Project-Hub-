@@ -35,6 +35,7 @@ import RepeatReminder from '../components/shared/RepeatReminder.jsx';
 import { t, useLocale } from '../i18n.js';
 import { LeagueIcon } from './Leagues.jsx';
 import MotivationalWidget from '../components/shared/MotivationalWidget.jsx';
+import HeroBackground from '../components/shared/HeroBackground.jsx';
 import { getSubjectTheme } from '../utils/courseSubjectClassifier.js';
 
 const staggerContainer = {
@@ -251,6 +252,7 @@ export default function Dashboard() {
         variants={itemVariants}
         className="relative overflow-hidden rounded-[18px] bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 p-6 md:p-12 shadow-sm"
       >
+        <HeroBackground />
         <div className="flex flex-col md:flex-row justify-between items-center gap-6 md:gap-8 relative z-10">
           <div className="flex-1 w-full max-w-2xl text-center md:text-left">
             <motion.h1 
