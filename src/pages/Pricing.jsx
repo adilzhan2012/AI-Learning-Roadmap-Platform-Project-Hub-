@@ -200,6 +200,11 @@ export default function Pricing() {
     setCheckoutStage('input');
     setUpgrading(true);
     try {
+      // Force reload user profile and refresh token so email_verified is current
+      if (auth.currentUser) {
+        await auth.currentUser.reload();
+        await auth.currentUser.getIdToken(true);
+      }
       const updateSubFn = httpsCallable(functions, 'updateSubscription');
       await updateSubFn({ plan: selectedUpgradePlan, promoCode });
       setUpgrading(false);
