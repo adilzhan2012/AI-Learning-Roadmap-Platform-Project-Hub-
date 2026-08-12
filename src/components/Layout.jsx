@@ -16,6 +16,8 @@ export default function Layout() {
   const [loading, setLoading] = useState(true);
   const [maintenance, setMaintenance] = useState({ isActive: false, endTime: null });
   const [isBanned, setIsBanned] = useState(false);
+  const [hasProfile, setHasProfile] = useState(false);
+  const [isProfileLoaded, setIsProfileLoaded] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
@@ -48,19 +50,28 @@ export default function Layout() {
     return () => unsubscribe();
   }, []);
 
-  // Listen to user profile for ban status
+  // Listen to user profile for ban status and profile completion
   useEffect(() => {
     if (!user) {
       setIsBanned(false);
+      setHasProfile(false);
+      setIsProfileLoaded(true);
       return;
     }
     const docRef = doc(db, 'users', user.uid);
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      setIsProfileLoaded(true);
       if (docSnap.exists()) {
-        setIsBanned(docSnap.data().isBanned === true);
+        const data = docSnap.data();
+        setIsBanned(data.isBanned === true);
+        // User profile is considered complete if it has a username (set in step 2 or 4 of wizard)
+        setHasProfile(!!data.username);
+      } else {
+        setHasProfile(false);
       }
     }, (err) => {
       // Catch transient permission errors
+      setIsProfileLoaded(true);
     });
     return () => unsubscribe();
   }, [user]);
@@ -87,7 +98,22 @@ export default function Layout() {
   // Route protection
   const isPublicRoute = ['/', '/login', '/register'].includes(location.pathname);
   const currentUser = user || auth.currentUser;
+
+  // Wait for profile data before deciding on protected routes
+  if (currentUser && !isPublicRoute && !isProfileLoaded) {
+    return (
+      <div className="flex items-center justify-center h-screen w-full bg-background text-on-background">
+        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   if (!currentUser && !isPublicRoute) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Force users without a complete profile back to login to finish the wizard
+  if (currentUser && !isPublicRoute && !hasProfile) {
     return <Navigate to="/login" replace />;
   }
 

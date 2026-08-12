@@ -105,7 +105,7 @@ export default function Auth({ type }) {
   useEffect(() => {
     // Only auto-redirect if they are not in the middle of Google Registration
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser && !loading && !showRegSuccess && authMethod !== 'google') {
+      if (currentUser && !loading && !showRegSuccess && authMethod === 'email') {
         // Double check if user actually has a profile (to prevent redirecting new google users who refreshed)
         try {
           const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
@@ -293,6 +293,17 @@ export default function Auth({ type }) {
         setLoading(false);
       }
       return;
+    }
+
+    if (authMethod !== 'email') {
+      if (!username.trim()) {
+        setError(locale === 'ru' ? 'Введите никнейм' : 'Enter username');
+        return;
+      }
+      if (!agreed) {
+        setError(locale === 'ru' ? 'Вы должны согласиться с политиками' : 'You must agree to the policies');
+        return;
+      }
     }
 
     // Email Registration Final Submit
@@ -822,13 +833,25 @@ export default function Auth({ type }) {
                     </div>
                   )}
 
+                  {authMethod !== 'email' && (
+                    <div className="flex items-start gap-3 mt-8">
+                      <input type="checkbox" id="termsSocial" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800" />
+                      <label htmlFor="termsSocial" className="text-xs text-gray-600 dark:text-gray-400 leading-tight">
+                        {locale === 'ru' ? 'Создавая аккаунт, вы соглашаетесь с нашими ' : 'By creating an account, you agree to our '}
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModal('terms'); }} className="text-blue-600 hover:underline">{locale === 'ru' ? 'Условиями обслуживания' : 'Terms of Service'}</button>,{' '}
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModal('privacy'); }} className="text-blue-600 hover:underline">{locale === 'ru' ? 'Политикой конфиденциальности' : 'Privacy Policy'}</button>{locale === 'ru' ? ' и ' : ' and '}
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModal('cookie'); }} className="text-blue-600 hover:underline">{locale === 'ru' ? 'Политикой использования файлов cookie' : 'Cookie Policy'}</button>.
+                      </label>
+                    </div>
+                  )}
+
                   <div className="flex gap-3 pt-6">
                     {authMethod === 'email' && (
                       <button type="button" onClick={() => setStep(3)} className="py-3.5 px-4 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl font-medium transition-all active:scale-[0.98]">
                         {locale === 'ru' ? 'Назад' : 'Back'}
                       </button>
                     )}
-                    <button type="button" onClick={handleSubmit} disabled={loading || (authMethod === 'google' && !username.trim())} className="flex-1 py-3.5 px-4 bg-primary hover:bg-primary/90 text-on-primary rounded-xl font-bold transition-all shadow-lg active:scale-[0.98] flex justify-center items-center">
+                    <button type="button" onClick={handleSubmit} disabled={loading || (authMethod !== 'email' && (!username.trim() || !agreed))} className="flex-1 py-3.5 px-4 bg-primary hover:bg-primary/90 text-on-primary rounded-xl font-bold transition-all shadow-lg active:scale-[0.98] flex justify-center items-center">
                       {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (locale === 'ru' ? 'Завершить' : 'Finish')}
                     </button>
                   </div>
