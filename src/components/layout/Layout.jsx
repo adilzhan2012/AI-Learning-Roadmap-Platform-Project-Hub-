@@ -156,8 +156,8 @@ export default function Layout() {
         id="page-content" 
         className={`flex-1 relative w-full max-w-[2000px] mx-auto ${
           isGraphPage 
-            ? 'h-[calc(100vh-3.5rem)] pt-14 overflow-y-auto px-2 md:px-4 pb-4 flex flex-col' 
-            : 'overflow-y-auto pt-20 md:pt-22 px-4 sm:px-8 md:px-16 pb-12'
+            ? 'h-[calc(100vh-3.5rem)] pt-14 overflow-y-auto px-2 sm:px-3 md:px-4 pb-4 flex flex-col' 
+            : 'overflow-y-auto pt-20 md:pt-22 px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16 pb-12'
         }`}
       >
         <AnimatePresence mode="wait">
