@@ -36,9 +36,12 @@ try {
   app = initializeApp(firebaseConfig);
   
   // App Check initialization
-  // App Check initialization (Only in Production to avoid localhost issues)
+  if (import.meta.env.DEV) {
+    self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+  }
+  
   const recaptchaKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
-  if (recaptchaKey && !import.meta.env.DEV) {
+  if (recaptchaKey) {
     if (typeof window !== 'undefined' && !window._appCheckInitialized) {
       window._appCheckInitialized = true;
       initializeAppCheck(app, {
@@ -46,7 +49,7 @@ try {
         isTokenAutoRefreshEnabled: true
       });
     }
-  } else if (!recaptchaKey) {
+  } else {
     console.warn("VITE_RECAPTCHA_SITE_KEY is missing. App Check will not function properly in production.");
   }
 
