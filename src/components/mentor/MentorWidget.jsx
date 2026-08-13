@@ -17,16 +17,16 @@ import {
   BrainCircuit
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { auth, db, functions } from '../firebase.js';
+import { auth, db, functions } from '../../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { doc, getDoc, setDoc, collection, query, orderBy, getDocs, deleteDoc } from 'firebase/firestore';
-import { usePlanLimits } from '../hooks/usePlanLimits.js';
-import { PLAN_LIMITS } from '../constants/planLimits.js';
+import { usePlanLimits } from '../../hooks/usePlanLimits.js';
+import { PLAN_LIMITS } from '../../constants/planLimits.js';
 import ReactMarkdown from 'react-markdown';
 import MentorBubble from './MentorBubble.jsx';
-import { t, useLocale } from '../i18n.js';
-import { getUserStats, getUserCourses, callGeminiWithRetry } from '../services/courseService.js';
+import { t, useLocale } from '../../i18n.js';
+import { getUserStats, getUserCourses, callGeminiWithRetry } from '../../services/courseService.js';
 
 export default function MentorWidget() {
   const navigate = useNavigate();

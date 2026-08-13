@@ -6,7 +6,7 @@ import { auth, db } from '../../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import CookieBanner from '../shared/CookieBanner.jsx';
-import MentorWidget from '../MentorWidget.jsx';
+import MentorWidget from '../mentor/MentorWidget.jsx';
 import MaintenancePage from '../shared/MaintenancePage.jsx';
 import BannedModal from '../shared/BannedModal.jsx';
 import Footer from '../shared/Footer.jsx';
