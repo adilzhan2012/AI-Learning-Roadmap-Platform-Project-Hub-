@@ -11,6 +11,14 @@ import MaintenancePage from './shared/MaintenancePage.jsx';
 import BannedModal from './shared/BannedModal.jsx';
 import Footer from './shared/Footer.jsx';
 
+const VersionBadge = () => (
+  <div className="fixed bottom-2 left-2 z-[9999] pointer-events-none">
+    <span className="text-[10px] font-mono font-bold text-on-surface-variant/50 select-none bg-surface-container/50 px-1.5 py-0.5 rounded backdrop-blur-md border border-outline/20">
+      alpha/v1.0.0
+    </span>
+  </div>
+);
+
 export default function Layout() {
   const [user, setUser] = useState(auth.currentUser);
   const [loading, setLoading] = useState(true);
@@ -134,6 +142,7 @@ export default function Layout() {
         <Footer />
         <CookieBanner />
         {isBanned && <BannedModal />}
+        <VersionBadge />
       </div>
     );
   }
@@ -168,6 +177,7 @@ export default function Layout() {
       <MentorWidget />
       <CookieBanner />
       {isBanned && <BannedModal />}
+      <VersionBadge />
     </div>
   );
 }
