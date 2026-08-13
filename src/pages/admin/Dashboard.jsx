@@ -68,7 +68,10 @@ export default function Dashboard() {
         });
         setLiveActivity(acts.slice(0, 5));
       } catch (e) {
-        console.error('Error fetching activities:', e);
+        // Silently catch permission/index errors for live activity feed if user lacks collectionGroup permissions
+        if (e.code !== 'permission-denied') {
+          console.warn('Could not fetch live activities:', e.message);
+        }
       }
     }
 
@@ -84,11 +87,11 @@ export default function Dashboard() {
   const revenueData = [];
 
   const stats = [
-    { name: 'Онлайн', value: realStats.online.toString(), change: '+0%', icon: Users, color: '#10B981' },
-    { name: 'Новые регистрации', value: realStats.total.toString(), change: '+0%', icon: UserPlus, color: '#6366F1' },
-    { name: 'Подписки', value: realStats.premium.toString(), change: '+0%', icon: CreditCard, color: '#F59E0B' },
-    { name: 'Доход', value: '$0', change: '+0%', icon: DollarSign, color: '#EC4899' },
-    { name: 'Конверсия', value: realStats.total > 0 ? ((realStats.premium / realStats.total) * 100).toFixed(1) + '%' : '0%', change: '+0%', icon: TrendingUp, color: '#06B6D4' },
+    { name: 'Онлайн', value: realStats.online.toString(), icon: Users, color: '#10B981' },
+    { name: 'Новые регистрации', value: realStats.total.toString(), icon: UserPlus, color: '#6366F1' },
+    { name: 'Подписки', value: realStats.premium.toString(), icon: CreditCard, color: '#F59E0B' },
+    { name: 'Доход', value: '$0', icon: DollarSign, color: '#EC4899' },
+    { name: 'Конверсия', value: realStats.total > 0 ? ((realStats.premium / realStats.total) * 100).toFixed(1) + '%' : '0%', icon: TrendingUp, color: '#06B6D4' },
   ];
 
   return (
@@ -100,38 +103,21 @@ export default function Dashboard() {
         <DateRangePicker value={dateRange} onChange={setDateRange} />
       </AdminHeader>
       
-      {/* KPI Cards with Sparklines */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
         {stats.map((stat) => {
           const Icon = stat.icon;
-          const isPositive = stat.change.startsWith('+');
           return (
             <div key={stat.name} className="bg-[#18181B] border border-white/5 p-5 rounded-2xl relative overflow-hidden group hover:border-white/10 transition-colors">
               <div className="flex items-center justify-between mb-3 relative z-10">
                 <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center">
                   <Icon className="w-5 h-5 text-zinc-300 group-hover:text-white transition-colors" />
                 </div>
-                <StatusBadge status={isPositive ? 'success' : 'failed'} text={stat.change} />
               </div>
               
               <div className="relative z-10">
                 <h3 className="text-zinc-400 text-sm font-medium">{stat.name}</h3>
                 <p className="text-2xl font-bold text-white mt-1">{stat.value}</p>
-              </div>
-
-              {/* Sparkline Background */}
-              <div className="absolute bottom-0 left-0 right-0 h-16 opacity-30 pointer-events-none">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={sparklineData}>
-                    <defs>
-                      <linearGradient id={`grad-${stat.name}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={stat.color} stopOpacity={0.5}/>
-                        <stop offset="95%" stopColor={stat.color} stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <Area type="monotone" dataKey="value" stroke={stat.color} strokeWidth={2} fillOpacity={1} fill={`url(#grad-${stat.name})`} />
-                  </AreaChart>
-                </ResponsiveContainer>
               </div>
             </div>
           );

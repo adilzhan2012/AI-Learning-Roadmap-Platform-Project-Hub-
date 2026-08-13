@@ -66,14 +66,39 @@ export default function Pricing() {
     return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [notification, setNotification] = useState(null); // { title, message, type: 'error' | 'success' | 'info' }
+
+  const showNotice = (message, type = 'info', title = null) => {
+    setNotification({
+      title: title || (type === 'error' ? (locale === 'en' ? 'Error' : 'Ошибка') : (type === 'success' ? (locale === 'en' ? 'Success' : 'Успешно') : (locale === 'en' ? 'Notification' : 'Уведомление'))),
+      message,
+      type
+    });
+  };
+
   const handleSendVerification = async () => {
-    if (auth.currentUser) {
-      try {
-        await sendEmailVerification(auth.currentUser);
-        setVerificationSent(true);
-      } catch (e) {
-        alert("Ошибка: " + e.message);
+    if (!auth.currentUser) return;
+    setSendingEmail(true);
+    try {
+      await sendEmailVerification(auth.currentUser);
+      setVerificationSent(true);
+      showNotice(
+        locale === 'en' ? 'Verification email sent! Please check your inbox and spam folder.' : 'Письмо с подтверждением отправлено! Пожалуйста, проверьте почту и папку "Спам".',
+        'success'
+      );
+    } catch (e) {
+      console.error('Email verification error:', e);
+      let msg = e.message;
+      if (e.code === 'auth/too-many-requests') {
+        msg = locale === 'en' ? 'Too many requests. Please wait a few minutes before trying again.' : 'Слишком много запросов. Пожалуйста, подождите несколько минут.';
+      } else if (e.code === 'auth/unauthorized-domain') {
+        msg = locale === 'en' ? 'Domain not authorized in Firebase Auth.' : 'Домен не авторизован в настройках Firebase Auth.';
       }
+      showNotice((locale === 'en' ? 'Error sending email: ' : 'Ошибка при отправке письма: ') + msg, 'error');
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -139,7 +164,7 @@ export default function Pricing() {
       window.location.reload();
     } catch (e) {
       console.error(e);
-      alert(e.message || (locale === "en" ? "Error cancelling subscription" : "Ошибка при отмене подписки"));
+      showNotice(e.message || (locale === "en" ? "Error cancelling subscription" : "Ошибка при отмене подписки"), 'error');
       setCancelling(false);
     }
   };
@@ -167,7 +192,7 @@ export default function Pricing() {
       window.location.reload();
     } catch (e) {
       console.error(e);
-      alert(e.message || (locale === "en" ? "Error switching to basic plan" : "Ошибка при переходе на базовый тариф"));
+      showNotice(e.message || (locale === "en" ? "Error switching to basic plan" : "Ошибка при переходе на базовый тариф"), 'error');
       setUpgrading(false);
     }
   };
@@ -183,9 +208,16 @@ export default function Pricing() {
 
     try {
       const codeSnap = await getDoc(doc(db, 'promocodes', promoCode));
-      if (!codeSnap.exists() || !codeSnap.data().active) {
+      const data = codeSnap.exists() ? codeSnap.data() : null;
+      if (!codeSnap.exists() || !data.active) {
         setCheckoutStage('input');
         setCheckoutError(locale === 'en' ? 'Invalid or disabled invite code.' : 'Недействительный или отключенный инвайт-код.');
+        return;
+      }
+
+      if (data.applicablePlan && data.applicablePlan !== 'ALL' && data.applicablePlan !== selectedUpgradePlan) {
+        setCheckoutStage('input');
+        setCheckoutError(locale === 'en' ? 'Invalid promo code for this plan.' : 'Неверный промокод.');
         return;
       }
       
@@ -213,7 +245,7 @@ export default function Pricing() {
       window.location.reload();
     } catch (e) {
       console.error(e);
-      alert(e.message || (locale === "en" ? "Error upgrading subscription. Please ensure your email is verified." : "Ошибка при обновлении подписки. Пожалуйста, убедитесь, что ваш email верифицирован."));
+      showNotice(e.message || (locale === "en" ? "Error upgrading subscription." : "Ошибка при обновлении подписки."), 'error');
       setUpgrading(false);
     }
   };
@@ -255,23 +287,35 @@ export default function Pricing() {
             <div className="flex gap-2 w-full sm:w-auto">
               <button 
                 onClick={async () => {
-                  if (auth.currentUser) {
+                  if (!auth.currentUser) return;
+                  setVerifying(true);
+                  try {
                     await auth.currentUser.reload();
                     if (auth.currentUser.emailVerified) {
                       await auth.currentUser.getIdToken(true);
+                      setEmailVerified(true);
+                      alert(locale === 'en' ? 'Email verified successfully!' : 'Email успешно подтвержден!');
+                    } else {
+                      alert(locale === 'en' ? 'Email is not verified yet. Please check your inbox and click the verification link.' : 'Email еще не подтвержден. Пожалуйста, найдите письмо в почте и перейдите по ссылке.');
                     }
-                    setEmailVerified(auth.currentUser.emailVerified);
+                  } catch (e) {
+                    alert((locale === 'en' ? 'Error checking status: ' : 'Ошибка проверки статуса: ') + e.message);
+                  } finally {
+                    setVerifying(false);
                   }
                 }} 
-                className="px-4 py-2 w-full sm:w-auto bg-transparent border border-[#FF453A]/30 hover:bg-[#FF453A]/10 text-[#FF453A] rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap"
+                disabled={verifying}
+                className="px-4 py-2 bg-transparent border border-[#FF453A]/30 hover:bg-[#FF453A]/10 text-[#FF453A] rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap disabled:opacity-50 flex items-center justify-center gap-1"
               >
+                {verifying && <Loader2 className="w-3 h-3 animate-spin" />}
                 {locale === 'en' ? 'I confirmed' : 'Я подтвердил(а)'}
               </button>
               <button 
                 onClick={handleSendVerification} 
-                disabled={verificationSent} 
-                className="px-4 py-2 w-full sm:w-auto bg-[#FF453A]/20 hover:bg-[#FF453A]/30 text-[#FF453A] rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap"
+                disabled={verificationSent || sendingEmail} 
+                className="px-4 py-2 bg-[#FF453A]/20 hover:bg-[#FF453A]/30 text-[#FF453A] rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap disabled:opacity-50 flex items-center justify-center gap-1"
               >
+                {sendingEmail && <Loader2 className="w-3 h-3 animate-spin" />}
                 {verificationSent ? (locale === 'en' ? 'Email sent' : 'Письмо отправлено') : t('settings.security.sendReset')}
               </button>
             </div>
@@ -993,6 +1037,53 @@ export default function Pricing() {
                   </div>
                 </>
               )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Custom Notification Alert Modal */}
+      <AnimatePresence>
+        {notification && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setNotification(null)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md" 
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative bg-[#18181B] border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl z-10 text-center flex flex-col items-center"
+            >
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 border ${
+                notification.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' :
+                notification.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+                'bg-indigo-500/10 border-indigo-500/20 text-indigo-400'
+              }`}>
+                {notification.type === 'error' ? (
+                  <X className="w-6 h-6" />
+                ) : notification.type === 'success' ? (
+                  <Check className="w-6 h-6" />
+                ) : (
+                  <Sparkles className="w-6 h-6" />
+                )}
+              </div>
+
+              <h3 className="text-lg font-bold text-white mb-2 font-clash">{notification.title}</h3>
+              <p className="text-xs text-zinc-400 leading-relaxed mb-6">
+                {notification.message}
+              </p>
+
+              <button
+                onClick={() => setNotification(null)}
+                className="w-full py-2.5 px-4 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-colors"
+              >
+                {locale === 'en' ? 'OK' : 'Понятно'}
+              </button>
             </motion.div>
           </div>
         )}

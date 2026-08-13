@@ -13,7 +13,8 @@ import {
   User,
   MoreVertical,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Trash2
 } from 'lucide-react';
 import { 
   collection, 
@@ -24,9 +25,11 @@ import {
   doc,
   updateDoc,
   addDoc,
+  deleteDoc,
   serverTimestamp,
   limit,
-  writeBatch
+  writeBatch,
+  where
 } from 'firebase/firestore';
 import { ref as storageRef, deleteObject } from 'firebase/storage';
 import { db, storage } from '../../firebase.js';
@@ -199,6 +202,39 @@ export default function QuestionsAdmin() {
     }
   };
 
+  const handleDeleteTicket = async (ticketId) => {
+    if (!ticketId) return;
+    if (!window.confirm('Вы уверены, что хотите безвозвратно удалить этот тикет?')) return;
+    try {
+      const batch = writeBatch(db);
+      const msgQ = query(collection(db, 'support_tickets', ticketId, 'messages'));
+      const msgSnap = await getDocs(msgQ);
+
+      for (const msgDoc of msgSnap.docs) {
+        const msgData = msgDoc.data();
+        if (msgData.attachmentUrl) {
+          try {
+            const fileRef = storageRef(storage, msgData.attachmentUrl);
+            await deleteObject(fileRef);
+          } catch (e) {
+            console.error("Ошибка удаления вложения:", e);
+          }
+        }
+        batch.delete(msgDoc.ref);
+      }
+
+      batch.delete(doc(db, 'support_tickets', ticketId));
+      await batch.commit();
+
+      if (activeTicket?.id === ticketId) {
+        setActiveTicket(null);
+      }
+    } catch (error) {
+      console.error("Ошибка при удалении тикета:", error);
+      alert("Ошибка при удалении тикета: " + error.message);
+    }
+  };
+
   const handleSaveInternalNote = async () => {
     if (!activeTicket) return;
     try {
@@ -216,7 +252,13 @@ export default function QuestionsAdmin() {
     if (activeTicket) setInternalNote(activeTicket.internalNotes || '');
   }, [activeTicket?.id]);
 
-  const filteredTickets = tickets.filter(t => filterStatus === 'all' || t.status === filterStatus);
+  const filteredTickets = tickets
+    .filter(t => filterStatus === 'all' || t.status === filterStatus)
+    .sort((a, b) => {
+      const timeA = a.updatedAt?.toMillis ? a.updatedAt.toMillis() : (a.createdAt?.toMillis ? a.createdAt.toMillis() : 0);
+      const timeB = b.updatedAt?.toMillis ? b.updatedAt.toMillis() : (b.createdAt?.toMillis ? b.createdAt.toMillis() : 0);
+      return timeB - timeA;
+    });
 
   return (
     <div className="flex flex-col h-[calc(100vh-120px)]">
@@ -353,6 +395,13 @@ export default function QuestionsAdmin() {
                       <option key={key} value={key} className="bg-[#09090B] text-white">{val.label}</option>
                     ))}
                   </select>
+                  <button 
+                    onClick={() => handleDeleteTicket(activeTicket.id)}
+                    title="Удалить тикет"
+                    className="p-1.5 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors border border-white/5 flex items-center justify-center"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
 

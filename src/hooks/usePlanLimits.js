@@ -113,7 +113,9 @@ export const usePlanLimits = () => {
           setUsage(initData);
         }
       } catch (error) {
-        console.error("Failed to load plan limits:", error);
+        if (error.code !== 'permission-denied') {
+          console.error("Failed to load plan limits:", error);
+        }
         // Fallback to FREE plan logic so app doesn't break
         setPlan('FREE');
         setDbBillingPeriod('monthly');

@@ -564,5 +564,11 @@
   "slides.open": "Слайд",
   "slides.prev": "Назад",
   "slides.next": "Далее",
-  "speech.label": "Озвучка"
+  "speech.label": "Озвучка",
+  "maintenance.title": "Технические работы",
+  "maintenance.subtitle": "Мы обновляем платформу, чтобы сделать её лучше. Пожалуйста, подождите, сайт скоро заработает.",
+  "maintenance.estimatedCompletion": "Ориентировочное время завершения",
+  "maintenance.hours": "Часов",
+  "maintenance.minutes": "Минут",
+  "maintenance.seconds": "Секунд"
 }

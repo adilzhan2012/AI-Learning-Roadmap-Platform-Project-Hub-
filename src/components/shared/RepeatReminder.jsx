@@ -34,7 +34,9 @@ export default function RepeatReminder() {
 
         setNodesToRepeat(toRepeat);
       } catch (e) {
-        console.error("Failed to check repeat reminder:", e);
+        if (e.code !== 'permission-denied') {
+          console.error("Failed to check repeat reminder:", e);
+        }
       }
     });
     return () => unsubscribe();

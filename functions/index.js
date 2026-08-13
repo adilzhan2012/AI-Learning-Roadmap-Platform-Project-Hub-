@@ -828,13 +828,14 @@ exports.updateSubscription = onCall(async (request) => {
   // Downgrade to FREE is always allowed by the account owner (cancellation flow)
   const isDowngradeToFree = plan === "FREE";
 
+  let hasValidPromoCode = false;
+  const isAdmin = request.auth.token.admin === true;
+
   // Upgrade to paid plan requires either admin Custom Claim, internal server token, or a valid promo code
   if (!isDowngradeToFree) {
-    const isAdmin = request.auth.token.admin === true;
     const expectedToken = process.env.INTERNAL_ADMIN_TOKEN;
     const hasValidToken = expectedToken && internalToken && internalToken === expectedToken;
 
-    let hasValidPromoCode = false;
     if (request.data.promoCode) {
       const promoSnap = await db.collection("promocodes").doc(request.data.promoCode).get();
       if (promoSnap.exists && promoSnap.data().active) {
@@ -855,8 +856,8 @@ exports.updateSubscription = onCall(async (request) => {
     }
   }
 
-  // Enforce email verification for any subscription change
-  if (!request.auth.token.email_verified) {
+  // Enforce email verification except for valid promo codes, admins, or downgrades
+  if (!request.auth.token.email_verified && !isAdmin && !hasValidPromoCode && !isDowngradeToFree) {
     throw new HttpsError("permission-denied", "Email must be verified to change your subscription.");
   }
 

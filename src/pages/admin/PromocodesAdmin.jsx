@@ -13,6 +13,7 @@ export default function PromocodesAdmin() {
   // Form State
   const [newCode, setNewCode] = useState('');
   const [newDescription, setNewDescription] = useState('');
+  const [newPlan, setNewPlan] = useState('ALL'); // ALL, PRO, ULTRA
   const [newActive, setNewActive] = useState(true);
   const [error, setError] = useState('');
 
@@ -43,12 +44,14 @@ export default function PromocodesAdmin() {
     try {
       await setDoc(doc(db, 'promocodes', codeId), {
         description: newDescription.trim(),
+        applicablePlan: newPlan,
         active: newActive,
         createdAt: serverTimestamp()
       });
       setIsModalOpen(false);
       setNewCode('');
       setNewDescription('');
+      setNewPlan('ALL');
       setNewActive(true);
       setError('');
     } catch (e) {
@@ -118,6 +121,7 @@ export default function PromocodesAdmin() {
             <thead className="bg-[#27272A] text-zinc-400">
               <tr>
                 <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">Промокод</th>
+                <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">Тариф</th>
                 <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">Описание</th>
                 <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">Статус</th>
                 <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider text-right">Действия</th>
@@ -128,6 +132,15 @@ export default function PromocodesAdmin() {
                 <tr key={promo.id} className="hover:bg-white/[0.02] transition-colors">
                   <td className="px-6 py-4">
                     <span className="font-mono text-white font-bold tracking-wider">{promo.id}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                      promo.applicablePlan === 'ULTRA' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
+                      promo.applicablePlan === 'PRO' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' :
+                      'bg-zinc-800 text-zinc-300 border border-zinc-700'
+                    }`}>
+                      {promo.applicablePlan || 'ALL'}
+                    </span>
                   </td>
                   <td className="px-6 py-4 text-zinc-400">
                     {promo.description || '—'}
@@ -191,6 +204,18 @@ export default function PromocodesAdmin() {
                   placeholder="Код промокода"
                   className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white font-mono uppercase outline-none focus:border-indigo-500 transition-colors"
                 />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-zinc-400 mb-1 uppercase tracking-wider">Применимый тариф</label>
+                <select
+                  value={newPlan}
+                  onChange={e => setNewPlan(e.target.value)}
+                  className="w-full bg-[#09090B] border border-white/10 rounded-lg px-4 py-2.5 text-white outline-none focus:border-indigo-500 transition-colors"
+                >
+                  <option value="ALL">Все тарифы (ALL)</option>
+                  <option value="PRO">Только PRO</option>
+                  <option value="ULTRA">Только ULTRA</option>
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-zinc-400 mb-1 uppercase tracking-wider">Описание (опционально)</label>

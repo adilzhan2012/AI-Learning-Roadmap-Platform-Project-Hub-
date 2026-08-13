@@ -564,5 +564,11 @@
   "slides.open": "Slide",
   "slides.prev": "Previous",
   "slides.next": "Next",
-  "speech.label": "Voice narration"
+  "speech.label": "Voice narration",
+  "maintenance.title": "Scheduled Maintenance",
+  "maintenance.subtitle": "We are upgrading the platform to make it better. Please wait, the site will be back online soon.",
+  "maintenance.estimatedCompletion": "Estimated Time Remaining",
+  "maintenance.hours": "Hours",
+  "maintenance.minutes": "Minutes",
+  "maintenance.seconds": "Seconds"
 }
