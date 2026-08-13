@@ -67,7 +67,7 @@ export default function UpgradeModal({ isOpen, onClose }) {
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative bg-background border border-outline-variant w-full max-w-6xl max-h-[90vh] rounded-[2rem] shadow-2xl overflow-y-auto flex flex-col z-10 p-6 md:p-10"
+          className="relative bg-background border border-outline-variant w-full max-w-6xl max-h-[90vh] rounded-[2rem] shadow-2xl overflow-y-auto flex flex-col z-10 p-5 sm:p-6 md:p-8 lg:p-10"
         >
           <button 
             onClick={onClose}
@@ -105,7 +105,7 @@ export default function UpgradeModal({ isOpen, onClose }) {
             </div>
           </div>
 
-          <div className="mx-auto gap-6 items-stretch mb-8 w-full grid grid-cols-1 md:grid-cols-3">
+          <div className="mx-auto gap-4 md:gap-6 items-stretch mb-8 w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {/* FREE PLAN CARD */}
             <div className={`bg-surface-container border ${
               plan === 'FREE' ? 'border-outline bg-surface-container-high' : 'border-outline-variant'
