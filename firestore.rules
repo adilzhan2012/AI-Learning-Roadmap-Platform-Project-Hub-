@@ -72,6 +72,11 @@ service cloud.firestore {
         allow update, delete: if isAdmin();
       }
       
+      // --- Notifications ---
+      match /notifications/{docId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+      
       // --- Resource Ratings subcollection ---
       match /resourceRatings/{resourceId} {
         allow read, write: if isOwner(userId) || isAdmin();
