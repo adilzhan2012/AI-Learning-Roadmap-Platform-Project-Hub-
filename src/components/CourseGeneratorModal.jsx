@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Brain, Sparkles, Loader2, X, ChevronRight, ChevronLeft, 
   Settings, Lock, FileText, Video, Target, Compass, 
-  Zap, Clock, BookOpen, User, Briefcase
+  Zap, Clock, BookOpen, User, Briefcase, Users
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { generateCourseAndSave } from '../services/courseService.js';
@@ -44,6 +44,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
   const [focus, setFocus] = useState('Theory'); // Theory, Practice, Code
   const [tone, setTone] = useState('Academic'); // Academic, Friendly, Gamified
   const [flashcardCount, setFlashcardCount] = useState('3'); // '3' | '5' | '8'
+  const [withGroup, setWithGroup] = useState(false);
 
   const { plan, checkLimit, incrementUsage, isUpgradeModalOpen, setUpgradeModalOpen } = usePlanLimits();
   const [upgradeReason, setUpgradeReason] = useState(null);
@@ -131,7 +132,8 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
         topic: topicToGen,
         level: levelToGen,
         preferences,
-        userUid
+        userUid,
+        withGroup
       }
     });
   };
@@ -384,6 +386,19 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
         </div>
       </div>
 
+      <div className="pt-4 border-t border-outline-variant">
+        <label className="flex items-center gap-3 cursor-pointer group">
+          <div className={`w-10 h-6 flex items-center rounded-full p-1 transition-colors ${withGroup ? 'bg-primary' : 'bg-surface-container-highest'}`} onClick={() => setWithGroup(!withGroup)}>
+            <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${withGroup ? 'translate-x-4' : 'translate-x-0'}`} />
+          </div>
+          <div>
+            <span className="text-sm font-bold text-on-surface flex items-center gap-2">
+              <Users className="w-4 h-4 text-indigo-500" /> Пройти с друзьями
+            </span>
+            <span className="text-[11px] text-on-surface-variant">Создать групповой класс после генерации</span>
+          </div>
+        </label>
+      </div>
     </motion.div>
   );
 

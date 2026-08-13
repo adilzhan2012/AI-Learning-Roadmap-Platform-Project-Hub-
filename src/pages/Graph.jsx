@@ -23,6 +23,7 @@ import GroupMemberAvatar from '../components/groups/GroupMemberAvatar.jsx';
 import GroupPanel from '../components/groups/GroupPanel.jsx';
 import GroupWaitingScreen from '../components/groups/GroupWaitingScreen.jsx';
 import InsufficientCreditsModal from '../components/groups/InsufficientCreditsModal.jsx';
+import CreateGroupModal from '../components/groups/CreateGroupModal.jsx';
 
 // Simple vis-network map icons fallback
 const iconMap = {
@@ -407,6 +408,10 @@ export default function Graph() {
       localStorage.setItem('selected_course_id', courseToSelect.id);
       setSelectedCourse(courseToSelect);
       setCourses(prev => [courseToSelect, ...prev.filter(c => c.id !== courseToSelect.id)]);
+      
+      if (generatingCourseState?.withGroup) {
+        setGroupModalCourse(courseToSelect);
+      }
     }
     setGeneratingCourseState(null);
     setGeneratedNodes(null);
@@ -526,6 +531,7 @@ export default function Graph() {
   } = useGroupLesson(courseIdToUse, urlGroupId);
 
   const [isGroupPanelOpen, setIsGroupPanelOpen] = useState(false);
+  const [groupModalCourse, setGroupModalCourse] = useState(null);
   const isGroupCreator = group?.creatorId === auth.currentUser?.uid;
 
   // Sync theme changes
@@ -1454,6 +1460,21 @@ Respond in Russian. Keep your reply concise and professional.`;
             />
           )}
         </AnimatePresence>
+
+        {/* Group Lesson Creation Modal triggered after course generation */}
+        <CreateGroupModal
+          isOpen={!!groupModalCourse}
+          onClose={() => setGroupModalCourse(null)}
+          courseId={groupModalCourse?.id}
+          courseTitle={groupModalCourse?.title || groupModalCourse?.topic}
+          onGroupCreated={(newGroupId) => {
+            if (groupModalCourse?.id) {
+              localStorage.setItem('selected_course_id', groupModalCourse.id);
+              setSearchParams({ courseId: groupModalCourse.id, groupId: newGroupId });
+            }
+            setGroupModalCourse(null);
+          }}
+        />
 
         {/* Mock Interview Modal */}
         <AnimatePresence>
