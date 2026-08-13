@@ -2,14 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Topbar from './Topbar.jsx';
-import { auth, db } from '../firebase.js';
+import { auth, db } from '../../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
-import CookieBanner from './shared/CookieBanner.jsx';
-import MentorWidget from './MentorWidget.jsx';
-import MaintenancePage from './shared/MaintenancePage.jsx';
-import BannedModal from './shared/BannedModal.jsx';
-import Footer from './shared/Footer.jsx';
+import CookieBanner from '../shared/CookieBanner.jsx';
+import MentorWidget from '../MentorWidget.jsx';
+import MaintenancePage from '../shared/MaintenancePage.jsx';
+import BannedModal from '../shared/BannedModal.jsx';
+import Footer from '../shared/Footer.jsx';
 
 const VersionBadge = () => (
   <div className="fixed bottom-2 left-2 z-[9999] pointer-events-none">

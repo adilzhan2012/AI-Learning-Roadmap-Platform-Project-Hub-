@@ -1,7 +1,7 @@
 import React from 'react';
 import { HashRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import Layout from './components/Layout.jsx';
+import Layout from './components/layout/Layout.jsx';
 import PageTransition from './components/PageTransition.jsx';
 import { GamificationProvider } from './context/GamificationContext.jsx';
 

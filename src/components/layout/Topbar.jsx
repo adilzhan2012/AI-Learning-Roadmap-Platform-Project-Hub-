@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import UserAvatar from './UserAvatar.jsx';
+import UserAvatar from '../UserAvatar.jsx';
 import { 
   Bell, 
   Settings, 
@@ -16,18 +16,18 @@ import {
   CreditCard,
   Trophy
 } from 'lucide-react';
-import { t, useLocale } from '../i18n.js';
-import { useXP } from '../hooks/useXP.js';
-import { useGamification } from '../context/GamificationContext.jsx';
-import { toggleTheme } from '../theme.js';
-import { auth, signOut, db } from '../firebase.js';
+import { t, useLocale } from '../../i18n.js';
+import { useXP } from '../../hooks/useXP.js';
+import { useGamification } from '../../context/GamificationContext.jsx';
+import { toggleTheme } from '../../theme.js';
+import { auth, signOut, db } from '../../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { getUserStats } from '../services/courseService.js';
-import Logo from './shared/Logo.jsx';
-import { LeagueIcon } from '../pages/Leagues.jsx';
-import { usePlanLimits } from '../hooks/usePlanLimits.js';
-import { respondToGroupInvitation } from '../services/groupService.js';
+import { getUserStats } from '../../services/courseService.js';
+import Logo from '../shared/Logo.jsx';
+import { LeagueIcon } from '../../pages/Leagues.jsx';
+import { usePlanLimits } from '../../hooks/usePlanLimits.js';
+import { respondToGroupInvitation } from '../../services/groupService.js';
 
 const LEAGUE_NAMES = {
   silicon: { ru: 'Кремний', en: 'Silicon' },
@@ -384,7 +384,7 @@ export default function Topbar() {
                   <button 
                     onClick={() => {
                       const nextLocale = locale === 'ru' ? 'en' : 'ru';
-                      import('../i18n.js').then(({ setLocale }) => setLocale(nextLocale, true));
+                      import('../../i18n.js').then(({ setLocale }) => setLocale(nextLocale, true));
                     }} 
                     className="flex items-center justify-between w-full px-4 py-2.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container/40 transition-colors text-left"
                   >
