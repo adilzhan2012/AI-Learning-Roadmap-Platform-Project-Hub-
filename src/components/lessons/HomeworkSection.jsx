@@ -34,7 +34,9 @@ import { AIParsingError } from '../../utils/aiResponseParser.js';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-export default function HomeworkSection({ courseId, nodeId, lessonContent, topicLabel, topicDesc }) {
+import { t } from '../../i18n.js';
+
+export default function HomeworkSection({ courseId, nodeId, lessonContent, topicLabel, topicDesc, courseLanguage = 'ru' }) {
   const navigate = useNavigate();
   const { addXP } = useXP();
   const { plan, usage, checkLimit, incrementUsage, setUpgradeModalOpen, isUpgradeModalOpen } = usePlanLimits();
@@ -111,9 +113,9 @@ export default function HomeworkSection({ courseId, nodeId, lessonContent, topic
         console.error("Homework init error:", err);
         if (isMounted) {
           if (err instanceof AIParsingError || err?.name === 'AIParsingError') {
-            setError("Ошибка парсинга ответа ИИ при создании домашки. Попробуйте еще раз.");
+            setError(courseLanguage === 'en' ? "Failed to parse AI response for homework. Please try again." : "Ошибка парсинга ответа ИИ при создании домашки. Попробуйте еще раз.");
           } else {
-            setError("Не удалось загрузить домашнее задание.");
+            setError(courseLanguage === 'en' ? "Failed to load homework assignment." : "Не удалось загрузить домашнее задание.");
           }
         }
       } finally {
@@ -124,7 +126,7 @@ export default function HomeworkSection({ courseId, nodeId, lessonContent, topic
     if (courseId && nodeId && lessonContent) {
       initHomework();
     }
-  }, [courseId, nodeId, lessonContent, topicLabel, topicDesc]);
+  }, [courseId, nodeId, lessonContent, topicLabel, topicDesc, courseLanguage]);
 
   const handleChatSubmit = async (e) => {
     e.preventDefault();
@@ -137,6 +139,7 @@ export default function HomeworkSection({ courseId, nodeId, lessonContent, topic
     setChatLoading(true);
 
     try {
+      const languageName = courseLanguage === 'en' ? 'English' : 'Russian';
       const prompt = `You are a Socratic AI mentor for a user doing their homework. 
 The user is currently studying the following topic: "${topicLabel}".
 Here is the lesson content they just read:
@@ -148,7 +151,7 @@ ${promptData?.prompt}
 The user's question:
 "${userMessage}"
 
-CRITICAL INSTRUCTION: You MUST act as a Socratic mentor. Do NOT solve the homework for them. Do NOT give them the direct answer. Instead, give them hints, point out where to look, or ask them a leading question to guide them to the answer. Answer in Russian, be very supportive, friendly, and concise.`;
+CRITICAL INSTRUCTION: You MUST act as a Socratic mentor. Do NOT solve the homework for them. Do NOT give them the direct answer. Instead, give them hints, point out where to look, or ask them a leading question to guide them to the answer. Answer in ${languageName}, be very supportive, friendly, and concise.`;
 
       const resText = await callGeminiWithRetry(null, prompt, 'ai_chat');
       const updatedHistory = [...newHistory, { role: 'assistant', content: resText }];
@@ -156,7 +159,7 @@ CRITICAL INSTRUCTION: You MUST act as a Socratic mentor. Do NOT solve the homewo
       await saveHomeworkChatHistory(courseId, nodeId, updatedHistory);
     } catch (err) {
       console.error("Chat error:", err);
-      setChatHistory([...newHistory, { role: 'assistant', content: "Произошла ошибка при обращении к ИИ-наставнику. Попробуйте еще раз." }]);
+      setChatHistory([...newHistory, { role: 'assistant', content: courseLanguage === 'en' ? "An error occurred with the AI Mentor. Please try again." : "Произошла ошибка при обращении к ИИ-наставнику. Попробуйте еще раз." }]);
     } finally {
       setChatLoading(false);
     }

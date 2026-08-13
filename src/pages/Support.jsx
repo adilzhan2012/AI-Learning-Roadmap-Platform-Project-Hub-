@@ -31,22 +31,24 @@ import {
 } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage, auth } from '../firebase.js';
+import { t, useLocale } from '../i18n.js';
 
-const CATEGORIES = [
-  { id: 'bug', label: 'Баг', icon: Bug, color: 'text-rose-500', bg: 'bg-rose-500/10' },
-  { id: 'idea', label: 'Улучшение', icon: Lightbulb, color: 'text-amber-500', bg: 'bg-amber-500/10' },
-  { id: 'question', label: 'Вопрос', icon: HelpCircle, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-  { id: 'other', label: 'Другое', icon: FileText, color: 'text-zinc-400', bg: 'bg-zinc-500/10' }
+const getCategories = (locale) => [
+  { id: 'bug', label: locale === 'en' ? 'Bug' : 'Баг', icon: Bug, color: 'text-rose-500', bg: 'bg-rose-500/10' },
+  { id: 'idea', label: locale === 'en' ? 'Improvement' : 'Улучшение', icon: Lightbulb, color: 'text-amber-500', bg: 'bg-amber-500/10' },
+  { id: 'question', label: locale === 'en' ? 'Question' : 'Вопрос', icon: HelpCircle, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+  { id: 'other', label: locale === 'en' ? 'Other' : 'Другое', icon: FileText, color: 'text-zinc-400', bg: 'bg-zinc-500/10' }
 ];
 
-const STATUS_LABELS = {
-  new: { text: 'Новое', color: 'text-blue-400', bg: 'bg-blue-400/10' },
-  in_progress: { text: 'В работе', color: 'text-amber-400', bg: 'bg-amber-400/10' },
-  waiting_user: { text: 'Ждет ответа', color: 'text-orange-400', bg: 'bg-orange-400/10' },
-  closed: { text: 'Решено', color: 'text-emerald-400', bg: 'bg-emerald-400/10' }
-};
+const getStatusLabels = (locale) => ({
+  new: { text: locale === 'en' ? 'New' : 'Новое', color: 'text-blue-400', bg: 'bg-blue-400/10' },
+  in_progress: { text: locale === 'en' ? 'In Progress' : 'В работе', color: 'text-amber-400', bg: 'bg-amber-400/10' },
+  waiting_user: { text: locale === 'en' ? 'Waiting Reply' : 'Ждет ответа', color: 'text-orange-400', bg: 'bg-orange-400/10' },
+  closed: { text: locale === 'en' ? 'Resolved' : 'Решено', color: 'text-emerald-400', bg: 'bg-emerald-400/10' }
+});
 
 export default function Support() {
+  const locale = useLocale();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTicket, setActiveTicket] = useState(null);
@@ -142,8 +144,14 @@ export default function Support() {
     <div className="max-w-5xl mx-auto w-full flex flex-col h-[calc(100vh-8rem)]">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold font-clash text-on-background tracking-tight">Поддержка</h1>
-          <p className="text-sm text-on-surface-variant mt-1">Здесь вы можете задать вопрос, сообщить об ошибке или предложить идею.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold font-clash text-on-background tracking-tight">
+            {locale === 'en' ? 'Support & Feedback' : 'Поддержка'}
+          </h1>
+          <p className="text-sm text-on-surface-variant mt-1">
+            {locale === 'en' 
+              ? 'Ask questions, report issues, or propose product features directly to the team.'
+              : 'Здесь вы можете задать вопрос, сообщить об ошибке или предложить идею.'}
+          </p>
         </div>
         {!activeTicket && (
           <button 
@@ -151,7 +159,9 @@ export default function Support() {
             className="flex items-center gap-2 bg-primary text-on-primary px-4 py-2 rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
           >
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Новое обращение</span>
+            <span className="hidden sm:inline">
+              {locale === 'en' ? 'New Ticket' : 'Новое обращение'}
+            </span>
           </button>
         )}
       </div>
@@ -181,7 +191,6 @@ export default function Support() {
             onClose={() => setShowNewTicketModal(false)} 
             onCreated={(ticketId) => {
               setShowNewTicketModal(false);
-              // Optimistically set active ticket to load the chat view immediately (it will update from snapshot)
               setActiveTicket({ id: ticketId, status: 'new' }); 
             }}
           />
@@ -192,6 +201,10 @@ export default function Support() {
 }
 
 function TicketList({ tickets, loading, onSelect }) {
+  const locale = useLocale();
+  const CATEGORIES = getCategories(locale);
+  const STATUS_LABELS = getStatusLabels(locale);
+
   if (loading) {
     return (
       <div className="w-full flex items-center justify-center">
@@ -206,8 +219,14 @@ function TicketList({ tickets, loading, onSelect }) {
         <div className="w-16 h-16 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center mb-4">
           <MessageSquare className="w-8 h-8 text-on-surface-variant/50" />
         </div>
-        <h3 className="text-lg font-bold text-on-surface mb-1">Нет обращений</h3>
-        <p className="text-sm text-on-surface-variant max-w-sm">Вы еще не создавали тикетов в службу поддержки. Если у вас возник вопрос или проблема — смело обращайтесь!</p>
+        <h3 className="text-lg font-bold text-on-surface mb-1">
+          {locale === 'en' ? 'No Support Tickets' : 'Нет обращений'}
+        </h3>
+        <p className="text-sm text-on-surface-variant max-w-sm">
+          {locale === 'en' 
+            ? "You haven't submitted any support tickets yet. Feel free to reach out if you need assistance!"
+            : 'Вы еще не создавали тикетов в службу поддержки. Если у вас возник вопрос или проблема — смело обращайтесь!'}
+        </p>
       </div>
     );
   }
@@ -237,17 +256,17 @@ function TicketList({ tickets, loading, onSelect }) {
                   </span>
                 </div>
                 <p className="text-sm text-on-surface-variant line-clamp-1 mb-2">
-                  {ticket.lastMessage || 'Нет сообщений'}
+                  {ticket.lastMessage || (locale === 'en' ? 'No messages' : 'Нет сообщений')}
                 </p>
                 <div className="flex items-center justify-between text-xs text-on-surface-variant">
                   <div className="flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5" />
-                    {ticket.updatedAt ? new Date(ticket.updatedAt.toDate()).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Только что'}
+                    {ticket.updatedAt ? new Date(ticket.updatedAt.toDate()).toLocaleDateString(locale === 'en' ? 'en-US' : 'ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : (locale === 'en' ? 'Just now' : 'Только что')}
                   </div>
                   {ticket.unreadUser && (
                     <span className="flex items-center gap-1 text-primary font-medium">
                       <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                      Новый ответ
+                      {locale === 'en' ? 'New reply' : 'Новый ответ'}
                     </span>
                   )}
                 </div>
@@ -261,13 +280,14 @@ function TicketList({ tickets, loading, onSelect }) {
 }
 
 function TicketChat({ ticket, onBack }) {
+  const locale = useLocale();
+  const STATUS_LABELS = getStatusLabels(locale);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    // Mark as read for user
     if (ticket.unreadUser) {
       updateDoc(doc(db, 'support_tickets', ticket.id), {
         unreadUser: false
@@ -336,7 +356,7 @@ function TicketChat({ ticket, onBack }) {
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-on-surface truncate pr-4">{ticket.subject}</h3>
           <p className="text-xs text-on-surface-variant flex items-center gap-2">
-            Тикет #{ticket.id.slice(0,6).toUpperCase()}
+            {locale === 'en' ? 'Ticket' : 'Тикет'} #{ticket.id.slice(0,6).toUpperCase()}
             <span className={`w-1.5 h-1.5 rounded-full ${status.bg.replace('/10', '')}`} />
             {status.text}
           </p>
@@ -347,7 +367,7 @@ function TicketChat({ ticket, onBack }) {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
           <div className="text-center text-sm text-on-surface-variant my-8">
-            Загрузка сообщений...
+            {locale === 'en' ? 'Loading messages...' : 'Загрузка сообщений...'}
           </div>
         ) : (
           messages.map(msg => {
@@ -364,13 +384,13 @@ function TicketChat({ ticket, onBack }) {
                   {msg.attachmentUrl && (
                     <div className="mt-3">
                       <a href={msg.attachmentUrl} target="_blank" rel="noopener noreferrer" className="block rounded-lg overflow-hidden border border-black/10 hover:opacity-90 transition-opacity">
-                        <img src={msg.attachmentUrl} alt="Вложение" className="max-w-full max-h-64 object-contain bg-black/20" />
+                        <img src={msg.attachmentUrl} alt="Attachment" className="max-w-full max-h-64 object-contain bg-black/20" />
                       </a>
                     </div>
                   )}
 
                   <span className={`text-[10px] mt-1 block font-mono ${isUser ? 'text-on-primary/70 text-right' : 'text-on-surface-variant'}`}>
-                    {msg.createdAt ? new Date(msg.createdAt.toDate()).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '...'}
+                    {msg.createdAt ? new Date(msg.createdAt.toDate()).toLocaleTimeString(locale === 'en' ? 'en-US' : 'ru-RU', { hour: '2-digit', minute: '2-digit' }) : '...'}
                   </span>
                 </div>
               </div>
@@ -387,7 +407,7 @@ function TicketChat({ ticket, onBack }) {
             type="text"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Напишите сообщение..."
+            placeholder={locale === 'en' ? 'Type your message...' : 'Напишите сообщение...'}
             className="flex-1 bg-surface border border-outline-variant rounded-xl px-4 py-2 text-sm text-on-surface focus:outline-none focus:border-primary transition-colors"
           />
           <button 
@@ -402,7 +422,7 @@ function TicketChat({ ticket, onBack }) {
         <div className="p-4 border-t border-outline-variant bg-surface-container-low text-center flex-shrink-0">
           <p className="text-sm text-emerald-500 font-medium flex items-center justify-center gap-2">
             <CheckCircle2 className="w-4 h-4" />
-            Тикет закрыт. Если проблема актуальна, создайте новое обращение.
+            {locale === 'en' ? 'Ticket resolved. If you need more help, open a new ticket.' : 'Тикет закрыт. Если проблема актуальна, создайте новое обращение.'}
           </p>
         </div>
       )}
@@ -411,6 +431,8 @@ function TicketChat({ ticket, onBack }) {
 }
 
 function NewTicketModal({ onClose, onCreated }) {
+  const locale = useLocale();
+  const CATEGORIES = getCategories(locale);
   const [category, setCategory] = useState('question');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
@@ -425,21 +447,19 @@ function NewTicketModal({ onClose, onCreated }) {
     try {
       let attachmentUrl = null;
       
-      // Upload file if exists and category is bug
       if (file && category === 'bug') {
         const fileRef = storageRef(storage, `support_attachments/${auth.currentUser.uid}_${Date.now()}_${file.name}`);
         const snapshot = await uploadBytes(fileRef, file);
         attachmentUrl = await getDownloadURL(snapshot.ref);
       }
 
-      // 1. Create the ticket document
       const ticketRef = await addDoc(collection(db, 'support_tickets'), {
         userId: auth.currentUser.uid,
-        userName: auth.currentUser.displayName || 'Пользователь',
+        userName: auth.currentUser.displayName || (locale === 'en' ? 'User' : 'Пользователь'),
         userEmail: auth.currentUser.email,
         category: category,
         subject: subject.trim(),
-        status: 'new', // new, in_progress, waiting_user, closed
+        status: 'new',
         lastMessage: message.trim(),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -451,7 +471,6 @@ function NewTicketModal({ onClose, onCreated }) {
         }
       });
 
-      // 2. Create the first message in the subcollection
       await addDoc(collection(db, 'support_tickets', ticketRef.id, 'messages'), {
         sender: 'user',
         text: message.trim(),
@@ -462,7 +481,7 @@ function NewTicketModal({ onClose, onCreated }) {
       onCreated(ticketRef.id);
     } catch (error) {
       console.error("Error creating ticket:", error);
-      alert("Не удалось создать обращение. Попробуйте позже.");
+      alert(locale === 'en' ? "Failed to create support ticket. Please try again later." : "Не удалось создать обращение. Попробуйте позже.");
     } finally {
       setIsSubmitting(false);
     }
@@ -477,7 +496,9 @@ function NewTicketModal({ onClose, onCreated }) {
         className="w-full max-w-lg bg-surface-container rounded-2xl shadow-2xl border border-outline-variant overflow-hidden flex flex-col max-h-full"
       >
         <div className="flex items-center justify-between p-5 border-b border-outline-variant bg-surface-container-low">
-          <h2 className="text-lg font-bold text-on-surface">Создать обращение</h2>
+          <h2 className="text-lg font-bold text-on-surface">
+            {locale === 'en' ? 'New Support Ticket' : 'Создать обращение'}
+          </h2>
           <button onClick={onClose} className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition-colors">
             <X className="w-5 h-5" />
           </button>
@@ -485,7 +506,9 @@ function NewTicketModal({ onClose, onCreated }) {
 
         <form onSubmit={handleSubmit} className="p-5 flex-1 overflow-y-auto space-y-5">
           <div className="space-y-2">
-            <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Категория</label>
+            <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+              {locale === 'en' ? 'Category' : 'Категория'}
+            </label>
             <div className="grid grid-cols-2 gap-2">
               {CATEGORIES.map(c => {
                 const Icon = c.icon;
@@ -509,23 +532,27 @@ function NewTicketModal({ onClose, onCreated }) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Тема</label>
+            <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+              {locale === 'en' ? 'Subject' : 'Тема'}
+            </label>
             <input 
               type="text" 
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder="Кратко опишите суть"
+              placeholder={locale === 'en' ? 'Brief summary of the issue' : 'Кратко опишите суть'}
               className="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-sm text-on-surface focus:outline-none focus:border-primary transition-colors"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Описание</label>
+            <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+              {locale === 'en' ? 'Description' : 'Описание'}
+            </label>
             <textarea 
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Опишите подробно..."
+              placeholder={locale === 'en' ? 'Detailed description...' : 'Опишите подробно...'}
               rows="4"
               className="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-sm text-on-surface focus:outline-none focus:border-primary transition-colors resize-none"
               required
@@ -534,11 +561,13 @@ function NewTicketModal({ onClose, onCreated }) {
 
           {category === 'bug' && (
             <div className="space-y-2">
-              <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Скриншот ошибки (опционально)</label>
+              <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+                {locale === 'en' ? 'Screenshot (optional)' : 'Скриншот ошибки (опционально)'}
+              </label>
               <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2 px-4 py-2 rounded-xl border border-outline-variant bg-surface text-on-surface-variant hover:text-on-surface hover:border-outline cursor-pointer transition-all text-sm font-medium">
                   <Paperclip className="w-4 h-4" />
-                  <span>Выбрать файл</span>
+                  <span>{locale === 'en' ? 'Choose file' : 'Выбрать файл'}</span>
                   <input 
                     type="file" 
                     accept="image/*" 
@@ -550,7 +579,9 @@ function NewTicketModal({ onClose, onCreated }) {
               </div>
               <p className="text-[10px] text-on-surface-variant flex items-start gap-1 mt-1">
                 <AlertCircle className="w-3 h-3 flex-shrink-0" />
-                Мы автоматически прикрепим информацию о вашем браузере, чтобы быстрее найти проблему.
+                {locale === 'en' 
+                  ? 'Browser diagnostics will be automatically attached to help resolve the issue faster.'
+                  : 'Мы автоматически прикрепим информацию о вашем браузере, чтобы быстрее найти проблему.'}
               </p>
             </div>
           )}
@@ -563,10 +594,10 @@ function NewTicketModal({ onClose, onCreated }) {
             {isSubmitting ? (
               <>
                 <div className="w-4 h-4 border-2 border-on-primary border-t-transparent rounded-full animate-spin" />
-                Отправка...
+                {locale === 'en' ? 'Submitting...' : 'Отправка...'}
               </>
             ) : (
-              'Отправить обращение'
+              locale === 'en' ? 'Submit Ticket' : 'Отправить обращение'
             )}
           </button>
         </form>

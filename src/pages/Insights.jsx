@@ -4,7 +4,7 @@ import { Loader2, Lock } from 'lucide-react';
 import { auth } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getUserStats, getUserCourses, getUserActivityLogs } from '../services/courseService.js';
-import { t } from '../i18n.js';
+import { t, useLocale } from '../i18n.js';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import { useNavigate } from 'react-router-dom';
 
@@ -91,7 +91,7 @@ function MiniHistogram({ dayCounts, dayNames }) {
         return (
           <div 
             key={i} 
-            title={`${dayNames[i]}: ${count} активности`}
+            title={`${dayNames[i]}: ${count}`}
             style={{ height: `${heightPercent}%` }} 
             className={`flex-1 rounded-sm transition-all ${
               isMax ? 'bg-primary shadow-sm' : 'bg-on-surface/20'
@@ -155,9 +155,11 @@ function CourseDonutChart({ courses }) {
           );
         })}
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center font-sans">
-        <span className="text-[10px] text-on-surface-variant font-medium">Курсы</span>
-        <span className="text-sm font-mono font-bold text-on-surface mt-0.5">{courses.length}</span>
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+        <span className="text-xs font-bold text-on-surface font-mono">{courses.length}</span>
+        <span className="text-[10px] text-on-surface-variant font-medium">
+          {courses.length === 1 ? (useLocale() === 'en' ? 'Course' : 'Курс') : (useLocale() === 'en' ? 'Courses' : 'Курсы')}
+        </span>
       </div>
     </div>
   );
@@ -165,34 +167,31 @@ function CourseDonutChart({ courses }) {
 
 export default function Insights() {
   const navigate = useNavigate();
+  const locale = useLocale();
   const { plan, loading: planLoading } = usePlanLimits();
-  const [user, setUser] = useState(auth.currentUser);
-  const [stats, setStats] = useState(null);
   const [courses, setCourses] = useState([]);
   const [activities, setActivities] = useState([]);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [rangeTab, setRangeTab] = useState('Month'); // 'Week' | 'Month' | 'Year'
-
-  // Interactive Area Chart Hover States
   const [hoveredIdx, setHoveredIdx] = useState(null);
   const [mouseCoords, setMouseCoords] = useState({ x: 0, y: 0 });
-  const [containerWidth, setContainerWidth] = useState(600);
+  const [containerWidth, setContainerWidth] = useState(0);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
       if (currentUser) {
         try {
-          const [fetchedStats, fetchedCourses, fetchedActivities] = await Promise.all([
-            getUserStats(currentUser.uid),
+          const [coursesData, userStats, actLogs] = await Promise.all([
             getUserCourses(currentUser.uid),
-            getUserActivityLogs(currentUser.uid)
+            getUserStats(currentUser.uid),
+            getUserActivityLogs(currentUser.uid, 50)
           ]);
-          setStats(fetchedStats);
-          setCourses(fetchedCourses);
-          setActivities(fetchedActivities);
+          setCourses(coursesData || []);
+          setStats(userStats || {});
+          setActivities(actLogs || []);
         } catch (e) {
-          console.error("Error fetching insights data:", e);
+          console.error("Error loading insights data:", e);
         } finally {
           setLoading(false);
         }
@@ -200,17 +199,13 @@ export default function Insights() {
         setLoading(false);
       }
     });
-
     return () => unsubscribe();
   }, []);
 
-  // Metrics Calculations
   const totalHours = useMemo(() => {
-    if (!stats) return 0;
-    return Math.max(0, Math.round(stats.hoursLearned || 0));
+    return stats?.hoursLearned || 0;
   }, [stats]);
 
-  // Overall average course completion progress (0 - 100%)
   const overallCourseProgress = useMemo(() => {
     if (!courses || courses.length === 0) return 0;
     const sum = courses.reduce((acc, c) => acc + (c.progress || 0), 0);
@@ -218,7 +213,10 @@ export default function Insights() {
   }, [courses]);
 
   // Process activities into day of week counts [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-  const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+  const dayNames = locale === 'en' 
+    ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    : ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
   const dayCounts = useMemo(() => {
     const counts = [0, 0, 0, 0, 0, 0, 0]; // Mon..Sun
     activities.forEach(act => {
@@ -244,9 +242,11 @@ export default function Insights() {
   }, [dayCounts]);
 
   const bestDayName = useMemo(() => {
-    const fullNames = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+    const fullNames = locale === 'en'
+      ? ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+      : ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
     return fullNames[bestDayIndex];
-  }, [bestDayIndex]);
+  }, [bestDayIndex, locale]);
 
   // Calculate Average Session time logically
   const avgSession = useMemo(() => {
@@ -389,10 +389,12 @@ export default function Insights() {
       ];
       return {
         displayPoints: pts,
-        labels: ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
+        labels: locale === 'en'
+          ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+          : ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
       };
     }
-  }, [rangeTab, dayCounts, overallCourseProgress]);
+  }, [rangeTab, dayCounts, overallCourseProgress, locale]);
 
   // Construct Area & Line paths
   const linePath = displayPoints.map((val, i) => `${i === 0 ? 'M' : 'L'} ${(i / (displayPoints.length - 1)) * 100} ${100 - (val / 100) * 80 - 10}`).join(' ');
@@ -452,15 +454,19 @@ export default function Insights() {
             <div className="w-12 h-12 bg-on-surface/5 border border-outline rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Lock className="w-5 h-5 text-on-surface" strokeWidth={1.5} />
             </div>
-            <h3 className="text-lg font-bold text-on-surface mb-2">Аналитика доступна в Pro</h3>
+            <h3 className="text-lg font-bold text-on-surface mb-2">
+              {locale === 'en' ? 'Insights Available in PRO' : 'Аналитика доступна в Pro'}
+            </h3>
             <p className="text-xs text-on-surface-variant mb-6 leading-relaxed">
-              Отслеживайте свои часы обучения, среднее время сессии, прогнозы достижения целей и активность по дням в Pro подписке.
+              {locale === 'en' 
+                ? 'Track your study hours, average session duration, goal forecasts, and daily activity heatmaps with a PRO subscription.'
+                : 'Отслеживайте свои часы обучения, среднее время сессии, прогнозы достижения целей и активность по дням в Pro подписке.'}
             </p>
             <button
               onClick={() => navigate('/pricing')}
               className="w-full py-3.5 rounded-xl font-bold bg-primary text-on-primary hover:opacity-90 transition-all text-xs shadow-lg"
             >
-              Открыть Pro
+              {locale === 'en' ? 'Unlock PRO' : 'Открыть Pro'}
             </button>
           </div>
         </div>
@@ -477,7 +483,9 @@ export default function Insights() {
         {/* Top Header */}
         <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold font-clash text-on-surface mb-2 tracking-tight">Аналитика обучения</h1>
+            <h1 className="text-3xl md:text-4xl font-bold font-clash text-on-surface mb-2 tracking-tight">
+              {t('nav.insights') || (locale === 'en' ? 'Learning Insights' : 'Аналитика обучения')}
+            </h1>
             <p className="text-xs md:text-sm text-on-surface-variant max-w-xl">{t('insights.subtitle')}</p>
           </div>
 
@@ -485,7 +493,9 @@ export default function Insights() {
           <div className="flex gap-6 border-b border-outline self-start sm:self-auto">
             {['Week', 'Month', 'Year'].map((tab) => {
               const isActive = rangeTab === tab;
-              const RussianLabels = { Week: 'Неделя', Month: 'Месяц', Year: 'Год' };
+              const TabLabels = locale === 'en' 
+                ? { Week: 'Week', Month: 'Month', Year: 'Year' } 
+                : { Week: 'Неделя', Month: 'Месяц', Year: 'Год' };
               return (
                 <button
                   key={tab}
@@ -494,7 +504,7 @@ export default function Insights() {
                     isActive ? 'text-on-surface' : 'text-on-surface-variant hover:text-on-surface'
                   }`}
                 >
-                  {RussianLabels[tab]}
+                  {TabLabels[tab]}
                   {isActive && (
                     <motion.div 
                       layoutId="activeTabUnderline"
@@ -511,12 +521,16 @@ export default function Insights() {
         <motion.div variants={itemVariants} className="bg-surface border border-outline rounded-[16px] p-4 md:p-6 w-full overflow-hidden shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
             <div className="flex items-center gap-3">
-              <h2 className="text-base font-bold text-on-surface font-clash">Прогресс освоения навыков</h2>
+              <h2 className="text-base font-bold text-on-surface font-clash">
+                {t('insights.skillProgress') || (locale === 'en' ? 'Skill Mastery Progress' : 'Прогресс освоения навыков')}
+              </h2>
               <span className="text-xs font-medium text-emerald-500 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                ↑ {overallCourseProgress}% средний прогресс
+                ↑ {overallCourseProgress}% {locale === 'en' ? 'average progress' : 'средний прогресс'}
               </span>
             </div>
-            <p className="text-xs text-on-surface-variant">Динамика успешного освоения учебных модулей</p>
+            <p className="text-xs text-on-surface-variant">
+              {locale === 'en' ? 'Learning modules completion trajectory' : 'Динамика успешного освоения учебных модулей'}
+            </p>
           </div>
 
           {/* SVG Area Chart Container with Y-Axis */}
@@ -623,8 +637,12 @@ export default function Insights() {
           {/* GitHub Contributions Graph Heatmap */}
           <div className="border-t border-outline pt-6 mt-8">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xs font-bold text-on-surface uppercase tracking-wider font-sans">Календарь активности по дням</h3>
-              <span className="text-xs text-on-surface-variant font-mono">Всего зафиксировано: {activities.length} действий</span>
+              <h3 className="text-xs font-bold text-on-surface uppercase tracking-wider font-sans">
+                {locale === 'en' ? 'Daily Activity Calendar' : 'Календарь активности по дням'}
+              </h3>
+              <span className="text-xs text-on-surface-variant font-mono">
+                {locale === 'en' ? `Total recorded: ${activities.length} activities` : `Всего зафиксировано: ${activities.length} действий`}
+              </span>
             </div>
 
             {/* Centered Scrollable Wrapper */}
@@ -633,11 +651,11 @@ export default function Insights() {
                 {/* Day of Week Labels - Perfectly Aligned to 10px cells with 4px gaps */}
                 <div className="relative w-6 h-[94px] text-[10px] font-mono text-on-surface-variant select-none flex-shrink-0 mt-5">
                   {/* Mon = Row 0 (0px) */}
-                  <span className="absolute top-[0px] left-0 leading-[10px]">Пн</span>
+                  <span className="absolute top-[0px] left-0 leading-[10px]">{locale === 'en' ? 'Mon' : 'Пн'}</span>
                   {/* Wed = Row 2 (28px) */}
-                  <span className="absolute top-[28px] left-0 leading-[10px]">Ср</span>
+                  <span className="absolute top-[28px] left-0 leading-[10px]">{locale === 'en' ? 'Wed' : 'Ср'}</span>
                   {/* Fri = Row 4 (56px) */}
-                  <span className="absolute top-[56px] left-0 leading-[10px]">Пт</span>
+                  <span className="absolute top-[56px] left-0 leading-[10px]">{locale === 'en' ? 'Fri' : 'Пт'}</span>
                 </div>
 
                 <div className="flex flex-col">
@@ -672,7 +690,7 @@ export default function Insights() {
                               className={`w-[10px] h-[10px] rounded-[2px] transition-all hover:scale-150 hover:z-20 ${colorClass} ${
                                 day.isFuture ? 'opacity-20' : ''
                               }`}
-                              title={`${day.dateStr}: ${day.count} ${day.count === 1 ? 'действие' : 'действий'}`}
+                              title={`${day.dateStr}: ${day.count} ${locale === 'en' ? 'activities' : (day.count === 1 ? 'действие' : 'действий')}`}
                             />
                           );
                         })}
@@ -685,15 +703,15 @@ export default function Insights() {
             
             {/* GitHub Style Heatmap Legend */}
             <div className="flex items-center gap-2 text-[10px] font-mono text-on-surface-variant mt-4 justify-center sm:justify-end select-none">
-              <span>Меньше</span>
+              <span>{locale === 'en' ? 'Less' : 'Меньше'}</span>
               <div className="flex items-center gap-[3px]">
-                <div className="w-[10px] h-[10px] rounded-[2px] bg-surface border border-outline-variant/60" title="0 действий" />
-                <div className="w-[10px] h-[10px] rounded-[2px] bg-[#0e4429] border border-[#0e4429]" title="1-2 действия" />
-                <div className="w-[10px] h-[10px] rounded-[2px] bg-[#006d32] border border-[#006d32]" title="3-4 действия" />
-                <div className="w-[10px] h-[10px] rounded-[2px] bg-[#26a641] border border-[#26a641]" title="5-6 действий" />
-                <div className="w-[10px] h-[10px] rounded-[2px] bg-[#39d353] border border-[#39d353]" title="7+ действий" />
+                <div className="w-[10px] h-[10px] rounded-[2px] bg-surface border border-outline-variant/60" title="0" />
+                <div className="w-[10px] h-[10px] rounded-[2px] bg-[#0e4429] border border-[#0e4429]" title="1-2" />
+                <div className="w-[10px] h-[10px] rounded-[2px] bg-[#006d32] border border-[#006d32]" title="3-4" />
+                <div className="w-[10px] h-[10px] rounded-[2px] bg-[#26a641] border border-[#26a641]" title="5-6" />
+                <div className="w-[10px] h-[10px] rounded-[2px] bg-[#39d353] border border-[#39d353]" title="7+" />
               </div>
-              <span>Больше</span>
+              <span>{locale === 'en' ? 'More' : 'Больше'}</span>
             </div>
           </div>
 
@@ -705,10 +723,10 @@ export default function Insights() {
           {/* Card 1: Total hours with Sparkline */}
           <motion.div variants={itemVariants} className="bg-surface border border-outline rounded-[16px] p-6 flex flex-col justify-between h-44 shadow-sm hover:border-primary/40 transition-colors">
             <div>
-              <h3 className="text-xs text-on-surface-variant mb-1 font-sans">{t('insights.hoursTitle')}</h3>
+              <h3 className="text-xs text-on-surface-variant mb-1 font-sans">{t('insights.hoursTitle') || (locale === 'en' ? 'Hours Learned' : 'Часы обучения')}</h3>
               <div className="text-3xl font-bold tracking-tight text-on-surface font-clash">
                 <AnimatedNumber value={totalHours} />
-                <span className="text-xs font-normal text-on-surface-variant font-sans ml-1.5">час</span>
+                <span className="text-xs font-normal text-on-surface-variant font-sans ml-1.5">{locale === 'en' ? 'hrs' : 'час'}</span>
               </div>
             </div>
             <MiniSparkline data={hoursSparkline} strokeColor="var(--color-primary, #3B82F6)" />
@@ -717,10 +735,10 @@ export default function Insights() {
           {/* Card 2: Average session with Sparkline */}
           <motion.div variants={itemVariants} className="bg-surface border border-outline rounded-[16px] p-6 flex flex-col justify-between h-44 shadow-sm hover:border-primary/40 transition-colors">
             <div>
-              <h3 className="text-xs text-on-surface-variant mb-1 font-sans">Среднее время сессии</h3>
+              <h3 className="text-xs text-on-surface-variant mb-1 font-sans">{locale === 'en' ? 'Average Session Length' : 'Среднее время сессии'}</h3>
               <div className="text-3xl font-bold tracking-tight text-on-surface font-mono">
                 <span>{avgSession}</span>
-                <span className="text-xs font-normal text-on-surface-variant font-sans ml-1.5">час</span>
+                <span className="text-xs font-normal text-on-surface-variant font-sans ml-1.5">{locale === 'en' ? 'hrs' : 'час'}</span>
               </div>
             </div>
             <MiniSparkline data={sessionSparkline} strokeColor="#10B981" />
@@ -729,7 +747,7 @@ export default function Insights() {
           {/* Card 3: Best Day with Histogram */}
           <motion.div variants={itemVariants} className="bg-surface border border-outline rounded-[16px] p-6 flex flex-col justify-between h-44 shadow-sm hover:border-primary/40 transition-colors">
             <div>
-              <h3 className="text-xs text-on-surface-variant mb-1 font-sans">Лучший день</h3>
+              <h3 className="text-xs text-on-surface-variant mb-1 font-sans">{locale === 'en' ? 'Most Active Day' : 'Лучший день'}</h3>
               <div className="text-2xl font-bold tracking-tight text-on-surface font-sans truncate">
                 {bestDayName}
               </div>
@@ -740,12 +758,12 @@ export default function Insights() {
           {/* Card 4: Forecast (Highlighted Feature Accent Card) */}
           <motion.div variants={itemVariants} className="bg-gradient-to-br from-primary/10 via-surface to-surface border-2 border-primary/40 rounded-[16px] p-6 flex flex-col justify-between h-44 shadow-md relative overflow-hidden">
             <div className="absolute top-2 right-3 text-[10px] uppercase font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
-              Цель
+              {locale === 'en' ? 'Target' : 'Цель'}
             </div>
             <div>
-              <h3 className="text-xs font-semibold text-primary mb-1 font-sans">Прогноз до цели</h3>
+              <h3 className="text-xs font-semibold text-primary mb-1 font-sans">{locale === 'en' ? 'Goal Completion Forecast' : 'Прогноз до цели'}</h3>
               <div className="text-3xl font-extrabold tracking-tight text-on-surface font-mono">
-                {forecastDays} <span className="text-xs font-normal text-on-surface-variant font-sans">дней</span>
+                {forecastDays} <span className="text-xs font-normal text-on-surface-variant font-sans">{locale === 'en' ? 'days' : 'дней'}</span>
               </div>
             </div>
             <MiniSparkline data={forecastSparkline} strokeColor="var(--color-primary, #3B82F6)" />
@@ -758,18 +776,24 @@ export default function Insights() {
           className="bg-surface border border-outline rounded-[16px] p-4 md:p-6 overflow-hidden w-full shadow-sm"
         >
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant font-sans">Прогресс обучения по курсам</h3>
-            <span className="text-xs font-mono text-on-surface-variant">Всего курсов: {courses.length}</span>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant font-sans">
+              {locale === 'en' ? 'Course Learning Progress' : 'Прогресс обучения по курсам'}
+            </h3>
+            <span className="text-xs font-mono text-on-surface-variant">
+              {locale === 'en' ? `Total courses: ${courses.length}` : `Всего курсов: ${courses.length}`}
+            </span>
           </div>
           
           {courses.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-sm text-on-surface-variant font-sans">У вас пока нет активных курсов.</p>
+              <p className="text-sm text-on-surface-variant font-sans">
+                {locale === 'en' ? 'You have no active courses yet.' : 'У вас пока нет активных курсов.'}
+              </p>
               <button 
                 onClick={() => navigate('/courses')}
                 className="mt-4 px-4 py-2 bg-primary text-on-primary rounded-xl text-xs font-bold hover:opacity-90 transition-all"
               >
-                Выбрать курс
+                {locale === 'en' ? 'Explore Courses' : 'Выбрать курс'}
               </button>
             </div>
           ) : courses.length === 1 ? (

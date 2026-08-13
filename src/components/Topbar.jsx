@@ -30,12 +30,12 @@ import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import { respondToGroupInvitation } from '../services/groupService.js';
 
 const LEAGUE_NAMES = {
-  silicon: 'Кремний',
-  graphite: 'Графит',
-  quartz: 'Кварц',
-  obsidian: 'Обсидиан',
-  platinum: 'Платина',
-  titan: 'Титан'
+  silicon: { ru: 'Кремний', en: 'Silicon' },
+  graphite: { ru: 'Графит', en: 'Graphite' },
+  quartz: { ru: 'Кварц', en: 'Quartz' },
+  obsidian: { ru: 'Обсидиан', en: 'Obsidian' },
+  platinum: { ru: 'Платина', en: 'Platinum' },
+  titan: { ru: 'Титан', en: 'Titan' }
 };
 
 export default function Topbar() {
@@ -73,7 +73,7 @@ export default function Topbar() {
     { path: '/dashboard', label: t('nav.dashboard') },
     { path: '/courses', label: t('nav.courses') },
     { path: '/graph', label: t('nav.graph') },
-    { path: '/achievements', label: 'Достижения' },
+    { path: '/achievements', label: t('nav.achievements') || 'Достижения' },
     { path: '/resources', label: t('nav.resources') },
     { path: '/insights', label: t('nav.insights') },
   ];
@@ -216,10 +216,10 @@ export default function Topbar() {
           <div 
             onClick={() => navigate('/leagues')}
             className="hidden sm:flex items-center gap-1.5 cursor-pointer text-[10px] font-semibold text-on-surface-variant hover:text-white transition-colors border border-outline bg-surface rounded-full px-2.5 py-1 select-none font-sans"
-            title="Лига соревнований"
+            title={locale === 'en' ? 'Competitive League' : 'Лига соревнований'}
           >
             <LeagueIcon leagueId={currentLeague} className="w-3.5 h-3.5 text-on-surface-variant" />
-            <span>{LEAGUE_NAMES[currentLeague] || 'Кварц'}</span>
+            <span>{LEAGUE_NAMES[currentLeague]?.[locale] || (locale === 'en' ? 'Quartz' : 'Кварц')}</span>
           </div>
 
           {/* User Progress */}
@@ -237,7 +237,7 @@ export default function Topbar() {
             <button 
               onClick={handleToggleNotifications}
               className={`p-1.5 rounded-[8px] border border-transparent transition-all relative ${showNotifications ? 'bg-surface-container border-outline-variant text-on-surface' : 'text-on-surface-variant hover:text-on-surface'}`}
-              title="Notifications"
+              title={t('topbar.notifications') || 'Notifications'}
             >
               <Bell className="w-4 h-4" strokeWidth={1.5} />
               {unreadCount > 0 && (
@@ -256,13 +256,13 @@ export default function Topbar() {
                   className="fixed sm:absolute top-[70px] sm:top-full right-4 sm:right-0 sm:mt-2 w-[calc(100vw-2rem)] max-w-[320px] sm:max-w-none sm:w-80 bg-surface-container border border-outline-variant rounded-[16px] z-[90] flex flex-col max-h-[80vh] sm:max-h-96 font-sans shadow-2xl overflow-hidden"
                 >
                   <div className="p-4 border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
-                    <h3 className="font-bold text-on-surface text-xs">Уведомления</h3>
+                    <h3 className="font-bold text-on-surface text-xs">{t('topbar.notifications') || (locale === 'en' ? 'Notifications' : 'Уведомления')}</h3>
                     {notifications.length > 0 && (
                       <button 
                         onClick={clearAllNotifications}
                         className="text-[10px] font-bold text-red-500 hover:text-red-400 transition-colors flex items-center gap-1 uppercase tracking-wider font-mono"
                       >
-                        <Trash2 className="w-3.5 h-3.5" strokeWidth={1.5} /> Очистить все
+                        <Trash2 className="w-3.5 h-3.5" strokeWidth={1.5} /> {locale === 'en' ? 'Clear all' : 'Очистить все'}
                       </button>
                     )}
                   </div>
@@ -376,8 +376,23 @@ export default function Topbar() {
                   >
                     <span className="flex items-center gap-2">
                       {isDarkMode ? <Sun className="w-4 h-4" strokeWidth={1.5} /> : <Moon className="w-4 h-4" strokeWidth={1.5} />}
-                      <span>{isDarkMode ? 'Светлая тема' : 'Тёмная тема'}</span>
+                      <span>{isDarkMode ? t('nav.lightMode') : t('nav.darkMode')}</span>
                     </span>
+                  </button>
+
+                  {/* Language switch button */}
+                  <button 
+                    onClick={() => {
+                      const nextLocale = locale === 'ru' ? 'en' : 'ru';
+                      import('../i18n.js').then(({ setLocale }) => setLocale(nextLocale, true));
+                    }} 
+                    className="flex items-center justify-between w-full px-4 py-2.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container/40 transition-colors text-left"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="text-sm">🌐</span>
+                      <span>{locale === 'ru' ? 'English' : 'Русский'}</span>
+                    </span>
+                    <span className="text-[10px] font-mono text-primary font-bold uppercase">{locale.toUpperCase()}</span>
                   </button>
 
                   {/* Support Page option */}
@@ -395,10 +410,10 @@ export default function Topbar() {
                         <line x1="14.83" y1="9.17" x2="18.36" y2="5.64"></line>
                         <line x1="4.93" y1="19.07" x2="9.17" y2="14.83"></line>
                       </svg>
-                      <span>Поддержка</span>
+                      <span>{t('topbar.support')}</span>
                     </span>
                     <div className="flex items-center gap-2">
-                      {hasUnreadTickets && <span className="text-[9px] bg-primary text-on-primary px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Ответ</span>}
+                      {hasUnreadTickets && <span className="text-[9px] bg-primary text-on-primary px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">{t('topbar.reply')}</span>}
                       <ChevronRight className="w-3.5 h-3.5 text-[#636366]" strokeWidth={1.5} />
                     </div>
                   </button>
@@ -422,7 +437,7 @@ export default function Topbar() {
                   >
                     <span className="flex items-center gap-2">
                       <CreditCard className="w-4 h-4" strokeWidth={1.5} />
-                      <span>Тарифы</span>
+                      <span>{t('topbar.pricing')}</span>
                     </span>
                     <ChevronRight className="w-3.5 h-3.5 text-[#636366]" strokeWidth={1.5} />
                   </button>
@@ -435,7 +450,7 @@ export default function Topbar() {
                     className="flex items-center gap-2 w-full px-4 py-2.5 text-[#FF453A] hover:bg-surface-container/40 transition-colors text-left font-bold"
                   >
                     <LogOut className="w-4 h-4" strokeWidth={1.5} />
-                    <span>Выйти</span>
+                    <span>{t('topbar.logout')}</span>
                   </button>
                 </motion.div>
               )}

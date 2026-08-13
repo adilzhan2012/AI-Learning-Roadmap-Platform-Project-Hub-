@@ -9,12 +9,12 @@ import FeaturesModal from './FeaturesModal.jsx';
 import LegalDocModal from './LegalDocModal.jsx';
 
 const NAV_ITEMS = [
-  { id: 'dashboard', path: '/dashboard', label: 'nav.dashboard', icon: <LayoutDashboard className="w-5 h-5" />, desc: 'Ваш личный кабинет и статистика' },
-  { id: 'courses', path: '/courses', label: 'nav.courses', icon: <Compass className="w-5 h-5" />, desc: 'Каталог ИИ-курсов и дорожных карт' },
-  { id: 'graph', path: '/graph', label: 'nav.graph', icon: <Map className="w-5 h-5" />, desc: 'Интерактивный граф ваших знаний' },
-  { id: 'achievements', path: '/achievements', label: 'nav.achievements', fallback: 'Достижения', icon: <Trophy className="w-5 h-5" />, desc: 'Ваши награды и глобальные лиги' },
-  { id: 'resources', path: '/resources', label: 'nav.resources', icon: <Library className="w-5 h-5" />, desc: 'Полезные материалы и статьи' },
-  { id: 'insights', path: '/insights', label: 'nav.insights', icon: <LineChart className="w-5 h-5" />, desc: 'Аналитика и рекомендации' },
+  { id: 'dashboard', path: '/dashboard', label: 'nav.dashboard', icon: <LayoutDashboard className="w-5 h-5" />, desc: 'Ваш личный кабинет и статистика', descEn: 'Your personal dashboard and learning statistics' },
+  { id: 'courses', path: '/courses', label: 'nav.courses', icon: <Compass className="w-5 h-5" />, desc: 'Каталог ИИ-курсов и дорожных карт', descEn: 'AI courses catalog and learning roadmaps' },
+  { id: 'graph', path: '/graph', label: 'nav.graph', icon: <Map className="w-5 h-5" />, desc: 'Интерактивный граф ваших знаний', descEn: 'Interactive knowledge graph of your skills' },
+  { id: 'achievements', path: '/achievements', label: 'nav.achievements', fallback: 'Достижения', icon: <Trophy className="w-5 h-5" />, desc: 'Ваши награды и глобальные лиги', descEn: 'Your badges, achievements and global leagues' },
+  { id: 'resources', path: '/resources', label: 'nav.resources', icon: <Library className="w-5 h-5" />, desc: 'Полезные материалы и статьи', descEn: 'Curated articles, repositories and guides' },
+  { id: 'insights', path: '/insights', label: 'nav.insights', icon: <LineChart className="w-5 h-5" />, desc: 'Аналитика и рекомендации', descEn: 'Learning analytics and smart recommendations' },
 ];
 
 export default function Footer() {
@@ -43,7 +43,7 @@ export default function Footer() {
             <span className="font-semibold text-on-surface">{t(item.label) || item.fallback}</span>
           </div>
           <p className="text-xs text-on-surface-variant leading-relaxed">
-            {locale === 'ru' ? item.desc : item.desc} {/* Can add English translations here later if needed */}
+            {locale === 'ru' ? item.desc : (item.descEn || item.desc)}
           </p>
         </motion.div>
       )}

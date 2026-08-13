@@ -358,9 +358,13 @@ export default function Settings() {
                         </label>
                       </div>
                       <div className="flex-1">
-                        <h3 className="text-sm font-bold text-on-surface mb-1">Ваш Аватар</h3>
+                        <h3 className="text-sm font-bold text-on-surface mb-1">
+                          {locale === 'en' ? 'Your Avatar' : 'Ваш Аватар'}
+                        </h3>
                         <p className="text-xs text-on-surface-variant mb-4 max-w-sm">
-                          Загрузите фото, чтобы персонализировать профиль. Максимальный размер 2MB. Если фото не загружено, выберите цвет фона для инициалов.
+                          {locale === 'en'
+                            ? 'Upload a photo to personalize your profile (max 2MB). If no photo is set, choose a background color for your initials.'
+                            : 'Загрузите фото, чтобы персонализировать профиль. Максимальный размер 2MB. Если фото не загружено, выберите цвет фона для инициалов.'}
                         </p>
                         
                         <div className="flex flex-wrap items-center gap-3">
@@ -371,7 +375,7 @@ export default function Settings() {
                               disabled={uploadingAvatar}
                               className="text-xs font-semibold px-4 py-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-xl transition-colors"
                             >
-                              Удалить фото
+                              {locale === 'en' ? 'Remove photo' : 'Удалить фото'}
                             </button>
                           ) : (
                             <div className="flex flex-wrap gap-2">
@@ -490,8 +494,14 @@ export default function Settings() {
                         </label>
                       </div>
                       <div className="flex-1 cursor-pointer" onClick={() => setGroupProgressNotifications(!groupProgressNotifications)}>
-                        <h4 className="font-semibold text-on-surface text-base mb-1">Уведомления о прогрессе участников группы</h4>
-                        <p className="text-sm text-on-surface-variant leading-relaxed">Получать сообщения о прохождении модулей и сдаче домашних заданий согруппниками.</p>
+                        <h4 className="font-semibold text-on-surface text-base mb-1">
+                          {locale === 'en' ? 'Group Study Progress Notifications' : 'Уведомления о прогрессе участников группы'}
+                        </h4>
+                        <p className="text-sm text-on-surface-variant leading-relaxed">
+                          {locale === 'en'
+                            ? 'Receive updates when your group study peers complete modules and submit homework.'
+                            : 'Получать сообщения о прохождении модулей и сдаче домашних заданий согруппниками.'}
+                        </p>
                       </div>
                     </div>
                   </div>

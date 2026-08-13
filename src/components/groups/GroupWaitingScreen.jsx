@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Clock, CheckCircle2, XCircle, AlertTriangle, UserX, UserPlus, Play, Loader2, Users } from 'lucide-react';
+import { useLocale } from '../../i18n.js';
 
 export default function GroupWaitingScreen({ 
   group, 
@@ -12,6 +13,7 @@ export default function GroupWaitingScreen({
   starting,
   error 
 }) {
+  const locale = useLocale();
   const [timeLeftStr, setTimeLeftStr] = useState('72:00:00');
 
   useEffect(() => {
@@ -28,7 +30,7 @@ export default function GroupWaitingScreen({
       const diff = expiresTime - now;
 
       if (diff <= 0) {
-        setTimeLeftStr('Истёк');
+        setTimeLeftStr(locale === 'en' ? 'Expired' : 'Истёк');
         clearInterval(interval);
         return;
       }
@@ -43,7 +45,7 @@ export default function GroupWaitingScreen({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [group]);
+  }, [group, locale]);
 
   if (!group) return null;
 
@@ -58,14 +60,16 @@ export default function GroupWaitingScreen({
         <div>
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 font-mono text-[11px] font-bold uppercase tracking-wider border border-amber-500/20">
-              Ожидание подтверждения
+              {locale === 'en' ? 'Awaiting Confirmation' : 'Ожидание подтверждения'}
             </span>
           </div>
           <h2 className="text-xl font-bold text-on-surface mt-1.5">
-            Группа по курсу «{group.courseTitle}»
+            {locale === 'en' ? `Study group for "${group.courseTitle}"` : `Группа по курсу «${group.courseTitle}»`}
           </h2>
           <p className="text-xs text-on-surface-variant mt-0.5">
-            Группа стартует автоматически, как только все участники примут приглашение.
+            {locale === 'en'
+              ? 'The study group starts automatically once all invited peers accept the invitation.'
+              : 'Группа стартует автоматически, как только все участники примут приглашение.'}
           </p>
         </div>
 
@@ -86,7 +90,9 @@ export default function GroupWaitingScreen({
       <div className="space-y-3">
         <div className="flex justify-between items-center">
           <h4 className="text-xs font-bold text-on-surface uppercase tracking-wider">
-            Статус участников ({acceptedCount} из {membersList.length} приняли)
+            {locale === 'en'
+              ? `Participant status (${acceptedCount} of ${membersList.length} accepted)`
+              : `Статус участников (${acceptedCount} из ${membersList.length} приняли)`}
           </h4>
         </div>
 
@@ -111,7 +117,7 @@ export default function GroupWaitingScreen({
                       <p className="text-sm font-bold text-on-surface truncate">{member.displayName}</p>
                       {isSelf && (
                         <span className="text-[10px] bg-primary/10 text-primary font-bold px-2 py-0.5 rounded-full border border-primary/20">
-                          Создатель
+                          {locale === 'en' ? 'Creator' : 'Создатель'}
                         </span>
                       )}
                     </div>
@@ -124,19 +130,23 @@ export default function GroupWaitingScreen({
                   {member.status === 'accepted' && (
                     <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 font-bold text-xs border border-emerald-500/20">
                       <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Принял(а)</span>
+                      <span>{locale === 'en' ? 'Accepted' : 'Принял(а)'}</span>
                     </span>
                   )}
                   {member.status === 'pending' && (
                     <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-500 font-bold text-xs border border-amber-500/20">
                       <Clock className="w-3.5 h-3.5" />
-                      <span>Ждем ответа</span>
+                      <span>{locale === 'en' ? 'Awaiting response' : 'Ждем ответа'}</span>
                     </span>
                   )}
                   {(member.status === 'declined' || member.status === 'expired') && (
                     <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 text-red-500 font-bold text-xs border border-red-500/20">
                       <XCircle className="w-3.5 h-3.5" />
-                      <span>{member.status === 'declined' ? 'Отклонил(а)' : 'Истёк TTL'}</span>
+                      <span>
+                        {member.status === 'declined' 
+                          ? (locale === 'en' ? 'Declined' : 'Отклонил(а)') 
+                          : (locale === 'en' ? 'Expired TTL' : 'Истёк TTL')}
+                      </span>
                     </span>
                   )}
 
@@ -147,7 +157,7 @@ export default function GroupWaitingScreen({
                         <button
                           onClick={() => onReplaceMember(member.userId)}
                           className="p-2 rounded-xl text-primary hover:bg-primary/10 transition-colors"
-                          title="Заменить участника"
+                          title={locale === 'en' ? 'Replace participant' : 'Заменить участника'}
                         >
                           <UserPlus className="w-4 h-4" />
                         </button>
@@ -156,7 +166,7 @@ export default function GroupWaitingScreen({
                         <button
                           onClick={() => onRemoveMember(member.userId)}
                           className="p-2 rounded-xl text-on-surface-variant hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                          title="Удалить из группы"
+                          title={locale === 'en' ? 'Remove from group' : 'Удалить из группы'}
                         >
                           <UserX className="w-4 h-4" />
                         </button>
@@ -179,7 +189,7 @@ export default function GroupWaitingScreen({
               disabled={starting}
               className="w-full sm:w-auto px-6 py-3 rounded-xl border border-red-500/20 text-red-500 hover:bg-red-500/10 font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Отменить группу
+              {locale === 'en' ? 'Cancel Group' : 'Отменить группу'}
             </button>
           )}
           <button
@@ -190,12 +200,12 @@ export default function GroupWaitingScreen({
             {starting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Запуск группы...</span>
+                <span>{locale === 'en' ? 'Starting group...' : 'Запуск группы...'}</span>
               </>
             ) : (
               <>
                 <Play className="w-4 h-4 fill-current" />
-                <span>Стартовать группу сейчас</span>
+                <span>{locale === 'en' ? 'Start Group Now' : 'Стартовать группу сейчас'}</span>
               </>
             )}
           </button>

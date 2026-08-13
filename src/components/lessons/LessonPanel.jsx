@@ -14,7 +14,7 @@ import {
   Lightbulb,
   Clock
 } from 'lucide-react';
-import { t } from '../../i18n.js';
+import { t, useLocale } from '../../i18n.js';
 import { useNavigate } from 'react-router-dom';
 import { useXP } from '../../hooks/useXP.js';
 import { useQuiz } from '../../hooks/useQuiz.js';
@@ -58,6 +58,7 @@ export default function LessonPanel({
   isGroupChatOpen
 }) {
   const navigate = useNavigate();
+  const locale = useLocale();
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState('');
   const { addXP } = useXP();
@@ -126,7 +127,9 @@ export default function LessonPanel({
       }
     } catch (e) {
       console.error("Error generating lesson:", e);
-      setGenError("Не удалось сгенерировать урок. Пожалуйста, попробуйте еще раз.");
+      setGenError(locale === 'en' || selectedCourse?.language === 'en' 
+        ? "Failed to generate lesson. Please try again." 
+        : "Не удалось сгенерировать урок. Пожалуйста, попробуйте еще раз.");
     } finally {
       setGenerating(false);
     }
@@ -345,14 +348,15 @@ Provide a code boilerplate template at the end.`;
     setEli5Generating(true);
     try {
       const rawNodeId = selectedNode.rawNodeId || selectedNode.id;
-      const simplified = await generateELI5Content(selectedNode.content, selectedCourse?.courseTemplateId, rawNodeId);
+      const courseLang = selectedCourse?.language || 'ru';
+      const simplified = await generateELI5Content(selectedNode.content, selectedCourse?.courseTemplateId, rawNodeId, courseLang);
       const updatedNode = { ...selectedNode, eli5Content: simplified };
       onNodeUpdated(updatedNode);
       setIsELI5(true);
       await updateNodeFields(selectedCourse.id, selectedNode.id, { eli5Content: simplified });
     } catch (e) {
       console.error(e);
-      setGenError('Не удалось упростить текст.');
+      setGenError(selectedCourse?.language === 'en' ? 'Failed to simplify text.' : 'Не удалось упростить текст.');
     } finally {
       setEli5Generating(false);
     }
@@ -366,14 +370,15 @@ Provide a code boilerplate template at the end.`;
     }
     setInsightGenerating(true);
     try {
-      const generatedInsight = await generateRealWorldExample(selectedNode.label, selectedNode.desc);
+      const courseLang = selectedCourse?.language || 'ru';
+      const generatedInsight = await generateRealWorldExample(selectedNode.label, selectedNode.desc, courseLang);
       const updatedNode = { ...selectedNode, insight: generatedInsight };
       onNodeUpdated(updatedNode);
       setInsight(generatedInsight);
       await updateNodeFields(selectedCourse.id, selectedNode.id, { insight: generatedInsight });
     } catch (e) {
       console.error(e);
-      setGenError('Не удалось сгенерировать пример.');
+      setGenError(selectedCourse?.language === 'en' ? 'Failed to generate real-world example.' : 'Не удалось сгенерировать пример.');
     } finally {
       setInsightGenerating(false);
     }
@@ -459,29 +464,29 @@ Provide a code boilerplate template at the end.`;
                 <div className="relative group flex-shrink-0">
                   <button 
                     className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-indigo-500/10 text-indigo-400 border border-indigo-500/25 rounded-full transition-colors font-medium text-sm"
-                    title="Экспорт урока"
+                    title={locale === 'en' ? "Export lesson" : "Экспорт урока"}
                   >
-                    <span>📥 Экспорт</span>
+                    <span>{locale === 'en' ? "📥 Export" : "📥 Экспорт"}</span>
                   </button>
                   <div className="absolute right-0 mt-2 w-48 bg-surface border border-white/10 rounded-xl py-1.5 shadow-xl hidden group-hover:block z-50 text-left">
                     <button 
                       onClick={handleExportNotion}
                       className="w-full text-left px-4 py-2 hover:bg-zinc-100 dark:bg-zinc-800 text-xs text-zinc-200 transition-colors"
                     >
-                      📓 Экспорт конспекта (.md)
+                      {locale === 'en' ? "📓 Export Notes (.md)" : "📓 Экспорт конспекта (.md)"}
                     </button>
                     <button 
                       onClick={handleExportHomework}
                       className="w-full text-left px-4 py-2 hover:bg-zinc-100 dark:bg-zinc-800 text-xs text-emerald-400 font-bold transition-colors"
                     >
-                      💻 Скачать ДЗ (.md)
+                      {locale === 'en' ? "💻 Download Homework (.md)" : "💻 Скачать ДЗ (.md)"}
                     </button>
                     {flashcards.length > 0 && (
                       <button 
                         onClick={handleExportAnki}
                         className="w-full text-left px-4 py-2 hover:bg-zinc-100 dark:bg-zinc-800 text-xs text-zinc-200 transition-colors"
                       >
-                        📇 Карточки в Anki (.csv)
+                        {locale === 'en' ? "📇 Flashcards for Anki (.csv)" : "📇 Карточки в Anki (.csv)"}
                       </button>
                     )}
                   </div>
@@ -491,38 +496,38 @@ Provide a code boilerplate template at the end.`;
               <button 
                 onClick={() => setIsMobileMentorOpen(true)}
                 className="lg:hidden flex items-center gap-2 px-3 py-1.5 hover:bg-indigo-500/10 text-indigo-400 border border-indigo-500/25 rounded-full transition-colors font-medium text-sm"
-                title="Ментор"
+                title={locale === 'en' ? "Mentor" : "Ментор"}
               >
                 <Sparkles className="w-4 h-4" />
-                <span className="hidden md:inline">Ментор</span>
+                <span className="hidden md:inline">{locale === 'en' ? "Mentor" : "Ментор"}</span>
               </button>
 
               <button 
                 onClick={handleRealWorldInsight}
                 disabled={insightGenerating}
                 className="flex items-center gap-2 px-3 py-1.5 hover:bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 rounded-full transition-colors font-medium text-sm border border-yellow-500/20 disabled:opacity-50"
-                title="Зачем мне это знать?"
+                title={locale === 'en' ? "Why do I need this?" : "Зачем мне это знать?"}
               >
                 {insightGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lightbulb className="w-4 h-4" />}
-                <span className="hidden md:inline">Зачем мне это?</span>
+                <span className="hidden md:inline">{locale === 'en' ? "Why learn this?" : "Зачем мне это?"}</span>
               </button>
 
               <button 
-                onClick={() => alert('В разработке! Опция "Просто о сложном" скоро будет добавлена.')}
+                onClick={() => alert(locale === 'en' ? 'Under development! "Explain Like I\'m 5" option will be added soon.' : 'В разработке! Опция "Просто о сложном" скоро будет добавлена.')}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors font-medium text-sm border opacity-70 hover:bg-primary/10 text-primary border-primary/20`}
-                title="Объясни как 5-летнему (В разработке)"
+                title={locale === 'en' ? "Explain Like I'm 5 (Coming Soon)" : "Объясни как 5-летнему (В разработке)"}
               >
                 <Baby className="w-4 h-4" />
-                <span className="hidden md:inline">Просто о сложном (Скоро)</span>
+                <span className="hidden md:inline">{locale === 'en' ? "ELI5 (Soon)" : "Просто о сложном (Скоро)"}</span>
               </button>
 
               <button 
-                onClick={() => alert('В разработке! Слайды скоро будут добавлены.')}
+                onClick={() => alert(locale === 'en' ? 'Under development! Slides view will be added soon.' : 'В разработке! Слайды скоро будут добавлены.')}
                 className="flex items-center gap-2 px-3 py-1.5 hover:bg-zinc-100 dark:bg-zinc-800 rounded-full transition-colors font-medium text-sm border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 opacity-70"
-                title="Слайды (В разработке)"
+                title={locale === 'en' ? "Slides (Coming Soon)" : "Слайды (В разработке)"}
               >
                 <PlayCircle className="w-4 h-4" />
-                <span className="hidden md:inline">Слайды (Скоро)</span>
+                <span className="hidden md:inline">{locale === 'en' ? "Slides (Soon)" : "Слайды (Скоро)"}</span>
               </button>
             </>
           )}
@@ -531,7 +536,7 @@ Provide a code boilerplate template at the end.`;
             <button 
               onClick={toggleZenMode}
               className="p-2 hover:bg-zinc-100 dark:bg-zinc-800 rounded-full text-zinc-500 dark:text-zinc-400 transition-colors flex-shrink-0"
-              title={isZenMode ? "Свернуть" : "На весь экран"}
+              title={isZenMode ? (locale === 'en' ? "Exit Zen Mode" : "Свернуть") : (locale === 'en' ? "Full Screen" : "На весь экран")}
             >
               {isZenMode ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
             </button>
@@ -539,7 +544,7 @@ Provide a code boilerplate template at the end.`;
           <button 
             onClick={onClose}
             className="p-2 hover:bg-zinc-100 dark:bg-zinc-800 rounded-full text-zinc-500 dark:text-zinc-400 transition-colors flex-shrink-0"
-            title="Закрыть"
+            title={locale === 'en' ? "Close" : "Закрыть"}
           >
             <X className="w-6 h-6" />
           </button>
@@ -580,7 +585,9 @@ Provide a code boilerplate template at the end.`;
                   <Lightbulb className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-yellow-800 dark:text-yellow-200 mb-1">Реальное применение</h4>
+                  <h4 className="font-bold text-yellow-800 dark:text-yellow-200 mb-1">
+                    {locale === 'en' ? 'Real-world Application' : 'Реальное применение'}
+                  </h4>
                   <p className="text-sm text-yellow-700 dark:text-yellow-300 leading-relaxed">{insight}</p>
                 </div>
               </motion.div>
@@ -591,7 +598,9 @@ Provide a code boilerplate template at the end.`;
 
               <div className="flex items-center gap-2 mb-6 opacity-70 border-b border-white/10 pb-4">
                 <Clock className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium tracking-wide">Время на чтение: ~{readingTime} мин</span>
+                <span className="text-sm font-medium tracking-wide">
+                  {locale === 'en' ? `Read time: ~${readingTime} min` : `Время на чтение: ~${readingTime} мин`}
+                </span>
               </div>
               
               {images.map((keyword, idx) => <DynamicImage key={idx} keyword={keyword} />)}
@@ -640,7 +649,9 @@ Provide a code boilerplate template at the end.`;
                 <div className="flex items-center justify-between mb-4 border-b border-indigo-500/10 pb-3">
                   <div className="flex items-center gap-2">
                     <span className="text-xl">💻</span>
-                    <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 m-0">Практическая зона: AI Code Review</h3>
+                    <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 m-0">
+                      {locale === 'en' ? 'Practice Zone: AI Code Review' : 'Практическая зона: AI Code Review'}
+                    </h3>
                   </div>
                   <button
                     type="button"
@@ -652,7 +663,9 @@ Provide a code boilerplate template at the end.`;
                     }}
                     className="px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 rounded-lg text-xs font-bold transition-all border border-indigo-500/25"
                   >
-                    {showPractice ? 'Свернуть практику' : 'Открыть практику'}
+                    {showPractice 
+                      ? (locale === 'en' ? 'Collapse Practice' : 'Свернуть практику') 
+                      : (locale === 'en' ? 'Open Practice' : 'Открыть практику')}
                   </button>
                 </div>
 
@@ -661,16 +674,18 @@ Provide a code boilerplate template at the end.`;
                     {generatingAssignment ? (
                       <div className="flex items-center gap-2 text-zinc-400 text-xs italic">
                         <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
-                        Составляем задание...
+                        {locale === 'en' ? 'Generating assignment...' : 'Составляем задание...'}
                       </div>
                     ) : (
                       <div className="bg-indigo-950/20 border border-indigo-500/5 p-4 rounded-xl text-zinc-300 text-xs leading-relaxed">
-                        <strong>Задание:</strong> {practiceAssignment || 'Напишите код на Go, решающий задачу из данного урока. Нажмите "Отправить на AI Code Review", чтобы получить полный аудит от AI.'}
+                        <strong>{locale === 'en' ? 'Assignment:' : 'Задание:'}</strong> {practiceAssignment || (locale === 'en' ? 'Write code solving the lesson problem. Click "Submit for AI Code Review" to get a comprehensive review.' : 'Напишите код на Go, решающий задачу из данного урока. Нажмите "Отправить на AI Code Review", чтобы получить полный аудит от AI.')}
                       </div>
                     )}
 
                     <div className="relative">
-                      <label className="text-[10px] text-zinc-500 uppercase tracking-wider block mb-1 font-bold">Код (Go / Другое)</label>
+                      <label className="text-[10px] text-zinc-500 uppercase tracking-wider block mb-1 font-bold">
+                        {locale === 'en' ? 'Code (Programming Language)' : 'Код (Go / Другое)'}
+                      </label>
                       <textarea
                         rows={12}
                         value={practiceCode}
@@ -690,11 +705,11 @@ Provide a code boilerplate template at the end.`;
                         {reviewingCode ? (
                           <>
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            Код-ревью в процессе...
+                            {locale === 'en' ? 'AI Review in progress...' : 'Код-ревью в процессе...'}
                           </>
                         ) : (
                           <>
-                            <span>Отправить на AI Code Review</span>
+                            <span>{locale === 'en' ? 'Submit for AI Code Review' : 'Отправить на AI Code Review'}</span>
                             <Sparkles className="w-3.5 h-3.5 text-white" />
                           </>
                         )}
@@ -704,7 +719,9 @@ Provide a code boilerplate template at the end.`;
                     {codeReviewResult && (
                       <div className="bg-indigo-950/10 border border-indigo-500/10 p-5 rounded-xl text-zinc-300 text-xs leading-relaxed text-left mt-4">
                         <div className="flex items-center gap-1.5 mb-3 border-b border-indigo-500/10 pb-2">
-                          <span className="text-[10px] font-black text-indigo-400 uppercase tracking-wider">Результат AI Code Review</span>
+                          <span className="text-[10px] font-black text-indigo-400 uppercase tracking-wider">
+                            {locale === 'en' ? 'AI Code Review Result' : 'Результат AI Code Review'}
+                          </span>
                         </div>
                         <div className="prose prose-invert prose-xs text-left">
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -726,14 +743,21 @@ Provide a code boilerplate template at the end.`;
                 lessonContent={selectedNode.content}
                 topicLabel={selectedNode.label}
                 topicDesc={selectedNode.desc}
+                courseLanguage={selectedCourse?.language || 'ru'}
               />
             )}
 
             {/* Footer actions */}
             <div className="p-6 md:p-8 mt-auto border-t border-white/10 bg-background flex flex-col md:flex-row justify-between items-center gap-6">
               <div>
-                <p className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-1">Завершили изучение материала?</p>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">Пройдите тест, чтобы закрепить знания и разблокировать следующие уроки.</p>
+                <p className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-1">
+                  {locale === 'en' ? 'Finished this section?' : 'Завершили изучение материала?'}
+                </p>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  {locale === 'en'
+                    ? 'Take the quiz to consolidate your knowledge and unlock the next lessons.'
+                    : 'Пройдите тест, чтобы закрепить знания и разблокировать следующие уроки.'}
+                </p>
                 {quizError && (
                   <div className="mt-2 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-3 text-xs text-rose-300">
                     <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
@@ -744,7 +768,7 @@ Provide a code boilerplate template at the end.`;
                       disabled={quizGenerating}
                       className="px-3 py-1 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 rounded-lg text-xs font-bold text-rose-200 shrink-0 transition-colors cursor-pointer"
                     >
-                      Попробовать снова
+                      {locale === 'en' ? 'Try Again' : 'Попробовать снова'}
                     </button>
                   </div>
                 )}
@@ -763,7 +787,9 @@ Provide a code boilerplate template at the end.`;
                   ) : (
                     <BrainCircuit className="w-5 h-5" />
                   )}
-                  {selectedNode.status === 'completed' ? 'Материал закреплен' : 'Закрепить знания'}
+                  {selectedNode.status === 'completed'
+                    ? (locale === 'en' ? 'Lesson Completed' : 'Материал закреплен')
+                    : (locale === 'en' ? 'Take Quiz' : 'Закрепить знания')}
                 </button>
               </div>
             </div>
@@ -797,12 +823,18 @@ Provide a code boilerplate template at the end.`;
               </motion.div>
               
               <h3 className="text-xl font-bold font-clash text-zinc-900 dark:text-white mb-3 relative z-10 leading-tight">
-                {generating ? 'Создаем персональный урок...' : t(selectedNode.label)}
+                {generating 
+                  ? (locale === 'en' ? 'Crafting personalized lesson...' : 'Создаем персональный урок...') 
+                  : t(selectedNode.label)}
               </h3>
               
               <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-8 leading-relaxed relative z-10">
                 {generating ? (
-                  <p>Искусственный интеллект анализирует материал и готовит индивидуальную программу...</p>
+                  <p>
+                    {locale === 'en'
+                      ? 'AI is synthesizing pedagogical materials and structuring custom lesson content...'
+                      : 'Искусственный интеллект анализирует материал и готовит индивидуальную программу...'}
+                  </p>
                 ) : (
                   <p>{t(selectedNode.desc)}</p>
                 )}
@@ -834,7 +866,7 @@ Provide a code boilerplate template at the end.`;
                     onClick={handleGenerateContent}
                     className="w-full bg-primary text-on-primary py-3.5 rounded-xl font-bold text-sm shadow-lg hover:shadow-primary/25 transition-all flex items-center justify-center gap-2"
                   >
-                    Повторить попытку
+                    {locale === 'en' ? 'Try Again' : 'Повторить попытку'}
                   </motion.button>
                 </div>
               )}
@@ -847,7 +879,7 @@ Provide a code boilerplate template at the end.`;
                   className="w-full relative z-10 bg-on-surface text-inverse-on-surface py-3.5 rounded-xl font-bold text-sm shadow-xl transition-all flex items-center justify-center gap-2 font-sans"
                 >
                   <Sparkles className="w-4 h-4" />
-                  Сгенерировать урок
+                  {locale === 'en' ? 'Generate Lesson' : 'Сгенерировать урок'}
                 </motion.button>
               )}
             </motion.div>

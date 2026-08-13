@@ -94,5 +94,104 @@ export const LEGAL_DOCS = {
 ## 3. Как управлять локальными данными?
 Вы можете очистить хранилище браузера в любое время. Однако учтите, что при очистке Local Storage Вы будете принудительно разлогинены из личного кабинета **YourWayy.co**.
 `
+  },
+  en: {
+    terms: `
+# Terms of Service
+
+*Last updated: July 24, 2026 (Beta Version)*
+*(Disclaimer: This English version is a translated convenience draft subject to official legal review)*
+
+## 1. General Provisions
+These Terms of Service (hereinafter referred to as the "Agreement") govern the relationship between the Administration of the platform **YourWayy.co** (hereinafter referred to as "Administration", "We") and the individual using the Platform (hereinafter referred to as "User", "You").
+
+The Platform is currently in public beta testing. By using the Platform, including creating an account, you signify your full and unconditional acceptance of this Agreement. If you disagree with any terms, you must immediately cease using the Platform.
+
+## 2. Description of the Service
+**YourWayy.co** is an innovative EdTech SaaS platform. Our primary capabilities include:
+- **Interactive Knowledge Graph**, structuring your entire learning trajectory and visualizing prerequisite relationships between courses;
+- AI-powered syllabus generation providing tailored educational roadmaps using cutting-edge models (including Gemini API);
+- Gamification system, including daily streaks, master levels, achievements, and competitive global leagues.
+
+## 3. Registration and Account Security
+To access platform features, Users must register by providing:
+- Full Name;
+- Unique Username;
+- Email address;
+- Secure Password.
+
+Users are solely responsible for maintaining the confidentiality of their credentials and all activities occurring under their account. Registration is permitted for individuals aged **16 years or older** (or the age of consent in your jurisdiction). Minors must obtain consent from a parent or legal guardian.
+
+The Administration reserves the right to suspend or terminate accounts in cases of abuse, spamming, unauthorized automated access, or violation of this Agreement.
+
+## 4. Use of Artificial Intelligence (AI)
+Educational roadmaps, lessons, quizzes, and learning materials on the Platform are generated dynamically using third-party AI models based on User prompts and settings.
+
+Users acknowledge and agree that AI models may occasionally generate inaccurate, incomplete, or outdated information (hallucinations). The Platform does not warrant the factual accuracy of AI-generated content. Users utilize this information at their own risk and are encouraged to cross-reference critical knowledge.
+
+## 5. Intellectual Property
+All source code, platform branding, interactive graph visualizations, and UI/UX design components belong exclusively to the Administration. Educational materials generated for Users are provided solely for personal, non-commercial learning purposes.
+
+## 6. Community Rules & Gamification
+Users agree that their public username, avatar (if provided), and gamification progress (XP, leagues, badges) will be visible to other platform participants in leaderboards and leagues.
+
+Users are prohibited from reverse engineering, distributing malware, attacking server infrastructure, or scraping data via automated bots.
+
+## 7. Financial Terms
+During the beta period, core platform features are provided free of charge. The Administration reserves the right to introduce premium tiers, subscriptions, and optional paid features with advance notice via the platform interface or email.
+
+## 8. Limitation of Liability and Dispute Resolution
+The Platform is provided on an "as is" and "as available" basis without warranties of any kind.
+
+All disputes arising from this Agreement shall be resolved through good-faith negotiations. If resolution cannot be reached informally, disputes will be settled in accordance with applicable law. Contact us at: **support@yourwayy.co** or **info@yourwayy.co**.
+`,
+    privacy: `
+# Privacy Policy
+
+*Last updated: July 24, 2026*
+*(Disclaimer: This English version is a translated convenience draft subject to official legal review)*
+
+## 1. Data We Collect and Purposes
+We collect minimal necessary data required to deliver educational services, generate personalized learning content, and maintain gamification features.
+
+| Data Category | Purpose of Processing | Legal Basis |
+| :--- | :--- | :--- |
+| **Full Name** | Personalizing user profile and certificate generation | Contract performance |
+| **Username** | Account identification, global leagues, leaderboard display | Contract performance / Consent |
+| **Email Address** | Authentication, password resets, critical service notifications | Contract performance |
+| **Text Prompts & Roadmaps** | AI syllabus generation, saving and syncing study paths | Contract performance |
+| **Technical Telemetry** | Platform stability, performance optimization, bug reporting | Legitimate interest |
+
+## 2. Data Storage (Firebase) and AI Services
+- **Cloud Storage**: Your profile credentials, roadmap history, and **input learning prompts are securely stored in Google Cloud Firebase databases** to ensure cross-device synchronization.
+- **AI Integrations**: To generate study syllabi, user prompts are transmitted via encrypted API connections to AI providers (such as Google Gemini). **We never transmit your personal passwords or payment details to external AI providers.**
+
+## 3. Public Gamification Data
+By registering, you agree that your username and public learning stats (XP points, current league, unlocked achievement badges) are visible to fellow learners within the **YourWayy.co** community. Your email and real surname remain private and confidential.
+
+## 4. Third-Party Data Sharing
+We do not sell, rent, or trade your personal data to commercial third parties. Data is only disclosed when explicitly required by applicable law or regulatory authorities.
+
+## 5. User Rights and Data Deletion
+You retain the right to access, rectify, or request permanent deletion of your data. Deleting your account from Firebase permanently purges all associated profile info, study histories, and prompt records.
+
+To request data deletion or ask privacy questions, please email us at: **support@yourwayy.co** or **info@yourwayy.co**.
+`,
+    cookie: `
+# Cookie Policy
+
+*Last updated: July 24, 2026*
+*(Disclaimer: This English version is a translated convenience draft subject to official legal review)*
+
+## 1. What are Cookies and Web Storage?
+Cookies and browser storage mechanisms (Local Storage and IndexedDB) are small data units stored on your device to maintain session state and enable seamless navigation.
+
+## 2. Technologies We Use
+- **Strictly Necessary (Authentication)**: We use **Firebase Authentication** tokens stored in Local Storage/IndexedDB to keep you signed in securely as you study lessons and solve quizzes.
+- **Analytics & Preferences**: Minimal local keys (e.g. theme mode, language preference) are saved to preserve your customized experience.
+
+## 3. Managing Local Storage
+You may clear your browser's storage and cookies at any time through your browser settings. Note that clearing storage will require you to sign in again to your **YourWayy.co** account.
+`
   }
 };

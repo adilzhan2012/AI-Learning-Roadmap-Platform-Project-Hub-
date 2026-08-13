@@ -10,16 +10,16 @@ import { sanitizeUserInput, sanitizeCode } from '../utils/sanitizeUserInput.js';
 export function determineResourceType(node) {
   const text = `${node?.label || ''} ${node?.desc || ''}`.toLowerCase();
   
-  if (/практика|проект|код|разработ|строим|создаем|mini-project|app|build/i.test(text)) {
+  if (/практика|проект|код|разработ|строим|создаем|mini-project|project|coding|app|build|hands-on/i.test(text)) {
     return ['project', 'cheatsheet', 'article'];
   }
-  if (/шпаргалка|команд|синтаксис|cheat|sheet|справочник|api|cli|terminal/i.test(text)) {
+  if (/шпаргалка|команд|синтаксис|cheat|sheet|справочник|api|cli|terminal|reference/i.test(text)) {
     return ['cheatsheet', 'article', 'repository'];
   }
-  if (/видео|обзор|лекция|разбор|видеоурок|визуализация|youtube|demo/i.test(text)) {
+  if (/видео|обзор|лекция|разбор|видеоурок|визуализация|youtube|demo|video|screencast/i.test(text)) {
     return ['video', 'article', 'cheatsheet'];
   }
-  if (/репозиторий|библиотека|исходный|шаблон|github|framework|sdk|package/i.test(text)) {
+  if (/репозиторий|библиотека|исходный|шаблон|github|framework|sdk|package|repo|source/i.test(text)) {
     return ['repository', 'cheatsheet', 'project'];
   }
   
@@ -84,11 +84,12 @@ export async function fetchResourceContext(userId, courseId, nodeId, userPlan = 
       node: targetNode,
       lessonContent: targetNode.content || null,
       quizContext,
-      externalCandidates: targetNode.externalCandidates || null
+      externalCandidates: targetNode.externalCandidates || null,
+      language: courseData.language || 'ru'
     };
   } catch (err) {
     console.warn('fetchResourceContext error:', err);
-    return { courseTitle: '', node: {}, lessonContent: null, quizContext: null, externalCandidates: null };
+    return { courseTitle: '', node: {}, lessonContent: null, quizContext: null, externalCandidates: null, language: 'ru' };
   }
 }
 
@@ -105,13 +106,14 @@ export function getAIModelForPlan(userPlan = 'FREE') {
 /**
  * 4. Generate Personalized Resource Content
  */
-export async function generatePersonalizedResourceContent({ resource, lessonContent, quizContext, userPlan = 'FREE', userProfile = {} }) {
+export async function generatePersonalizedResourceContent({ resource, lessonContent, quizContext, userPlan = 'FREE', userProfile = {}, language = 'ru' }) {
   const modelName = getAIModelForPlan(userPlan);
+  const languageName = language === 'en' ? 'English' : 'Russian';
 
   // Summarize / truncate lesson content to ~3000 chars to optimize token cost and latency
   let truncatedLesson = (lessonContent || '').substring(0, 3200);
   if (lessonContent && lessonContent.length > 3200) {
-    truncatedLesson += '\n\n[...Урок продолжен...]';
+    truncatedLesson += (language === 'en' ? '\n\n[...Lesson continues...]' : '\n\n[...Урок продолжен...]');
   }
 
   // Personalization prompt block
@@ -137,15 +139,15 @@ export async function generatePersonalizedResourceContent({ resource, lessonCont
   if (resource.type === 'project') {
     prompt = `You are a strict programming mentor. Generate a single realistic, practical coding task or mini-project based on the topic: "${topicTitle}" (${topicDesc}).
 ${truncatedLesson ? `LESSON CONTEXT:\n${truncatedLesson}\n` : ''}${personalizationPrompt}
-CRITICAL INSTRUCTION: Respond ENTIRELY in Russian language using Markdown. Provide a clear task description, requirements, and a small starter code template snippet at the very end in a \`\`\` code block.`;
+CRITICAL INSTRUCTION: Respond ENTIRELY in ${languageName} language using Markdown. Provide a clear task description, requirements, and a small starter code template snippet at the very end in a \`\`\` code block.`;
   } else if (resource.type === 'cheatsheet') {
     prompt = `Create a dense, high-quality technical cheatsheet for the topic: "${topicTitle}" (${topicDesc}).
 ${truncatedLesson ? `LESSON CONTEXT:\n${truncatedLesson}\n` : ''}${personalizationPrompt}
-CRITICAL INSTRUCTION: Respond ENTIRELY in Russian language using Markdown. Include clear categories, code snippets, key concepts, formulas, or command lines. Format beautifully.`;
+CRITICAL INSTRUCTION: Respond ENTIRELY in ${languageName} language using Markdown. Include clear categories, code snippets, key concepts, formulas, or command lines. Format beautifully.`;
   } else {
     prompt = `Write a comprehensive, engaging article about the topic: "${topicTitle}" (${topicDesc}).
 ${truncatedLesson ? `LESSON CONTEXT:\n${truncatedLesson}\n` : ''}${personalizationPrompt}
-CRITICAL INSTRUCTION: Respond ENTIRELY in Russian language using Markdown. Use clear headings, practical examples, and engaging explanations.`;
+CRITICAL INSTRUCTION: Respond ENTIRELY in ${languageName} language using Markdown. Use clear headings, practical examples, and engaging explanations.`;
   }
 
   return await callGeminiWithRetry(null, prompt, 'ai_question', modelName);
@@ -154,8 +156,9 @@ CRITICAL INSTRUCTION: Respond ENTIRELY in Russian language using Markdown. Use c
 /**
  * 5. Generate Code Review Task + Starter Code (Separated Task Generator)
  */
-export async function generateCodeReviewTask(resourceTitle, resourceDesc, lessonContent, userPlan = 'FREE') {
+export async function generateCodeReviewTask(resourceTitle, resourceDesc, lessonContent, userPlan = 'FREE', language = 'ru') {
   const modelName = getAIModelForPlan(userPlan);
+  const languageName = language === 'en' ? 'English' : 'Russian';
   const truncatedLesson = (lessonContent || '').substring(0, 2000);
 
   const prompt = `You are an expert curriculum designer.
@@ -163,7 +166,7 @@ Generate a practical coding challenge based on: "${sanitizeUserInput(resourceTit
 Description: "${sanitizeUserInput(resourceDesc, 400)}".
 Lesson summary: "${truncatedLesson}"
 
-CRITICAL INSTRUCTION: Respond ENTIRELY in Russian using valid Markdown.
+CRITICAL INSTRUCTION: Respond ENTIRELY in ${languageName} using valid Markdown.
 Include:
 1. Task Objective
 2. Input/Output Requirements
@@ -176,12 +179,13 @@ Include:
  * 6. Rigorous AI Code Review (4-part Rubric Auditor)
  * Evaluates Correctness, Style, Edge Cases, and Security.
  */
-export async function runRigorousCodeReview(taskTitle, studentCode, lessonContext, userPlan = 'PRO', previousDialog = []) {
+export async function runRigorousCodeReview(taskTitle, studentCode, lessonContext, userPlan = 'PRO', previousDialog = [], language = 'ru') {
   if (userPlan === 'FREE') {
     throw new Error('CODE_REVIEW_PRO_ONLY');
   }
 
   const modelName = getAIModelForPlan(userPlan);
+  const languageName = language === 'en' ? 'English' : 'Russian';
   const cleanCode = sanitizeCode(studentCode, 5000);
   
   let dialogHistoryPrompt = '';
@@ -208,18 +212,18 @@ Evaluate the student code strictly and return ONLY a valid JSON object matching 
   },
   "overallScore": 85,
   "passed": true,
-  "verdict": "Краткое заключение (Зачтено / Требует доработки)",
+  "verdict": "${language === 'en' ? 'Short conclusion (Passed / Needs revision)' : 'Краткое заключение (Зачтено / Требует доработки)'}",
   "criteriaFeedback": {
-    "correctness": "Детальный комментарий по корректности...",
-    "codeStyle": "Комментарий по стилю и структуре...",
-    "edgeCases": "Комментарий по обработке крайних случаев...",
-    "security": "Комментарий по безопасности..."
+    "correctness": "Detailed feedback on correctness...",
+    "codeStyle": "Feedback on code structure and style...",
+    "edgeCases": "Feedback on handling edge cases...",
+    "security": "Feedback on security vulnerabilities..."
   },
-  "improvements": ["Совет 1", "Совет 2"],
-  "refactoredSnippet": "// Улучшенный вариант кода если есть замечания"
+  "improvements": ["Advice 1", "Advice 2"],
+  "refactoredSnippet": "// Refactored snippet if needed"
 }
 
-Note: "passed" MUST be true if overallScore >= 70, otherwise false. Respond ENTIRELY in Russian.`;
+Note: "passed" MUST be true if overallScore >= 70, otherwise false. Respond ENTIRELY in ${languageName}.`;
 
   const responseText = await callGeminiWithRetry(null, prompt, 'ai_question', modelName);
   try {
@@ -230,14 +234,14 @@ Note: "passed" MUST be true if overallScore >= 70, otherwise false. Respond ENTI
       scores: { correctness: 75, codeStyle: 80, edgeCases: 70, security: 80 },
       overallScore: 76,
       passed: true,
-      verdict: "Зачтено",
+      verdict: language === 'en' ? "Passed" : "Зачтено",
       criteriaFeedback: {
         correctness: responseText,
-        codeStyle: "Код написан аккуратно.",
-        edgeCases: "Рекомендуется добавить обработку ошибок.",
-        security: "Критичных уязвимостей не обнаружено."
+        codeStyle: language === 'en' ? "Code is neatly structured." : "Код написан аккуратно.",
+        edgeCases: language === 'en' ? "Consider adding edge case error handling." : "Рекомендуется добавить обработку ошибок.",
+        security: language === 'en' ? "No critical security vulnerabilities found." : "Критичных уязвимостей не обнаружено."
       },
-      improvements: ["Проверьте граничные условия"],
+      improvements: [language === 'en' ? "Verify boundary conditions" : "Проверьте граничные условия"],
       refactoredSnippet: ""
     };
   }
@@ -319,11 +323,11 @@ export async function getResourceRatings(resourceId) {
  * Uses REAL GitHub Search API / YouTube Data API v3.
  * If API keys are unavailable or API returns no items, triggers honest search fallback without hallucinating data.
  */
-export async function fetchCuratedExternalResources({ topicLabel, courseTitle, lessonContent, resourceType, userPlan = 'FREE', existingCandidates = null }) {
+export async function fetchCuratedExternalResources({ topicLabel, courseTitle, lessonContent, resourceType, userPlan = 'FREE', existingCandidates = null, language = 'ru' }) {
   const isVideo = resourceType === 'video';
   const queryTopic = `${topicLabel} ${courseTitle}`.trim();
   const searchFallbackUrl = isVideo 
-    ? `https://www.youtube.com/results?search_query=${encodeURIComponent(queryTopic + ' tutorial')}`
+    ? `https://www.youtube.com/results?search_query=${encodeURIComponent(queryTopic + (language === 'en' ? ' tutorial' : ' урок'))}`
     : `https://github.com/search?q=${encodeURIComponent(queryTopic)}`;
 
   let candidates = existingCandidates;
@@ -360,7 +364,7 @@ export async function fetchCuratedExternalResources({ topicLabel, courseTitle, l
             author: item.owner?.login || 'GitHub',
             url: item.html_url || `https://github.com/search?q=${encodeURIComponent(queryTopic)}`,
             metrics: `★ ${item.stargazers_count || 0} stars • ${item.forks_count || 0} forks`,
-            desc: item.description || `Репозиторий с открытым кодом по теме ${topicLabel}.`
+            desc: item.description || (language === 'en' ? `Open source repository for ${topicLabel}.` : `Репозиторий с открытым кодом по теме ${topicLabel}.`)
           }));
         } else {
           return { candidates: [], isPersonalized: false, fallbackToSearch: true, searchUrl: searchFallbackUrl };
@@ -388,17 +392,18 @@ export async function fetchCuratedExternalResources({ topicLabel, courseTitle, l
 
   // For PRO/ULTRA, generate personalized AI annotations ("Why this fits you")
   try {
+    const languageName = language === 'en' ? 'English' : 'Russian';
     const prompt = `You are an expert AI tutor.
 The student just studied the lesson: "${topicLabel}".
 Lesson summary snippet: "${(lessonContent || '').substring(0, 800)}".
 Candidate resources:
 ${JSON.stringify(candidates)}
 
-CRITICAL INSTRUCTION: For each candidate, provide a 1-2 sentence personalized explanation IN RUSSIAN ("Почему это вам подходит") explaining how it directly builds upon their lesson.
+CRITICAL INSTRUCTION: For each candidate, provide a 1-2 sentence personalized explanation IN ${languageName.toUpperCase()} ("Why this fits you") explaining how it directly builds upon their lesson.
 Return ONLY valid JSON:
 {
   "items": [
-    { "id": "${candidates[0]?.id}", "aiAnnotation": "Объяснение..." }
+    { "id": "${candidates[0]?.id}", "aiAnnotation": "Explanation..." }
   ]
 }`;
 
@@ -413,7 +418,7 @@ Return ONLY valid JSON:
 
     const annotatedCandidates = candidates.map(c => ({
       ...c,
-      aiAnnotation: annotationMap[c.id] || `Идеально дополняет изученный урок по теме ${topicLabel}.`
+      aiAnnotation: annotationMap[c.id] || (language === 'en' ? `Perfect match for ${topicLabel}.` : `Идеально дополняет изученный урок по теме ${topicLabel}.`)
     }));
 
     return {
@@ -427,7 +432,7 @@ Return ONLY valid JSON:
     return {
       candidates: candidates.map(c => ({
         ...c,
-        aiAnnotation: `Рекомендуемый материал по теме ${topicLabel}.`
+        aiAnnotation: language === 'en' ? `Recommended material for ${topicLabel}.` : `Рекомендуемый материал по теме ${topicLabel}.`
       })),
       isPersonalized: false,
       fallbackToSearch: false,

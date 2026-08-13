@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Users, Loader2 } from 'lucide-react';
 import { auth } from '../../firebase.js';
+import { useLocale } from '../../i18n.js';
 
 export default function ManageGroupModal({
   isOpen,
@@ -10,6 +11,7 @@ export default function ManageGroupModal({
   onRemoveMember,
   onDeleteGroup
 }) {
+  const locale = useLocale();
   const [isDeleting, setIsDeleting] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState(null);
 
@@ -19,27 +21,33 @@ export default function ManageGroupModal({
   const membersList = Object.values(group.members || {});
 
   const handleDelete = async () => {
-    if (!window.confirm('Вы уверены, что хотите полностью удалить эту группу?')) return;
+    const confirmMsg = locale === 'en' 
+      ? 'Are you sure you want to permanently delete this study group?' 
+      : 'Вы уверены, что хотите полностью удалить эту группу?';
+    if (!window.confirm(confirmMsg)) return;
     setIsDeleting(true);
     try {
       await onDeleteGroup(group.id);
       onClose();
     } catch (err) {
       console.error(err);
-      alert('Ошибка при удалении группы');
+      alert(locale === 'en' ? 'Failed to delete study group' : 'Ошибка при удалении группы');
     } finally {
       setIsDeleting(false);
     }
   };
 
   const handleRemove = async (memberId) => {
-    if (!window.confirm('Удалить участника из группы?')) return;
+    const confirmMsg = locale === 'en' 
+      ? 'Remove this participant from the study group?' 
+      : 'Удалить участника из группы?';
+    if (!window.confirm(confirmMsg)) return;
     setRemovingMemberId(memberId);
     try {
       await onRemoveMember(group.id, memberId);
     } catch (err) {
       console.error(err);
-      alert('Ошибка при удалении участника');
+      alert(locale === 'en' ? 'Failed to remove participant' : 'Ошибка при удалении участника');
     } finally {
       setRemovingMemberId(null);
     }
@@ -65,7 +73,9 @@ export default function ManageGroupModal({
             <div className="p-5 border-b border-outline-variant flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-primary" />
-                <h2 className="font-bold text-on-surface">Управление группой</h2>
+                <h2 className="font-bold text-on-surface">
+                  {locale === 'en' ? 'Manage Study Group' : 'Управление группой'}
+                </h2>
               </div>
               <button
                 onClick={onClose}
@@ -78,7 +88,7 @@ export default function ManageGroupModal({
             <div className="p-5 space-y-6">
               <div>
                 <div className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-3">
-                  Участники ({membersList.length})
+                  {locale === 'en' ? `Participants (${membersList.length})` : `Участники (${membersList.length})`}
                 </div>
                 <div className="space-y-2">
                   {membersList.map((m) => {
@@ -95,10 +105,12 @@ export default function ManageGroupModal({
                           </div>
                           <div className="flex flex-col">
                             <span className="text-sm font-bold text-on-surface">
-                              {m.displayName || m.username} {isSelf && '(Вы)'}
+                              {m.displayName || m.username} {isSelf && (locale === 'en' ? '(You)' : '(Вы)')}
                             </span>
                             <span className="text-xs text-on-surface-variant/80">
-                              {m.status === 'accepted' ? 'В группе' : 'Ожидает'}
+                              {m.status === 'accepted' 
+                                ? (locale === 'en' ? 'In Group' : 'В группе') 
+                                : (locale === 'en' ? 'Pending' : 'Ожидает')}
                             </span>
                           </div>
                         </div>
@@ -108,7 +120,7 @@ export default function ManageGroupModal({
                             disabled={isRemoving}
                             className="px-3 py-1.5 rounded-lg text-xs font-bold border border-red-500/20 text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
                           >
-                            {isRemoving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Удалить'}
+                            {isRemoving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : (locale === 'en' ? 'Remove' : 'Удалить')}
                           </button>
                         )}
                       </div>
@@ -127,14 +139,16 @@ export default function ManageGroupModal({
                     {isDeleting ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        Удаление...
+                        <span>{locale === 'en' ? 'Deleting...' : 'Удаление...'}</span>
                       </>
                     ) : (
-                      'Удалить группу полностью'
+                      locale === 'en' ? 'Delete Group Permanently' : 'Удалить группу полностью'
                     )}
                   </button>
                   <p className="text-center text-[10px] text-on-surface-variant mt-2">
-                    Это действие нельзя отменить. Все участники потеряют доступ к группе.
+                    {locale === 'en'
+                      ? 'This action cannot be undone. All members will lose access to this group.'
+                      : 'Это действие нельзя отменить. Все участники потеряют доступ к группе.'}
                   </p>
                 </div>
               )}

@@ -3,12 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Crown, CheckCircle2, Copy, Share2, Check } from 'lucide-react';
 import { auth } from '../../firebase.js';
 import { getUserStats, getReferralsCount } from '../../services/courseService.js';
+import { useLocale, t } from '../../i18n.js';
 import { useNavigate } from 'react-router-dom';
 import { usePlanLimits } from '../../hooks/usePlanLimits.js';
 
 export default function UpgradeModal({ isOpen, onClose }) {
   const navigate = useNavigate();
   const { plan } = usePlanLimits();
+  const locale = useLocale();
   const [billingPeriod, setBillingPeriod] = useState('monthly');
   const [discountActive, setDiscountActive] = useState(false);
   const [referralLink, setReferralLink] = useState('');
@@ -79,7 +81,7 @@ export default function UpgradeModal({ isOpen, onClose }) {
               Достигнут лимит
             </h2>
             <p className="text-xs text-on-surface-variant leading-relaxed">
-              Вы исчерпали доступные функции на вашем тарифе. Выберите подходящий уровень для продолжения обучения.
+              {locale === 'en' ? 'You have exhausted the features available on your plan. Choose an appropriate level to continue learning.' : 'Вы исчерпали доступные функции на вашем тарифе. Выберите подходящий уровень для продолжения обучения.'}
             </p>
 
             <div className="inline-flex bg-surface p-1 rounded-xl border border-outline mt-6">
@@ -98,7 +100,7 @@ export default function UpgradeModal({ isOpen, onClose }) {
                 }`}
               >
                 Ежегодно
-                <span className="bg-surface-container/60 text-[#30D158] text-[8px] font-mono px-1.5 py-0.5 rounded border border-[#30D158]/20 uppercase tracking-wide">Скидка 15%</span>
+                <span className="bg-surface-container/60 text-[#30D158] text-[8px] font-mono px-1.5 py-0.5 rounded border border-[#30D158]/20 uppercase tracking-wide">{locale === 'en' ? '15% off' : 'Скидка 15%'}</span>
               </button>
             </div>
           </div>
@@ -111,24 +113,24 @@ export default function UpgradeModal({ isOpen, onClose }) {
               <div>
                 <div className="mb-4">
                   <h3 className="text-xl font-bold tracking-tight text-on-surface mb-1">Free</h3>
-                  <p className="text-xs text-on-surface-variant font-medium">Базовое знакомство с платформой</p>
+                  <p className="text-xs text-on-surface-variant font-medium">{locale === 'en' ? 'Basic platform introduction' : 'Базовое знакомство с платформой'}</p>
                 </div>
                 <div className="mb-6">
                   <span className="text-3xl font-black font-clash tracking-tight text-on-surface">$0</span>
-                  <span className="text-[10px] text-on-surface-variant block mt-1">Всегда бесплатно</span>
+                  <span className="text-[10px] text-on-surface-variant block mt-1">{locale === 'en' ? 'Always free' : 'Всегда бесплатно'}</span>
                 </div>
                 <ul className="space-y-3 mb-6">
                   <li className="flex items-start gap-2.5 text-xs">
                     <Check className="w-4 h-4 text-on-surface-variant shrink-0 mt-0.5" strokeWidth={2} />
-                    <span className="text-on-background leading-tight">1 Сгенерированный курс</span>
+                    <span className="text-on-background leading-tight">{locale === 'en' ? '1 Generated course' : '1 Сгенерированный курс'}</span>
                   </li>
                   <li className="flex items-start gap-2.5 text-xs">
                     <Check className="w-4 h-4 text-on-surface-variant shrink-0 mt-0.5" strokeWidth={2} />
-                    <span className="text-on-background leading-tight">5 пробных сообщений AI-ментору</span>
+                    <span className="text-on-background leading-tight">{locale === 'en' ? '5 trial AI Mentor messages' : '5 пробных сообщений AI-ментору'}</span>
                   </li>
                   <li className="flex items-start gap-2.5 text-xs text-on-surface-variant/60">
                     <X className="w-4 h-4 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
-                    <span className="leading-tight">Интерактивная практика и код-ревью</span>
+                    <span className="leading-tight">{locale === 'en' ? 'Interactive practice & code review' : 'Интерактивная практика и код-ревью'}</span>
                   </li>
                 </ul>
               </div>
@@ -149,7 +151,7 @@ export default function UpgradeModal({ isOpen, onClose }) {
                   <h3 className="text-xl font-bold tracking-tight text-on-surface mb-1 flex items-center gap-1.5">
                     Pro <Crown className="w-4 h-4 text-on-surface" strokeWidth={2} />
                   </h3>
-                  <p className="text-xs text-on-surface-variant font-medium">Безлимитное и адаптивное обучение</p>
+                  <p className="text-xs text-on-surface-variant font-medium">{locale === 'en' ? 'Unlimited & adaptive learning' : 'Безлимитное и адаптивное обучение'}</p>
                 </div>
                 <div className="mb-6">
                   {discountActive ? (
@@ -178,21 +180,21 @@ export default function UpgradeModal({ isOpen, onClose }) {
                     </>
                   )}
                   <span className="text-[9px] text-on-surface-variant block mt-1 font-sans">
-                    {billingPeriod === 'monthly' ? 'Оплата ежемесячно' : 'Оплата ежегодно'}
+                    {billingPeriod === 'monthly' ? locale === 'en' ? 'Billed monthly' : 'Оплата ежемесячно' : locale === 'en' ? 'Billed annually' : 'Оплата ежегодно'}
                   </span>
                 </div>
                 <ul className="space-y-3 mb-6">
                   <li className="flex items-start gap-2.5 text-xs">
                     <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" strokeWidth={2.5} />
-                    <span className="text-on-surface font-medium leading-tight">Безлимитная генерация курсов</span>
+                    <span className="text-on-surface font-medium leading-tight">{locale === 'en' ? 'Unlimited course generation' : 'Безлимитная генерация курсов'}</span>
                   </li>
                   <li className="flex items-start gap-2.5 text-xs">
                     <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" strokeWidth={2.5} />
-                    <span className="text-on-surface font-medium leading-tight">AI-ментор (50 сообщений в день)</span>
+                    <span className="text-on-surface font-medium leading-tight">{locale === 'en' ? 'AI Mentor (50 messages/day)' : 'AI-ментор (50 сообщений в день)'}</span>
                   </li>
                   <li className="flex items-start gap-2.5 text-xs">
                     <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" strokeWidth={2.5} />
-                    <span className="text-on-surface font-medium leading-tight">Доступ к Алмазной и Магистр лигам</span>
+                    <span className="text-on-surface font-medium leading-tight">{locale === 'en' ? 'Access to Diamond & Master leagues' : 'Доступ к Алмазной и Магистр лигам'}</span>
                   </li>
                 </ul>
               </div>
@@ -200,7 +202,7 @@ export default function UpgradeModal({ isOpen, onClose }) {
                 onClick={handleSelectPlan}
                 className="w-full py-3.5 rounded-2xl font-bold bg-on-surface text-inverse-on-surface hover:bg-[#F5F5F7] active:scale-[0.98] transition-all text-xs shadow-md"
               >
-                {plan === 'PRO' ? 'Перейти к оплате' : 'Активировать Pro'}
+                {plan === 'PRO' ? locale === 'en' ? 'Proceed to payment' : 'Перейти к оплате' : 'Активировать Pro'}
               </button>
             </div>
 
@@ -216,7 +218,7 @@ export default function UpgradeModal({ isOpen, onClose }) {
                   <h3 className="text-xl font-bold tracking-tight text-on-surface mb-1 flex items-center gap-1.5">
                     Ultra <span className="text-[8px] font-black bg-indigo-500 text-on-surface px-1.5 py-0.5 rounded leading-none">ULTRA</span>
                   </h3>
-                  <p className="text-[10px] text-indigo-600 dark:text-indigo-300 font-medium">Максимальный AI-арсенал YourWay</p>
+                  <p className="text-[10px] text-indigo-600 dark:text-indigo-300 font-medium">{locale === 'en' ? 'Maximum YourWay AI arsenal' : 'Максимальный AI-арсенал YourWay'}</p>
                 </div>
                 <div className="mb-6">
                   {discountActive ? (
@@ -245,25 +247,25 @@ export default function UpgradeModal({ isOpen, onClose }) {
                     </>
                   )}
                   <span className="text-[9px] text-indigo-600 dark:text-indigo-300 block mt-1 font-sans">
-                    {billingPeriod === 'monthly' ? 'Оплата ежемесячно' : 'Оплата ежегодно'}
+                    {billingPeriod === 'monthly' ? locale === 'en' ? 'Billed monthly' : 'Оплата ежемесячно' : locale === 'en' ? 'Billed annually' : 'Оплата ежегодно'}
                   </span>
                 </div>
                 <ul className="space-y-2.5 mb-6 text-left">
                   <li className="flex items-start gap-2 text-[11px] text-on-surface">
                     <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
-                    <span className="leading-tight">Безлимитный AI-ментор (без лимита сообщений)</span>
+                    <span className="leading-tight">{locale === 'en' ? 'Unlimited AI Mentor (no message limit)' : 'Безлимитный AI-ментор (без лимита сообщений)'}</span>
                   </li>
                   <li className="flex items-start gap-2 text-[11px] text-on-surface">
                     <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
-                    <span className="leading-tight">Интерактивный брифинг-составление курсов</span>
+                    <span className="leading-tight">{locale === 'en' ? 'Interactive briefing course creation' : 'Интерактивный брифинг-составление курсов'}</span>
                   </li>
                   <li className="flex items-start gap-2 text-[11px] text-on-surface">
                     <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
-                    <span className="leading-tight">RAG: Импорт PDF, YouTube и веб</span>
+                    <span className="leading-tight">{locale === 'en' ? 'RAG: PDF, YouTube & Web Import' : 'RAG: Импорт PDF, YouTube и веб'}</span>
                   </li>
                   <li className="flex items-start gap-2 text-[11px] text-on-surface">
                     <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
-                    <span className="leading-tight">AI Code Review: анализ кода на ошибки</span>
+                    <span className="leading-tight">{locale === 'en' ? 'AI Code Review: bug analysis' : 'AI Code Review: анализ кода на ошибки'}</span>
                   </li>
                 </ul>
               </div>
@@ -280,10 +282,10 @@ export default function UpgradeModal({ isOpen, onClose }) {
             <div className="mt-2 p-4 bg-surface-container/50 rounded-2xl border border-amber-500/30">
               <div className="flex items-center gap-2 mb-2">
                 <Share2 className="w-4 h-4 text-amber-500" />
-                <h3 className="text-sm font-bold text-on-surface">Пригласи друга - получи скидку!</h3>
+                <h3 className="text-sm font-bold text-on-surface">{locale === 'en' ? 'Invite a friend - get a discount!' : 'Пригласи друга - получи скидку!'}</h3>
               </div>
               <p className="text-on-surface-variant text-xs leading-relaxed mb-3">
-                Отправь ссылку другу. Вы <strong className="text-amber-500">оба получите скидку 10%</strong> на подписку.
+                {locale === 'en' ? <>Send the link to a friend. You <strong className="text-amber-500">both get 10% off</strong> your subscription.</> : <>Отправь ссылку другу. Вы <strong className="text-amber-500">оба получите скидку 10%</strong> на подписку.</>}
               </p>
               <div className="flex items-center gap-2">
                 <input 
@@ -291,7 +293,7 @@ export default function UpgradeModal({ isOpen, onClose }) {
                   readOnly 
                   value={referralLink} 
                   className="flex-1 bg-surface border border-outline-variant rounded-xl px-3 py-2 text-xs text-on-surface font-medium outline-none truncate"
-                  placeholder="Загрузка ссылки..."
+                  placeholder={locale === 'en' ? 'Loading link...' : 'Загрузка ссылки...'}
                 />
                 <button 
                   onClick={handleCopy}
@@ -299,7 +301,7 @@ export default function UpgradeModal({ isOpen, onClose }) {
                   className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition-colors flex items-center gap-1.5 disabled:opacity-50 whitespace-nowrap text-xs"
                 >
                   {copied ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  {copied ? 'Скопировано' : 'Копировать'}
+                  {copied ? locale === 'en' ? 'Copied' : 'Скопировано' : t('common.copy')}
                 </button>
               </div>
             </div>

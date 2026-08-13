@@ -312,17 +312,19 @@ export default function Dashboard() {
         >
           <div className="flex-1 text-left">
             <h3 className="text-sm font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 font-clash">
-              Разблокируйте полную силу обучения с PRO подпиской
+              {locale === 'en' ? 'Unlock Full Learning Potential with PRO' : 'Разблокируйте полную силу обучения с PRO подпиской'}
             </h3>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed max-w-xl">
-              Получите безлимитную генерацию курсов, AI-ментора с памятью о сессиях, полную аналитику прогресса и доступ к высшим лигам.
+              {locale === 'en' 
+                ? 'Get unlimited course generation, AI mentor with session memory, comprehensive analytics, and access to top leagues.'
+                : 'Получите безлимитную генерацию курсов, AI-ментора с памятью о сессиях, полную аналитику прогресса и доступ к высшим лигам.'}
             </p>
           </div>
           <button
             onClick={() => navigate('/pricing')}
             className="w-full md:w-auto bg-accent hover:bg-accent-hover text-white rounded-[12px] px-5 py-2.5 text-xs font-bold transition-all font-sans whitespace-nowrap self-start md:self-auto text-center shadow-sm"
           >
-            Узнать больше
+            {locale === 'en' ? 'Learn More' : 'Узнать больше'}
           </button>
         </motion.div>
       )}
@@ -337,7 +339,9 @@ export default function Dashboard() {
         {/* Large Active Courses Card */}
         <div className="col-span-12 lg:col-span-6 bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-[18px] p-6 flex flex-col justify-between h-44 relative overflow-hidden group shadow-sm">
           <div>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2 font-sans font-medium">Активные курсы</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2 font-sans font-medium">
+              {t('dashboard.stats.courses') || (locale === 'en' ? 'Active Courses' : 'Активные курсы')}
+            </p>
             <h3 className="text-4xl font-bold text-accent font-mono">
               <AnimatedNumber value={stats?.activeCoursesCount || 0} />
             </h3>
@@ -353,29 +357,29 @@ export default function Dashboard() {
         {/* Hours Learned */}
         <div className="col-span-12 sm:col-span-4 lg:col-span-2 bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-[18px] p-6 flex flex-col justify-between h-44 shadow-sm">
           <div>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2 font-sans font-medium">{t('dashboard.stats.hours')}</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2 font-sans font-medium">{t('dashboard.stats.hours') || (locale === 'en' ? 'Hours Learned' : 'Часы обучения')}</p>
             <h3 className="text-4xl font-bold text-zinc-900 dark:text-white font-mono">
               <AnimatedNumber value={stats?.hoursLearned || 0} />
             </h3>
           </div>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 font-sans">Часы обучения</p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 font-sans">{locale === 'en' ? 'Hours learned' : 'Часы обучения'}</p>
         </div>
 
         {/* Certificates */}
         <div className="col-span-12 sm:col-span-4 lg:col-span-2 bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-[18px] p-6 flex flex-col justify-between h-44 shadow-sm">
           <div>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2 font-sans font-medium">{t('dashboard.stats.certs')}</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2 font-sans font-medium">{t('dashboard.stats.certs') || (locale === 'en' ? 'Certificates' : 'Сертификаты')}</p>
             <h3 className="text-4xl font-bold text-zinc-900 dark:text-white font-mono">
               <AnimatedNumber value={stats?.certificatesCount || 0} />
             </h3>
           </div>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 font-sans">Сертификаты</p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 font-sans">{locale === 'en' ? 'Certificates' : 'Сертификаты'}</p>
         </div>
 
         {/* Streaks (Reward Amber Token) */}
         <div className="col-span-12 sm:col-span-4 lg:col-span-2 bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-[18px] p-6 flex flex-col justify-between h-44 shadow-sm">
           <div>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2 font-sans font-medium">{t('dashboard.stats.streak')}</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2 font-sans font-medium">{t('dashboard.stats.streak') || (locale === 'en' ? 'Day Streak' : 'Ударный режим')}</p>
             <h3 className="text-4xl font-bold text-reward-text font-mono flex items-center gap-1.5">
               <span>{stats?.streakDays || 1}</span>
               <Flame className="w-6 h-6 text-reward-text fill-reward-text" />
@@ -389,7 +393,7 @@ export default function Dashboard() {
                 <div 
                   key={i} 
                   className={`w-2 h-2 rounded-full transition-all ${isActive ? 'bg-reward-text shadow-xs' : 'bg-zinc-200 dark:bg-white/10'}`}
-                  title={`День ${i + 1}`}
+                  title={`${locale === 'en' ? 'Day' : 'День'} ${i + 1}`}
                 />
               );
             })}
@@ -417,7 +421,9 @@ export default function Dashboard() {
       {/* Courses Row */}
       <motion.div variants={itemVariants} className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
-          <h2 className="text-xl sm:text-2xl font-bold font-clash text-zinc-900 dark:text-white">Ваши курсы дорожных карт</h2>
+          <h2 className="text-xl sm:text-2xl font-bold font-clash text-zinc-900 dark:text-white">
+            {t('dashboard.yourRoadmaps') || (locale === 'en' ? 'Your Roadmap Courses' : 'Ваши курсы дорожных карт')}
+          </h2>
           <button onClick={() => navigate('/courses')} className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 group font-sans">
             {t('dashboard.viewAllCatalog')} <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </button>
@@ -515,9 +521,13 @@ export default function Dashboard() {
         {/* Recent Activity */}
         <motion.div variants={itemVariants} className="lg:col-span-1 bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-[18px] p-6 flex flex-col justify-between min-h-[360px] shadow-sm">
           <div>
-            <h2 className="text-base font-bold text-zinc-900 dark:text-white mb-5 font-sans">Недавняя активность</h2>
+            <h2 className="text-base font-bold text-zinc-900 dark:text-white mb-5 font-sans">
+              {t('dashboard.recentActivity') || (locale === 'en' ? 'Recent Activity' : 'Недавняя активность')}
+            </h2>
             {activities.length === 0 ? (
-              <p className="text-zinc-500 dark:text-zinc-400 text-xs py-4">Активность отсутствует</p>
+              <p className="text-zinc-500 dark:text-zinc-400 text-xs py-4">
+                {t('dashboard.noActivity') || (locale === 'en' ? 'No recent activity' : 'Активность отсутствует')}
+              </p>
             ) : (
               <div className="space-y-3">
                 {activities.slice(0, 4).map((activity, idx) => {
@@ -536,7 +546,7 @@ export default function Dashboard() {
                         <h4 className="text-xs font-semibold text-zinc-900 dark:text-white truncate">{activity.title}</h4>
                       </div>
                       <span className="text-[10px] text-zinc-400 font-mono whitespace-nowrap">
-                        {new Date(activity.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        {new Date(activity.timestamp).toLocaleDateString(locale === 'en' ? 'en-US' : 'ru-RU', { month: 'short', day: 'numeric' })}
                       </span>
                     </div>
                   );
@@ -555,7 +565,7 @@ export default function Dashboard() {
           <div className="w-full flex items-center justify-between mb-4">
             <h2 className="text-base font-bold text-zinc-900 dark:text-white font-sans flex items-center gap-2">
               <FileBadge className="w-4 h-4 text-accent" strokeWidth={1.5} />
-              Мои сертификаты
+              {t('dashboard.myCertificates') || (locale === 'en' ? 'My Certificates' : 'Мои сертификаты')}
             </h2>
           </div>
           
@@ -564,7 +574,9 @@ export default function Dashboard() {
             <div className="relative z-10 w-24 h-24 rounded-full bg-zinc-50 dark:bg-white/5 border border-zinc-200 dark:border-white/10 flex items-center justify-center shadow-inner">
               <div className="flex flex-col items-center justify-center font-sans">
                 <span className="text-3xl font-bold text-accent font-mono">{stats?.certificatesCount || 0}</span>
-                <span className="text-[9px] font-bold text-zinc-400 mt-0.5 uppercase tracking-widest">Получено</span>
+                <span className="text-[9px] font-bold text-zinc-400 mt-0.5 uppercase tracking-widest">
+                  {locale === 'en' ? 'Earned' : 'Получено'}
+                </span>
               </div>
             </div>
             {/* Decorative orbit circle */}
@@ -574,7 +586,7 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center justify-between w-full text-[11px] font-bold text-indigo-600 dark:text-indigo-400 mt-4 border-t border-zinc-100 dark:border-white/5 pt-3">
-            <span>Смотреть все</span>
+            <span>{t('dashboard.viewAll') || (locale === 'en' ? 'View all' : 'Смотреть все')}</span>
             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
           </div>
         </motion.div>
@@ -589,7 +601,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-bold text-zinc-900 dark:text-white font-sans flex items-center gap-2">
                 <Trophy className="w-4 h-4 text-reward-text" strokeWidth={1.5} />
-                Лига соревнований
+                {t('dashboard.competitiveLeague') || (locale === 'en' ? 'Competitive League' : 'Лига соревнований')}
               </h2>
               <span className="text-[10px] font-mono font-bold text-zinc-400 tabular-nums">{timeLeft}</span>
             </div>
@@ -602,11 +614,13 @@ export default function Dashboard() {
               <div className="text-left flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <p className="text-xs font-bold text-reward-text font-clash">
-                    Лига {leagueName}
+                    {locale === 'en' ? `${leagueName} League` : `Лига ${leagueName}`}
                   </p>
                   <Crown className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0" />
                 </div>
-                <p className="text-[10px] text-zinc-600 dark:text-zinc-300 truncate">Нажмите, чтобы открыть таблицу</p>
+                <p className="text-[10px] text-zinc-600 dark:text-zinc-300 truncate">
+                  {locale === 'en' ? 'Click to open leaderboard' : 'Нажмите, чтобы открыть таблицу'}
+                </p>
               </div>
             </div>
 
@@ -614,7 +628,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between p-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-white/5 border border-zinc-200 dark:border-white/10">
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-zinc-900 dark:text-white font-bold w-4">1</span>
-                  <span className="text-zinc-900 dark:text-white font-bold truncate max-w-[110px]">{user?.displayName || 'Вы'}</span>
+                  <span className="text-zinc-900 dark:text-white font-bold truncate max-w-[110px]">{user?.displayName || (locale === 'en' ? 'You' : 'Вы')}</span>
                 </div>
                 <span className="font-mono tabular-nums text-indigo-600 dark:text-indigo-400 font-bold">{stats?.weeklyXP || 0} XP</span>
               </div>
@@ -622,7 +636,7 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center justify-between text-[11px] font-bold text-indigo-600 dark:text-indigo-400 mt-4 border-t border-zinc-100 dark:border-white/5 pt-3">
-            <span>Смотреть всю группу</span>
+            <span>{locale === 'en' ? 'View full group' : 'Смотреть всю группу'}</span>
             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
           </div>
         </motion.div>

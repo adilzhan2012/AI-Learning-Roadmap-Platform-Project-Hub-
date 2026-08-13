@@ -18,6 +18,7 @@ import { httpsCallable } from 'firebase/functions';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { sendEmailVerification } from 'firebase/auth';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
+import { useLocale, t } from '../i18n.js';
 import { useNavigate } from 'react-router-dom';
 import { getUserStats, getReferralsCount } from '../services/courseService.js';
 
@@ -27,6 +28,7 @@ export const LockIcon = ({ className }) => (
 
 export default function Pricing() {
   const navigate = useNavigate();
+  const locale = useLocale();
   const { plan, loading, dbBillingPeriod } = usePlanLimits();
   const [billingPeriod, setBillingPeriod] = useState('monthly'); // 'monthly' | 'yearly'
   const [showFullComparison, setShowFullComparison] = useState(false);
@@ -137,7 +139,7 @@ export default function Pricing() {
       window.location.reload();
     } catch (e) {
       console.error(e);
-      alert(e.message || "Ошибка при отмене подписки");
+      alert(e.message || (locale === "en" ? "Error cancelling subscription" : "Ошибка при отмене подписки"));
       setCancelling(false);
     }
   };
@@ -165,7 +167,7 @@ export default function Pricing() {
       window.location.reload();
     } catch (e) {
       console.error(e);
-      alert(e.message || "Ошибка при переходе на базовый тариф");
+      alert(e.message || (locale === "en" ? "Error switching to basic plan" : "Ошибка при переходе на базовый тариф"));
       setUpgrading(false);
     }
   };
@@ -173,7 +175,7 @@ export default function Pricing() {
   const handleSubmitPayment = async () => {
     setCheckoutError('');
     if (!promoCode) {
-      setCheckoutError('Введите инвайт-код.');
+      setCheckoutError(locale === 'en' ? 'Enter invite code.' : 'Введите инвайт-код.');
       return;
     }
 
@@ -183,7 +185,7 @@ export default function Pricing() {
       const codeSnap = await getDoc(doc(db, 'promocodes', promoCode));
       if (!codeSnap.exists() || !codeSnap.data().active) {
         setCheckoutStage('input');
-        setCheckoutError('Недействительный или отключенный инвайт-код.');
+        setCheckoutError(locale === 'en' ? 'Invalid or disabled invite code.' : 'Недействительный или отключенный инвайт-код.');
         return;
       }
       
@@ -191,7 +193,7 @@ export default function Pricing() {
       setCheckoutStage('success');
     } catch (e) {
       setCheckoutStage('input');
-      setCheckoutError('Ошибка проверки кода: ' + e.message);
+      setCheckoutError((locale === 'en' ? 'Error validating code: ' : 'Ошибка проверки кода: ') + e.message);
     }
   };
 
@@ -211,7 +213,7 @@ export default function Pricing() {
       window.location.reload();
     } catch (e) {
       console.error(e);
-      alert(e.message || "Ошибка при обновлении подписки. Пожалуйста, убедитесь, что ваш email верифицирован.");
+      alert(e.message || (locale === "en" ? "Error upgrading subscription. Please ensure your email is verified." : "Ошибка при обновлении подписки. Пожалуйста, убедитесь, что ваш email верифицирован."));
       setUpgrading(false);
     }
   };
@@ -220,7 +222,7 @@ export default function Pricing() {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-4.5rem)] bg-background text-on-surface">
         <Loader2 className="w-8 h-8 animate-spin text-on-surface mb-2" />
-        <p className="text-sm text-on-surface-variant font-mono">Обновление тарифного плана...</p>
+        <p className="text-sm text-on-surface-variant font-mono">{locale === "en" ? "Upgrading plan..." : "Обновление тарифного плана..."}</p>
       </div>
     );
   }
@@ -234,10 +236,10 @@ export default function Pricing() {
           animate={{ opacity: 1, y: 0 }}
           className="text-3xl font-black tracking-tight text-on-surface mb-3 font-clash uppercase"
         >
-          Тарифные планы
+          {t('pricing.title') || (locale === 'en' ? 'Pricing Plans' : 'Тарифные планы')}
         </motion.h1>
         <p className="text-xs text-on-surface-variant leading-relaxed">
-          Выберите подходящий уровень для достижения ваших целей обучения. Сгенерируйте индивидуальные курсы с использованием ИИ.
+          {locale === "en" ? "Choose the right plan to achieve your learning goals. Generate personalized courses using AI." : "Выберите подходящий уровень для достижения ваших целей обучения. Сгенерируйте индивидуальные курсы с использованием ИИ."}
         </p>
 
         {auth.currentUser && !emailVerified && (
@@ -247,8 +249,8 @@ export default function Pricing() {
             className="mt-6 bg-[#FF453A]/10 border border-[#FF453A]/20 p-4 rounded-[16px] flex flex-col sm:flex-row items-center justify-between gap-4 text-left"
           >
             <div>
-              <h4 className="font-bold text-[#FF453A] text-sm">Email не подтвержден!</h4>
-              <p className="text-xs text-[#FF453A]/80 mt-1">Для оформления подписки вам необходимо подтвердить почту.</p>
+              <h4 className="font-bold text-[#FF453A] text-sm">{locale === "en" ? "Email not verified!" : "Email не подтвержден!"}</h4>
+              <p className="text-xs text-[#FF453A]/80 mt-1">{locale === "en" ? "You need to verify your email to subscribe." : "Для оформления подписки вам необходимо подтвердить почту."}</p>
             </div>
             <div className="flex gap-2 w-full sm:w-auto">
               <button 
@@ -263,14 +265,14 @@ export default function Pricing() {
                 }} 
                 className="px-4 py-2 w-full sm:w-auto bg-transparent border border-[#FF453A]/30 hover:bg-[#FF453A]/10 text-[#FF453A] rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap"
               >
-                Я подтвердил(а)
+                {locale === 'en' ? 'I confirmed' : 'Я подтвердил(а)'}
               </button>
               <button 
                 onClick={handleSendVerification} 
                 disabled={verificationSent} 
                 className="px-4 py-2 w-full sm:w-auto bg-[#FF453A]/20 hover:bg-[#FF453A]/30 text-[#FF453A] rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap"
               >
-                {verificationSent ? 'Письмо отправлено' : 'Отправить письмо'}
+                {verificationSent ? (locale === 'en' ? 'Email sent' : 'Письмо отправлено') : t('settings.security.sendReset')}
               </button>
             </div>
           </motion.div>
@@ -293,7 +295,7 @@ export default function Pricing() {
             }`}
           >
             Ежегодно
-            <span className="bg-surface-container/60 text-[#30D158] text-[8px] font-mono px-1.5 py-0.5 rounded border border-[#30D158]/20 uppercase tracking-wide">Скидка 15%</span>
+            <span className="bg-surface-container/60 text-[#30D158] text-[8px] font-mono px-1.5 py-0.5 rounded border border-[#30D158]/20 uppercase tracking-wide">{locale === "en" ? "15% off" : "Скидка 15%"}</span>
           </button>
         </div>
       </div>
@@ -312,36 +314,36 @@ export default function Pricing() {
         >
           <div>
             <div className="mb-6">
-              <h3 className="text-xl font-bold tracking-tight text-on-surface mb-1">Free</h3>
-              <p className="text-xs text-on-surface-variant font-medium">Базовое знакомство с платформой</p>
+              <h3 className="text-xl font-bold tracking-tight text-on-surface mb-1">{t('pricing.freeTitle') || 'Free'}</h3>
+              <p className="text-xs text-on-surface-variant font-medium">{locale === "en" ? "Basic platform introduction" : "Базовое знакомство с платформой"}</p>
             </div>
 
             <div className="mb-8">
               <span className="text-4xl font-black font-clash tracking-tight text-on-surface">$0</span>
-              <span className="text-xs text-on-surface-variant block mt-1">Всегда бесплатно</span>
+              <span className="text-xs text-on-surface-variant block mt-1">{locale === "en" ? "Always free" : "Всегда бесплатно"}</span>
             </div>
 
             {/* Checklist */}
             <ul className="space-y-4 mb-8">
               <li className="flex items-start gap-3 text-sm">
                 <Check className="w-5 h-5 text-on-surface-variant shrink-0 mt-0.5" strokeWidth={2} />
-                <span className="text-on-background leading-tight">1 Сгенерированный курс</span>
+                <span className="text-on-background leading-tight">{locale === "en" ? "1 Generated course" : "1 Сгенерированный курс"}</span>
               </li>
               <li className="flex items-start gap-3 text-sm">
                 <Check className="w-5 h-5 text-on-surface-variant shrink-0 mt-0.5" strokeWidth={2} />
-                <span className="text-on-background leading-tight">5 пробных сообщений AI-ментору</span>
+                <span className="text-on-background leading-tight">{locale === "en" ? "5 trial AI Mentor messages" : "5 пробных сообщений AI-ментору"}</span>
               </li>
               <li className="flex items-start gap-3 text-sm text-on-surface-variant/60">
                 <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
-                <span className="leading-tight">Интерактивная практика и код-ревью</span>
+                <span className="leading-tight">{locale === "en" ? "Interactive practice & code review" : "Интерактивная практика и код-ревью"}</span>
               </li>
               <li className="flex items-start gap-3 text-sm text-on-surface-variant/60">
                 <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
-                <span className="leading-tight">RAG: Генерация из PDF/YouTube</span>
+                <span className="leading-tight">{locale === "en" ? "RAG: PDF/YouTube generation" : "RAG: Генерация из PDF/YouTube"}</span>
               </li>
               <li className="flex items-start gap-3 text-sm text-on-surface-variant/60">
                 <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
-                <span className="leading-tight">Mock Interview & Экспорт</span>
+                <span className="leading-tight">{locale === "en" ? "Mock Interview & Export" : "Mock Interview & Экспорт"}</span>
               </li>
             </ul>
           </div>
@@ -352,7 +354,7 @@ export default function Pricing() {
                 disabled 
                 className="w-full py-4 rounded-2xl font-bold bg-transparent border border-outline text-on-surface-variant text-xs cursor-default"
               >
-                Текущий тариф
+                {t('pricing.current') || (locale === 'en' ? 'Current Plan' : 'Текущий тариф')}
               </button>
             ) : (
               <button 
@@ -379,7 +381,7 @@ export default function Pricing() {
               <h3 className="text-xl font-bold tracking-tight text-on-surface mb-1 flex items-center gap-1.5">
                 Pro <Crown className="w-4 h-4 text-on-surface" strokeWidth={2} />
               </h3>
-              <p className="text-xs text-on-surface-variant font-medium">Безлимитное и адаптивное обучение</p>
+              <p className="text-xs text-on-surface-variant font-medium">{locale === "en" ? "Unlimited & adaptive learning" : "Безлимитное и адаптивное обучение"}</p>
             </div>
 
             <div className="mb-8">
@@ -392,13 +394,13 @@ export default function Pricing() {
                     <span className="text-xs text-on-surface-variant font-medium line-through mr-1">
                       {billingPeriod === 'monthly' ? '$9.99' : '$7.50'}
                     </span>
-                    <span className="text-xs text-on-surface-variant font-medium">/мес</span>
+                    <span className="text-xs text-on-surface-variant font-medium">{locale === "en" ? "/mo" : "/мес"}</span>
                   </div>
                   <div className="inline-block bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-500/30 mb-1">
                     Скидка 10% на первый месяц
                   </div>
                   <span className="text-[10px] text-on-surface-variant block font-sans">
-                    {billingPeriod === 'monthly' ? 'Оплата ежемесячно ($8.99)' : 'Оплата ежегодно ($80.99)'}
+                    {billingPeriod === 'monthly' ? (locale === 'en' ? 'Billed monthly ($8.99)' : 'Оплата ежемесячно ($8.99)') : (locale === 'en' ? 'Billed annually ($80.99)' : 'Оплата ежегодно ($80.99)')}
                   </span>
                 </>
               ) : (
@@ -407,10 +409,10 @@ export default function Pricing() {
                     <span className="text-4xl font-black font-clash tracking-tight text-on-surface font-mono tabular-nums">
                       {billingPeriod === 'monthly' ? '$9.99' : '$7.50'}
                     </span>
-                    <span className="text-xs text-on-surface-variant font-medium">/мес</span>
+                    <span className="text-xs text-on-surface-variant font-medium">{locale === "en" ? "/mo" : "/мес"}</span>
                   </div>
                   <span className="text-[10px] text-on-surface-variant block mt-1 font-sans">
-                    {billingPeriod === 'monthly' ? 'Оплата ежемесячно ($9.99)' : 'Оплата ежегодно ($89.99)'}
+                    {billingPeriod === 'monthly' ? (locale === 'en' ? 'Billed monthly ($9.99)' : 'Оплата ежемесячно ($9.99)') : (locale === 'en' ? 'Billed annually ($89.99)' : 'Оплата ежегодно ($89.99)')}
                   </span>
                 </>
               )}
@@ -420,23 +422,23 @@ export default function Pricing() {
             <ul className="space-y-4 mb-8">
               <li className="flex items-start gap-3 text-sm">
                 <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" strokeWidth={2.5} />
-                <span className="text-on-surface font-medium leading-tight">Безлимитная генерация курсов</span>
+                <span className="text-on-surface font-medium leading-tight">{locale === "en" ? "Unlimited course generation" : "Безлимитная генерация курсов"}</span>
               </li>
               <li className="flex items-start gap-3 text-sm">
                 <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" strokeWidth={2.5} />
-                <span className="text-on-surface font-medium leading-tight">AI-ментор (50 сообщений в день)</span>
+                <span className="text-on-surface font-medium leading-tight">{locale === "en" ? "AI Mentor (50 messages/day)" : "AI-ментор (50 сообщений в день)"}</span>
               </li>
               <li className="flex items-start gap-3 text-sm">
                 <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" strokeWidth={2.5} />
-                <span className="text-on-surface font-medium leading-tight">Доступ к Алмазной и Магистр лигам</span>
+                <span className="text-on-surface font-medium leading-tight">{locale === "en" ? "Access to Diamond & Master leagues" : "Доступ к Алмазной и Магистр лигам"}</span>
               </li>
               <li className="flex items-start gap-3 text-sm text-on-surface-variant/60">
                 <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
-                <span className="leading-tight">Интерактивная практика и код-ревью</span>
+                <span className="leading-tight">{locale === "en" ? "Interactive practice & code review" : "Интерактивная практика и код-ревью"}</span>
               </li>
               <li className="flex items-start gap-3 text-sm text-on-surface-variant/60">
                 <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
-                <span className="leading-tight">RAG: Генерация по PDF/YouTube</span>
+                <span className="leading-tight">{locale === "en" ? "RAG: PDF/YouTube generation" : "RAG: Генерация по PDF/YouTube"}</span>
               </li>
             </ul>
           </div>
@@ -446,10 +448,10 @@ export default function Pricing() {
               dbBillingPeriod === billingPeriod ? (
                 <div className="space-y-4">
                   <div className="bg-surface-container/40 border border-white/5 rounded-2xl p-4 text-left select-none">
-                    <span className="text-[10px] text-on-surface-variant uppercase tracking-wider block mb-1">Сведения о подписке</span>
-                    <span className="text-xs text-on-surface block mb-1 font-bold">Тариф YourWay Pro · Активен</span>
+                    <span className="text-[10px] text-on-surface-variant uppercase tracking-wider block mb-1">{locale === "en" ? "Subscription Details" : "Сведения о подписке"}</span>
+                    <span className="text-xs text-on-surface block mb-1 font-bold">{locale === "en" ? "YourWay Pro · Active" : "Тариф YourWay Pro · Активен"}</span>
                     <span className="text-[11px] text-on-surface-variant block">
-                      Продление: {getRenewalDate()}
+                      {locale === "en" ? "Renews: " : "Продление: "}{getRenewalDate()}
                     </span>
                   </div>
                   <button 
@@ -464,7 +466,7 @@ export default function Pricing() {
                   onClick={() => handleSelectPlan('PRO')}
                   className="w-full py-4 rounded-2xl font-bold bg-on-surface text-inverse-on-surface hover:bg-[#F5F5F7] active:scale-[0.98] transition-all text-xs shadow-md"
                 >
-                  {billingPeriod === 'yearly' ? 'Перейти на годовой Pro' : 'Перейти на месячный Pro'}
+                  {billingPeriod === 'yearly' ? (locale === 'en' ? 'Switch to Yearly Pro' : 'Перейти на годовой Pro') : (locale === 'en' ? 'Switch to Monthly Pro' : 'Перейти на месячный Pro')}
                 </button>
               )
             ) : (
@@ -497,7 +499,7 @@ export default function Pricing() {
               <h3 className="text-xl font-bold tracking-tight text-on-surface mb-1 flex items-center gap-1.5">
                 Ultra <span className="text-[10px] font-black bg-indigo-500 text-on-surface px-1.5 py-0.5 rounded leading-none">ULTRA</span>
               </h3>
-              <p className="text-xs text-indigo-600 dark:text-indigo-300 font-medium">Максимальный AI-арсенал YourWay</p>
+              <p className="text-xs text-indigo-600 dark:text-indigo-300 font-medium">{locale === "en" ? "Maximum YourWay AI arsenal" : "Максимальный AI-арсенал YourWay"}</p>
             </div>
 
             <div className="mb-8">
@@ -510,13 +512,13 @@ export default function Pricing() {
                     <span className="text-xs text-indigo-300 font-medium line-through mr-1">
                       {billingPeriod === 'monthly' ? '$29.99' : '$20.83'}
                     </span>
-                    <span className="text-xs text-on-surface-variant font-medium">/мес</span>
+                    <span className="text-xs text-on-surface-variant font-medium">{locale === "en" ? "/mo" : "/мес"}</span>
                   </div>
                   <div className="inline-block bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-500/30 mb-1">
                     Скидка 10% на первый месяц
                   </div>
                   <span className="text-[10px] text-indigo-600 dark:text-indigo-300 block font-sans">
-                    {billingPeriod === 'monthly' ? 'Оплата ежемесячно ($26.99)' : 'Оплата ежегодно ($224.99)'}
+                    {billingPeriod === 'monthly' ? (locale === 'en' ? 'Billed monthly ($26.99)' : 'Оплата ежемесячно ($26.99)') : (locale === 'en' ? 'Billed annually ($224.99)' : 'Оплата ежегодно ($224.99)')}
                   </span>
                 </>
               ) : (
@@ -525,10 +527,10 @@ export default function Pricing() {
                     <span className="text-4xl font-black font-clash tracking-tight text-on-surface font-mono tabular-nums">
                       {billingPeriod === 'monthly' ? '$29.99' : '$20.83'}
                     </span>
-                    <span className="text-xs text-on-surface-variant font-medium">/мес</span>
+                    <span className="text-xs text-on-surface-variant font-medium">{locale === "en" ? "/mo" : "/мес"}</span>
                   </div>
                   <span className="text-[10px] text-indigo-600 dark:text-indigo-300 block mt-1 font-sans">
-                    {billingPeriod === 'monthly' ? 'Оплата ежемесячно ($29.99)' : 'Оплата ежегодно ($249.99)'}
+                    {billingPeriod === 'monthly' ? (locale === 'en' ? 'Billed monthly ($29.99)' : 'Оплата ежемесячно ($29.99)') : (locale === 'en' ? 'Billed annually ($249.99)' : 'Оплата ежегодно ($249.99)')}
                   </span>
                 </>
               )}
@@ -538,31 +540,31 @@ export default function Pricing() {
             <ul className="space-y-3.5 mb-8 text-left">
               <li className="flex items-start gap-2.5 text-xs text-on-surface">
                 <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
-                <span className="leading-tight">Безлимитный AI-ментор (без лимита сообщений)</span>
+                <span className="leading-tight">{locale === 'en' ? 'Unlimited AI Mentor (no message limit)' : 'Безлимитный AI-ментор (без лимита сообщений)'}</span>
               </li>
               <li className="flex items-start gap-2.5 text-xs text-on-surface">
                 <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
-                <span className="leading-tight">Интерактивный брифинг-составление курсов</span>
+                <span className="leading-tight">{locale === 'en' ? 'Interactive briefing course creation' : 'Интерактивный брифинг-составление курсов'}</span>
               </li>
               <li className="flex items-start gap-2.5 text-xs text-on-surface">
                 <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
-                <span className="leading-tight">RAG: Импорт PDF, YouTube и веб-документации</span>
+                <span className="leading-tight">{locale === 'en' ? 'RAG: PDF, YouTube & Web Docs Import' : 'RAG: Импорт PDF, YouTube и веб-документации'}</span>
               </li>
               <li className="flex items-start gap-2.5 text-xs text-on-surface">
                 <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
-                <span className="leading-tight">AI Code Review: анализ кода на ошибки и уязвимости</span>
+                <span className="leading-tight">{locale === 'en' ? 'AI Code Review: Bug & Vulnerability Analysis' : 'AI Code Review: анализ кода на ошибки и уязвимости'}</span>
               </li>
               <li className="flex items-start gap-2.5 text-xs text-on-surface">
                 <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
-                <span className="leading-tight">Адаптивный Граф знаний (авто-микромодули)</span>
+                <span className="leading-tight">{locale === 'en' ? 'Adaptive Knowledge Graph (Auto Micromodules)' : 'Адаптивный Граф знаний (авто-микромодули)'}</span>
               </li>
               <li className="flex items-start gap-2.5 text-xs text-on-surface">
                 <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
-                <span className="leading-tight">AI Mock Interview: HR & Tech-симулятор в финале</span>
+                <span className="leading-tight">{locale === 'en' ? 'AI Mock Interview: HR & Tech Simulator at the End' : 'AI Mock Interview: HR & Tech-симулятор в финале'}</span>
               </li>
               <li className="flex items-start gap-2.5 text-xs text-on-surface">
                 <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
-                <span className="leading-tight">Экспорт лекций и карточек в Notion & Anki</span>
+                <span className="leading-tight">{locale === 'en' ? 'Export Lectures & Cards to Notion & Anki' : 'Экспорт лекций и карточек в Notion & Anki'}</span>
               </li>
             </ul>
           </div>
@@ -572,10 +574,10 @@ export default function Pricing() {
               dbBillingPeriod === billingPeriod ? (
                 <div className="space-y-4">
                   <div className="bg-indigo-950/40 border border-indigo-500/20 rounded-2xl p-4 text-left select-none">
-                    <span className="text-[10px] text-indigo-300 uppercase tracking-wider block mb-1">Сведения о подписке</span>
-                    <span className="text-xs text-on-surface block mb-1 font-bold font-clash">Тариф YourWay Ultra · Активен</span>
+                    <span className="text-[10px] text-indigo-300 uppercase tracking-wider block mb-1">{locale === "en" ? "Subscription Details" : "Сведения о подписке"}</span>
+                    <span className="text-xs text-on-surface block mb-1 font-bold font-clash">{locale === 'en' ? 'YourWay Ultra Plan · Active' : 'Тариф YourWay Ultra · Активен'}</span>
                     <span className="text-[11px] text-zinc-300 block">
-                      Продление: {getRenewalDate()}
+                      {locale === "en" ? "Renews: " : "Продление: "}{getRenewalDate()}
                     </span>
                   </div>
                   <button 
@@ -590,7 +592,7 @@ export default function Pricing() {
                   onClick={() => handleSelectPlan('ULTRA')}
                   className="w-full py-4 rounded-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-on-surface hover:from-indigo-400 hover:to-purple-500 active:scale-[0.98] transition-all text-xs shadow-md"
                 >
-                  {billingPeriod === 'yearly' ? 'Перейти на годовой Ultra' : 'Перейти на месячный Ultra'}
+                  {billingPeriod === 'yearly' ? (locale === 'en' ? 'Switch to Yearly Ultra' : 'Перейти на годовой Ultra') : (locale === 'en' ? 'Switch to Monthly Ultra' : 'Перейти на месячный Ultra')}
                 </button>
               )
             ) : (
@@ -614,10 +616,10 @@ export default function Pricing() {
             <div className="flex-1 relative z-10 text-center md:text-left">
               <div className="inline-flex items-center gap-2 mb-3">
                 <Share2 className="w-5 h-5 text-amber-500" />
-                <h3 className="text-xl font-bold text-on-surface font-clash">Пригласи друга - получи скидку 10%!</h3>
+                <h3 className="text-xl font-bold text-on-surface font-clash">{locale === "en" ? "Invite a friend - get 10% off!" : "Пригласи друга - получи скидку 10%!"}</h3>
               </div>
               <p className="text-on-surface-variant text-sm leading-relaxed mb-4">
-                Отправь эту ссылку другу. Когда он зарегистрируется, вы <strong className="text-amber-500">оба получите скидку 10%</strong> на первый месяц подписки PRO или ULTRA.
+                {locale === "en" ? <>Send this link to a friend. When they sign up, you <strong className="text-amber-500">both get 10% off</strong> your first month of PRO or ULTRA.</> : <>Отправь эту ссылку другу. Когда он зарегистрируется, вы <strong className="text-amber-500">оба получите скидку 10%</strong> на первый месяц подписки PRO или ULTRA.</>}
               </p>
               
               <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -626,7 +628,7 @@ export default function Pricing() {
                   readOnly 
                   value={referralLink} 
                   className="w-full sm:flex-1 bg-surface-container/50 border border-outline-variant rounded-xl px-4 py-3 text-sm text-on-surface font-medium outline-none truncate focus:border-amber-500/50 transition-colors"
-                  placeholder="Загрузка ссылки..."
+                  placeholder={locale === 'en' ? 'Loading link...' : 'Загрузка ссылки...'}
                 />
                 <button 
                   onClick={handleCopy}
@@ -634,7 +636,7 @@ export default function Pricing() {
                   className="w-full sm:w-auto px-6 py-3 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-50 whitespace-nowrap shadow-lg shadow-amber-500/20"
                 >
                   {copied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  {copied ? 'Скопировано' : 'Копировать ссылку'}
+                  {copied ? (locale === 'en' ? 'Copied' : 'Скопировано') : (locale === 'en' ? 'Copy link' : 'Копировать ссылку')}
                 </button>
               </div>
             </div>
@@ -647,29 +649,29 @@ export default function Pricing() {
       {(plan === 'PRO' || plan === 'ULTRA') && (
         <div className="max-w-[900px] mx-auto mt-16 mb-12 text-center">
           <h2 className="text-xl font-bold tracking-tight text-on-surface mb-8 font-clash uppercase">
-            Вам доступны возможности тарифа {plan}
+            locale === 'en' ? 'You have access to features of ' : 'Вам доступны возможности тарифа '{plan}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {plan === 'ULTRA' ? (
               [
                 {
-                  title: 'RAG: Генерация по материалам',
-                  desc: 'Загрузите PDF книгу, статью или документацию, вставьте YouTube лекцию — искусственный интеллект сгенерирует курс и граф знаний на их основе.',
+                  title: locale === 'en' ? 'RAG: Content Generation' : 'RAG: Генерация по материалам',
+                  desc: locale === 'en' ? 'Upload a PDF book, article, or documentation, insert a YouTube lecture — AI will generate a course and knowledge graph based on them.' : 'Загрузите PDF книгу, статью или документацию, вставьте YouTube лекцию — искусственный интеллект сгенерирует курс и граф знаний на их основе.',
                   icon: '📖'
                 },
                 {
-                  title: 'AI Code Review и интерактивная практика',
-                  desc: 'Пишите реальный код непосредственно в окне урока. AI-эксперт проверит код-стайл, укажет на утечки, ошибки и уязвимости.',
+                  title: locale === 'en' ? 'AI Code Review and interactive practice' : 'AI Code Review и интерактивная практика',
+                  desc: locale === 'en' ? 'Write real code right in the lesson window. AI expert will check code style, point out leaks, bugs, and vulnerabilities.' : 'Пишите реальный код непосредственно в окне урока. AI-эксперт проверит код-стайл, укажет на утечки, ошибки и уязвимости.',
                   icon: '💻'
                 },
                 {
-                  title: 'Адаптивный Граф знаний',
-                  desc: 'Если тесты по ноде пройдены с низким результатом, система автоматически перестраивает граф, генерируя микро-модули закрытия пробелов.',
+                  title: locale === 'en' ? 'Adaptive Knowledge Graph' : 'Адаптивный Граф знаний',
+                  desc: locale === 'en' ? 'If node tests are passed with a low score, the system automatically rebuilds the graph, generating micromodules to fill gaps.' : 'Если тесты по ноде пройдены с низким результатом, система автоматически перестраивает граф, генерируя микро-модули закрытия пробелов.',
                   icon: '🧬'
                 },
                 {
-                  title: 'Симуляция собеседований',
-                  desc: 'Mock-интервью в конце курсов. Голосовой/текстовый тренажер, оценивающий вас по вопросам HR и Tech-лидов.',
+                  title: locale === 'en' ? 'Interview Simulation' : 'Симуляция собеседований',
+                  desc: locale === 'en' ? 'Mock interviews at the end of courses. Voice/text simulator evaluating you on HR and Tech Lead questions.' : 'Mock-интервью в конце курсов. Голосовой/текстовый тренажер, оценивающий вас по вопросам HR и Tech-лидов.',
                   icon: '🤝'
                 }
               ].map((feat, i) => (
@@ -685,23 +687,23 @@ export default function Pricing() {
             ) : (
               [
                 {
-                  title: 'Безлимитные курсы',
-                  desc: 'Создавайте неограниченное количество дорожных карт любой сложности. Генерируйте расширенные разделы с максимальной глубиной.',
+                  title: locale === 'en' ? 'Unlimited Courses' : 'Безлимитные курсы',
+                  desc: locale === 'en' ? 'Create an unlimited number of roadmaps of any complexity. Generate advanced sections with maximum depth.' : 'Создавайте неограниченное количество дорожных карт любой сложности. Генерируйте расширенные разделы с максимальной глубиной.',
                   icon: '📚'
                 },
                 {
-                  title: 'AI-Ментор с памятью',
-                  desc: 'Глубокий контекст обучения. Ментор помнит все предыдущие вопросы, сохраняет историю переписки и адаптируется под ваши цели.',
+                  title: locale === 'en' ? 'AI Mentor with Memory' : 'AI-Ментор с памятью',
+                  desc: locale === 'en' ? 'Deep learning context. The mentor remembers all previous questions, keeps conversation history, and adapts to your goals.' : 'Глубокий контекст обучения. Ментор помнит все предыдущие вопросы, сохраняет историю переписки и адаптируется под ваши цели.',
                   icon: '🧠'
                 },
                 {
-                  title: 'Доступ ко всем лигам',
-                  desc: 'Вы больше не ограничены лигой Графит. Соревнуйтесь в Кварцевой, Обсидиановой, Платиновой и легендарной Титановой лигах.',
+                  title: locale === 'en' ? 'Access to All Leagues' : 'Доступ ко всем лигам',
+                  desc: locale === 'en' ? 'You are no longer limited to the Graphite league. Compete in Quartz, Obsidian, Platinum, and the legendary Titanium leagues.' : 'Вы больше не ограничены лигой Графит. Соревнуйтесь в Кварцевой, Обсидиановой, Платиновой и легендарной Титановой лигах.',
                   icon: '🏆'
                 },
                 {
-                  title: 'Официальные сертификаты',
-                  desc: 'Генерируйте верифицируемые PDF-сертификаты после завершения курсов для подтверждения ваших профессиональных навыков.',
+                  title: locale === 'en' ? 'Official Certificates' : 'Официальные сертификаты',
+                  desc: locale === 'en' ? 'Generate verifiable PDF certificates upon course completion to prove your professional skills.' : 'Генерируйте верифицируемые PDF-сертификаты после завершения курсов для подтверждения ваших профессиональных навыков.',
                   icon: '🎓'
                 }
               ].map((feat, i) => (
@@ -725,7 +727,7 @@ export default function Pricing() {
           onClick={() => setShowFullComparison(!showFullComparison)}
           className="inline-flex items-center gap-2 text-xs font-bold text-on-surface-variant hover:text-on-surface transition-colors"
         >
-          {showFullComparison ? 'Скрыть подробное сравнение' : 'Показать подробное сравнение'}
+          {showFullComparison ? locale === 'en' ? 'Hide detailed comparison' : 'Скрыть подробное сравнение' : locale === 'en' ? 'Show detailed comparison' : 'Показать подробное сравнение'}
           {showFullComparison ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
       </div>
@@ -742,8 +744,8 @@ export default function Pricing() {
             <table className="w-full text-left text-xs leading-normal">
               <thead>
                 <tr className="border-b border-outline">
-                  <th className="pb-4 font-bold text-on-surface-variant">Функция</th>
-                  <th className="pb-4 text-center font-bold text-on-surface-variant">Free</th>
+                  <th className="pb-4 font-bold text-on-surface-variant">{locale === 'en' ? 'Feature' : 'Функция'}</th>
+                  <th className="pb-4 text-center font-bold text-on-surface-variant">{t('pricing.freeTitle') || 'Free'}</th>
                   <th className="pb-4 text-center font-bold text-on-surface">Pro</th>
                   <th className="pb-4 text-center font-bold text-indigo-400">Ultra</th>
                 </tr>
@@ -751,52 +753,52 @@ export default function Pricing() {
               <tbody className="divide-y divide-[rgba(255,255,255,0.04)] font-sans">
                 {/* Courses */}
                 <tr>
-                  <td className="py-4 text-on-background">Генерация дорожных карт</td>
-                  <td className="text-center py-4 text-on-surface-variant">2 курса / мес</td>
-                  <td className="text-center py-4 text-on-surface font-bold">Безлимитно</td>
-                  <td className="text-center py-4 text-indigo-300 font-bold">Безлимитно</td>
+                  <td className="py-4 text-on-background">{locale === 'en' ? 'Roadmap Generation' : 'Генерация дорожных карт'}</td>
+                  <td className="text-center py-4 text-on-surface-variant">{locale === 'en' ? '2 courses / mo' : '2 курса / мес'}</td>
+                  <td className="text-center py-4 text-on-surface font-bold">{locale === 'en' ? 'Unlimited' : 'Безлимитно'}</td>
+                  <td className="text-center py-4 text-indigo-300 font-bold">{locale === 'en' ? 'Unlimited' : 'Безлимитно'}</td>
                 </tr>
                 {/* AI Mentor */}
                 <tr>
-                  <td className="py-4 text-on-background">Интерактивный AI-ментор</td>
-                  <td className="text-center py-4 text-on-surface-variant">5 сообщений</td>
-                  <td className="text-center py-4 text-on-surface font-bold">50 сообщ/день</td>
-                  <td className="text-center py-4 text-indigo-300 font-bold">Без ограничений</td>
+                  <td className="py-4 text-on-background">{locale === 'en' ? 'Interactive AI Mentor' : 'Интерактивный AI-ментор'}</td>
+                  <td className="text-center py-4 text-on-surface-variant">{locale === 'en' ? '5 messages' : '5 сообщений'}</td>
+                  <td className="text-center py-4 text-on-surface font-bold">{locale === 'en' ? '50 msg/day' : '50 сообщ/день'}</td>
+                  <td className="text-center py-4 text-indigo-300 font-bold">{locale === 'en' ? 'Unlimited' : 'Без ограничений'}</td>
                 </tr>
                 {/* RAG Generation */}
                 <tr>
-                  <td className="py-4 text-on-background">RAG (PDF, YouTube лекции)</td>
+                  <td className="py-4 text-on-background">{locale === 'en' ? 'RAG (PDF, YouTube Lectures)' : 'RAG (PDF, YouTube лекции)'}</td>
                   <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
                   <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
-                  <td className="text-center py-4 text-indigo-300 font-bold">Включено</td>
+                  <td className="text-center py-4 text-indigo-300 font-bold">{locale === 'en' ? 'Included' : 'Включено'}</td>
                 </tr>
                 {/* Code review */}
                 <tr>
-                  <td className="py-4 text-on-background">AI Code Review и практика программирования</td>
+                  <td className="py-4 text-on-background">{locale === 'en' ? 'AI Code Review & Programming Practice' : 'AI Code Review и практика программирования'}</td>
                   <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
                   <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
-                  <td className="text-center py-4 text-indigo-300 font-bold">Включено</td>
+                  <td className="text-center py-4 text-indigo-300 font-bold">{locale === 'en' ? 'Included' : 'Включено'}</td>
                 </tr>
                 {/* Adaptive Graph */}
                 <tr>
-                  <td className="py-4 text-on-background">Адаптивный граф (микромодули)</td>
+                  <td className="py-4 text-on-background">{locale === 'en' ? 'Adaptive Graph (Micromodules)' : 'Адаптивный граф (микромодули)'}</td>
                   <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
-                  <td className="text-center py-4 text-on-surface font-bold">Частично</td>
-                  <td className="text-center py-4 text-indigo-300 font-bold">Полное покрытие</td>
+                  <td className="text-center py-4 text-on-surface font-bold">{locale === 'en' ? 'Partially' : 'Частично'}</td>
+                  <td className="text-center py-4 text-indigo-300 font-bold">{locale === 'en' ? 'Full Coverage' : 'Полное покрытие'}</td>
                 </tr>
                 {/* Mock Interview */}
                 <tr>
-                  <td className="py-4 text-on-background">ИнтервьюHR / Tech-лид</td>
+                  <td className="py-4 text-on-background">{locale === 'en' ? 'HR / Tech Lead Interview' : 'ИнтервьюHR / Tech-лид'}</td>
                   <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
                   <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
-                  <td className="text-center py-4 text-indigo-300 font-bold">Включено</td>
+                  <td className="text-center py-4 text-indigo-300 font-bold">{locale === 'en' ? 'Included' : 'Включено'}</td>
                 </tr>
                 {/* Export */}
                 <tr>
-                  <td className="py-4 text-on-background">Экспорт в Notion и Anki</td>
+                  <td className="py-4 text-on-background">{locale === 'en' ? 'Export to Notion and Anki' : 'Экспорт в Notion и Anki'}</td>
                   <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
                   <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
-                  <td className="text-center py-4 text-indigo-300 font-bold">Включено</td>
+                  <td className="text-center py-4 text-indigo-300 font-bold">{locale === 'en' ? 'Included' : 'Включено'}</td>
                 </tr>
               </tbody>
             </table>
@@ -829,23 +831,23 @@ export default function Pricing() {
             >
               {checkoutStage === 'input' && (
                 <>
-                  <h3 className="text-xl font-bold text-on-surface mb-1 font-clash">Оформление подписки {selectedUpgradePlan}</h3>
+                  <h3 className="text-xl font-bold text-on-surface mb-1 font-clash">{locale === 'en' ? 'Subscription Checkout ' : 'Оформление подписки '}{selectedUpgradePlan}</h3>
                   <p className="text-xs text-on-surface-variant mb-6">
-                    Тариф: {selectedUpgradePlan} ({billingPeriod === 'monthly' ? `Ежемесячный - $${selectedUpgradePlan === 'ULTRA' ? '29.99' : '9.99'}/мес` : `Ежегодный - $${selectedUpgradePlan === 'ULTRA' ? '249.99' : '89.99'}/год`})
+                    {locale === 'en' ? 'Plan: ' : 'Тариф: '}{selectedUpgradePlan} ({billingPeriod === 'monthly' ? `{locale === 'en' ? 'Monthly - ' : 'Ежемесячный - '}$${selectedUpgradePlan === 'ULTRA' ? '29.99' : '9.99'}/мес` : `{locale === 'en' ? 'Yearly - ' : 'Ежегодный - '}$${selectedUpgradePlan === 'ULTRA' ? '249.99' : '89.99'}/год`})
                   </p>
 
                   <div className="bg-surface-container/20 border border-outline/5 rounded-xl p-4 text-left text-xs text-on-surface-variant mb-6">
-                    <p className="mb-2 text-on-surface font-semibold">🔒 Бета-тестирование</p>
-                    <p>Сейчас платформа находится на стадии закрытого бета-теста. Для активации платного тарифа введите специальный инвайт-код.</p>
+                    <p className="mb-2 text-on-surface font-semibold">{locale === 'en' ? '🔒 Beta Testing' : '🔒 Бета-тестирование'}</p>
+                    <p>{locale === 'en' ? 'The platform is currently in closed beta. Enter a special invite code to activate a paid plan.' : 'Сейчас платформа находится на стадии закрытого бета-теста. Для активации платного тарифа введите специальный инвайт-код.'}</p>
                   </div>
 
                   <div className="text-left mb-6">
-                    <label className="block text-xs font-bold text-on-surface mb-2">Промокод / Инвайт-код</label>
+                    <label className="block text-xs font-bold text-on-surface mb-2">{locale === 'en' ? 'Promo Code / Invite Code' : 'Промокод / Инвайт-код'}</label>
                     <input 
                       type="text"
                       value={promoCode}
                       onChange={(e) => setPromoCode(e.target.value.trim().toUpperCase())}
-                      placeholder="Введите промокод"
+                      placeholder={t('pricing.promoPlaceholder')}
                       className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white font-mono outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all uppercase"
                     />
                   </div>
@@ -874,9 +876,9 @@ export default function Pricing() {
               {checkoutStage === 'processing' && (
                 <div className="py-12 flex flex-col items-center justify-center gap-4">
                   <Loader2 className="w-8 h-8 animate-spin text-on-surface" />
-                  <p className="text-sm font-mono text-on-surface-variant">Авторизация платежа...</p>
+                  <p className="text-sm font-mono text-on-surface-variant">{locale === 'en' ? 'Authorizing Payment...' : 'Авторизация платежа...'}</p>
                   <p className="text-xs text-[#636366] max-w-xs leading-relaxed">
-                    Пожалуйста, не закрывайте окно. Мы проверяем безопасность транзакции через 3D-Secure эмуляцию.
+                    {locale === 'en' ? 'Please do not close this window. We are verifying the transaction security via 3D-Secure emulation.' : 'Пожалуйста, не закрывайте окно. Мы проверяем безопасность транзакции через 3D-Secure эмуляцию.'}
                   </p>
                 </div>
               )}
@@ -908,13 +910,13 @@ export default function Pricing() {
                     className="text-center"
                   >
                     <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 font-clash mb-3">
-                      Поздравляем!
+                      {locale === 'en' ? 'Congratulations!' : 'Поздравляем!'}
                     </h3>
                     <p className="text-sm text-on-background max-w-sm mx-auto leading-relaxed font-medium">
-                      Тариф <span className="font-bold text-indigo-400 uppercase tracking-widest">{selectedUpgradePlan}</span> успешно активирован.
+                      Тариф <span className="font-bold text-indigo-400 uppercase tracking-widest">{selectedUpgradePlan}</span>{locale === 'en' ? ' successfully activated.' : ' успешно активирован.'}
                       <br/>
                       <span className="text-xs text-on-surface-variant mt-2 block">
-                        Откройте для себя новые возможности обучения с ИИ. Добро пожаловать на новый уровень.
+                        {locale === 'en' ? 'Discover new AI learning possibilities. Welcome to the next level.' : 'Откройте для себя новые возможности обучения с ИИ. Добро пожаловать на новый уровень.'}
                       </span>
                     </p>
                   </motion.div>
@@ -961,7 +963,7 @@ export default function Pricing() {
               {cancelling ? (
                 <div className="py-12 flex flex-col items-center justify-center gap-4">
                   <Loader2 className="w-8 h-8 animate-spin text-on-surface" />
-                  <p className="text-sm font-mono text-on-surface-variant">Отмена подписки...</p>
+                  <p className="text-sm font-mono text-on-surface-variant">{locale === 'en' ? 'Cancelling Subscription...' : 'Отмена подписки...'}</p>
                 </div>
               ) : (
                 <>
@@ -969,10 +971,10 @@ export default function Pricing() {
                     <X className="w-5 h-5" strokeWidth={2} />
                   </div>
                   <h3 className="text-xl font-bold text-on-surface mb-2 font-clash">
-                    Вы уверены, что хотите отменить подписку?
+                    {locale === 'en' ? 'Are you sure you want to cancel your subscription?' : 'Вы уверены, что хотите отменить подписку?'}
                   </h3>
                   <p className="text-xs text-on-surface-variant mb-6 leading-relaxed">
-                    Вы потеряете доступ ко всем Pro-возможностям, включая безлимитную генерацию курсов (останется только 1 активный), память сессий AI-ментора, экспертные лиги и PDF-сертификаты.
+                    {locale === 'en' ? 'You will lose access to all Pro features, including unlimited course generation (only 1 active will remain), AI Mentor session memory, expert leagues, and PDF certificates.' : 'Вы потеряете доступ ко всем Pro-возможностям, включая безлимитную генерацию курсов (останется только 1 активный), память сессий AI-ментора, экспертные лиги и PDF-сертификаты.'}
                   </p>
 
                   <div className="flex gap-4">

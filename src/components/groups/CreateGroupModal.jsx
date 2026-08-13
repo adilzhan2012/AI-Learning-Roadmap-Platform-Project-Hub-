@@ -3,8 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Search, X, UserPlus, Check, Sparkles, AlertCircle, Loader2 } from 'lucide-react';
 import { searchUsersByUsername, createGroup } from '../../services/groupService.js';
 import { usePlanLimits } from '../../hooks/usePlanLimits.js';
+import { useLocale } from '../../i18n.js';
 
 export default function CreateGroupModal({ isOpen, onClose, courseId, courseTitle, onGroupCreated }) {
+  const locale = useLocale();
   const { groupLessonsRemaining, groupLessonsLimit, checkLimit } = usePlanLimits();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -45,7 +47,9 @@ export default function CreateGroupModal({ isOpen, onClose, courseId, courseTitl
 
   const handleSelectUser = (user) => {
     if (selectedUsers.length >= 3) {
-      setError('Вы можете пригласить максимум 3 человек (всего до 4 участников в группе)');
+      setError(locale === 'en' 
+        ? 'You can invite up to 3 people (maximum 4 participants in total)' 
+        : 'Вы можете пригласить максимум 3 человек (всего до 4 участников в группе)');
       return;
     }
     setError('');
@@ -80,7 +84,7 @@ export default function CreateGroupModal({ isOpen, onClose, courseId, courseTitl
       }
     } catch (err) {
       console.error("Create group error:", err);
-      setError(err.message || 'Ошибка при создании группы. Попробуйте снова.');
+      setError(err.message || (locale === 'en' ? 'Failed to create study group. Please try again.' : 'Ошибка при создании группы. Попробуйте снова.'));
     } finally {
       setCreating(false);
     }
@@ -104,7 +108,9 @@ export default function CreateGroupModal({ isOpen, onClose, courseId, courseTitl
                 <Users className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-on-surface text-lg leading-tight">Пройти с друзьями</h3>
+                <h3 className="font-bold text-on-surface text-lg leading-tight">
+                  {locale === 'en' ? 'Study with Friends' : 'Пройти с друзьями'}
+                </h3>
                 <p className="text-xs text-on-surface-variant mt-0.5 truncate max-w-[260px]">
                   {courseTitle}
                 </p>
@@ -123,10 +129,14 @@ export default function CreateGroupModal({ isOpen, onClose, courseId, courseTitl
             <div className="p-4 rounded-2xl bg-primary/5 border border-primary/15 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <Sparkles className="w-4 h-4 text-primary shrink-0" />
-                <span className="text-xs font-semibold text-on-surface">Ваш лимит на этот месяц:</span>
+                <span className="text-xs font-semibold text-on-surface">
+                  {locale === 'en' ? 'Your monthly allowance:' : 'Ваш лимит на этот месяц:'}
+                </span>
               </div>
               <span className="text-xs font-mono font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20">
-                осталось {groupLessonsRemaining} из {groupLessonsLimit}
+                {locale === 'en'
+                  ? `${groupLessonsRemaining} of ${groupLessonsLimit} left`
+                  : `осталось ${groupLessonsRemaining} из ${groupLessonsLimit}`}
               </span>
             </div>
 
@@ -140,7 +150,7 @@ export default function CreateGroupModal({ isOpen, onClose, courseId, courseTitl
             {/* User Search Input */}
             <div>
               <label className="block text-xs font-bold text-on-surface mb-2 uppercase tracking-wider">
-                Пригласить участников (до 3 человек)
+                {locale === 'en' ? 'Invite peers (up to 3 friends)' : 'Пригласить участников (до 3 человек)'}
               </label>
               <div className="relative">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
@@ -148,7 +158,7 @@ export default function CreateGroupModal({ isOpen, onClose, courseId, courseTitl
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Поиск по юзернейму (например, alex)..."
+                  placeholder={locale === 'en' ? 'Search by username (e.g. alex)...' : 'Поиск по юзернейму (например, alex)...'}
                   className="w-full pl-10 pr-10 py-3 bg-surface-container-high border border-outline-variant rounded-xl text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-primary transition-colors"
                 />
                 {searching && (
@@ -190,9 +200,13 @@ export default function CreateGroupModal({ isOpen, onClose, courseId, courseTitl
             <div>
               <div className="flex justify-between items-center mb-2">
                 <span className="text-xs font-bold text-on-surface uppercase tracking-wider">
-                  Выбранные участники ({selectedUsers.length + 1} / 4)
+                  {locale === 'en'
+                    ? `Selected participants (${selectedUsers.length + 1} / 4)`
+                    : `Выбранные участники (${selectedUsers.length + 1} / 4)`}
                 </span>
-                <span className="text-[11px] text-on-surface-variant">включая вас</span>
+                <span className="text-[11px] text-on-surface-variant">
+                  {locale === 'en' ? 'including you' : 'включая вас'}
+                </span>
               </div>
 
               <div className="space-y-2">
@@ -200,11 +214,15 @@ export default function CreateGroupModal({ isOpen, onClose, courseId, courseTitl
                 <div className="p-3 rounded-xl bg-surface-container-low border border-outline-variant flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-xs shadow-sm">
-                      Вы
+                      {locale === 'en' ? 'You' : 'Вы'}
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-on-surface">Создатель группы (Вы)</p>
-                      <p className="text-[10px] font-mono text-emerald-500">Организатор</p>
+                      <p className="text-xs font-bold text-on-surface">
+                        {locale === 'en' ? 'Group Creator (You)' : 'Создатель группы (Вы)'}
+                      </p>
+                      <p className="text-[10px] font-mono text-emerald-500">
+                        {locale === 'en' ? 'Host' : 'Организатор'}
+                      </p>
                     </div>
                   </div>
                   <Check className="w-4 h-4 text-emerald-500" />
@@ -228,7 +246,7 @@ export default function CreateGroupModal({ isOpen, onClose, courseId, courseTitl
                     <button
                       onClick={() => handleRemoveUser(user.userId)}
                       className="p-1.5 rounded-lg hover:bg-surface-container-highest text-on-surface-variant hover:text-red-500 transition-colors"
-                      title="Убрать"
+                      title={locale === 'en' ? 'Remove' : 'Убрать'}
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -244,7 +262,7 @@ export default function CreateGroupModal({ isOpen, onClose, courseId, courseTitl
               onClick={onClose}
               className="px-4 py-2.5 rounded-xl border border-outline-variant text-on-surface font-semibold text-xs hover:bg-surface-container-highest transition-colors"
             >
-              Отмена
+              {locale === 'en' ? 'Cancel' : 'Отмена'}
             </button>
             <button
               onClick={handleCreateGroup}
@@ -254,12 +272,16 @@ export default function CreateGroupModal({ isOpen, onClose, courseId, courseTitl
               {creating ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Создание...</span>
+                  <span>{locale === 'en' ? 'Creating...' : 'Создание...'}</span>
                 </>
               ) : (
                 <>
                   <Users className="w-4 h-4" />
-                  <span>Создать группу {selectedUsers.length > 0 ? `(${selectedUsers.length + 1} чел.)` : ''}</span>
+                  <span>
+                    {locale === 'en'
+                      ? `Create Group ${selectedUsers.length > 0 ? `(${selectedUsers.length + 1} peers)` : ''}`
+                      : `Создать группу ${selectedUsers.length > 0 ? `(${selectedUsers.length + 1} чел.)` : ''}`}
+                  </span>
                 </>
               )}
             </button>

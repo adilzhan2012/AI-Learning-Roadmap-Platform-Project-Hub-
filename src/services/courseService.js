@@ -173,8 +173,9 @@ export async function generateCourseAndSave(userId, topic, level, preferences = 
         console.warn("Deduplication check warning:", dedupErr);
       }
 
+      const currentLocale = getLocale();
       // 2. Course Template Cache Check (Returns null if RAG / private / personalized)
-      const templateKey = buildCourseCacheKey(topic, level, preferences);
+      const templateKey = buildCourseCacheKey(topic, level, preferences, currentLocale);
       const templateRef = templateKey ? doc(db, 'courseTemplates', templateKey) : null;
       
       let cachedTemplate = null;
@@ -210,7 +211,9 @@ Respond with strictly valid JSON: {"safe": boolean, "reason": "short explanation
           const modResult = parseAIJson(modResultText);
           if (!modResult || modResult.safe === false) {
             const error = new Error('TOPIC_MODERATION_REJECTED');
-            error.userMessage = 'Тема содержит недопустимый контент. Пожалуйста, переформулируйте ваш запрос.';
+            error.userMessage = currentLocale === 'en' 
+              ? 'The topic contains disallowed content. Please rephrase your request.' 
+              : 'Тема содержит недопустимый контент. Пожалуйста, переформулируйте ваш запрос.';
             throw error;
           }
         } catch (modErr) {
@@ -251,7 +254,6 @@ Respond with strictly valid JSON: {"safe": boolean, "reason": "short explanation
         };
       } else {
         // AI Generation Pipeline
-        const currentLocale = getLocale();
         const languageName = currentLocale === 'ru' ? 'Russian' : 'English';
 
         const durationMode = preferences.duration || 'Standard';
@@ -464,7 +466,8 @@ The response must be a valid JSON object matching this schema:
         normalizedTopic: normalizedTopic,
         title: courseTitle,
         subject: courseSubject,
-        category: '✨ Сгенерировано ИИ',
+        language: currentLocale,
+        category: currentLocale === 'en' ? '✨ AI Generated' : '✨ Сгенерировано ИИ',
         level: courseDataToUse.level || level,
         hours: formatCourseHours(courseDataToUse.hours || preferences.duration || '10h'),
         lessonsCount: courseDataToUse.lessonsCount || nodes.length * 3,
@@ -516,7 +519,11 @@ export async function generateLessonContent(courseId, nodeId, courseTitle, topic
     return targetNode.content;
   }
 
-  const courseTemplateId = courseData.courseTemplateId || buildCourseCacheKey(courseData.topic || courseTitle, courseData.level || 'Intermediate', preferences);
+  const courseLanguage = courseData.language || 'ru';
+  const languageName = courseLanguage === 'ru' ? 'Russian' : 'English';
+  const practiceHeading = courseLanguage === 'en' ? '## Practice / Homework' : '## Практика / Домашнее задание';
+
+  const courseTemplateId = courseData.courseTemplateId || buildCourseCacheKey(courseData.topic || courseTitle, courseData.level || 'Intermediate', preferences, courseLanguage);
   const rawNodeId = targetNode?.rawNodeId || targetNode?.id || nodeId;
   const lessonKey = buildLessonCacheKey(rawNodeId);
 
@@ -543,9 +550,6 @@ export async function generateLessonContent(courseId, nodeId, courseTitle, topic
   let finalContent = cachedContent;
 
   if (!finalContent) {
-    const currentLocale = getLocale();
-    const languageName = currentLocale === 'ru' ? 'Russian' : 'English';
-
     let prefString = '';
     let flashcardInstruction = 'include 3-5 flashcards';
     
@@ -586,7 +590,7 @@ Requirements:
 6. The output should be pure markdown, suitable for rendering in a React-Markdown component.
 7. CRITICAL: You must include at least ONE Markdown table and ONE Mermaid diagram (using \`\`\`mermaid) to visually and structurally explain the concepts.
 7. CRITICAL: Add exactly ONE image placeholder right after the H1 title using this EXACT format: \`[IMAGE: English Keyword for Wikipedia Search]\` (e.g., \`[IMAGE: Python (programming language)]\` or \`[IMAGE: Arduino Uno]\`). Use highly specific nouns.
-8. CRITICAL: At the end of the lesson content, create a Practice section. Start it with an H2 heading "## Практика / Домашнее задание". Include 1-3 practical tasks.
+8. CRITICAL: At the end of the lesson content, create a Practice section. Start it with an H2 heading "${practiceHeading}". Include 1-3 practical tasks.
 9. CRITICAL: At the very end of the file (after the homework), ${flashcardInstruction} for the most important key terms using EXACTLY this text format:
 ---FLASHCARD---
 Term: [Concept Name]
@@ -681,7 +685,10 @@ export async function generateHomeworkWithRubric(courseId, nodeId, lessonContent
 
   const targetNode = (courseData.nodes || []).find(n => String(n.id) === String(nodeId));
   const rawNodeId = targetNode?.rawNodeId || targetNode?.id || nodeId;
-  const courseTemplateId = courseData.courseTemplateId || buildCourseCacheKey(courseData.topic || courseData.title, courseData.level || 'Intermediate', courseData.preferences || {});
+  const courseLanguage = courseData.language || 'ru';
+  const languageName = courseLanguage === 'ru' ? 'Russian' : 'English';
+
+  const courseTemplateId = courseData.courseTemplateId || buildCourseCacheKey(courseData.topic || courseData.title, courseData.level || 'Intermediate', courseData.preferences || {}, courseLanguage);
   const lessonKey = buildLessonCacheKey(rawNodeId);
 
   let templateDocRef = null;
@@ -703,9 +710,6 @@ export async function generateHomeworkWithRubric(courseId, nodeId, lessonContent
       console.warn("Homework cache check warning:", cacheErr);
     }
   }
-
-  const currentLocale = getLocale();
-  const languageName = currentLocale === 'ru' ? 'Russian' : 'English';
 
   const prompt = `You are an expert educational reviewer. Based on the lesson material below for "${topicLabel}", create an interactive homework assignment and a strict 3-5 criterion rubric for AI evaluation.
 CRITICAL INSTRUCTION: Respond ENTIRELY in ${languageName} language.
@@ -737,16 +741,28 @@ Return ONLY a valid JSON object:
   const textResponse = await withTimeout(
     callGeminiWithRetry(null, prompt, 'ai_question'),
     50000,
-    'Превышено время ожидания генерации задания (50 сек). Пожалуйста, попробуйте еще раз.'
+    courseLanguage === 'en' 
+      ? 'Timeout generating homework assignment (50s). Please try again.' 
+      : 'Превышено время ожидания генерации задания (50 сек). Пожалуйста, попробуйте еще раз.'
   );
   if (!textResponse) throw new Error('Empty response from Gemini API');
 
   const parsed = parseAIJson(textResponse);
   const result = {
-    prompt: parsed.prompt || `Практическое задание по теме "${topicLabel}".`,
+    prompt: parsed.prompt || (courseLanguage === 'en' ? `Practical assignment for "${topicLabel}".` : `Практическое задание по теме "${topicLabel}".`),
     rubric: parsed.rubric || [
-      { id: 'crit_1', criterion: 'Понимание концепции', description: 'Ответ демонстрирует правильное понимание темы.', weight: 50 },
-      { id: 'crit_2', criterion: 'Практическая применимость', description: 'Приведены корректные примеры или решение.', weight: 50 }
+      { 
+        id: 'crit_1', 
+        criterion: courseLanguage === 'en' ? 'Concept Understanding' : 'Понимание концепции', 
+        description: courseLanguage === 'en' ? 'Response demonstrates accurate topic comprehension.' : 'Ответ демонстрирует правильное понимание темы.', 
+        weight: 50 
+      },
+      { 
+        id: 'crit_2', 
+        criterion: courseLanguage === 'en' ? 'Practical Application' : 'Практическая применимость', 
+        description: courseLanguage === 'en' ? 'Correct examples or solution provided.' : 'Приведены корректные примеры или решение.', 
+        weight: 50 
+      }
     ]
   };
 
@@ -779,8 +795,17 @@ export async function reviewHomeworkSubmission(courseId, nodeId, submissionText,
   const userId = auth.currentUser?.uid;
   if (!userId) throw new Error('Unauthenticated');
 
-  const currentLocale = getLocale();
-  const languageName = currentLocale === 'ru' ? 'Russian' : 'English';
+  let courseLanguage = 'ru';
+  try {
+    const courseRef = doc(db, 'courses', courseId);
+    const courseSnap = await getDoc(courseRef);
+    if (courseSnap.exists()) {
+      courseLanguage = courseSnap.data().language || 'ru';
+    }
+  } catch (e) {
+    console.warn('Could not retrieve course language for homework review, falling back to ru:', e);
+  }
+  const languageName = courseLanguage === 'ru' ? 'Russian' : 'English';
 
   // fix/critical-round1: разделяем системный промпт и пользовательский input на отдельные Gemini messages.
   // submissionText помещается в user-role сообщение — структурная защита от prompt injection.
@@ -1283,7 +1308,7 @@ export async function getRecentActivities(userId, maxLimit = 5) {
     .slice(0, maxLimit);
 }
 
-export async function generateELI5Content(originalContent, courseTemplateId = null, rawNodeId = null) {
+export async function generateELI5Content(originalContent, courseTemplateId = null, rawNodeId = null, courseLanguage = 'ru') {
   let lessonDocRef = null;
   if (courseTemplateId && rawNodeId) {
     try {
@@ -1301,9 +1326,7 @@ export async function generateELI5Content(originalContent, courseTemplateId = nu
     }
   }
 
-  const currentLocale = getLocale();
-  let languageName = 'English';
-  if (currentLocale === 'ru') languageName = 'Russian';
+  const languageName = courseLanguage === 'en' ? 'English' : 'Russian';
   
   const prompt = `You are an expert at explaining complex concepts to complete beginners.
 Rewrite the following educational lesson so that a 5-year-old or a complete novice could understand it.
@@ -1330,10 +1353,8 @@ ${originalContent}
   return result;
 }
 
-export async function generateRealWorldExample(topicLabel, topicDesc) {
-
-  const currentLocale = localStorage.getItem('yourway-locale');
-  let languageName = currentLocale === 'en' ? 'English' : 'Russian';
+export async function generateRealWorldExample(topicLabel, topicDesc, courseLanguage = 'ru') {
+  const languageName = courseLanguage === 'en' ? 'English' : 'Russian';
 
   const prompt = `You are a career mentor. The student is learning about "${sanitizeUserInput(topicLabel, 300)}".
 Context: ${sanitizeUserInput(topicDesc, 500)}
@@ -1364,13 +1385,15 @@ export async function rebuildGraphForFailedNode(courseId, nodeId) {
   const failedNode = course.nodes.find(n => String(n.id) === String(nodeId));
   if (!failedNode) return null;
 
-  // Check if a micro-module for this node already exists to avoid duplicates
-  const alreadyExists = course.nodes.some(n => n.label.includes(`Работа над ошибками: ${failedNode.label}`));
-  if (alreadyExists) return course;
+  const courseLanguage = course.language || 'ru';
+  const languageName = courseLanguage === 'en' ? 'English' : 'Russian';
 
-  const currentLocale = getLocale();
-  let languageName = 'English';
-  if (currentLocale === 'ru') languageName = 'Russian';
+  // Check if a micro-module for this node already exists to avoid duplicates
+  const alreadyExists = course.nodes.some(n => 
+    n.label.includes(`Работа над ошибками: ${failedNode.label}`) || 
+    n.label.includes(`Review / Gap Closing: ${failedNode.label}`)
+  );
+  if (alreadyExists) return course;
 
   const prompt = `You are a friendly AI tutor correcting student errors.
 The student has failed a test on the topic: "${failedNode.label}".
@@ -1385,7 +1408,9 @@ CRITICAL INSTRUCTION: Respond entirely in ${languageName}.`;
     aiGeneratedContent = await callGeminiWithRetry(null, prompt, 'ai_question');
   } catch (e) {
     console.error("Failed to generate micro-module content via AI", e);
-    aiGeneratedContent = `## Микро-модуль для закрытия пробелов: ${failedNode.label}\n\nЗдесь собраны ключевые моменты и пояснения по теме "${failedNode.label}". Пожалуйста, перечитайте основные материалы и обратитесь к AI-ассистенту за дополнительными вопросами.`;
+    aiGeneratedContent = courseLanguage === 'en'
+      ? `## Review & Gap Closing: ${failedNode.label}\n\nKey concepts and rules for "${failedNode.label}". Please review the material and ask the AI Tutor if you have any questions.`
+      : `## Микро-модуль для закрытия пробелов: ${failedNode.label}\n\nЗдесь собраны ключевые моменты и пояснения по теме "${failedNode.label}". Пожалуйста, перечитайте основные материалы и обратитесь к AI-ассистенту за дополнительными вопросами.`;
   }
 
   const { nodes: finalNodes, edges: updatedEdges } = buildRebuiltGraph(course.nodes, course.edges, failedNode, aiGeneratedContent);
@@ -1397,6 +1422,35 @@ CRITICAL INSTRUCTION: Respond entirely in ${languageName}.`;
   });
 
   return { ...course, nodes: finalNodes, edges: updatedEdges };
+}
+
+/**
+ * Migration helper: backfills legacy courses lacking an explicit `language` field with 'ru'
+ */
+export async function backfillLegacyCoursesLanguage(userId = null) {
+  try {
+    const coursesCol = collection(db, 'courses');
+    let q;
+    if (userId) {
+      q = query(coursesCol, where('userId', '==', userId));
+    } else {
+      q = query(coursesCol);
+    }
+    const snap = await getDocs(q);
+    const updatePromises = [];
+    snap.forEach(docSnap => {
+      const data = docSnap.data();
+      if (!data.language) {
+        updatePromises.push(updateDoc(doc(db, 'courses', docSnap.id), { language: 'ru' }));
+      }
+    });
+    await Promise.all(updatePromises);
+    console.log(`[Migration] Backfilled language: 'ru' for ${updatePromises.length} legacy courses.`);
+    return updatePromises.length;
+  } catch (err) {
+    console.warn('[Migration] Error during backfillLegacyCoursesLanguage:', err);
+    return 0;
+  }
 }
 
 // Get referrals count

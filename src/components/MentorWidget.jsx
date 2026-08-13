@@ -21,15 +21,17 @@ import { auth, db, functions } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { doc, getDoc, setDoc, collection, query, orderBy, getDocs, deleteDoc } from 'firebase/firestore';
-import { callGeminiWithRetry, getUserCourses, getUserStats, generateCourseAndSave } from '../services/courseService.js';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import { PLAN_LIMITS } from '../constants/planLimits.js';
 import ReactMarkdown from 'react-markdown';
 import MentorBubble from './MentorBubble.jsx';
+import { t, useLocale } from '../i18n.js';
+import { getUserStats, getUserCourses, callGeminiWithRetry } from '../services/courseService.js';
 
 export default function MentorWidget() {
   const navigate = useNavigate();
   const location = useLocation();
+  const locale = useLocale();
   const [user, setUser] = useState(auth.currentUser);
   const [isOpen, setIsOpen] = useState(false);
   const [courses, setCourses] = useState([]);
@@ -629,7 +631,7 @@ ${planCourseInstruction}`;
             </div>
 
             <span className="hidden sm:inline-block text-xs font-bold tracking-wide text-white">
-              AI Наставник
+              {locale === 'en' ? 'AI Mentor' : 'AI Наставник'}
             </span>
           </motion.button>
         )}
@@ -665,7 +667,7 @@ ${planCourseInstruction}`;
                     <BrainCircuit className="w-5 h-5 text-indigo-400" />
                   </div>
                   <span className="text-base font-bold text-on-surface tracking-tight flex items-center gap-2">
-                    AI Ментор
+                    {locale === 'en' ? 'AI Mentor' : 'AI Ментор'}
                     {plan === 'ULTRA' ? (
                       <span className="text-[9px] font-black tracking-widest text-indigo-500 dark:text-indigo-300 border border-indigo-500/35 px-2 py-0.5 rounded bg-indigo-500/10 uppercase hidden sm:inline-block">Ultra</span>
                     ) : plan === 'PRO' ? (
@@ -705,7 +707,7 @@ ${planCourseInstruction}`;
                       className="w-full flex items-center justify-center gap-1.5 bg-on-surface hover:opacity-80 disabled:opacity-50 text-surface py-2.5 rounded-xl text-sm font-bold transition-all"
                     >
                       <Plus className="w-4 h-4" />
-                      Новый диалог
+                      {locale === 'en' ? 'New Chat' : 'Новый диалог'}
                     </button>
                   </div>
 
@@ -714,13 +716,15 @@ ${planCourseInstruction}`;
                     <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-zinc-500 gap-2">
                       <Lock className="w-5 h-5 text-zinc-600" />
                       <span className="text-[10px] leading-relaxed">
-                        История диалогов доступна на тарифах <strong>PRO</strong> и <strong>ULTRA</strong>
+                        {locale === 'en' 
+                          ? <>Chat history is available with <strong>PRO</strong> and <strong>ULTRA</strong> plans</>
+                          : <>История диалогов доступна на тарифах <strong>PRO</strong> и <strong>ULTRA</strong></>}
                       </span>
                       <button 
                         onClick={() => { setIsOpen(false); navigate('/pricing'); }} 
                         className="mt-2 text-[10px] bg-amber-500 hover:bg-amber-400 text-black px-3 py-1.5 rounded-lg font-extrabold transition-colors uppercase tracking-wider"
                       >
-                        Купить PRO
+                        {locale === 'en' ? 'Upgrade to PRO' : 'Купить PRO'}
                       </button>
                     </div>
                   ) : (
@@ -776,9 +780,17 @@ ${planCourseInstruction}`;
                       <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-10 pointer-events-none">
                         <div className="max-w-md w-full animate-in fade-in zoom-in duration-500">
                           <h2 className="text-2xl font-bold text-on-surface mb-2">
-                            {new Date().getHours() < 6 ? 'Доброй ночи' : new Date().getHours() < 12 ? 'Доброе утро' : new Date().getHours() < 18 ? 'Добрый день' : 'Добрый вечер'}, {profile?.firstName || 'Пользователь'}!
+                            {new Date().getHours() < 6
+                              ? (locale === 'en' ? 'Good night' : 'Доброй ночи')
+                              : new Date().getHours() < 12
+                              ? (locale === 'en' ? 'Good morning' : 'Доброе утро')
+                              : new Date().getHours() < 18
+                              ? (locale === 'en' ? 'Good afternoon' : 'Добрый день')
+                              : (locale === 'en' ? 'Good evening' : 'Добрый вечер')}, {profile?.firstName || (locale === 'en' ? 'Learner' : 'Пользователь')}!
                           </h2>
-                          <p className="text-on-surface-variant text-base">Чем сегодня займемся?</p>
+                          <p className="text-on-surface-variant text-base">
+                            {locale === 'en' ? 'What would you like to explore today?' : 'Чем сегодня займемся?'}
+                          </p>
                         </div>
                       </div>
                     )}
@@ -806,19 +818,21 @@ ${planCourseInstruction}`;
                                   <button
                                     onClick={() => handleFeedback(msg.id, cleanContent, 1)}
                                     className={`text-xs px-2 py-0.5 rounded-lg border transition-colors ${feedbacks[msg.id] === 1 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-bold' : 'bg-surface-container border-outline-variant text-on-surface-variant hover:text-emerald-400'}`}
-                                    title="Полезный ответ"
+                                    title={locale === 'en' ? 'Helpful answer' : 'Полезный ответ'}
                                   >
                                     👍
                                   </button>
                                   <button
                                     onClick={() => handleFeedback(msg.id, cleanContent, -1)}
                                     className={`text-xs px-2 py-0.5 rounded-lg border transition-colors ${feedbacks[msg.id] === -1 ? 'bg-rose-500/20 text-rose-400 border-rose-500/30 font-bold' : 'bg-surface-container border-outline-variant text-on-surface-variant hover:text-rose-400'}`}
-                                    title="Непонятный ответ"
+                                    title={locale === 'en' ? 'Unclear answer' : 'Непонятный ответ'}
                                   >
                                     👎
                                   </button>
                                   {feedbacks[msg.id] && (
-                                    <span className="text-[10px] text-indigo-400 font-medium animate-in fade-in">Спасибо за отзыв!</span>
+                                    <span className="text-[10px] text-indigo-400 font-medium animate-in fade-in">
+                                      {locale === 'en' ? 'Thanks for feedback!' : 'Спасибо за отзыв!'}
+                                    </span>
                                   )}
                                 </div>
                               )}
@@ -830,7 +844,7 @@ ${planCourseInstruction}`;
                               <div className="flex items-center justify-between mb-3 border-b border-indigo-500/10 pb-2">
                                 <span className="text-[10px] font-black text-indigo-500 dark:text-indigo-400 tracking-wider uppercase flex items-center gap-1">
                                   <Crown className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400 animate-pulse" />
-                                  Персональное предложение
+                                  {locale === 'en' ? 'Personal Proposal' : 'Персональное предложение'}
                                 </span>
                                 <span className="text-[8px] bg-indigo-500/10 dark:bg-indigo-500/20 border border-indigo-500/20 dark:border-indigo-400/30 text-indigo-600 dark:text-indigo-300 px-1.5 py-0.5 rounded font-mono uppercase">
                                   {proposalData.level}
@@ -841,7 +855,7 @@ ${planCourseInstruction}`;
                                 📚 {proposalData.topic}
                               </h4>
                               <p className="text-xs text-on-surface-variant leading-relaxed mb-3">
-                                {proposalData.preferences.duration} • {proposalData.preferences.dailyTime} в день
+                                {proposalData.preferences.duration} • {proposalData.preferences.dailyTime} {locale === 'en' ? '/ day' : 'в день'}
                               </p>
                               
                               <button 
@@ -849,7 +863,9 @@ ${planCourseInstruction}`;
                                 disabled={courseGenerating || generatedTopics.has(proposalData.topic)}
                                 className="w-full flex items-center justify-center gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-on-surface font-bold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                               >
-                                {generatedTopics.has(proposalData.topic) ? '✅ Роудмап запущен' : 'Сгенерировать и запустить роудмап'}
+                                {generatedTopics.has(proposalData.topic) 
+                                  ? (locale === 'en' ? '✅ Roadmap Launched' : '✅ Роудмап запущен') 
+                                  : (locale === 'en' ? 'Generate & Launch Roadmap' : 'Сгенерировать и запустить роудмап')}
                                 {!generatedTopics.has(proposalData.topic) && <ArrowRight className="w-3.5 h-3.5" />}
                               </button>
                             </div>
@@ -863,7 +879,7 @@ ${planCourseInstruction}`;
                               }}
                               className="mt-2 py-1.5 px-3 bg-on-surface/10 hover:bg-on-surface/15 border border-white/10 rounded-lg text-on-surface font-bold text-[10px] flex items-center gap-1 transition-all"
                             >
-                              🚀 Открыть Граф знаний
+                              🚀 {locale === 'en' ? 'Open Knowledge Graph' : 'Открыть Граф знаний'}
                             </button>
                           )}
                         </div>
@@ -873,14 +889,16 @@ ${planCourseInstruction}`;
                     {generating && (
                       <div className="flex items-center gap-2 text-on-surface-variant text-[10px] bg-surface border border-outline-variant w-fit rounded-xl px-3 py-2 select-none">
                         <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-500 dark:text-indigo-400" />
-                        <span>Наставник думает...</span>
+                        <span>{locale === 'en' ? 'Mentor is thinking...' : 'Наставник думает...'}</span>
                       </div>
                     )}
 
                     {courseGenerating && (
                       <div className="flex flex-col items-center justify-center py-4 bg-indigo-500/5 dark:bg-[#1E1B4B]/20 border border-indigo-500/10 rounded-xl gap-2">
                         <Loader2 className="w-5 h-5 animate-spin text-indigo-500 dark:text-indigo-400" />
-                        <span className="text-[10px] text-indigo-600 dark:text-indigo-300 font-bold">Синтез программы и знаний...</span>
+                        <span className="text-[10px] text-indigo-600 dark:text-indigo-300 font-bold">
+                          {locale === 'en' ? 'Synthesizing syllabus and content...' : 'Синтез программы и знаний...'}
+                        </span>
                       </div>
                     )}
 

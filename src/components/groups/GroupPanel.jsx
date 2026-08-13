@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Activity, Send, ChevronRight, ChevronLeft, Users, Sparkles, AlertTriangle } from 'lucide-react';
 import { auth, db } from '../../firebase.js';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { useLocale } from '../../i18n.js';
 
 export default function GroupPanel({ 
   group, 
@@ -13,6 +14,7 @@ export default function GroupPanel({
   isOpen, 
   onToggle 
 }) {
+  const locale = useLocale();
   const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'activity'
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef(null);
@@ -76,7 +78,9 @@ export default function GroupPanel({
               </div>
             ))}
           </div>
-          <span className="text-xs font-bold text-on-surface">Чат группы</span>
+          <span className="text-xs font-bold text-on-surface">
+            {locale === 'en' ? 'Group Chat' : 'Чат группы'}
+          </span>
           <ChevronLeft className="w-4 h-4 text-on-surface-variant group-hover:-translate-x-0.5 transition-transform" />
         </button>
       )}
@@ -96,15 +100,15 @@ export default function GroupPanel({
               <div className="flex items-center gap-2 min-w-0">
                 <Users className="w-4 h-4 text-primary shrink-0" />
                 <h3 className="font-bold text-on-surface text-sm truncate">
-                  Группа: «{group.courseTitle}»
+                  {locale === 'en' ? `Group: "${group.courseTitle}"` : `Группа: «${group.courseTitle}»`}
                 </h3>
               </div>
               <div className="flex items-center gap-1">
                 {hasAcceptedRules && (
                   <button
                     className="p-1.5 rounded-lg text-red-500 hover:bg-red-500/10 transition-colors"
-                    title="Сообщить о проблеме"
-                    onClick={() => alert('Форма жалоб и отправки репортов будет доступна в следующем обновлении!')}
+                    title={locale === 'en' ? "Report an issue" : "Сообщить о проблеме"}
+                    onClick={() => alert(locale === 'en' ? 'Report forms will be available in the upcoming update!' : 'Форма жалоб и отправки репортов будет доступна в следующем обновлении!')}
                   >
                     <AlertTriangle className="w-4 h-4" />
                   </button>
@@ -112,7 +116,7 @@ export default function GroupPanel({
                 <button
                   onClick={onToggle}
                   className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-highest transition-colors"
-                  title="Свернуть"
+                  title={locale === 'en' ? "Collapse" : "Свернуть"}
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
@@ -124,25 +128,47 @@ export default function GroupPanel({
                 <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3 text-primary">
                   <Sparkles className="w-6 h-6" />
                 </div>
-                <h3 className="text-sm font-bold text-on-surface mb-4">🛡️ Кодекс общения в группе</h3>
+                <h3 className="text-sm font-bold text-on-surface mb-4">
+                  {locale === 'en' ? '🛡️ Group Code of Conduct' : '🛡️ Кодекс общения в группе'}
+                </h3>
                 <div className="text-left text-xs text-on-surface-variant space-y-4 bg-surface-container-low p-4 rounded-xl border border-outline-variant flex-1 overflow-y-auto shadow-inner">
-                  <p className="font-medium text-on-surface">Привет! Наша платформа — это безопасное и дружелюбное пространство для всех. Чтобы обучение было комфортным, соблюдай эти правила:</p>
+                  <p className="font-medium text-on-surface">
+                    {locale === 'en'
+                      ? 'Welcome! Our platform is a safe and constructive space for learning. To keep our community thriving, please adhere to these guidelines:'
+                      : 'Привет! Наша платформа — это безопасное и дружелюбное пространство для всех. Чтобы обучение было комфортным, соблюдай эти правила:'}
+                  </p>
                   
                   <div>
-                    <strong className="text-on-surface block mb-1">1. Уважение и дружелюбие 🤝</strong>
-                    Мы общаемся вежливо. Любые оскорбления, буллинг, агрессия и переход на личности строго запрещены.
+                    <strong className="text-on-surface block mb-1">
+                      {locale === 'en' ? '1. Respect and Civility 🤝' : '1. Уважение и дружелюбие 🤝'}
+                    </strong>
+                    {locale === 'en'
+                      ? 'Communicate politely. Bullying, harassment, hate speech, and personal insults are strictly prohibited.'
+                      : 'Мы общаемся вежливо. Любые оскорбления, буллинг, агрессия и переход на личности строго запрещены.'}
                   </div>
                   <div>
-                    <strong className="text-on-surface block mb-1">2. Чистая речь 🙊</strong>
-                    В чате действует полный запрет на мат и нецензурную лексику (в том числе завуалированную).
+                    <strong className="text-on-surface block mb-1">
+                      {locale === 'en' ? '2. Clean Language 🙊' : '2. Чистая речь 🙊'}
+                    </strong>
+                    {locale === 'en'
+                      ? 'Profanity and offensive language are prohibited in all study group chats.'
+                      : 'В чате действует полный запрет на мат и нецензурную лексику (в том числе завуалированную).'}
                   </div>
                   <div>
-                    <strong className="text-on-surface block mb-1">3. Никакого спама и рекламы 🚫</strong>
-                    Запрещено отправлять рекламу, спам, подозрительные ссылки и любой неподобающий контент (18+ и т.д.).
+                    <strong className="text-on-surface block mb-1">
+                      {locale === 'en' ? '3. No Spam or Promotion 🚫' : '3. Никакого спама и рекламы 🚫'}
+                    </strong>
+                    {locale === 'en'
+                      ? 'Advertising, spam, unsolicited promotions, and suspicious links are forbidden.'
+                      : 'Запрещено отправлять рекламу, спам, подозрительные ссылки и любой неподобающий контент (18+ и т.д.).'}
                   </div>
                   <div>
-                    <strong className="text-on-surface block mb-1">4. Безопасность и приватность 🔒</strong>
-                    Не делись чужой личной информацией и не пересылай сообщения из группы посторонним.
+                    <strong className="text-on-surface block mb-1">
+                      {locale === 'en' ? '4. Privacy & Safety 🔒' : '4. Безопасность и приватность 🔒'}
+                    </strong>
+                    {locale === 'en'
+                      ? 'Respect peers’ personal information and do not forward group discussions externally.'
+                      : 'Не делись чужой личной информацией и не пересылай сообщения из группы посторонним.'}
                   </div>
                 </div>
                 
@@ -151,7 +177,9 @@ export default function GroupPanel({
                   disabled={acceptingRules}
                   className="w-full mt-4 py-3 bg-primary hover:bg-primary/90 text-on-primary font-bold text-xs rounded-xl transition-all shadow flex items-center justify-center gap-2"
                 >
-                  {acceptingRules ? 'Сохраняем...' : 'Я принимаю правила'}
+                  {acceptingRules 
+                    ? (locale === 'en' ? 'Saving...' : 'Сохраняем...') 
+                    : (locale === 'en' ? 'I Accept the Rules' : 'Я принимаю правила')}
                 </button>
               </div>
             ) : (
@@ -159,7 +187,7 @@ export default function GroupPanel({
                 {/* Members summary bar */}
             <div className="px-4 py-2 bg-surface-container-high border-b border-outline-variant flex items-center justify-between">
               <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
-                Участники ({membersList.length}):
+                {locale === 'en' ? `Members (${membersList.length}):` : `Участники (${membersList.length}):`}
               </span>
               <div className="flex -space-x-1.5">
                 {membersList.map((m) => (
@@ -186,7 +214,7 @@ export default function GroupPanel({
                 }`}
               >
                 <MessageSquare className="w-3.5 h-3.5" />
-                <span>Чат ({messages.length})</span>
+                <span>{locale === 'en' ? `Chat (${messages.length})` : `Чат (${messages.length})`}</span>
               </button>
               <button
                 onClick={() => setActiveTab('activity')}
@@ -197,7 +225,7 @@ export default function GroupPanel({
                 }`}
               >
                 <Activity className="w-3.5 h-3.5" />
-                <span>Активность</span>
+                <span>{locale === 'en' ? 'Activity' : 'Активность'}</span>
               </button>
               {isCreator && (
                 <button
@@ -209,7 +237,7 @@ export default function GroupPanel({
                   }`}
                 >
                   <Users className="w-3.5 h-3.5" />
-                  <span>Управление</span>
+                  <span>{locale === 'en' ? 'Manage' : 'Управление'}</span>
                 </button>
               )}
             </div>
@@ -220,7 +248,7 @@ export default function GroupPanel({
                 <div className="space-y-3">
                   {messages.length === 0 ? (
                     <div className="text-center py-8 text-xs text-on-surface-variant font-medium">
-                      Пока нет сообщений. Напишите первым! 👋
+                      {locale === 'en' ? 'No messages yet. Be the first to say hi! 👋' : 'Пока нет сообщений. Напишите первым! 👋'}
                     </div>
                   ) : (
                     messages.map((msg) => {
@@ -254,7 +282,7 @@ export default function GroupPanel({
                 <div className="space-y-2.5">
                   {activityList.length === 0 ? (
                     <div className="text-center py-8 text-xs text-on-surface-variant font-medium">
-                      Лента активности пока пуста.
+                      {locale === 'en' ? 'Activity feed is currently empty.' : 'Лента активности пока пуста.'}
                     </div>
                   ) : (
                     [...activityList].reverse().map((act) => (
@@ -277,7 +305,9 @@ export default function GroupPanel({
 
               {activeTab === 'settings' && isCreator && (
                 <div className="space-y-4">
-                  <div className="text-xs font-bold text-on-surface">Участники</div>
+                  <div className="text-xs font-bold text-on-surface">
+                    {locale === 'en' ? 'Participants' : 'Участники'}
+                  </div>
                   <div className="space-y-2">
                     {membersList.map((m) => {
                       const isSelf = m.userId === auth.currentUser?.uid;
@@ -292,7 +322,7 @@ export default function GroupPanel({
                             </div>
                             <div className="flex flex-col">
                               <span className="text-xs font-bold text-on-surface">
-                                {m.displayName || m.username} {isSelf && '(Вы)'}
+                                {m.displayName || m.username} {isSelf && (locale === 'en' ? '(You)' : '(Вы)')}
                               </span>
                             </div>
                           </div>
@@ -301,7 +331,7 @@ export default function GroupPanel({
                               onClick={() => onRemoveMember(m.userId)}
                               className="px-3 py-1.5 rounded-lg text-[10px] font-bold border border-red-500/20 text-red-500 hover:bg-red-500/10 transition-colors"
                             >
-                              Удалить
+                              {locale === 'en' ? 'Remove' : 'Удалить'}
                             </button>
                           )}
                         </div>
@@ -315,7 +345,7 @@ export default function GroupPanel({
                         onClick={onDeleteGroup}
                         className="w-full px-4 py-2.5 rounded-xl border border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white font-bold text-xs transition-all flex items-center justify-center gap-2"
                       >
-                        Удалить группу полностью
+                        {locale === 'en' ? 'Delete Group Permanently' : 'Удалить группу полностью'}
                       </button>
                     </div>
                   )}
@@ -330,7 +360,7 @@ export default function GroupPanel({
                   type="text"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
-                  placeholder="Сообщение для группы..."
+                  placeholder={locale === 'en' ? 'Message the study group...' : 'Сообщение для группы...'}
                   className="flex-1 px-3.5 py-2.5 bg-surface-container-high border border-outline-variant rounded-xl text-xs text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-primary"
                 />
                 <button

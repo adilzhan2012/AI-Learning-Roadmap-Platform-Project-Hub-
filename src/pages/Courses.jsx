@@ -51,12 +51,12 @@ function SortSelector({ value, onChange }) {
   const dropdownRef = useRef(null);
 
   const options = [
-    { id: 'date_desc', label: 'Новые сначала' },
-    { id: 'date_asc', label: 'Старые сначала' },
-    { id: 'title_asc', label: 'По алфавиту (А–Я)' },
-    { id: 'title_desc', label: 'По алфавиту (Я–А)' },
-    { id: 'progress_desc', label: 'По прогрессу (высокий → низкий)' },
-    { id: 'progress_asc', label: 'По прогрессу (низкий → высокий)' }
+    { id: 'date_desc', label: t('courses.sort.newest') || 'Новые сначала' },
+    { id: 'date_asc', label: t('courses.sort.oldest') || 'Старые сначала' },
+    { id: 'title_asc', label: t('courses.sort.az') || 'По алфавиту (А–Я)' },
+    { id: 'title_desc', label: t('courses.sort.za') || 'По алфавиту (Я–А)' },
+    { id: 'progress_desc', label: t('courses.sort.progressDesc') || 'По прогрессу (высокий → низкий)' },
+    { id: 'progress_asc', label: t('courses.sort.progressAsc') || 'По прогрессу (низкий → высокий)' }
   ];
 
   const selectedOption = options.find(o => o.id === value) || options[0];
@@ -788,7 +788,9 @@ export default function Courses() {
       {/* Top Header */}
       <motion.div variants={cardVariants} className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-bold font-clash text-zinc-900 dark:text-white mb-1 tracking-tight">Курсы</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold font-clash text-zinc-900 dark:text-white mb-1 tracking-tight">
+            {t('nav.courses') || 'Courses'}
+          </h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-xs sm:text-sm max-w-xl">{t('courses.subtitle')}</p>
         </div>
         
@@ -809,7 +811,9 @@ export default function Courses() {
               }`}
             >
               <CheckSquare className="w-4 h-4 shrink-0" />
-              <span className="truncate">{isSelectionMode ? 'Отмена' : 'Выбрать'}</span>
+              <span className="truncate">
+                {isSelectionMode ? (t('common.cancel') || 'Отмена') : (t('courses.batchSelect') || 'Выбрать')}
+              </span>
             </button>
           )}
           <button
@@ -849,9 +853,9 @@ export default function Courses() {
             {/* Status Capsule Tabs */}
             <div className="segmented-container max-w-full overflow-x-auto no-scrollbar">
               {[
-                { id: 'all', label: 'Все' },
-                { id: 'active', label: 'В процессе' },
-                { id: 'completed', label: 'Завершённые' }
+                { id: 'all', label: t('courses.filter.all') || 'Все' },
+                { id: 'active', label: t('courses.filter.active') || 'В процессе' },
+                { id: 'completed', label: t('courses.filter.completed') || 'Завершённые' }
               ].map(tab => {
                 const isActive = statusTab === tab.id;
                 return (

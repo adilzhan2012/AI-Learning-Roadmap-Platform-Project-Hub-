@@ -3,14 +3,22 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Sparkles, ChevronRight, ChevronLeft, Loader2, Quote } from 'lucide-react';
 import { callGeminiWithRetry } from '../../services/courseService.js';
 import { parseAIJson } from '../../utils/aiResponseParser.js';
+import { useLocale, t } from '../../i18n.js';
 
-const FALLBACK_QUOTES = [
+const FALLBACK_QUOTES_RU = [
   "Каждое новое знание приближает тебя к твоей мечте.",
   "Ошибки — это не провал, это ступеньки к глубокому пониманию.",
   "Маленький прогресс каждый день дает огромные результаты в будущем."
 ];
 
+const FALLBACK_QUOTES_EN = [
+  "Every new concept brings you one step closer to your goals.",
+  "Mistakes are not failures, but stepping stones to deep mastery.",
+  "Small daily improvements lead to staggering long-term results."
+];
+
 export default function MotivationalWidget({ variant = 'dashboard' }) {
+  const locale = useLocale();
   const [quotes, setQuotes] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -28,9 +36,12 @@ export default function MotivationalWidget({ variant = 'dashboard' }) {
   useEffect(() => {
     let isMounted = true;
     async function fetchQuotes() {
-      // Check cache first to avoid re-generating on every mount
-      const cached = localStorage.getItem('ai_motivational_quotes');
-      const cacheTime = localStorage.getItem('ai_motivational_quotes_time');
+      const activeFallbacks = locale === 'en' ? FALLBACK_QUOTES_EN : FALLBACK_QUOTES_RU;
+      const cacheKey = `ai_motivational_quotes_${locale}`;
+      const cacheTimeKey = `ai_motivational_quotes_time_${locale}`;
+      
+      const cached = localStorage.getItem(cacheKey);
+      const cacheTime = localStorage.getItem(cacheTimeKey);
       
       // Cache valid for 24 hours
       if (cached && cacheTime && (Date.now() - parseInt(cacheTime)) < 24 * 60 * 60 * 1000) {
@@ -47,22 +58,23 @@ export default function MotivationalWidget({ variant = 'dashboard' }) {
       }
 
       try {
-        const prompt = `You are an inspiring educational mentor. Generate exactly 5 very short, highly inspiring and motivational phrases (1 sentence each) in Russian for a student learning new subjects and skills. Return ONLY a valid JSON array of strings. Example: ["Фраза 1", "Фраза 2", "Фраза 3", "Фраза 4", "Фраза 5"]`;
+        const langName = locale === 'en' ? 'English' : 'Russian';
+        const prompt = `You are an inspiring educational mentor. Generate exactly 5 very short, highly inspiring and motivational phrases (1 sentence each) in ${langName} for a student learning new subjects and skills. Return ONLY a valid JSON array of strings. Example: ["Phrase 1", "Phrase 2", "Phrase 3", "Phrase 4", "Phrase 5"]`;
         
         const res = await callGeminiWithRetry(null, prompt, 'ai_question');
         const parsed = parseAIJson(res);
         
         if (Array.isArray(parsed) && parsed.length > 0 && isMounted) {
           setQuotes(parsed);
-          localStorage.setItem('ai_motivational_quotes', JSON.stringify(parsed));
-          localStorage.setItem('ai_motivational_quotes_time', Date.now().toString());
+          localStorage.setItem(cacheKey, JSON.stringify(parsed));
+          localStorage.setItem(cacheTimeKey, Date.now().toString());
         } else if (isMounted) {
-          setQuotes(FALLBACK_QUOTES);
+          setQuotes(activeFallbacks);
         }
       } catch (err) {
         console.error("Failed to generate quotes:", err);
         if (isMounted) {
-          setQuotes(FALLBACK_QUOTES);
+          setQuotes(activeFallbacks);
         }
       } finally {
         if (isMounted) setLoading(false);
@@ -71,7 +83,7 @@ export default function MotivationalWidget({ variant = 'dashboard' }) {
     fetchQuotes();
     
     return () => { isMounted = false; };
-  }, []);
+  }, [locale]);
 
   const handleNext = () => {
     setCurrentIndex((prev) => (prev + 1) % quotes.length);
@@ -115,7 +127,7 @@ export default function MotivationalWidget({ variant = 'dashboard' }) {
                 className="flex items-center gap-2 text-on-surface-variant text-sm font-medium"
               >
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>ИИ-ментор придумывает вдохновение...</span>
+                <span>{locale === 'en' ? 'AI Mentor is finding daily inspiration...' : 'ИИ-ментор придумывает вдохновение...'}</span>
               </motion.div>
             ) : (
               <motion.div

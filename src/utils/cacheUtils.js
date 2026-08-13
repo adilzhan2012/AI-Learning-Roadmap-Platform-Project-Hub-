@@ -1,5 +1,5 @@
 export const CACHE_VERSION = 1;
-export const PROMPT_VERSION = 2;
+export const PROMPT_VERSION = 3;
 
 /**
  * Normalizes a string by trimming, converting to lower case, and removing excess whitespace.
@@ -50,7 +50,7 @@ export function normalizeTopic(topic) {
 /**
  * Builds a deterministic cache key for a course template based on topic, level, preferences, and locale.
  */
-export function buildCourseCacheKey(topic, level, preferences = {}) {
+export function buildCourseCacheKey(topic, level, preferences = {}, explicitLocale = null) {
   if (
     preferences.ragMode ||
     preferences.isPrivate ||
@@ -62,8 +62,8 @@ export function buildCourseCacheKey(topic, level, preferences = {}) {
 
   const normTopic = normalizeTopic(topic);
   const normLevel = normalizeString(level);
-  let locale = 'ru';
-  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+  let locale = explicitLocale || 'ru';
+  if (!explicitLocale && typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
     locale = localStorage.getItem('yourway-locale') || 'ru';
   }
 

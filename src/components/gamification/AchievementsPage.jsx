@@ -5,18 +5,29 @@ import { ACHIEVEMENTS } from '../../constants/achievements.js';
 import { useAchievements } from '../../hooks/useAchievements.js';
 import { usePlanLimits } from '../../hooks/usePlanLimits.js';
 import { useNavigate } from 'react-router-dom';
+import { t, useLocale } from '../../i18n.js';
 import LeaguesComponent from '../../pages/Leagues.jsx';
 
-const CATEGORIES = [
-  { id: 'all', label: 'Все' },
-  { id: 'start', label: 'Начало пути' },
-  { id: 'learning', label: 'Обучение' },
-  { id: 'quiz', label: 'Тесты' },
-  { id: 'roadmaps', label: 'Roadmaps' },
-  { id: 'ai', label: 'AI' },
-  { id: 'streaks', label: 'Стрики' },
-  { id: 'xp', label: 'XP' },
-];
+const getCategoryLabel = (id, locale) => {
+  const labels = {
+    all: { ru: 'Все', en: 'All' },
+    start: { ru: 'Начало пути', en: 'Getting Started' },
+    learning: { ru: 'Обучение', en: 'Learning' },
+    quiz: { ru: 'Тесты', en: 'Quizzes' },
+    roadmaps: { ru: 'Roadmaps', en: 'Roadmaps' },
+    ai: { ru: 'AI', en: 'AI Mentor' },
+    flashcards: { ru: 'Карточки', en: 'Flashcards' },
+    streaks: { ru: 'Стрики', en: 'Streaks' },
+    xp: { ru: 'XP', en: 'XP' },
+    levels: { ru: 'Уровни', en: 'Levels' },
+    exploration: { ru: 'Исследование', en: 'Exploration' },
+    rare: { ru: 'Редкие', en: 'Rare' },
+    legendary: { ru: 'Легендарные', en: 'Legendary' }
+  };
+  return labels[id]?.[locale] || labels[id]?.['ru'] || id;
+};
+
+const CATEGORY_IDS = ['all', 'start', 'learning', 'quiz', 'roadmaps', 'ai', 'flashcards', 'streaks', 'xp', 'levels', 'exploration', 'rare', 'legendary'];
 
 const getCategoryIcon = (category, isUnlocked) => {
   const colorClass = isUnlocked ? 'text-on-surface' : 'text-[#636366]';
@@ -59,6 +70,7 @@ const getCategoryIcon = (category, isUnlocked) => {
 
 export default function AchievementsPage() {
   const navigate = useNavigate();
+  const locale = useLocale();
   const { plan } = usePlanLimits();
   const { unlockedAchievements, isLoading } = useAchievements();
   const [showAll, setShowAll] = useState(false);
@@ -81,7 +93,9 @@ export default function AchievementsPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4.5rem)] text-on-surface">
         <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
-        <p className="text-sm font-mono text-on-surface-variant">Синхронизация достижений...</p>
+        <p className="text-sm font-mono text-on-surface-variant">
+          {locale === 'en' ? 'Syncing achievements...' : 'Синхронизация достижений...'}
+        </p>
       </div>
     );
   }
@@ -91,9 +105,13 @@ export default function AchievementsPage() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold font-clash text-on-surface mb-2 flex items-center">
-          Достижения и Лиги
+          {locale === 'en' ? 'Achievements & Leagues' : 'Достижения и Лиги'}
         </h1>
-        <p className="text-on-surface-variant text-sm">Выполняйте задания, набирайте XP и продвигайтесь в элитные лиги обучения!</p>
+        <p className="text-on-surface-variant text-sm">
+          {locale === 'en' 
+            ? 'Complete goals, earn XP, and climb to elite learning leagues!' 
+            : 'Выполняйте задания, набирайте XP и продвигайтесь в элитные лиги обучения!'}
+        </p>
       </div>
 
       {/* Segmented Period Toggle (iOS Style) */}
@@ -105,7 +123,7 @@ export default function AchievementsPage() {
               activeMainTab === 'achievements' ? 'text-inverse-on-surface bg-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
-            Достижения ({unlockedCount}/{totalCount})
+            {locale === 'en' ? `Achievements (${unlockedCount}/${totalCount})` : `Достижения (${unlockedCount}/${totalCount})`}
           </button>
           <button
             onClick={() => setActiveMainTab('leagues')}
@@ -113,7 +131,7 @@ export default function AchievementsPage() {
               activeMainTab === 'leagues' ? 'text-inverse-on-surface bg-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
-            Лиги обучения
+            {locale === 'en' ? 'Competitive Leagues' : 'Лиги обучения'}
           </button>
         </div>
       </div>
@@ -126,7 +144,9 @@ export default function AchievementsPage() {
               <span className="text-2xl font-bold font-mono text-on-surface">{progress}%</span>
             </div>
             <div className="flex-1 w-full">
-              <h2 className="text-sm font-bold text-on-background mb-2 font-clash">Общий прогресс разблокировки</h2>
+              <h2 className="text-sm font-bold text-on-background mb-2 font-clash">
+                {locale === 'en' ? 'Overall Unlock Progress' : 'Общий прогресс разблокировки'}
+              </h2>
               <div className="w-full h-[3px] bg-surface-container border border-outline-variant rounded-sm overflow-hidden">
                 <motion.div 
                   initial={{ width: 0 }}
@@ -136,7 +156,9 @@ export default function AchievementsPage() {
                 />
               </div>
               <p className="text-[10px] font-bold text-on-surface-variant mt-2 text-right">
-                Разблокировано: <span className="font-mono">{unlockedCount}</span> из <span className="font-mono">{totalCount}</span>
+                {locale === 'en' 
+                  ? <>Unlocked: <span className="font-mono">{unlockedCount}</span> of <span className="font-mono">{totalCount}</span></>
+                  : <>Разблокировано: <span className="font-mono">{unlockedCount}</span> из <span className="font-mono">{totalCount}</span></>}
               </p>
             </div>
           </div>
@@ -144,13 +166,19 @@ export default function AchievementsPage() {
           {/* Unlocked Achievements Highlight Grid (Summary Section) */}
           <div className="mb-10">
             <h2 className="text-xs font-bold uppercase tracking-tight text-[#636366] mb-6 font-sans">
-              Разблокированные достижения
+              {locale === 'en' ? 'Unlocked Achievements' : 'Разблокированные достижения'}
             </h2>
             
             {unlockedList.length === 0 ? (
               <div className="p-8 text-center bg-surface border border-outline rounded-[16px]">
-                <p className="text-sm font-semibold text-on-surface-variant">Вы пока не разблокировали ни одного достижения</p>
-                <p className="text-xs text-on-surface-variant/60 mt-1">Начните проходить уроки, создавать курсы и выполнять тесты, чтобы открыть их!</p>
+                <p className="text-sm font-semibold text-on-surface-variant">
+                  {locale === 'en' ? "You haven't unlocked any achievements yet" : 'Вы пока не разблокировали ни одного достижения'}
+                </p>
+                <p className="text-xs text-on-surface-variant/60 mt-1">
+                  {locale === 'en' 
+                    ? 'Start taking lessons, creating courses, and finishing quizzes to unlock them!' 
+                    : 'Начните проходить уроки, создавать курсы и выполнять тесты, чтобы открыть их!'}
+                </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -164,14 +192,16 @@ export default function AchievementsPage() {
                       <div className="text-3xl">
                         {getCategoryIcon(ach.category, true)}
                       </div>
-                      <span className="text-[9px] font-mono font-bold bg-surface-container border border-outline text-on-surface px-2 py-0.5 rounded-[4px] uppercase tracking-tight">Открыто</span>
+                      <span className="text-[9px] font-mono font-bold bg-surface-container border border-outline text-on-surface px-2 py-0.5 rounded-[4px] uppercase tracking-tight">
+                        {locale === 'en' ? 'Unlocked' : 'Открыто'}
+                      </span>
                     </div>
                     <div>
                       <h3 className="text-sm font-bold mb-1 text-on-surface font-clash">
                         {ach.title}
                       </h3>
                       <p className="text-xs text-on-surface-variant mb-4 min-h-[32px] leading-snug">
-                        {ach.description}
+                        {locale === 'en' && ach.descriptionEn ? ach.descriptionEn : ach.description}
                       </p>
                     </div>
                     <div className="inline-block self-start px-2 py-0.5 rounded-[4px] text-[10px] font-bold font-mono bg-surface-container text-on-surface border border-outline">
@@ -184,7 +214,9 @@ export default function AchievementsPage() {
 
             {unlockedList.length > 6 && (
               <p className="text-xs text-on-surface-variant mt-4 text-center font-sans">
-                И еще <span className="font-mono">{unlockedList.length - 6}</span> разблокированных достижений в полном списке.
+                {locale === 'en' 
+                  ? <>And <span className="font-mono">{unlockedList.length - 6}</span> more unlocked achievements in the full catalog.</>
+                  : <>И еще <span className="font-mono">{unlockedList.length - 6}</span> разблокированных достижений в полном списке.</>}
               </p>
             )}
           </div>
@@ -195,7 +227,9 @@ export default function AchievementsPage() {
               onClick={() => setShowAll(!showAll)}
               className="flex items-center gap-2 bg-on-surface hover:bg-surface-container text-inverse-on-surface font-bold px-8 py-3.5 rounded-[12px] text-xs transition-colors font-sans"
             >
-              {showAll ? 'Скрыть список всех достижений' : 'Открыть полный список достижений'}
+              {showAll 
+                ? (locale === 'en' ? 'Hide all achievements' : 'Скрыть список всех достижений') 
+                : (locale === 'en' ? 'Show all achievements' : 'Открыть полный список достижений')}
               {showAll ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
             </button>
           </div>
@@ -212,17 +246,17 @@ export default function AchievementsPage() {
               >
                 {/* Category Tabs */}
                 <div className="flex overflow-x-auto pb-3 gap-2 scrollbar-thin">
-                  {CATEGORIES.map(cat => (
+                  {CATEGORY_IDS.map(catId => (
                     <button
-                      key={cat.id}
-                      onClick={() => setActiveCategory(cat.id)}
+                      key={catId}
+                      onClick={() => setActiveCategory(catId)}
                       className={`px-4 py-2 rounded-[8px] font-bold text-xs whitespace-nowrap border transition-all ${
-                        activeCategory === cat.id
+                        activeCategory === catId
                           ? 'bg-on-surface border-[#FFFFFF] text-inverse-on-surface'
                           : 'bg-surface border-outline text-on-surface-variant hover:text-on-background hover:bg-surface-container'
                       }`}
                     >
-                      {cat.label}
+                      {getCategoryLabel(catId, locale)}
                     </button>
                   ))}
                 </div>
@@ -259,7 +293,7 @@ export default function AchievementsPage() {
                             {ach.title}
                           </h3>
                           <p className="text-xs text-on-surface-variant mb-4 min-h-[32px] leading-snug">
-                            {ach.description}
+                            {locale === 'en' && ach.descriptionEn ? ach.descriptionEn : ach.description}
                           </p>
                         </div>
                         <div className={`inline-block self-start px-2 py-0.5 rounded-[4px] text-[10px] font-bold font-mono border ${

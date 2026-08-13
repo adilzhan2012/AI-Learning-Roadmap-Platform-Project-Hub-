@@ -1,14 +1,19 @@
 import React from 'react';
+import { useLocale } from '../../i18n.js';
 
 export default function GroupMemberAvatar({ member, isCurrent = false }) {
+  const locale = useLocale();
   if (!member) return null;
 
   const initial = (member.displayName || member.username || 'U').charAt(0).toUpperCase();
+  const statusLabel = isCurrent 
+    ? (locale === 'en' ? 'Current lesson' : 'Текущий урок') 
+    : (locale === 'en' ? 'Completed' : 'Пройдено');
 
   return (
     <div 
       className="relative group/avatar inline-flex items-center"
-      title={`${member.displayName || member.username} (${isCurrent ? 'Текущий урок' : 'Пройдено'})`}
+      title={`${member.displayName || member.username} (${statusLabel})`}
     >
       <div
         className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-white text-[10px] shadow-md border-2 border-surface transition-transform duration-300 group-hover/avatar:scale-125 ${

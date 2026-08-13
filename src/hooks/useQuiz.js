@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { callGeminiWithRetry, withTimeout } from '../services/courseService.js';
-import { getLocale } from '../i18n.js';
+import { t, getLocale } from '../i18n.js';
 import { db, auth } from '../firebase.js';
 import { doc, setDoc, getDoc, serverTimestamp, increment } from 'firebase/firestore';
 import { parseAIJson, AIParsingError } from '../utils/aiResponseParser.js';
@@ -9,7 +9,7 @@ export const useQuiz = () => {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
 
-  const generateQuiz = useCallback(async (roadmapId, nodeId, lessonContent, failedConcepts = [], forceFresh = false) => {
+  const generateQuiz = useCallback(async (roadmapId, nodeId, lessonContent, failedConcepts = [], forceFresh = false, explicitCourseLanguage = null) => {
     setGenerating(true);
     setError('');
     
@@ -35,9 +35,21 @@ export const useQuiz = () => {
         return cachedQuestions;
       }
 
+      let courseLanguage = explicitCourseLanguage;
+      if (!courseLanguage && roadmapId) {
+        try {
+          const cSnap = await getDoc(doc(db, 'courses', roadmapId));
+          if (cSnap.exists()) {
+            courseLanguage = cSnap.data().language || 'ru';
+          }
+        } catch (e) {
+          // fallback
+        }
+      }
+      if (!courseLanguage) courseLanguage = 'ru';
+
       const apiKey = null; // Cloud Functions proxy mode
-      const currentLocale = getLocale();
-      const languageName = currentLocale === 'ru' ? 'Russian' : 'English';
+      const languageName = courseLanguage === 'en' ? 'English' : 'Russian';
 
       let adaptivityPromptPart = "";
       if (failedConcepts && failedConcepts.length > 0) {
@@ -80,7 +92,9 @@ Return ONLY a valid JSON object:
       const textResponse = await withTimeout(
         callGeminiWithRetry(apiKey, quizPrompt, 'ai_question'),
         50000,
-        'Превышено время ожидания генерации теста (50 сек). Пожалуйста, попробуйте еще раз.'
+        courseLanguage === 'en'
+          ? 'Timeout generating quiz (50s). Please try again.'
+          : 'Превышено время ожидания генерации теста (50 сек). Пожалуйста, попробуйте еще раз.'
       );
       if (!textResponse) throw new Error('Empty response');
 
@@ -109,9 +123,9 @@ Return ONLY a valid JSON object:
     } catch (err) {
       console.error('Quiz generation failed:', err);
       if (err instanceof AIParsingError || err?.name === 'AIParsingError') {
-        setError('Не удалось распарсить тест от ИИ. Нажмите «Попробовать снова».');
+        setError(t('quiz.errorParse') || 'Failed to parse quiz response. Click "Try Again".');
       } else {
-        setError(err.message || 'Не удалось сгенерировать тест. Нажмите «Попробовать снова».');
+        setError(err.message || t('quiz.errorGenerate') || 'Failed to generate quiz. Click "Try Again".');
       }
       return null;
     } finally {

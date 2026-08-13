@@ -114,6 +114,25 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     
+    // --- Support Tickets ---
+    match /support_tickets/{ticketId} {
+      allow read: if isAuth() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuth() && (resource.data.userId == request.auth.uid || isAdmin());
+      
+      match /messages/{messageId} {
+        allow read: if isAuth() && (
+          get(/databases/$(database)/documents/support_tickets/$(ticketId)).data.userId == request.auth.uid || isAdmin()
+        );
+        allow create: if isAuth() && (
+          get(/databases/$(database)/documents/support_tickets/$(ticketId)).data.userId == request.auth.uid || isAdmin()
+        );
+        allow update, delete: if isAuth() && (
+          get(/databases/$(database)/documents/support_tickets/$(ticketId)).data.userId == request.auth.uid || isAdmin()
+        );
+      }
+    }
+    
     // --- Promocodes ---
     match /promocodes/{promoCodeId} {
       // Anyone authenticated can read a specific promocode to validate it

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useLocale, t } from '../../i18n.js';
 
 export default function LaunchCountdown() {
+  const locale = useLocale();
   // Target date: September 1st, 2026
   const targetDate = new Date('2026-09-01T00:00:00').getTime();
   
@@ -46,10 +48,10 @@ export default function LaunchCountdown() {
   }, [targetDate]);
 
   const timeUnits = [
-    { label: 'Дней', value: timeLeft.days },
-    { label: 'Часов', value: timeLeft.hours },
-    { label: 'Минут', value: timeLeft.minutes },
-    { label: 'Секунд', value: timeLeft.seconds }
+    { label: t('landing.countdown.days') || (locale === 'en' ? 'Days' : 'Дней'), value: timeLeft.days },
+    { label: t('landing.countdown.hours') || (locale === 'en' ? 'Hours' : 'Часов'), value: timeLeft.hours },
+    { label: t('landing.countdown.minutes') || (locale === 'en' ? 'Minutes' : 'Минут'), value: timeLeft.minutes },
+    { label: t('landing.countdown.seconds') || (locale === 'en' ? 'Seconds' : 'Секунд'), value: timeLeft.seconds }
   ];
 
   return (
@@ -64,19 +66,19 @@ export default function LaunchCountdown() {
         className="text-center z-10 w-full"
       >
         <h2 className="text-2xl md:text-4xl font-extrabold text-on-surface mb-2 tracking-tight">
-          Официальный запуск
+          {t('landing.countdown.title') || (locale === 'en' ? 'Official Launch' : 'Официальный запуск')}
         </h2>
         <div className="flex items-center justify-center gap-2 mb-8">
           <div className="h-px bg-gradient-to-r from-transparent via-primary to-transparent flex-1 opacity-50 max-w-[100px]" />
           <p className="text-primary font-bold text-sm md:text-base uppercase tracking-[0.25em] bg-primary/10 px-4 py-1 rounded-full border border-primary/20">
-            1 Сентября 2026
+            {t('landing.countdown.date') || (locale === 'en' ? 'September 1, 2026' : '1 Сентября 2026')}
           </p>
           <div className="h-px bg-gradient-to-r from-transparent via-primary to-transparent flex-1 opacity-50 max-w-[100px]" />
         </div>
 
         {!isLaunched ? (
           <div className="flex gap-3 sm:gap-6 justify-center">
-            {timeUnits.map((unit, index) => (
+            {timeUnits.map((unit) => (
               <div key={unit.label} className="flex flex-col items-center">
                 <div className="w-16 h-16 sm:w-24 sm:h-24 bg-surface/80 backdrop-blur-md border border-outline rounded-2xl flex items-center justify-center shadow-lg relative overflow-hidden transform transition-transform hover:scale-105 duration-300">
                   <span className="text-3xl sm:text-5xl font-black text-on-surface font-mono z-10 tracking-tighter">
@@ -98,7 +100,7 @@ export default function LaunchCountdown() {
             className="py-8"
           >
             <span className="text-4xl font-black text-primary uppercase tracking-widest">
-              Мы запустились! 🎉
+              {t('landing.countdown.launched') || (locale === 'en' ? 'We are live! 🎉' : 'Мы запустились! 🎉')}
             </span>
           </motion.div>
         )}

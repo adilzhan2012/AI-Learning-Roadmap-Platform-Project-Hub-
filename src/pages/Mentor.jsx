@@ -36,13 +36,16 @@ export default function Mentor() {
   const [user, setUser] = useState(auth.currentUser);
   const [courses, setCourses] = useState([]);
   const [profile, setProfile] = useState({});
-  const [messages, setMessages] = useState([
-    {
-      id: 'welcome',
-      role: 'assistant',
-      content: 'Привет! Я твой персональный AI-ментор. Я вижу твой прогресс по курсам, результаты квизов и готов помочь разобрать любые сложные темы, объяснить ошибки в тестах или подсказать, как оптимизировать твою дорожную карту обучения. О чём бы ты хотел узнать?'
-    }
-  ]);
+  const initialLocale = localStorage.getItem('yourway-locale') || 'ru';
+  const getInitialWelcome = (loc = initialLocale) => ({
+    id: 'welcome',
+    role: 'assistant',
+    content: loc === 'en'
+      ? "Hello! I am your personal AI Mentor. I track your roadmap progress, quiz results, and I'm ready to help explain challenging concepts, break down quiz errors, or help you optimize your study trajectory. What would you like to explore today?"
+      : "Привет! Я твой персональный AI-ментор. Я вижу твой прогресс по курсам, результаты квизов и готов помочь разобрать любые сложные темы, объяснить ошибки в тестах или подсказать, как оптимизировать твою дорожную карту обучения. О чём бы ты хотел узнать?"
+  });
+
+  const [messages, setMessages] = useState([getInitialWelcome()]);
   const [input, setInput] = useState('');
   const [generating, setGenerating] = useState(false);
   const [apiKeyError, setApiKeyError] = useState(false);
@@ -61,11 +64,6 @@ export default function Mentor() {
           
           const userCourses = await getUserCourses(currentUser.uid);
           setCourses(userCourses);
-          
-          const key = true;
-          if (!key) {
-            setApiKeyError(true);
-          }
         } catch (e) {
           console.error("Failed to load mentor context data:", e);
         } finally {
@@ -157,9 +155,12 @@ export default function Mentor() {
         ? courses.map(c => `- ${c.title} (${c.level}, Прогресс: ${c.progress}%)`).join('\n')
         : 'Нет активных курсов.';
 
+      const activeLocale = profile.locale || localStorage.getItem('yourway-locale') || 'ru';
+      const defaultLang = activeLocale === 'en' ? 'English' : 'Russian';
+
       const systemPrompt = `You are an expert AI Mentor on the learning platform yourway.co.
 User Context:
-- Name: ${profile.firstName || 'Пользователь'}
+- Name: ${profile.firstName || (activeLocale === 'en' ? 'Learner' : 'Пользователь')}
 - Subscription Plan: ${plan}
 - Weekly Streak: ${profile.streakDays || 1} days
 
@@ -172,9 +173,9 @@ INSTRUCTIONS:
 3. If they mention they are stuck or it's "too hard/too easy", guide them to regenerate their roadmap in the dashboard with customized parameters.
 4. Keep your responses highly educational, structured, and clear. Use Markdown (bold text, lists, code snippets, blockquotes).
 5. Address the user directly using their name when appropriate.
-6. Strictly respond in the language of the user's message (default to Russian).
-   7. If they ask about quiz errors, explain the underlying logic thoroughly so they understand.
-8. IMPORTANT LIMITATION: If the user asks to create, design, compose, or write a course syllabus, roadmap, or study plan (e.g., "составь курс", "сделай программу обучения"):
+6. Default to responding in ${defaultLang}, but match the language if the user writes in another language.
+7. If they ask about quiz errors, explain the underlying logic thoroughly so they understand.
+8. IMPORTANT LIMITATION: If the user asks to create, design, compose, or write a course syllabus, roadmap, or study plan (e.g., "составь курс", "make a study plan"):
    - If they are on plan "ULTRA", guide them through the interactive briefing.
    - If they are on "FREE" or "PRO" plan, you MUST politely refuse to draft or write the syllabus. Explain that personalized course generation, interactive syllabus briefings, and materials-based roadmaps (RAG) are exclusive to the ULTRA plan. Suggest they upgrade to ULTRA to unlock this capability.`;
 
@@ -192,7 +193,7 @@ INSTRUCTIONS:
       const assistantMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: responseText || 'Извините, не удалось сгенерировать ответ.'
+        content: responseText || (activeLocale === 'en' ? 'Sorry, failed to generate a response.' : 'Извините, не удалось сгенерировать ответ.')
       };
 
       setMessages(prev => {
@@ -216,7 +217,7 @@ INSTRUCTIONS:
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: '⚠️ Произошла ошибка при соединении с AI-ментором. Пожалуйста, убедитесь, что у вас настроен правильный Gemini API Key в Настройках.'
+        content: t('mentor.errorGeneric') || '⚠️ An error occurred. Please try again.'
       }]);
     } finally {
       setGenerating(false);
@@ -228,13 +229,8 @@ INSTRUCTIONS:
   };
 
   const handleClearHistory = async () => {
-    const defaultMsg = [
-      {
-        id: 'welcome',
-        role: 'assistant',
-        content: 'Привет! Я твой персональный AI-ментор. Я вижу твой прогресс по курсам, результаты квизов и готов помочь разобрать любые сложные темы, объяснить ошибки в тестах или подсказать, как оптимизировать твою дорожную карту обучения. О чём бы ты хотел узнать?'
-      }
-    ];
+    const activeLocale = profile.locale || localStorage.getItem('yourway-locale') || 'ru';
+    const defaultMsg = [getInitialWelcome(activeLocale)];
     setMessages(defaultMsg);
     if (plan === 'PRO' && user) {
       try {

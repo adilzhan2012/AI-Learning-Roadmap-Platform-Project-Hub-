@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, UserX, Clock, ArrowUpRight, X } from 'lucide-react';
+import { useLocale } from '../../i18n.js';
 
 export default function InsufficientCreditsModal({ 
   isOpen, 
@@ -9,6 +10,7 @@ export default function InsufficientCreditsModal({
   onRemoveUserAndStart, 
   onProposeUpgrade 
 }) {
+  const locale = useLocale();
   if (!isOpen || !insufficientUsers || insufficientUsers.length === 0) return null;
 
   return (
@@ -27,8 +29,12 @@ export default function InsufficientCreditsModal({
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-on-surface text-base">Недостаточно кредитов для старта</h3>
-                <p className="text-xs text-on-surface-variant">У участников закончился лимит групповых уроков</p>
+                <h3 className="font-bold text-on-surface text-base">
+                  {locale === 'en' ? 'Insufficient Group Lesson Credits' : 'Недостаточно кредитов для старта'}
+                </h3>
+                <p className="text-xs text-on-surface-variant">
+                  {locale === 'en' ? 'Some participants have exceeded their monthly allowance' : 'У участников закончился лимит групповых уроков'}
+                </p>
               </div>
             </div>
             <button
@@ -42,7 +48,9 @@ export default function InsufficientCreditsModal({
           {/* Body */}
           <div className="p-6 space-y-4">
             <p className="text-xs text-on-surface-variant leading-relaxed">
-              Перед стартом группового урока система проверяет наличие свободных кредитов у всех участников. У следующих пользователей исчерпан лимит на этот месяц:
+              {locale === 'en'
+                ? 'Before starting a group lesson, our system verifies available monthly credits for all members. The following participants have reached their limit:'
+                : 'Перед стартом группового урока система проверяет наличие свободных кредитов у всех участников. У следующих пользователей исчерпан лимит на этот месяц:'}
             </p>
 
             {/* List of users without credits */}
@@ -54,7 +62,11 @@ export default function InsufficientCreditsModal({
                 >
                   <div>
                     <p className="text-xs font-bold text-on-surface">{user.displayName || user.username}</p>
-                    <p className="text-[11px] font-mono text-on-surface-variant"> Тариф {user.plan || 'FREE'} (исчерпано {user.used || 0} из {user.planLimit || 2})</p>
+                    <p className="text-[11px] font-mono text-on-surface-variant">
+                      {locale === 'en' 
+                        ? `Plan: ${user.plan || 'FREE'} (${user.used || 0} of ${user.planLimit || 2} used)`
+                        : `Тариф ${user.plan || 'FREE'} (исчерпано ${user.used || 0} из ${user.planLimit || 2})`}
+                    </p>
                   </div>
                   {onRemoveUserAndStart && (
                     <button
@@ -62,7 +74,7 @@ export default function InsufficientCreditsModal({
                       className="px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 text-xs font-bold transition-colors flex items-center gap-1.5"
                     >
                       <UserX className="w-3.5 h-3.5" />
-                      <span>Убрать из группы</span>
+                      <span>{locale === 'en' ? 'Remove & Start' : 'Убрать из группы'}</span>
                     </button>
                   )}
                 </div>
@@ -71,14 +83,20 @@ export default function InsufficientCreditsModal({
 
             {/* Recommended Options */}
             <div className="space-y-2 pt-2">
-              <h5 className="text-xs font-bold text-on-surface uppercase tracking-wider">Выберите вариант действия:</h5>
+              <h5 className="text-xs font-bold text-on-surface uppercase tracking-wider">
+                {locale === 'en' ? 'Recommended next steps:' : 'Выберите вариант действия:'}
+              </h5>
 
               <div className="p-3.5 rounded-xl bg-surface-container-high border border-outline-variant space-y-2">
                 <div className="flex items-start gap-2.5">
                   <UserX className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-xs font-bold text-on-surface">1. Убрать участника и стартовать с оставшимися</p>
-                    <p className="text-[11px] text-on-surface-variant">Группа начнет обучение сразу без ожидания.</p>
+                    <p className="text-xs font-bold text-on-surface">
+                      {locale === 'en' ? '1. Remove participant and start immediately' : '1. Убрать участника и стартовать с оставшимися'}
+                    </p>
+                    <p className="text-[11px] text-on-surface-variant">
+                      {locale === 'en' ? 'The remaining study group starts right away.' : 'Группа начнет обучение сразу без ожидания.'}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -87,8 +105,12 @@ export default function InsufficientCreditsModal({
                 <div className="flex items-start gap-2.5">
                   <Clock className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-xs font-bold text-on-surface">2. Подождать до сброса лимита</p>
-                    <p className="text-[11px] text-on-surface-variant">Лимит сбросится с началом нового платёжного месяца у участника.</p>
+                    <p className="text-xs font-bold text-on-surface">
+                      {locale === 'en' ? '2. Wait for monthly quota renewal' : '2. Подождать до сброса лимита'}
+                    </p>
+                    <p className="text-[11px] text-on-surface-variant">
+                      {locale === 'en' ? 'Quota resets at the start of the next billing cycle.' : 'Лимит сбросится с началом нового платёжного месяца у участника.'}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -97,8 +119,12 @@ export default function InsufficientCreditsModal({
                 <div className="flex items-start gap-2.5">
                   <ArrowUpRight className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-xs font-bold text-on-surface">3. Предложить участнику апгрейд тарифа</p>
-                    <p className="text-[11px] text-on-surface-variant">При переходе на Pro или Ultra кредиты добавятся мгновенно.</p>
+                    <p className="text-xs font-bold text-on-surface">
+                      {locale === 'en' ? '3. Suggest plan upgrade' : '3. Предложить участнику апгрейд тарифа'}
+                    </p>
+                    <p className="text-[11px] text-on-surface-variant">
+                      {locale === 'en' ? 'Upgrading to PRO or ULTRA unlocks higher allowances instantly.' : 'При переходе на Pro или Ultra кредиты добавятся мгновенно.'}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -111,7 +137,7 @@ export default function InsufficientCreditsModal({
               onClick={onClose}
               className="px-5 py-2.5 rounded-xl bg-surface-container-highest text-on-surface font-bold text-xs hover:bg-outline-variant transition-colors"
             >
-              Закрыть
+              {locale === 'en' ? 'Close' : 'Закрыть'}
             </button>
           </div>
         </motion.div>
