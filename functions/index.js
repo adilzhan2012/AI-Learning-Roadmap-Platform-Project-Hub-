@@ -1,4 +1,5 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
 const Sentry = require("@sentry/google-cloud-serverless");
 const { GoogleAuth } = require("google-auth-library");
@@ -1516,5 +1517,595 @@ exports.consumeRoadmapQuota = onCall(async (request) => {
     txn.set(subRef, updates, { merge: true });
     return { success: true, plan, updatedUsageCount: currentRoadmaps + 1 };
   });
+});
+
+// ====================================================
+// GROUP LESSONS CLOUD FUNCTIONS
+// ====================================================
+
+const GROUP_LESSONS_LIMITS = {
+  FREE: 2,
+  PRO: 7,
+  ULTRA: 18
+};
+
+// 1. searchUsersByUsername
+exports.searchUsersByUsername = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Must be authenticated");
+  }
+  const queryText = (request.data?.query || '').trim().toLowerCase();
+  if (queryText.length < 2) {
+    return { users: [] };
+  }
+
+  const usersSnap = await db.collection("users")
+    .where("username", ">=", queryText)
+    .where("username", "<=", queryText + "\uf8ff")
+    .limit(10)
+    .get();
+
+  const currentUserId = request.auth.uid;
+  const users = [];
+
+  usersSnap.forEach(docSnap => {
+    if (docSnap.id !== currentUserId) {
+      const data = docSnap.data();
+      users.push({
+        userId: docSnap.id,
+        username: data.username || '',
+        firstName: data.firstName || '',
+        lastName: data.lastName || '',
+        displayName: `${data.firstName || ''} ${data.lastName || ''}`.trim() || data.username || 'Пользователь',
+        photoURL: data.photoURL || null,
+        avatarColor: data.avatarColor || '#3b82f6'
+      });
+    }
+  });
+
+  return { users };
+});
+
+// Helper for startGroupLesson inside transaction
+async function startGroupLessonTx(groupId) {
+  const monthStr = new Date().toISOString().substring(0, 7);
+
+  return await db.runTransaction(async (txn) => {
+    const groupRef = db.collection("groups").doc(groupId);
+    const groupSnap = await txn.get(groupRef);
+    if (!groupSnap.exists) {
+      throw new HttpsError("not-found", "Group not found");
+    }
+    const groupData = groupSnap.data();
+
+    if (groupData.status === 'active') {
+      return { success: true, alreadyStarted: true };
+    }
+    if (groupData.status !== 'pending') {
+      throw new HttpsError("failed-precondition", `Group is in ${groupData.status} status`);
+    }
+
+    const memberIds = Object.keys(groupData.members || {});
+    
+    const pendingMembers = memberIds.filter(id => groupData.members[id].status !== 'accepted');
+    if (pendingMembers.length > 0) {
+      throw new HttpsError("failed-precondition", "Not all members have accepted the invitation");
+    }
+
+    const insufficientCreditsUsers = [];
+    const memberSubDataMap = new Map();
+
+    for (const uid of memberIds) {
+      const subRef = db.doc(`users/${uid}/subscription/details`);
+      const subSnap = await txn.get(subRef);
+      const subData = subSnap.exists ? subSnap.data() : {};
+      const plan = subData.plan || 'FREE';
+      const planLimit = GROUP_LESSONS_LIMITS[plan] ?? 2;
+
+      const used = subData.groupLessonsMonthStart === monthStr ? (subData.groupLessonsUsed || 0) : 0;
+      const remaining = planLimit - used;
+
+      if (remaining <= 0) {
+        insufficientCreditsUsers.push({
+          userId: uid,
+          username: groupData.members[uid]?.username || uid,
+          displayName: groupData.members[uid]?.displayName || uid,
+          plan,
+          planLimit,
+          used
+        });
+      }
+
+      memberSubDataMap.set(uid, { subRef, used, monthStr });
+    }
+
+    if (insufficientCreditsUsers.length > 0) {
+      return {
+        success: false,
+        error: 'INSUFFICIENT_CREDITS',
+        insufficientCreditsUsers
+      };
+    }
+
+    for (const [uid, info] of memberSubDataMap.entries()) {
+      txn.set(info.subRef, {
+        groupLessonsUsed: info.used + 1,
+        groupLessonsMonthStart: info.monthStr
+      }, { merge: true });
+
+      const notifRef = db.collection("users").doc(uid).collection("notifications").doc();
+      txn.set(notifRef, {
+        id: notifRef.id,
+        groupId,
+        type: 'group_started',
+        title: '🚀 Групповой урок стартовал!',
+        description: `Группа по курсу «${groupData.courseTitle}» успешно стартовала. Удачи в совместном обучении!`,
+        icon: '🎯',
+        timestamp: new Date().toISOString(),
+        unread: true
+      });
+    }
+
+    const newFeedItem = {
+      id: `act_${Date.now()}_start`,
+      type: 'group_started',
+      userId: groupData.creatorId,
+      userName: 'Система',
+      text: '🚀 Групповой урок стартовал! Все участники готовы к прохождению.',
+      timestamp: new Date().toISOString()
+    };
+    const currentFeed = groupData.activityFeed || [];
+    const updatedFeed = [...currentFeed, newFeedItem].slice(-50);
+
+    txn.update(groupRef, {
+      status: 'active',
+      startedAt: admin.firestore.FieldValue.serverTimestamp(),
+      activityFeed: updatedFeed
+    });
+
+    return { success: true, status: 'active' };
+  });
+}
+
+// 2. createGroup
+exports.createGroup = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Must be authenticated");
+  }
+  const userId = request.auth.uid;
+  const { courseId, courseTitle, invitees = [] } = request.data || {};
+
+  if (!courseId) {
+    throw new HttpsError("invalid-argument", "courseId is required");
+  }
+
+  const creatorSnap = await db.collection("users").doc(userId).get();
+  if (!creatorSnap.exists) {
+    throw new HttpsError("not-found", "User profile not found");
+  }
+  const creatorData = creatorSnap.data();
+  const creatorUsername = creatorData.username || creatorData.firstName || 'Creator';
+  const creatorName = `${creatorData.firstName || ''} ${creatorData.lastName || ''}`.trim() || creatorUsername;
+
+  if (invitees.length > 3) {
+    throw new HttpsError("invalid-argument", "Maximum 3 invited members allowed");
+  }
+
+  const groupRef = db.collection("groups").doc();
+  const groupId = groupRef.id;
+
+  const members = {
+    [userId]: {
+      userId,
+      username: creatorUsername,
+      displayName: creatorName,
+      photoURL: creatorData.photoURL || null,
+      avatarColor: creatorData.avatarColor || '#3b82f6',
+      status: 'accepted',
+      joinedAt: new Date().toISOString(),
+      currentProgressNodeId: null,
+      completedNodeIds: []
+    }
+  };
+
+  const invitedUserIds = [userId];
+  const acceptedUserIds = [userId];
+  const invitationsToBatch = [];
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 72 * 60 * 60 * 1000);
+
+  for (const inv of invitees) {
+    if (!inv.userId || !inv.username) continue;
+    if (inv.userId === userId) continue;
+
+    members[inv.userId] = {
+      userId: inv.userId,
+      username: inv.username,
+      displayName: inv.displayName || inv.username,
+      photoURL: inv.photoURL || null,
+      avatarColor: inv.avatarColor || '#6b7280',
+      status: 'pending',
+      joinedAt: null,
+      currentProgressNodeId: null,
+      completedNodeIds: []
+    };
+    invitedUserIds.push(inv.userId);
+
+    const invRef = db.collection("group_invitations").doc();
+    invitationsToBatch.push({
+      ref: invRef,
+      data: {
+        id: invRef.id,
+        groupId,
+        courseId,
+        courseTitle: courseTitle || 'Курс',
+        inviterId: userId,
+        inviterName: creatorName,
+        inviterUsername: creatorUsername,
+        inviteeId: inv.userId,
+        inviteeUsername: inv.username,
+        status: 'pending',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+        warningSent: false
+      }
+    });
+  }
+
+  const activityFeed = [{
+    id: `act_${Date.now()}_0`,
+    type: 'group_created',
+    userId,
+    userName: creatorName,
+    text: `Группа создана для курса «${courseTitle || 'Курс'}»`,
+    timestamp: new Date().toISOString()
+  }];
+
+  const batch = db.batch();
+  batch.set(groupRef, {
+    id: groupId,
+    courseId,
+    courseTitle: courseTitle || 'Курс',
+    creatorId: userId,
+    creatorUsername,
+    status: 'pending',
+    members,
+    invitedUserIds,
+    acceptedUserIds,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    startedAt: null,
+    activityFeed
+  });
+
+  for (const invDoc of invitationsToBatch) {
+    batch.set(invDoc.ref, invDoc.data);
+
+    const notifRef = db.collection("users").doc(invDoc.data.inviteeId).collection("notifications").doc();
+    batch.set(notifRef, {
+      id: notifRef.id,
+      groupId,
+      invitationId: invDoc.ref.id,
+      type: 'group_invite',
+      title: 'Приглашение в групповой урок',
+      description: `${creatorName} (@${creatorUsername}) приглашает вас пройти курс «${courseTitle || 'Курс'}» вместе!`,
+      icon: '👥',
+      timestamp: new Date().toISOString(),
+      unread: true
+    });
+  }
+
+  await batch.commit();
+
+  if (invitees.length === 0) {
+    await startGroupLessonTx(groupId);
+  }
+
+  return { groupId, success: true };
+});
+
+// 3. startGroupLesson callable
+exports.startGroupLesson = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Must be authenticated");
+  }
+  const { groupId } = request.data || {};
+  if (!groupId) {
+    throw new HttpsError("invalid-argument", "groupId is required");
+  }
+
+  return await startGroupLessonTx(groupId);
+});
+
+// 4. removeGroupMember
+exports.removeGroupMember = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Must be authenticated");
+  }
+  const userId = request.auth.uid;
+  const { groupId, memberIdToRemove } = request.data || {};
+
+  if (!groupId || !memberIdToRemove) {
+    throw new HttpsError("invalid-argument", "groupId and memberIdToRemove are required");
+  }
+
+  return await db.runTransaction(async (txn) => {
+    const groupRef = db.collection("groups").doc(groupId);
+    const groupSnap = await txn.get(groupRef);
+    if (!groupSnap.exists) {
+      throw new HttpsError("not-found", "Group not found");
+    }
+    const groupData = groupSnap.data();
+
+    if (groupData.creatorId !== userId) {
+      throw new HttpsError("permission-denied", "Only group creator can remove members");
+    }
+    if (groupData.status !== 'pending') {
+      throw new HttpsError("failed-precondition", "Can only remove members while group is pending");
+    }
+
+    const memberInfo = groupData.members[memberIdToRemove];
+    if (!memberInfo) {
+      throw new HttpsError("not-found", "Member not found in group");
+    }
+
+    const updatedMembers = { ...groupData.members };
+    delete updatedMembers[memberIdToRemove];
+
+    const updatedInvitedUserIds = (groupData.invitedUserIds || []).filter(id => id !== memberIdToRemove);
+    const updatedAcceptedUserIds = (groupData.acceptedUserIds || []).filter(id => id !== memberIdToRemove);
+
+    const removedName = memberInfo.displayName || memberInfo.username || 'Участник';
+    const newFeedItem = {
+      id: `act_${Date.now()}_rem`,
+      type: 'member_removed',
+      userId,
+      userName: removedName,
+      text: `Участник ${removedName} убран из группы`,
+      timestamp: new Date().toISOString()
+    };
+    const currentFeed = groupData.activityFeed || [];
+    const updatedFeed = [...currentFeed, newFeedItem].slice(-50);
+
+    txn.update(groupRef, {
+      members: updatedMembers,
+      invitedUserIds: updatedInvitedUserIds,
+      acceptedUserIds: updatedAcceptedUserIds,
+      activityFeed: updatedFeed
+    });
+
+    const invsSnap = await db.collection("group_invitations")
+      .where("groupId", "==", groupId)
+      .where("inviteeId", "==", memberIdToRemove)
+      .where("status", "==", "pending")
+      .get();
+
+    invsSnap.forEach(docSnap => {
+      txn.update(docSnap.ref, { status: 'cancelled' });
+    });
+
+    return { success: true };
+  });
+});
+
+// 5. Trigger on group invitation updates
+exports.onGroupInvitationUpdate = onDocumentUpdated("group_invitations/{invitationId}", async (event) => {
+  const beforeData = event.data.before.data();
+  const afterData = event.data.after.data();
+
+  if (!beforeData || !afterData) return;
+  if (beforeData.status === afterData.status) return;
+
+  const { groupId, inviteeId, inviteeUsername, status } = afterData;
+
+  await db.runTransaction(async (txn) => {
+    const groupRef = db.collection("groups").doc(groupId);
+    const groupSnap = await txn.get(groupRef);
+    if (!groupSnap.exists) return;
+    const groupData = groupSnap.data();
+
+    if (groupData.status !== 'pending') return;
+
+    const member = groupData.members[inviteeId];
+    if (!member) return;
+
+    const updatedMembers = {
+      ...groupData.members,
+      [inviteeId]: {
+        ...member,
+        status,
+        joinedAt: status === 'accepted' ? new Date().toISOString() : member.joinedAt
+      }
+    };
+
+    const acceptedSet = new Set(groupData.acceptedUserIds || []);
+    if (status === 'accepted') {
+      acceptedSet.add(inviteeId);
+    } else {
+      acceptedSet.delete(inviteeId);
+    }
+    const updatedAcceptedUserIds = Array.from(acceptedSet);
+
+    const userName = member.displayName || inviteeUsername;
+    const actionText = status === 'accepted' ? 'принял(а) приглашение' : 'отклонил(а) приглашение';
+
+    const newFeedItem = {
+      id: `act_${Date.now()}_inv`,
+      type: 'member_joined',
+      userId: inviteeId,
+      userName,
+      text: `${userName} ${actionText}`,
+      timestamp: new Date().toISOString()
+    };
+    const currentFeed = groupData.activityFeed || [];
+    const updatedFeed = [...currentFeed, newFeedItem].slice(-50);
+
+    txn.update(groupRef, {
+      members: updatedMembers,
+      acceptedUserIds: updatedAcceptedUserIds,
+      activityFeed: updatedFeed
+    });
+
+    const notifRef = db.collection("users").doc(groupData.creatorId).collection("notifications").doc();
+    txn.set(notifRef, {
+      id: notifRef.id,
+      groupId,
+      type: 'group_response',
+      title: status === 'accepted' ? 'Приглашение принято' : 'Приглашение отклонено',
+      description: `${userName} (@${inviteeUsername}) ${actionText} в группу по курсу «${groupData.courseTitle}».`,
+      icon: status === 'accepted' ? '✅' : '❌',
+      timestamp: new Date().toISOString(),
+      unread: true
+    });
+  });
+
+  const freshGroupSnap = await db.collection("groups").doc(groupId).get();
+  if (freshGroupSnap.exists) {
+    const freshData = freshGroupSnap.data();
+    const allMembers = Object.keys(freshData.members || {});
+    const acceptedCount = (freshData.acceptedUserIds || []).length;
+
+    if (freshData.status === 'pending' && allMembers.length === acceptedCount) {
+      try {
+        await startGroupLessonTx(groupId);
+      } catch (err) {
+        console.log("Auto start group notice:", err.message);
+      }
+    }
+  }
+});
+
+// 6. Server function to update group member progress & activity
+exports.updateGroupMemberProgress = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Must be authenticated");
+  }
+  const userId = request.auth.uid;
+  const { groupId, nodeId, nodeLabel, isCompleted, isHomework } = request.data || {};
+
+  if (!groupId || !nodeId) {
+    throw new HttpsError("invalid-argument", "groupId and nodeId are required");
+  }
+
+  return await db.runTransaction(async (txn) => {
+    const groupRef = db.collection("groups").doc(groupId);
+    const groupSnap = await txn.get(groupRef);
+    if (!groupSnap.exists) return { success: false };
+    const groupData = groupSnap.data();
+
+    if (!groupData.members[userId]) return { success: false };
+
+    const member = groupData.members[userId];
+    const completedSet = new Set(member.completedNodeIds || []);
+    if (isCompleted) {
+      completedSet.add(String(nodeId));
+    }
+
+    const updatedMembers = {
+      ...groupData.members,
+      [userId]: {
+        ...member,
+        currentProgressNodeId: String(nodeId),
+        completedNodeIds: Array.from(completedSet)
+      }
+    };
+
+    const userName = member.displayName || member.username;
+    const actionLabel = isHomework ? 'сдал(а) ДЗ' : 'прошёл(ла) модуль';
+    const newFeedItem = {
+      id: `act_${Date.now()}_prog`,
+      type: isHomework ? 'homework_submitted' : 'module_completed',
+      userId,
+      userName,
+      text: `${userName} ${actionLabel} «${nodeLabel || nodeId}»`,
+      nodeId: String(nodeId),
+      timestamp: new Date().toISOString()
+    };
+
+    const currentFeed = groupData.activityFeed || [];
+    const updatedFeed = [...currentFeed, newFeedItem].slice(-50);
+
+    txn.update(groupRef, {
+      members: updatedMembers,
+      activityFeed: updatedFeed
+    });
+
+    return { success: true };
+  });
+});
+
+// 7. Scheduled/callable check for invitation TTL
+exports.checkGroupInvitationsTTL = onCall(async () => {
+  const now = admin.firestore.Timestamp.now();
+  const in24Hours = admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000));
+
+  const expiredSnap = await db.collection("group_invitations")
+    .where("status", "==", "pending")
+    .where("expiresAt", "<=", now)
+    .get();
+
+  let expiredCount = 0;
+  for (const docSnap of expiredSnap.docs) {
+    const invData = docSnap.data();
+    await db.runTransaction(async (txn) => {
+      txn.update(docSnap.ref, { status: 'expired' });
+
+      const groupRef = db.collection("groups").doc(invData.groupId);
+      const groupSnap = await txn.get(groupRef);
+      if (groupSnap.exists) {
+        const gData = groupSnap.data();
+        const member = gData.members[invData.inviteeId];
+        if (member && member.status === 'pending') {
+          const updatedMembers = {
+            ...gData.members,
+            [invData.inviteeId]: { ...member, status: 'expired' }
+          };
+          txn.update(groupRef, { members: updatedMembers });
+
+          const notifRef = db.collection("users").doc(gData.creatorId).collection("notifications").doc();
+          txn.set(notifRef, {
+            id: notifRef.id,
+            groupId: invData.groupId,
+            type: 'group_invite_expired',
+            title: 'Приглашение истекло',
+            description: `Приглашение пользователю @${invData.inviteeUsername} в группу по курсу «${invData.courseTitle}» истекло.`,
+            icon: '⏰',
+            timestamp: new Date().toISOString(),
+            unread: true
+          });
+        }
+      }
+    });
+    expiredCount++;
+  }
+
+  const warningSnap = await db.collection("group_invitations")
+    .where("status", "==", "pending")
+    .where("expiresAt", "<=", in24Hours)
+    .where("warningSent", "==", false)
+    .get();
+
+  let warningCount = 0;
+  for (const docSnap of warningSnap.docs) {
+    const invData = docSnap.data();
+    await db.runTransaction(async (txn) => {
+      txn.update(docSnap.ref, { warningSent: true });
+
+      const notifRef = db.collection("users").doc(invData.inviteeId).collection("notifications").doc();
+      txn.set(notifRef, {
+        id: notifRef.id,
+        groupId: invData.groupId,
+        type: 'group_invite_warning',
+        title: 'Приглашение скоро истечёт!',
+        description: `Приглашение в группу по курсу «${invData.courseTitle}» от ${invData.inviterName} истечёт через 24 часа.`,
+        icon: '⚠️',
+        timestamp: new Date().toISOString(),
+        unread: true
+      });
+    });
+    warningCount++;
+  }
+
+  return { success: true, expiredCount, warningCount };
 });
 

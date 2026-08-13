@@ -33,6 +33,8 @@ export const usePlanLimits = () => {
           ultraTokensUsed: 0,
           homeworkReviewsUsed: 0,
           homeworkMonthStart: monthStr,
+          groupLessonsUsed: 0,
+          groupLessonsMonthStart: monthStr,
           lastMentorDate: todayStr,
           mentorMonthStart: monthStr
         };
@@ -78,6 +80,11 @@ export const usePlanLimits = () => {
               newHomeworkReviewsUsed = 0;
             }
 
+            let newGroupLessonsUsed = data.groupLessonsUsed || 0;
+            if (data.groupLessonsMonthStart !== monthStr) {
+              newGroupLessonsUsed = 0;
+            }
+
             let newRoadmapsGeneratedThisMonth = data.roadmapsGeneratedThisMonth || 0;
             if (data.roadmapsMonthStart !== monthStr) {
               newRoadmapsGeneratedThisMonth = 0;
@@ -93,6 +100,8 @@ export const usePlanLimits = () => {
             ultraTokensUsed: newUltraTokensUsed,
             homeworkReviewsUsed: newHomeworkReviewsUsed,
             homeworkMonthStart: monthStr,
+            groupLessonsUsed: newGroupLessonsUsed,
+            groupLessonsMonthStart: monthStr,
             lastMentorDate: data.lastMentorDate || todayStr,
             mentorMonthStart: data.mentorMonthStart || monthStr
           });
@@ -182,6 +191,15 @@ export const usePlanLimits = () => {
       return true;
     }
 
+    if (type === 'group_lesson') {
+      const limitVal = PLAN_LIMITS[plan]?.groupLessonsPerMonth ?? 2;
+      if (limitVal !== Infinity && (usage.groupLessonsUsed || 0) >= limitVal) {
+        setUpgradeModalOpen(true);
+        return false;
+      }
+      return true;
+    }
+
     return true;
   }, [plan, usage]);
 
@@ -200,6 +218,9 @@ export const usePlanLimits = () => {
       } else if (type === 'homework_review') {
         newUsage.homeworkReviewsUsed = typeof updatedCount === 'number' ? updatedCount : (newUsage.homeworkReviewsUsed || 0) + 1;
         newUsage.homeworkMonthStart = monthStr;
+      } else if (type === 'group_lesson') {
+        newUsage.groupLessonsUsed = typeof updatedCount === 'number' ? updatedCount : (newUsage.groupLessonsUsed || 0) + 1;
+        newUsage.groupLessonsMonthStart = monthStr;
       } else if (type === 'mentor_message') {
         newUsage.mentorMessagesUsed = typeof updatedCount === 'number' ? updatedCount : (newUsage.mentorMessagesUsed || 0) + 1;
         newUsage.lastMentorDate = todayStr;
@@ -224,5 +245,21 @@ export const usePlanLimits = () => {
     return () => window.removeEventListener('planUsage:updated', handleUsageUpdated);
   }, [incrementUsage]);
 
-  return { plan, usage, checkLimit, incrementUsage, isUpgradeModalOpen, setUpgradeModalOpen, loading, dbBillingPeriod };
+  const groupLessonsLimit = PLAN_LIMITS[plan]?.groupLessonsPerMonth ?? 2;
+  const groupLessonsUsed = usage.groupLessonsUsed || 0;
+  const groupLessonsRemaining = Math.max(0, groupLessonsLimit - groupLessonsUsed);
+
+  return { 
+    plan, 
+    usage, 
+    checkLimit, 
+    incrementUsage, 
+    isUpgradeModalOpen, 
+    setUpgradeModalOpen, 
+    loading, 
+    dbBillingPeriod,
+    groupLessonsLimit,
+    groupLessonsUsed,
+    groupLessonsRemaining
+  };
 };

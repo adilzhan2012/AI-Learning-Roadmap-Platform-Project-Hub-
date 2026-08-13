@@ -151,9 +151,38 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // --- Activities Collection Group (for Admin Dashboard) ---
-    match /{path=**}/activities/{activityId} {
-      allow read: if isAdmin();
+    // --- Group Lessons Rules ---
+    match /groups/{groupId} {
+      allow read: if isAuth() && (
+        request.auth.uid in resource.data.members.keys() || isAdmin()
+      );
+      // Group creation and updates are strictly executed via Cloud Functions to enforce integrity
+      allow create, update: if false;
+      allow delete: if isAdmin();
+    }
+
+    match /group_invitations/{invitationId} {
+      allow read: if isAuth() && (
+        resource.data.inviterId == request.auth.uid || 
+        resource.data.inviteeId == request.auth.uid || 
+        isAdmin()
+      );
+      allow create: if false;
+      allow update: if isAuth() 
+        && resource.data.inviteeId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && (request.resource.data.status == 'accepted' || request.resource.data.status == 'declined')
+        && resource.data.status == 'pending'
+        && resource.data.expiresAt > request.time;
+    }
+
+    match /group_chats/{groupId}/messages/{messageId} {
+      allow read: if isAuth() && (
+        request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.members.keys()
+      );
+      allow create: if isAuth() 
+        && request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.members.keys()
+        && request.resource.data.senderId == request.auth.uid;
     }
 
     // Deny everything else by default

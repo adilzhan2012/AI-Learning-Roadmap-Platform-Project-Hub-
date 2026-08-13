@@ -47,6 +47,7 @@ export default function Settings() {
   // App State
   const [notifications, setNotifications] = useState(() => localStorage.getItem('prefs_notifications') !== 'false');
   const [marketing, setMarketing] = useState(() => localStorage.getItem('prefs_marketing') === 'true');
+  const [groupProgressNotifications, setGroupProgressNotifications] = useState(() => localStorage.getItem('prefs_group_progress_notifications') !== 'false');
   const [activeSection, setActiveSection] = useState('account');
   const [activeModal, setActiveModal] = useState(null); // 'terms' | 'privacy' | 'cookie' | null
 
@@ -57,6 +58,10 @@ export default function Settings() {
   useEffect(() => {
     localStorage.setItem('prefs_marketing', marketing);
   }, [marketing]);
+
+  useEffect(() => {
+    localStorage.setItem('prefs_group_progress_notifications', groupProgressNotifications);
+  }, [groupProgressNotifications]);
 
   const SECTIONS = [
     { id: 'account', icon: User, label: t('settings.nav.profile') },
@@ -464,6 +469,29 @@ export default function Settings() {
                       <div className="flex-1 cursor-pointer" onClick={() => setMarketing(!marketing)}>
                         <h4 className="font-semibold text-on-surface text-base mb-1">{t('settings.notifications.marketing') || 'Marketing Emails'}</h4>
                         <p className="text-sm text-on-surface-variant leading-relaxed">{t('settings.notifications.marketingDesc') || 'Receive weekly newsletters and feature updates.'}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-4 p-4 rounded-xl border border-outline-variant/40 bg-surface-container/20">
+                      <div className="pt-1">
+                        <label className="relative flex cursor-pointer items-center rounded-full p-1" htmlFor="checkbox-group-progress">
+                          <input 
+                            type="checkbox" 
+                            className="peer cursor-pointer appearance-none rounded-md border-2 border-on-surface/40 hover:border-primary bg-surface transition-all checked:border-primary checked:bg-primary w-5 h-5"
+                            id="checkbox-group-progress"
+                            checked={groupProgressNotifications}
+                            onChange={(e) => setGroupProgressNotifications(e.target.checked)}
+                          />
+                          <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-on-primary opacity-0 transition-opacity peer-checked:opacity-100">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" stroke="currentColor" strokeWidth="1">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                            </svg>
+                          </div>
+                        </label>
+                      </div>
+                      <div className="flex-1 cursor-pointer" onClick={() => setGroupProgressNotifications(!groupProgressNotifications)}>
+                        <h4 className="font-semibold text-on-surface text-base mb-1">Уведомления о прогрессе участников группы</h4>
+                        <p className="text-sm text-on-surface-variant leading-relaxed">Получать сообщения о прохождении модулей и сдаче домашних заданий согруппниками.</p>
                       </div>
                     </div>
                   </div>

@@ -19,7 +19,8 @@ import {
   X,
   ArrowUpDown,
   Filter,
-  ChevronDown
+  ChevronDown,
+  Users
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase.js';
@@ -27,6 +28,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { getUserCourses, deleteCourse, toggleCoursePin, requestCourseCertificate, getCourseCertificate } from '../services/courseService.js';
 import { t } from '../i18n.js';
 import CourseGeneratorModal from '../components/CourseGeneratorModal.jsx';
+import CreateGroupModal from '../components/groups/CreateGroupModal.jsx';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import { getSubjectTheme, formatCourseHours } from '../utils/courseSubjectClassifier.js';
 
@@ -165,7 +167,8 @@ function CourseCard({
   plan,
   isSelectionMode,
   isSelected,
-  onSelectToggle
+  onSelectToggle,
+  onOpenGroupModal
 }) {
   const navigate = useNavigate();
   const theme = getSubjectTheme(course.subject, course.topic, course.title, course.nodes);
@@ -302,6 +305,16 @@ function CourseCard({
         {/* Actions */}
         <div className="flex items-center gap-1 shrink-0">
           <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenGroupModal && onOpenGroupModal(course);
+            }}
+            className="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-xl transition-all border border-indigo-500/20"
+            title="Пройти с друзьями"
+          >
+            <Users className="w-3.5 h-3.5" strokeWidth={2} />
+          </button>
+          <button 
             onClick={handlePin}
             className={`p-2 rounded-xl transition-all ${course.isPinned ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : 'bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-400 hover:text-amber-400'}`}
             title={course.isPinned ? "Открепить" : "Закрепить"}
@@ -362,6 +375,16 @@ function CourseCard({
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenGroupModal && onOpenGroupModal(course);
+            }}
+            className="p-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-lg transition-all border border-indigo-500/20"
+            title="Пройти с друзьями"
+          >
+            <Users className="w-3.5 h-3.5" strokeWidth={2} />
+          </button>
           <button 
             onClick={handlePin}
             className={`p-1.5 rounded-lg transition-all border ${course.isPinned ? 'bg-amber-500/20 border-amber-500/30 text-amber-500' : 'bg-white dark:bg-white/5 hover:bg-zinc-100 dark:hover:bg-white/10 border-zinc-200 dark:border-white/10 text-zinc-400 hover:text-amber-500'}`}
@@ -482,6 +505,7 @@ export default function Courses() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [showGenModal, setShowGenModal] = useState(false);
+  const [groupModalCourse, setGroupModalCourse] = useState(null);
 
   // Gallery multi-selection & pin states
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -909,6 +933,7 @@ export default function Courses() {
                   isSelectionMode={isSelectionMode}
                   isSelected={selectedCourseIds.has(course.id)}
                   onSelectToggle={toggleSelectCourse}
+                  onOpenGroupModal={(c) => setGroupModalCourse(c)}
                 />
               ))}
             </AnimatePresence>
@@ -987,6 +1012,19 @@ export default function Courses() {
         onClose={() => setShowGenModal(false)} 
         userUid={user?.uid} 
         onCourseGenerated={refreshCourses}
+      />
+
+      <CreateGroupModal
+        isOpen={!!groupModalCourse}
+        onClose={() => setGroupModalCourse(null)}
+        courseId={groupModalCourse?.id}
+        courseTitle={groupModalCourse?.title || groupModalCourse?.topic}
+        onGroupCreated={(newGroupId) => {
+          if (groupModalCourse?.id) {
+            localStorage.setItem('selected_course_id', groupModalCourse.id);
+            navigate(`/graph?courseId=${groupModalCourse.id}&groupId=${newGroupId}`);
+          }
+        }}
       />
 
       {/* Single Delete Modal */}

@@ -27,6 +27,7 @@ import { getUserStats } from '../services/courseService.js';
 import Logo from './shared/Logo.jsx';
 import { LeagueIcon } from '../pages/Leagues.jsx';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
+import { respondToGroupInvitation } from '../services/groupService.js';
 
 const LEAGUE_NAMES = {
   silicon: 'Кремний',
@@ -279,6 +280,39 @@ export default function Topbar() {
                             <p className="font-bold text-xs text-on-surface leading-tight truncate">{notif.title}</p>
                             <p className="text-[11px] text-on-surface-variant mt-1 leading-snug break-words">{notif.description}</p>
                             <p className="text-[9px] text-on-surface-variant/70 mt-1 font-mono">{formatTime(notif.timestamp)}</p>
+
+                            {notif.type === 'group_invite' && notif.invitationId && (
+                              <div className="flex items-center gap-2 mt-2">
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    try {
+                                      await respondToGroupInvitation(notif.invitationId, 'accepted');
+                                      clearNotification(notif.id);
+                                    } catch (err) {
+                                      console.error("Accept error:", err);
+                                    }
+                                  }}
+                                  className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[10px] rounded-lg transition-colors shadow-sm"
+                                >
+                                  Принять
+                                </button>
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    try {
+                                      await respondToGroupInvitation(notif.invitationId, 'declined');
+                                      clearNotification(notif.id);
+                                    } catch (err) {
+                                      console.error("Decline error:", err);
+                                    }
+                                  }}
+                                  className="px-2.5 py-1 bg-surface-container-highest hover:bg-outline-variant text-on-surface-variant font-bold text-[10px] rounded-lg transition-colors"
+                                >
+                                  Отклонить
+                                </button>
+                              </div>
+                            )}
                           </div>
                           <button 
                             onClick={() => clearNotification(notif.id)}

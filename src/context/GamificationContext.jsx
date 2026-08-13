@@ -6,6 +6,10 @@ import XPToast from '../components/gamification/XPToast.jsx';
 import LevelUpModal from '../components/gamification/LevelUpModal.jsx';
 import AchievementUnlockToast from '../components/gamification/AchievementUnlockToast.jsx';
 
+import { auth, db } from '../firebase.js';
+import { onAuthStateChanged } from 'firebase/auth';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+
 const GamificationContext = createContext(null);
 
 const triggerFireworks = () => {
@@ -41,6 +45,49 @@ export const GamificationProvider = ({ children }) => {
       return [];
     }
   });
+
+  // Firestore Realtime Notification Listener
+  useEffect(() => {
+    let unsubscribeSnap = () => {};
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        const notifCol = collection(db, 'users', user.uid, 'notifications');
+        const q = query(notifCol, orderBy('timestamp', 'desc'));
+
+        unsubscribeSnap = onSnapshot(q, (snap) => {
+          const groupNotifEnabled = localStorage.getItem('prefs_group_progress_notifications') !== 'false';
+
+          const dbNotifs = snap.docs.map(docSnap => ({
+            id: docSnap.id,
+            ...docSnap.data()
+          })).filter(n => {
+            if (n.type === 'group_progress' && !groupNotifEnabled) {
+              return false;
+            }
+            return true;
+          });
+
+          setNotifications(prev => {
+            const localOnly = prev.filter(p => !dbNotifs.some(d => d.id === p.id));
+            const merged = [...dbNotifs, ...localOnly];
+            try {
+              localStorage.setItem('yourway_notifications', JSON.stringify(merged));
+            } catch (e) {
+              console.error(e);
+            }
+            return merged;
+          });
+        });
+      } else {
+        unsubscribeSnap();
+      }
+    });
+
+    return () => {
+      unsubscribeAuth();
+      unsubscribeSnap();
+    };
+  }, []);
 
   const saveNotifications = (newNotifs) => {
     setNotifications(newNotifs);

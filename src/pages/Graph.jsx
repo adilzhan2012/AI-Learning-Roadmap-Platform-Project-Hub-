@@ -18,6 +18,11 @@ import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import { useXP } from '../hooks/useXP.js';
 import ReactMarkdown from 'react-markdown';
 import CourseGraphThinking from '../components/CourseGraphThinking.jsx';
+import { useGroupLesson } from '../hooks/useGroupLesson.js';
+import GroupMemberAvatar from '../components/groups/GroupMemberAvatar.jsx';
+import GroupPanel from '../components/groups/GroupPanel.jsx';
+import GroupWaitingScreen from '../components/groups/GroupWaitingScreen.jsx';
+import InsufficientCreditsModal from '../components/groups/InsufficientCreditsModal.jsx';
 
 // Simple vis-network map icons fallback
 const iconMap = {
@@ -501,6 +506,28 @@ export default function Graph() {
   // Folded nodes state
   const [foldedNodes, setFoldedNodes] = useState(new Set());
 
+  const searchParams = new URLSearchParams(location.search);
+  const urlGroupId = searchParams.get('groupId');
+  const urlCourseId = searchParams.get('courseId');
+
+  const courseIdToUse = selectedCourse?.id || urlCourseId;
+  const {
+    group,
+    groupId: activeGroupId,
+    chatMessages,
+    sendMessage: sendGroupMessage,
+    startGroup,
+    removeMember: removeGroupMemberAction,
+    updateProgress: updateGroupProgress,
+    insufficientCreditsUsers,
+    setInsufficientCreditsUsers,
+    starting: groupStarting,
+    error: groupError
+  } = useGroupLesson(courseIdToUse, urlGroupId);
+
+  const [isGroupPanelOpen, setIsGroupPanelOpen] = useState(false);
+  const isGroupCreator = group?.creatorId === auth.currentUser?.uid;
+
   // Sync theme changes
   useEffect(() => {
     const handleThemeChange = (e) => {
@@ -931,6 +958,20 @@ Respond in Russian. Keep your reply concise and professional.`;
         }
       `}</style>
 
+      {/* Group Waiting Screen Banner if Group is pending */}
+      {group && group.status === 'pending' && (
+        <div className="mb-4 z-30">
+          <GroupWaitingScreen
+            group={group}
+            isCreator={isGroupCreator}
+            onStartGroup={startGroup}
+            onRemoveMember={removeGroupMemberAction}
+            starting={groupStarting}
+            error={groupError}
+          />
+        </div>
+      )}
+
       {/* Compact Top Header */}
       <div 
         className={`mb-3 flex-shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 md:p-4 border rounded-[16px] font-sans transition-all z-20 ${
@@ -1131,6 +1172,9 @@ Respond in Russian. Keep your reply concise and professional.`;
               }
 
               const isDragging = activeDragNodeId === node.id;
+              const membersOnNode = (group && group.status === 'active' && group.members)
+                ? Object.values(group.members).filter(m => String(m.currentProgressNodeId) === String(node.id) || (m.completedNodeIds && m.completedNodeIds.includes(String(node.id))))
+                : [];
 
               return (
                 <div
@@ -1154,6 +1198,15 @@ Respond in Russian. Keep your reply concise and professional.`;
                       !isDragging ? 'transform hover:scale-[1.02]' : ''
                     } ${cardBg} ${cardBorder} ${cardText} ${cardShadow}`}
                   >
+                    {/* Group Members Avatars on Node */}
+                    {group?.status === 'active' && membersOnNode.length > 0 && (
+                      <div className="absolute -top-3 -right-2 flex -space-x-1.5 z-30">
+                        {membersOnNode.map(m => (
+                          <GroupMemberAvatar key={m.userId} member={m} isCurrent={String(m.currentProgressNodeId) === String(node.id)} />
+                        ))}
+                      </div>
+                    )}
+
                     {/* Inner content: centered text with status icons */}
                     <div className="flex items-center justify-center gap-2 px-2 w-full text-center">
                       {isCompleted && <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[3]" />}
@@ -1567,12 +1620,44 @@ Respond in Russian. Keep your reply concise and professional.`;
                   setSelectedCourse(newCourse);
                   setCourses(courses.map(c => c.id === newCourse.id ? newCourse : c));
                 }
+                if (updatedNode && updatedNode.homeworkStatus === 'reviewed') {
+                  updateGroupProgress(updatedNode.id, updatedNode.label || updatedNode.title, true, true);
+                } else if (updatedNode && updatedNode.status === 'completed') {
+                  updateGroupProgress(updatedNode.id, updatedNode.label || updatedNode.title, true, false);
+                }
                 setSelectedNode(updatedNode);
               }}
             />
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Group Panel (Chat & Activity) if Group is active */}
+      {group && group.status === 'active' && (
+        <GroupPanel
+          group={group}
+          messages={chatMessages}
+          onSendMessage={sendGroupMessage}
+          isOpen={isGroupPanelOpen}
+          onToggle={() => setIsGroupPanelOpen(!isGroupPanelOpen)}
+        />
+      )}
+
+      {/* Insufficient Credits Modal */}
+      <InsufficientCreditsModal
+        isOpen={!!insufficientCreditsUsers}
+        onClose={() => setInsufficientCreditsUsers(null)}
+        insufficientUsers={insufficientCreditsUsers}
+        onRemoveUserAndStart={async (uid) => {
+          await removeGroupMemberAction(uid);
+          setInsufficientCreditsUsers(null);
+          startGroup();
+        }}
+        onProposeUpgrade={(uid) => {
+          setInsufficientCreditsUsers(null);
+          navigate('/pricing');
+        }}
+      />
 
       {/* Full-Screen Dynamic AI Thinking Animation Overlay (Fades out seamlessly) */}
       <AnimatePresence>

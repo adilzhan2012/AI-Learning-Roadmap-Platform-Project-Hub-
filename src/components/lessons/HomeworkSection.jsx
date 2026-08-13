@@ -12,9 +12,12 @@ import {
   ChevronDown,
   ChevronUp,
   AlertCircle,
-  Zap
+  Zap,
+  Users
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { db, auth } from '../../firebase.js';
+import { doc, getDoc } from 'firebase/firestore';
 import { 
   generateHomeworkWithRubric, 
   reviewHomeworkSubmission, 
@@ -22,6 +25,7 @@ import {
   saveHomeworkChatHistory,
   callGeminiWithRetry
 } from '../../services/courseService.js';
+import { getUserGroupForCourse } from '../../services/groupService.js';
 import { useXP } from '../../hooks/useXP.js';
 import { usePlanLimits } from '../../hooks/usePlanLimits.js';
 import { PLAN_LIMITS } from '../../constants/planLimits.js';
@@ -48,6 +52,7 @@ export default function HomeworkSection({ courseId, nodeId, lessonContent, topic
   const [chatLoading, setChatLoading] = useState(false);
   const [isHomeworkOpen, setIsHomeworkOpen] = useState(false);
   const [isMentorOpen, setIsMentorOpen] = useState(false);
+  const [peerSubmissions, setPeerSubmissions] = useState([]);
 
   const monthlyLimit = PLAN_LIMITS[plan]?.homeworkReviewsPerMonth ?? 2;
   const reviewsUsed = usage?.homeworkReviewsUsed || 0;
@@ -74,6 +79,27 @@ export default function HomeworkSection({ courseId, nodeId, lessonContent, topic
               overallComment: existingState.overallComment,
               attempts: existingState.attempts || []
             });
+          }
+        }
+
+        // Fetch peer submissions if user is in an active group
+        if (auth.currentUser && courseId) {
+          try {
+            const group = await getUserGroupForCourse(auth.currentUser.uid, courseId);
+            if (group && group.status === 'active' && group.members) {
+              const peers = Object.values(group.members).filter(m => m.userId !== auth.currentUser.uid);
+              const list = [];
+              for (const peer of peers) {
+                const hwRef = doc(db, 'users', peer.userId, 'homeworkSubmissions', `${courseId}_${nodeId}`);
+                const hwSnap = await getDoc(hwRef);
+                if (hwSnap.exists()) {
+                  list.push({ peer, ...hwSnap.data() });
+                }
+              }
+              if (isMounted) setPeerSubmissions(list);
+            }
+          } catch (peerErr) {
+            console.error("Peer HW fetch error:", peerErr);
           }
         }
 
@@ -456,6 +482,43 @@ CRITICAL INSTRUCTION: You MUST act as a Socratic mentor. Do NOT solve the homewo
         )}
       </AnimatePresence>
       </div>
+      )}
+
+      {/* Peer Submissions Section for Group Lessons */}
+      {peerSubmissions.length > 0 && (
+        <div className="mt-6 border-t border-zinc-200 dark:border-zinc-800 pt-5">
+          <h4 className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+            <Users className="w-4 h-4 text-indigo-500" />
+            <span>Работы участников вашей группы ({peerSubmissions.length})</span>
+          </h4>
+          <div className="space-y-3">
+            {peerSubmissions.map(({ peer, submission: peerSub, score, passed, feedback }) => (
+              <div key={peer.userId} className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-white text-xs"
+                      style={{ backgroundColor: peer.avatarColor || '#3b82f6' }}
+                    >
+                      {(peer.displayName || peer.username || 'U').charAt(0).toUpperCase()}
+                    </div>
+                    <span className="text-xs font-bold text-zinc-900 dark:text-white">{peer.displayName}</span>
+                  </div>
+                  {typeof score === 'number' && (
+                    <span className={`text-xs font-bold font-mono px-2 py-0.5 rounded-full border ${passed ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'}`}>
+                      {score}% ({passed ? 'Сдано' : 'Не сдано'})
+                    </span>
+                  )}
+                </div>
+                {peerSub && (
+                  <div className="p-3 rounded-xl bg-white dark:bg-black/40 border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 max-h-32 overflow-y-auto whitespace-pre-wrap">
+                    {peerSub}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* ULTRA AI Mentor Chat */}
