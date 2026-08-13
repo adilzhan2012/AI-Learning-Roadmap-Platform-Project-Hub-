@@ -8,6 +8,7 @@ export default function GroupWaitingScreen({
   onStartGroup, 
   onRemoveMember, 
   onReplaceMember,
+  onDeleteGroup,
   starting,
   error 
 }) {
@@ -169,9 +170,18 @@ export default function GroupWaitingScreen({
         </div>
       </div>
 
-      {/* Start Action */}
+      {/* Start / Cancel Action */}
       {isCreator && (
-        <div className="pt-4 border-t border-outline-variant flex justify-end">
+        <div className="pt-4 border-t border-outline-variant flex flex-col sm:flex-row justify-end gap-3">
+          {onDeleteGroup && (
+            <button
+              onClick={onDeleteGroup}
+              disabled={starting}
+              className="w-full sm:w-auto px-6 py-3 rounded-xl border border-red-500/20 text-red-500 hover:bg-red-500/10 font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Отменить группу
+            </button>
+          )}
           <button
             onClick={onStartGroup}
             disabled={starting || !allAccepted}

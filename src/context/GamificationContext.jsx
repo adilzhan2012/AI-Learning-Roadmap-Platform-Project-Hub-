@@ -8,7 +8,7 @@ import AchievementUnlockToast from '../components/gamification/AchievementUnlock
 
 import { auth, db } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 
 const GamificationContext = createContext(null);
 
@@ -131,18 +131,38 @@ export const GamificationProvider = ({ children }) => {
       }
       return updated;
     });
+    
+    // Also delete from Firestore if logged in
+    const user = auth.currentUser;
+    if (user && id && typeof id === 'string') {
+      deleteDoc(doc(db, 'users', user.uid, 'notifications', id)).catch(err => {
+        console.error('Failed to delete notification from Firestore:', err);
+      });
+    }
   }, []);
 
   const clearAllNotifications = useCallback(() => {
+    const currentNotifs = [...notifications]; // Capture current for Firestore deletion
     setNotifications([]);
     try {
       localStorage.setItem('yourway_notifications', JSON.stringify([]));
     } catch (e) {
       console.error(e);
     }
-  }, []);
+    
+    // Also delete all from Firestore
+    const user = auth.currentUser;
+    if (user && currentNotifs.length > 0) {
+      currentNotifs.forEach(n => {
+        if (n.id && typeof n.id === 'string') {
+          deleteDoc(doc(db, 'users', user.uid, 'notifications', n.id)).catch(() => {});
+        }
+      });
+    }
+  }, [notifications]);
 
   const markAllAsRead = useCallback(() => {
+    const currentNotifs = [...notifications];
     setNotifications(prev => {
       const updated = prev.map(n => ({ ...n, unread: false }));
       try {
@@ -152,7 +172,17 @@ export const GamificationProvider = ({ children }) => {
       }
       return updated;
     });
-  }, []);
+    
+    // Also update in Firestore
+    const user = auth.currentUser;
+    if (user && currentNotifs.length > 0) {
+      currentNotifs.forEach(n => {
+        if (n.id && typeof n.id === 'string' && n.unread) {
+          updateDoc(doc(db, 'users', user.uid, 'notifications', n.id), { unread: false }).catch(() => {});
+        }
+      });
+    }
+  }, [notifications]);
 
   const showAchievementToast = useCallback((achievement) => {
     const id = Date.now() + Math.random();

@@ -25,10 +25,13 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
-import { getUserCourses, deleteCourse, toggleCoursePin, requestCourseCertificate, getCourseCertificate } from '../services/courseService.js';
+import { getUserCourses, deleteCourse, toggleCoursePin, requestCourseCertificate, getCourseCertificate, getCourseById } from '../services/courseService.js';
 import { t } from '../i18n.js';
 import CourseGeneratorModal from '../components/CourseGeneratorModal.jsx';
 import CreateGroupModal from '../components/groups/CreateGroupModal.jsx';
+import ManageGroupModal from '../components/groups/ManageGroupModal.jsx';
+import { useUserGroups } from '../hooks/useUserGroups.js';
+import { removeGroupMember, deleteGroup } from '../services/groupService.js';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import { getSubjectTheme, formatCourseHours } from '../utils/courseSubjectClassifier.js';
 
@@ -168,7 +171,9 @@ function CourseCard({
   isSelectionMode,
   isSelected,
   onSelectToggle,
-  onOpenGroupModal
+  onOpenGroupModal,
+  courseGroup,
+  onManageGroup
 }) {
   const navigate = useNavigate();
   const theme = getSubjectTheme(course.subject, course.topic, course.title, course.nodes);
@@ -304,16 +309,29 @@ function CourseCard({
 
         {/* Actions */}
         <div className="flex items-center gap-1 shrink-0">
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenGroupModal && onOpenGroupModal(course);
-            }}
-            className="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-xl transition-all border border-indigo-500/20"
-            title="Пройти с друзьями"
-          >
-            <Users className="w-3.5 h-3.5" strokeWidth={2} />
-          </button>
+          {courseGroup ? (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onManageGroup && onManageGroup(courseGroup);
+              }}
+              className="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-xl transition-all border border-indigo-500/20"
+              title="Управление группой"
+            >
+              <Users className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2} />
+            </button>
+          ) : (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenGroupModal && onOpenGroupModal(course);
+              }}
+              className="p-2 bg-zinc-100 dark:bg-white/5 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 text-zinc-400 hover:text-indigo-500 rounded-xl transition-all"
+              title="Пройти с друзьями"
+            >
+              <Users className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2} />
+            </button>
+          )}
           <button 
             onClick={handlePin}
             className={`p-2 rounded-xl transition-all ${course.isPinned ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : 'bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-400 hover:text-amber-400'}`}
@@ -375,16 +393,29 @@ function CourseCard({
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenGroupModal && onOpenGroupModal(course);
-            }}
-            className="p-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-lg transition-all border border-indigo-500/20"
-            title="Пройти с друзьями"
-          >
-            <Users className="w-3.5 h-3.5" strokeWidth={2} />
-          </button>
+          {courseGroup ? (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onManageGroup && onManageGroup(courseGroup);
+              }}
+              className="p-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-lg transition-all border border-indigo-500/20"
+              title="Управление группой"
+            >
+              <Users className="w-3.5 h-3.5" strokeWidth={2} />
+            </button>
+          ) : (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenGroupModal && onOpenGroupModal(course);
+              }}
+              className="p-1.5 bg-white dark:bg-white/5 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 text-zinc-400 hover:text-indigo-500 rounded-lg transition-all border border-zinc-200 dark:border-white/10"
+              title="Пройти с друзьями"
+            >
+              <Users className="w-3.5 h-3.5" strokeWidth={2} />
+            </button>
+          )}
           <button 
             onClick={handlePin}
             className={`p-1.5 rounded-lg transition-all border ${course.isPinned ? 'bg-amber-500/20 border-amber-500/30 text-amber-500' : 'bg-white dark:bg-white/5 hover:bg-zinc-100 dark:hover:bg-white/10 border-zinc-200 dark:border-white/10 text-zinc-400 hover:text-amber-500'}`}
@@ -499,6 +530,7 @@ function CourseCard({
 }
 
 export default function Courses() {
+  const navigate = useNavigate();
   const { plan } = usePlanLimits();
   const [user, setUser] = useState(auth.currentUser);
   const [userCourses, setUserCourses] = useState([]);
@@ -506,6 +538,9 @@ export default function Courses() {
   const [loading, setLoading] = useState(true);
   const [showGenModal, setShowGenModal] = useState(false);
   const [groupModalCourse, setGroupModalCourse] = useState(null);
+  
+  const { groups: userGroups } = useUserGroups();
+  const [manageGroup, setManageGroup] = useState(null);
 
   // Gallery multi-selection & pin states
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -523,30 +558,61 @@ export default function Courses() {
   const [selectedSubjects, setSelectedSubjects] = useState([]);
   const [selectedLevels, setSelectedLevels] = useState([]);
 
+  const loadUserAndGroupCourses = async (uid, groups) => {
+    let fetched = await getUserCourses(uid);
+    if (groups && groups.length > 0) {
+      const fetchedIds = new Set(fetched.map(c => c.id));
+      const missingGroupCourseIds = groups
+        .map(g => g.courseId)
+        .filter(id => id && !fetchedIds.has(id));
+      
+      const groupCourses = [];
+      for (const cId of missingGroupCourseIds) {
+        try {
+          const gc = await getCourseById(cId);
+          if (gc) groupCourses.push(gc);
+        } catch (err) {
+          console.error("Error fetching group course", cId, err);
+        }
+      }
+      fetched = [...fetched, ...groupCourses];
+    }
+    return fetched;
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
-      if (currentUser) {
-        try {
-          const fetched = await getUserCourses(currentUser.uid);
-          setUserCourses(fetched);
-        } catch (e) {
-          console.error("Error loading user courses:", e);
-        } finally {
-          setLoading(false);
-        }
-      } else {
+      if (!currentUser) {
         setLoading(false);
       }
     });
-
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    let mounted = true;
+    const fetchCourses = async () => {
+      try {
+        const fetched = await loadUserAndGroupCourses(user.uid, userGroups);
+        if (mounted) {
+          setUserCourses(fetched);
+          setLoading(false);
+        }
+      } catch (e) {
+        console.error("Error loading user courses:", e);
+        if (mounted) setLoading(false);
+      }
+    };
+    fetchCourses();
+    return () => { mounted = false; };
+  }, [user, userGroups]);
 
   const refreshCourses = async () => {
     if (!user) return;
     try {
-      const fetched = await getUserCourses(user.uid);
+      const fetched = await loadUserAndGroupCourses(user.uid, userGroups);
       setUserCourses(fetched);
     } catch (e) {
       console.error("Error refreshing courses:", e);
@@ -934,6 +1000,8 @@ export default function Courses() {
                   isSelected={selectedCourseIds.has(course.id)}
                   onSelectToggle={toggleSelectCourse}
                   onOpenGroupModal={(c) => setGroupModalCourse(c)}
+                  courseGroup={userGroups?.find(g => g.courseId === course.id)}
+                  onManageGroup={(g) => setManageGroup(g)}
                 />
               ))}
             </AnimatePresence>
@@ -1043,6 +1111,14 @@ export default function Courses() {
         onConfirm={confirmBulkDelete}
         isDeleting={isDeleting}
         count={selectedCourseIds.size}
+      />
+
+      <ManageGroupModal
+        isOpen={!!manageGroup}
+        onClose={() => setManageGroup(null)}
+        group={manageGroup}
+        onRemoveMember={removeGroupMember}
+        onDeleteGroup={deleteGroup}
       />
     </motion.main>
   );

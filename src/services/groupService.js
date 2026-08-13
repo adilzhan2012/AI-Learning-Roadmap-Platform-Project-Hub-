@@ -58,6 +58,17 @@ export async function removeGroupMember(groupId, memberIdToRemove) {
   }
 }
 
+export async function deleteGroup(groupId) {
+  try {
+    const deleteFn = httpsCallable(functions, 'deleteGroup');
+    const res = await deleteFn({ groupId });
+    return res.data;
+  } catch (err) {
+    console.error("deleteGroup error:", err);
+    throw err;
+  }
+}
+
 export async function updateGroupMemberProgress(groupId, nodeId, nodeLabel, isCompleted = true, isHomework = false) {
   try {
     const updateFn = httpsCallable(functions, 'updateGroupMemberProgress');

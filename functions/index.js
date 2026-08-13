@@ -1840,8 +1840,8 @@ exports.removeGroupMember = onCall(async (request) => {
     if (groupData.creatorId !== userId) {
       throw new HttpsError("permission-denied", "Only group creator can remove members");
     }
-    if (groupData.status !== 'pending') {
-      throw new HttpsError("failed-precondition", "Can only remove members while group is pending");
+    if (groupData.status !== 'pending' && groupData.status !== 'active') {
+      throw new HttpsError("failed-precondition", "Can only remove members from pending or active groups");
     }
 
     const memberInfo = groupData.members[memberIdToRemove];
@@ -1877,6 +1877,50 @@ exports.removeGroupMember = onCall(async (request) => {
     const invsSnap = await db.collection("group_invitations")
       .where("groupId", "==", groupId)
       .where("inviteeId", "==", memberIdToRemove)
+      .where("status", "==", "pending")
+      .get();
+
+    invsSnap.forEach(docSnap => {
+      txn.update(docSnap.ref, { status: 'cancelled' });
+    });
+
+    return { success: true };
+  });
+});
+
+exports.deleteGroup = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Must be authenticated");
+  }
+  const userId = request.auth.uid;
+  const { groupId } = request.data || {};
+
+  if (!groupId) {
+    throw new HttpsError("invalid-argument", "groupId is required");
+  }
+
+  return await db.runTransaction(async (txn) => {
+    const groupRef = db.collection("groups").doc(groupId);
+    const groupSnap = await txn.get(groupRef);
+    if (!groupSnap.exists) {
+      throw new HttpsError("not-found", "Group not found");
+    }
+    const groupData = groupSnap.data();
+
+    if (groupData.creatorId !== userId) {
+      throw new HttpsError("permission-denied", "Only group creator can delete the group");
+    }
+
+    // Optional: Return quotas if deleted before start
+    // If the group was active, the quotas are already spent. We won't refund them for simplicity.
+    // However, if the group is pending, we can just delete the group.
+    
+    // Delete the group doc
+    txn.delete(groupRef);
+
+    // Cancel all pending invitations
+    const invsSnap = await db.collection("group_invitations")
+      .where("groupId", "==", groupId)
       .where("status", "==", "pending")
       .get();
 

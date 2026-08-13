@@ -7,7 +7,8 @@ import {
   sendGroupChatMessage,
   startGroupLesson,
   removeGroupMember,
-  updateGroupMemberProgress
+  updateGroupMemberProgress,
+  deleteGroup
 } from '../services/groupService.js';
 
 export function useGroupLesson(courseId, initialGroupId = null) {
@@ -117,6 +118,20 @@ export function useGroupLesson(courseId, initialGroupId = null) {
     }
   }, [groupId]);
 
+  const handleDeleteGroup = useCallback(async () => {
+    if (!groupId) return;
+    try {
+      await deleteGroup(groupId);
+      setGroupId(null);
+      setGroup(null);
+      return true;
+    } catch (err) {
+      console.error("handleDeleteGroup error:", err);
+      setError(err.message || 'Не удалось удалить группу.');
+      return false;
+    }
+  }, [groupId]);
+
   const handleUpdateProgress = useCallback(async (nodeId, nodeLabel, isCompleted = true, isHomework = false) => {
     if (!groupId || !nodeId) return;
     await updateGroupMemberProgress(groupId, nodeId, nodeLabel, isCompleted, isHomework);
@@ -135,6 +150,7 @@ export function useGroupLesson(courseId, initialGroupId = null) {
     sendMessage: handleSendMessage,
     startGroup: handleStartGroup,
     removeMember: handleRemoveMember,
+    deleteGroup: handleDeleteGroup,
     updateProgress: handleUpdateProgress
   };
 }

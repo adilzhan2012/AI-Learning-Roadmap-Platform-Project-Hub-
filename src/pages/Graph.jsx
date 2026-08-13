@@ -8,7 +8,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { auth, db } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
-import { getUserCourses, callGeminiWithRetry, requestCourseCertificate, getCourseCertificate, generateCourseAndSave } from '../services/courseService.js';
+import { getUserCourses, callGeminiWithRetry, requestCourseCertificate, getCourseCertificate, generateCourseAndSave, getCourseById } from '../services/courseService.js';
 import { t } from '../i18n.js';
 import LessonPanel from '../components/lessons/LessonPanel.jsx';
 import MasteryBlock from '../components/shared/MasteryBlock.jsx';
@@ -527,7 +527,8 @@ export default function Graph() {
     insufficientCreditsUsers,
     setInsufficientCreditsUsers,
     starting: groupStarting,
-    error: groupError
+    error: groupError,
+    deleteGroup
   } = useGroupLesson(courseIdToUse, urlGroupId);
 
   const [isGroupPanelOpen, setIsGroupPanelOpen] = useState(false);
@@ -567,7 +568,7 @@ export default function Graph() {
         return;
       }
       try {
-        const fetched = await getUserCourses(user.uid);
+        let fetched = await getUserCourses(user.uid);
         if (isMounted) {
           // If a new course is being generated right now, preserve generated selection
           if (generatedCourseResultRef.current || generatingCourseState) {
@@ -584,12 +585,26 @@ export default function Graph() {
             return;
           }
 
-          const savedCourseId = localStorage.getItem('selected_course_id');
+          const urlCourseId = new URLSearchParams(window.location.search).get('courseId');
+          const savedCourseId = urlCourseId || localStorage.getItem('selected_course_id');
           let activeCourse = fetched.find(c => c.id === savedCourseId);
 
           // Preserve newly generated course if Firestore write hasn't propagated yet
           if (!activeCourse && selectedCourse && selectedCourse.id === savedCourseId) {
             activeCourse = selectedCourse;
+          }
+
+          // Fetch course if it's a group course (not in fetched)
+          if (!activeCourse && savedCourseId) {
+            try {
+              const gc = await getCourseById(savedCourseId);
+              if (gc) {
+                activeCourse = gc;
+                fetched = [gc, ...fetched];
+              }
+            } catch (err) {
+              console.error("Error fetching group course in Graph:", err);
+            }
           }
 
           if (activeCourse) {
@@ -972,6 +987,7 @@ Respond in Russian. Keep your reply concise and professional.`;
             isCreator={isGroupCreator}
             onStartGroup={startGroup}
             onRemoveMember={removeGroupMemberAction}
+            onDeleteGroup={deleteGroup}
             starting={groupStarting}
             error={groupError}
           />
@@ -1630,6 +1646,7 @@ Respond in Russian. Keep your reply concise and professional.`;
               onClose={() => setIsStudying(false)}
               isZenMode={isZenMode}
               toggleZenMode={() => setIsZenMode(!isZenMode)}
+              isGroupChatOpen={isGroupPanelOpen}
               onQuizComplete={() => setQuizRefreshTrigger(prev => prev + 1)}
               onNodeUpdated={(updatedNode, updatedCourse) => {
                 if (updatedCourse) {
@@ -1653,12 +1670,13 @@ Respond in Russian. Keep your reply concise and professional.`;
         )}
       </AnimatePresence>
 
-      {/* Group Panel (Chat & Activity) if Group is active */}
       {group && group.status === 'active' && (
         <GroupPanel
           group={group}
           messages={chatMessages}
           onSendMessage={sendGroupMessage}
+          onRemoveMember={removeGroupMemberAction}
+          onDeleteGroup={deleteGroup}
           isOpen={isGroupPanelOpen}
           onToggle={() => setIsGroupPanelOpen(!isGroupPanelOpen)}
         />

@@ -54,7 +54,8 @@ export default function LessonPanel({
   onNodeUpdated, // Callback when node content is generated or status changes to completed
   isZenMode,
   toggleZenMode,
-  onQuizComplete
+  onQuizComplete,
+  isGroupChatOpen
 }) {
   const navigate = useNavigate();
   const [generating, setGenerating] = useState(false);
@@ -888,8 +889,8 @@ Provide a code boilerplate template at the end.`;
       )}
       </div>
 
-      {/* Contextual AI Mentor Panel (Hidden in Zen Mode) */}
-      {!isZenMode && (
+      {/* Contextual AI Mentor Panel (Hidden in Zen Mode or when Group Chat is open) */}
+      {!isZenMode && !isGroupChatOpen && (
         <div className={`
           fixed inset-0 z-50 lg:static lg:block
           ${isMobileMentorOpen ? 'block' : 'hidden'}

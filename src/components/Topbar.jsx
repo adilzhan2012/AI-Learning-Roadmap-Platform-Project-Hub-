@@ -289,6 +289,10 @@ export default function Topbar() {
                                     try {
                                       await respondToGroupInvitation(notif.invitationId, 'accepted');
                                       clearNotification(notif.id);
+                                      if (notif.groupId && notif.courseId) {
+                                        navigate(`/graph?courseId=${notif.courseId}&groupId=${notif.groupId}`);
+                                        setShowNotifications(false);
+                                      }
                                     } catch (err) {
                                       console.error("Accept error:", err);
                                     }

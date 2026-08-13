@@ -90,14 +90,11 @@ service cloud.firestore {
     
     // --- Courses ---
     match /courses/{courseId} {
-      // Owner can read/write their own courses
-      allow read: if isAuth() && resource.data.userId == request.auth.uid;
+      // Owner can write their own courses, but anyone authenticated can read if they have the ID (needed for group lessons)
+      allow read: if isAuth();
       allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
       allow update: if isAuth() && resource.data.userId == request.auth.uid;
       allow delete: if isAuth() && resource.data.userId == request.auth.uid;
-      
-      // Allow reading courses for cloning (template courses with no userId or shared flag)
-      allow read: if isAuth() && resource.data.isTemplate == true;
     }
 
     // --- Course Templates Cache ---
@@ -156,13 +153,20 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // --- Group Lessons Rules ---
     match /groups/{groupId} {
       allow read: if isAuth() && (
-        request.auth.uid in resource.data.members.keys() || isAdmin()
+        request.auth.uid in resource.data.members.keys() || 
+        (resource.data.invitedUserIds != null && request.auth.uid in resource.data.invitedUserIds) ||
+        isAdmin()
       );
-      // Group creation and updates are strictly executed via Cloud Functions to enforce integrity
-      allow create, update: if false;
+      // Group creation and general updates are via Cloud Functions.
+      // Exception: Users can update their own rulesAccepted flag.
+      allow update: if isAuth() 
+        && request.auth.uid in resource.data.members.keys()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+        && request.resource.data.members.diff(resource.data.members).affectedKeys().hasOnly([request.auth.uid])
+        && request.resource.data.members[request.auth.uid].diff(resource.data.members[request.auth.uid]).affectedKeys().hasOnly(['rulesAccepted', 'rulesAcceptedAt']);
+      allow create: if false;
       allow delete: if isAdmin();
     }
 
@@ -177,8 +181,8 @@ service cloud.firestore {
         && resource.data.inviteeId == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
         && (request.resource.data.status == 'accepted' || request.resource.data.status == 'declined')
-        && resource.data.status == 'pending'
-        && resource.data.expiresAt > request.time;
+        && (resource.data.status == 'pending' || resource.data.status == request.resource.data.status)
+        && (!("expiresAt" in resource.data) || resource.data.expiresAt > request.time);
     }
 
     match /group_chats/{groupId}/messages/{messageId} {
