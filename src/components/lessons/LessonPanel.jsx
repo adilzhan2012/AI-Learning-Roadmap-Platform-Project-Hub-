@@ -923,21 +923,29 @@ Provide a code boilerplate template at the end.`;
 
       {/* Contextual AI Mentor Panel (Hidden in Zen Mode or when Group Chat is open) */}
       {!isZenMode && !isGroupChatOpen && (
-        <div className={`
-          fixed inset-0 z-50 lg:static lg:block
-          ${isMobileMentorOpen ? 'block' : 'hidden'}
-        `}>
-          <ContextualMentor 
-            selectedNode={selectedNode}
-            selectedCourse={selectedCourse}
-            plan={plan}
-            usage={usage}
-            checkLimit={checkLimit}
-            incrementUsage={incrementUsage}
-            setUpgradeModalOpen={setUpgradeModalOpen}
-            onClose={() => setIsMobileMentorOpen(false)}
-          />
-        </div>
+        <>
+          {isMobileMentorOpen && (
+            <div 
+              onClick={() => setIsMobileMentorOpen(false)} 
+              className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-xs transition-opacity" 
+            />
+          )}
+          <div className={`
+            fixed inset-0 md:left-auto md:right-0 md:top-0 md:bottom-0 md:w-[380px] z-50 lg:static lg:w-auto lg:block bg-background border-l border-outline shadow-2xl lg:shadow-none
+            ${isMobileMentorOpen ? 'block' : 'hidden'}
+          `}>
+            <ContextualMentor 
+              selectedNode={selectedNode}
+              selectedCourse={selectedCourse}
+              plan={plan}
+              usage={usage}
+              checkLimit={checkLimit}
+              incrementUsage={incrementUsage}
+              setUpgradeModalOpen={setUpgradeModalOpen}
+              onClose={() => setIsMobileMentorOpen(false)}
+            />
+          </div>
+        </>
       )}
     </div>
   );

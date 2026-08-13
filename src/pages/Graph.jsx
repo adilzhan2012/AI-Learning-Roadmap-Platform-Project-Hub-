@@ -1087,7 +1087,7 @@ Respond in Russian. Keep your reply concise and professional.`;
             isLightTheme 
               ? 'bg-zinc-50 border-zinc-200 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]' 
               : 'bg-[#0f172a] border-outline'
-          } border rounded-[20px] overflow-y-auto overflow-x-auto relative flex flex-col p-8 items-center custom-scrollbar overscroll-none touch-pan-x touch-pan-y`}
+          } border rounded-[20px] overflow-y-auto overflow-x-auto relative flex flex-col p-4 sm:p-6 md:p-8 items-center custom-scrollbar overscroll-none touch-pan-x touch-pan-y`}
           ref={containerRef}
         >
           {/* Static Roadmap Layout (Centered) */}
