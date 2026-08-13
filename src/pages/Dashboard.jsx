@@ -516,10 +516,10 @@ export default function Dashboard() {
       </motion.div>
 
       {/* Activity, Goal & Leagues Teaser Grid */}
-      <motion.div variants={staggerContainer} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <motion.div variants={staggerContainer} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
         
         {/* Recent Activity */}
-        <motion.div variants={itemVariants} className="lg:col-span-1 bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-[18px] p-6 flex flex-col justify-between min-h-[360px] shadow-sm">
+        <motion.div variants={itemVariants} className="md:col-span-1 lg:col-span-1 bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-[18px] p-6 flex flex-col justify-between min-h-[360px] shadow-sm">
           <div>
             <h2 className="text-base font-bold text-zinc-900 dark:text-white mb-5 font-sans">
               {t('dashboard.recentActivity') || (locale === 'en' ? 'Recent Activity' : 'Недавняя активность')}
