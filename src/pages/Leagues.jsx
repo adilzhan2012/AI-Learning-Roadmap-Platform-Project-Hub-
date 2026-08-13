@@ -10,7 +10,7 @@ import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import { useGamification } from '../context/GamificationContext.jsx';
 import { useNavigate } from 'react-router-dom';
 import { useLocale } from '../i18n.js';
-import UserAvatar from '../components/UserAvatar.jsx';
+import UserAvatar from '../components/shared/UserAvatar.jsx';
 
 const LEAGUES_DATA = [
   { id: 'silicon', nameRu: 'Кремний', nameEn: 'Silicon', planRequired: 'FREE', xpRequired: 0, descRu: 'Стартовая лига. Понижение невозможно.', descEn: 'Starting league. Demotion is not possible.' },

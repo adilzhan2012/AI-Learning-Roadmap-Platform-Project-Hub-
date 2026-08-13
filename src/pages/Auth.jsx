@@ -19,7 +19,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getUserStats } from '../services/courseService.js';
 import { t, useLocale } from '../i18n.js';
 import LegalDocModal from '../components/shared/LegalDocModal.jsx';
-import UserAvatar from '../components/UserAvatar.jsx';
+import UserAvatar from '../components/shared/UserAvatar.jsx';
 import ImageCropperModal from '../components/shared/ImageCropperModal.jsx';
 
 const AVATAR_COLORS = [

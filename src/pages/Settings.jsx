@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { User, Bell, Shield, Paintbrush, LogOut, CheckCircle2, Loader2, Sparkles, Key, AlertTriangle, X, Globe, FileText, ChevronRight } from 'lucide-react';
 import { auth, signOut, db, functions, storage } from '../firebase.js';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import UserAvatar from '../components/UserAvatar.jsx';
+import UserAvatar from '../components/shared/UserAvatar.jsx';
 import ImageCropperModal from '../components/shared/ImageCropperModal.jsx';
 import { onAuthStateChanged, sendPasswordResetEmail } from 'firebase/auth';
 import { doc } from 'firebase/firestore';

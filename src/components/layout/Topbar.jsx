@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import UserAvatar from '../UserAvatar.jsx';
+import UserAvatar from '../shared/UserAvatar.jsx';
 import { 
   Bell, 
   Settings, 

@@ -22,7 +22,7 @@ import { callGeminiWithRetry, getUserCourses, getUserStats } from '../services/c
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import { PLAN_LIMITS } from '../constants/planLimits.js';
 import ReactMarkdown from 'react-markdown';
-import UserAvatar from '../components/UserAvatar.jsx';
+import UserAvatar from '../components/shared/UserAvatar.jsx';
 import UpgradeModal from '../components/shared/UpgradeModal.jsx';
 import { t } from '../i18n.js';
 
