@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkles, ArrowRight, Activity, Terminal } from 'lucide-react';
 import Logo from '../components/shared/Logo.jsx';
+import LaunchCountdown from '../components/shared/LaunchCountdown.jsx';
 import { auth } from '../firebase.js';
 import { t, useLocale, setLocale } from '../i18n.js';
 
@@ -111,8 +112,10 @@ export default function Landing() {
       </motion.nav>
 
       {/* Hero Interactive Dashboard Wrapper */}
-      <main className="relative pt-24 pb-12 md:pt-40 md:pb-32 px-4 sm:px-6 flex flex-col items-center justify-center text-center z-10 min-h-screen w-full">
+      <main className="relative pt-24 pb-12 md:pt-32 md:pb-32 px-4 sm:px-6 flex flex-col items-center justify-center text-center z-10 min-h-screen w-full">
         
+        <LaunchCountdown />
+
         <motion.div 
           variants={staggerContainer}
           initial="hidden"
@@ -391,38 +394,6 @@ export default function Landing() {
           </div>
         </div>
       </section>
-      
-      {/* Footer */}
-      <footer className="py-12 px-6 bg-surface-container-highest backdrop-blur-md relative z-10">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center md:items-start gap-10 md:gap-6 text-center md:text-left">
-          <div className="flex flex-col items-center md:items-start gap-3">
-            <div className="flex items-center gap-2 font-semibold text-lg tracking-tight text-on-surface">
-              <Sparkles className="w-5 h-5 text-primary" />
-              yourwayy.co
-            </div>
-            <p className="text-sm text-on-surface-variant font-medium max-w-xs">
-              {t('landing.hero.subtitle')}
-            </p>
-          </div>
-
-          <div className="flex flex-col items-center md:items-start gap-2 text-sm text-on-surface-variant">
-            <h4 className="font-semibold text-on-surface mb-2">{t('landing.footer.contactUs')}</h4>
-            <a href="mailto:support@yourwayy.co" className="hover:text-primary transition-colors flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-primary/50"></span> support@yourwayy.co
-            </a>
-            <a href="mailto:info@yourwayy.co" className="hover:text-primary transition-colors flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-purple-500/50"></span> info@yourwayy.co
-            </a>
-          </div>
-
-          <div className="text-sm text-on-surface-variant font-medium text-center md:text-right flex flex-col items-center md:items-end justify-between h-full pt-1">
-            <div>&copy; {new Date().getFullYear()} yourwayy.co. {t('landing.footer.copy')}</div>
-            <div className="mt-4 md:mt-6 text-[10px] uppercase tracking-widest font-mono opacity-70">
-              {t('landing.footer.designedBy')}
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

@@ -107,6 +107,17 @@ export default function Footer() {
                 </button>
               </li>
             </ul>
+            <div className="mt-4 flex flex-col gap-2">
+              <h5 className="text-sm font-bold tracking-wider text-on-surface uppercase mb-1">
+                {locale === 'ru' ? 'Свяжитесь с нами' : 'Contact Us'}
+              </h5>
+              <a href="mailto:support@yourwayy.co" className="text-sm text-on-surface-variant hover:text-primary transition-colors flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/50"></span> support@yourwayy.co
+              </a>
+              <a href="mailto:info@yourwayy.co" className="text-sm text-on-surface-variant hover:text-primary transition-colors flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-500/50"></span> info@yourwayy.co
+              </a>
+            </div>
           </div>
 
           {/* Product & Socials Column */}
