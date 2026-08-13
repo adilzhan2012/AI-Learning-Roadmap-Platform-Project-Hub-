@@ -29,7 +29,7 @@ import {
   getUserAllCertificates
 } from '../services/courseService.js';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
-import CourseGeneratorModal from '../components/CourseGeneratorModal.jsx';
+import CourseGeneratorModal from '../components/courses/CourseGeneratorModal.jsx';
 import CertificatesModal from '../components/shared/CertificatesModal.jsx';
 import RepeatReminder from '../components/shared/RepeatReminder.jsx';
 import { t, useLocale } from '../i18n.js';

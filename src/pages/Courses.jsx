@@ -27,7 +27,7 @@ import { auth } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getUserCourses, deleteCourse, toggleCoursePin, requestCourseCertificate, getCourseCertificate, getCourseById } from '../services/courseService.js';
 import { t } from '../i18n.js';
-import CourseGeneratorModal from '../components/CourseGeneratorModal.jsx';
+import CourseGeneratorModal from '../components/courses/CourseGeneratorModal.jsx';
 import CreateGroupModal from '../components/groups/CreateGroupModal.jsx';
 import ManageGroupModal from '../components/groups/ManageGroupModal.jsx';
 import { useUserGroups } from '../hooks/useUserGroups.js';

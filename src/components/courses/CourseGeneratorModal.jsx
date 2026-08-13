@@ -6,10 +6,10 @@ import {
   Zap, Clock, BookOpen, User, Briefcase, Users
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { generateCourseAndSave } from '../services/courseService.js';
+import { generateCourseAndSave } from '../../services/courseService.js';
 import CourseGraphThinking from './CourseGraphThinking.jsx';
-import { t, useLocale } from '../i18n.js';
-import { usePlanLimits } from '../hooks/usePlanLimits.js';
+import { t, useLocale } from '../../i18n.js';
+import { usePlanLimits } from '../../hooks/usePlanLimits.js';
 
 export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
   const navigate = useNavigate();

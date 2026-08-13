@@ -17,7 +17,7 @@ import QuizHistoryModal from '../components/quiz/QuizHistoryModal.jsx';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import { useXP } from '../hooks/useXP.js';
 import ReactMarkdown from 'react-markdown';
-import CourseGraphThinking from '../components/CourseGraphThinking.jsx';
+import CourseGraphThinking from '../components/courses/CourseGraphThinking.jsx';
 import { useGroupLesson } from '../hooks/useGroupLesson.js';
 import GroupMemberAvatar from '../components/groups/GroupMemberAvatar.jsx';
 import GroupPanel from '../components/groups/GroupPanel.jsx';
