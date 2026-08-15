@@ -24,7 +24,7 @@ export default function MermaidDiagram({ chart }) {
         } catch (error) {
           console.error('Mermaid render error:', error);
           if (isMounted) {
-            setSvg(`<div class="text-red-500 text-sm">Failed to render diagram</div>`);
+            setSvg(`<div class="text-red-500 text-sm font-medium p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800/30 text-center">Failed to render diagram</div>`);
           }
         }
       };

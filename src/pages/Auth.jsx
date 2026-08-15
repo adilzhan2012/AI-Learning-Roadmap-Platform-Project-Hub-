@@ -731,7 +731,7 @@ export default function Auth({ type }) {
                   </div>
 
                   <div className="flex items-start gap-3 mt-4">
-                    <input type="checkbox" id="terms" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800" />
+                    <input type="checkbox" id="terms" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-1 w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary dark:border-gray-600 dark:bg-gray-800" />
                     <label htmlFor="terms" className="text-xs text-gray-600 dark:text-gray-400 leading-tight">
                       {locale === 'ru' ? 'Создавая аккаунт, вы соглашаетесь с нашими ' : 'By creating an account, you agree to our '}
                       <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModal('terms'); }} className="text-blue-600 hover:underline">{locale === 'ru' ? 'Условиями обслуживания' : 'Terms of Service'}</button>,{' '}
@@ -814,12 +814,14 @@ export default function Auth({ type }) {
                   {!avatarFile && (
                     <div className="flex flex-wrap justify-center gap-3">
                       {AVATAR_COLORS.map((color, i) => (
-                        <button
+                        <UserAvatar
                           key={i}
-                          type="button"
                           onClick={() => setAvatarColor(color)}
-                          className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${color.startsWith('#') ? '' : color} ${avatarColor === color || (!avatarColor && i === 0) ? 'border-primary scale-110' : 'border-transparent'}`}
-                          style={color.startsWith('#') ? { backgroundColor: color } : {}}
+                          firstName={firstName}
+                          lastName={lastName}
+                          email={email}
+                          avatarColor={color}
+                          className={`w-10 h-10 text-xs sm:text-sm border-2 transition-transform hover:scale-110 ${avatarColor === color || (!avatarColor && i === 0) ? 'border-primary scale-110 shadow-md' : 'border-gray-200 dark:border-gray-700'}`}
                           title="Change avatar color"
                         />
                       ))}
@@ -828,7 +830,7 @@ export default function Auth({ type }) {
 
                   {authMethod !== 'email' && (
                     <div className="flex items-start gap-3 mt-8">
-                      <input type="checkbox" id="termsSocial" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800" />
+                      <input type="checkbox" id="termsSocial" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-1 w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary dark:border-gray-600 dark:bg-gray-800" />
                       <label htmlFor="termsSocial" className="text-xs text-gray-600 dark:text-gray-400 leading-tight">
                         {locale === 'ru' ? 'Создавая аккаунт, вы соглашаетесь с нашими ' : 'By creating an account, you agree to our '}
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModal('terms'); }} className="text-blue-600 hover:underline">{locale === 'ru' ? 'Условиями обслуживания' : 'Terms of Service'}</button>,{' '}

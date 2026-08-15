@@ -693,7 +693,7 @@ export default function Pricing() {
       {(plan === 'PRO' || plan === 'ULTRA') && (
         <div className="max-w-[900px] mx-auto mt-16 mb-12 text-center">
           <h2 className="text-xl font-bold tracking-tight text-on-surface mb-8 font-clash uppercase">
-            locale === 'en' ? 'You have access to features of ' : 'Вам доступны возможности тарифа '{plan}
+            {locale === 'en' ? 'You have access to features of ' : 'Вам доступны возможности тарифа '} {plan}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {plan === 'ULTRA' ? (

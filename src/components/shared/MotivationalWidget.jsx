@@ -118,7 +118,7 @@ export default function MotivationalWidget({ variant = 'dashboard' }) {
           <Sparkles className={`w-5 h-5 ${iconColor}`} />
         </div>
         
-        <div className="flex-1 min-w-0 overflow-hidden relative h-16 flex items-center">
+        <div className="flex-1 min-w-0 overflow-hidden relative min-h-[4rem] py-2 flex items-center">
           <AnimatePresence mode="wait">
             {loading ? (
               <motion.div 
