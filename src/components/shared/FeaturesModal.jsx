@@ -123,7 +123,7 @@ export default function FeaturesModal({ isOpen, onClose }) {
         <div className="p-5 border-t border-outline flex justify-end flex-shrink-0 bg-surface">
           <button
             onClick={onClose}
-            className="bg-on-surface hover:bg-surface-container text-black px-6 py-2 rounded-xl text-xs font-bold transition-colors"
+            className="bg-on-surface hover:opacity-90 text-surface px-6 py-2 rounded-xl text-xs font-bold transition-opacity"
           >
             {content.close}
           </button>

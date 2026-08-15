@@ -16,14 +16,14 @@ export default function CompanyModal({ isOpen, onClose }) {
     teamText: 'Мы верим, что технологии могут трансформировать образование, сделав его более доступным и интерактивным.',
     devs: [
       {
-        name: 'Ivakin Daniil',
-        role: 'Co-Founder, CEO & AI Engineer',
+        name: 'Ивакин Даниил',
+        role: 'Сооснователь, CEO & AI Инженер',
         desc: 'Отвечает за стратегию продукта, интеграцию искусственного интеллекта и fullstack-разработку платформы.',
         icon: <BrainCircuit className="w-5 h-5 text-indigo-500" />
       },
       {
-        name: 'Dutpayev Adilzhan',
-        role: 'Co-Founder, CTO & Backend Engineer',
+        name: 'Дутпаев Адильжан',
+        role: 'Сооснователь, CTO & Backend Инженер',
         desc: 'Руководит технической архитектурой, серверной инфраструктурой и интеграцией с Firebase (Fullstack).',
         icon: <Code className="w-5 h-5 text-blue-500" />
       }
@@ -138,7 +138,7 @@ export default function CompanyModal({ isOpen, onClose }) {
         <div className="p-5 border-t border-outline flex justify-end flex-shrink-0 bg-surface">
           <button
             onClick={onClose}
-            className="bg-on-surface hover:bg-surface-container text-black px-6 py-2 rounded-xl text-xs font-bold transition-colors"
+            className="bg-on-surface hover:opacity-90 text-surface px-6 py-2 rounded-xl text-xs font-bold transition-opacity"
           >
             {content.close}
           </button>

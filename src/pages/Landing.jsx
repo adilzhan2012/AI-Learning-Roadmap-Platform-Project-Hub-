@@ -1,11 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Sparkles, ArrowRight, Activity, Terminal } from 'lucide-react';
+import { Sparkles, ArrowRight, Activity, Terminal, Moon } from 'lucide-react';
 import Logo from '../components/shared/Logo.jsx';
 import LaunchCountdown from '../components/shared/LaunchCountdown.jsx';
 import { auth } from '../firebase.js';
 import { t, useLocale, setLocale } from '../i18n.js';
+import { toggleTheme } from '../theme.js';
 
 const floatVariants = {
   animate: {
@@ -46,7 +47,7 @@ export default function Landing() {
   };
 
   return (
-    <div className="dark min-h-screen bg-background text-on-background font-sans overflow-x-hidden selection:bg-primary-container w-full relative">
+    <div className="min-h-screen bg-background text-on-background font-sans overflow-x-hidden selection:bg-primary-container w-full relative">
       
       {/* Background Ambience */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
@@ -74,7 +75,14 @@ export default function Landing() {
           <Link to="/">
             <Logo variant="full" className="h-8" />
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <button
+              onClick={() => toggleTheme()}
+              className="p-1.5 md:p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-full transition-colors"
+              title={locale === 'ru' ? 'Переключить тему' : 'Toggle Theme'}
+            >
+              <Moon className="w-5 h-5" />
+            </button>
             <button
               onClick={toggleLocale}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant hover:border-primary/50 bg-surface-container-high/45 hover:bg-surface-container-high/80 text-xs font-semibold tracking-wide transition-all shadow-sm duration-200 select-none text-on-surface"
@@ -258,15 +266,21 @@ export default function Landing() {
             >
               {t('landing.overview.title')}
             </motion.h2>
-            <motion.p 
+            <motion.div 
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="text-on-surface-variant text-base sm:text-lg md:text-2xl font-light leading-relaxed px-2"
+              className="relative overflow-hidden bg-surface-container/60 backdrop-blur-xl border border-outline-variant rounded-[2rem] p-8 md:p-12 mx-2 shadow-2xl group transition-all hover:border-primary/30"
             >
-              {t('landing.overview.desc')}
-            </motion.p>
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-purple-500/5 opacity-50 group-hover:opacity-100 transition-opacity duration-700" />
+              <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/20 rounded-full blur-[80px] pointer-events-none group-hover:bg-primary/30 transition-all duration-700" />
+              <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-purple-500/20 rounded-full blur-[80px] pointer-events-none group-hover:bg-purple-500/30 transition-all duration-700" />
+              
+              <p className="relative z-10 text-on-surface text-lg sm:text-xl md:text-2xl font-medium leading-relaxed">
+                {t('landing.overview.desc')}
+              </p>
+            </motion.div>
           </div>
 
           {/* Interactive Feature Cards */}
@@ -344,8 +358,8 @@ export default function Landing() {
                     DI
                   </div>
                   <div>
-                    <h3 className="text-2xl sm:text-3xl font-bold text-on-surface mb-1">Ивакин Даниил</h3>
-                    <p className="text-blue-500 font-mono tracking-widest uppercase text-xs sm:text-sm font-semibold">Co-Founder & CEO</p>
+                    <h3 className="text-2xl sm:text-3xl font-bold text-on-surface mb-1">{locale === 'ru' ? 'Ивакин Даниил' : 'Ivakin Daniil'}</h3>
+                    <p className="text-blue-500 font-mono tracking-widest uppercase text-xs sm:text-sm font-semibold">{locale === 'ru' ? 'Сооснователь & CEO' : 'Co-Founder & CEO'}</p>
                   </div>
                 </div>
                 <div className="relative z-10 text-center sm:text-left">
@@ -373,8 +387,8 @@ export default function Landing() {
                     AD
                   </div>
                   <div>
-                    <h3 className="text-2xl sm:text-3xl font-bold text-on-surface mb-1">Дутпаев Адильжан</h3>
-                    <p className="text-purple-500 font-mono tracking-widest uppercase text-xs sm:text-sm font-semibold">Co-Founder & CTO</p>
+                    <h3 className="text-2xl sm:text-3xl font-bold text-on-surface mb-1">{locale === 'ru' ? 'Дутпаев Адильжан' : 'Dutpayev Adilzhan'}</h3>
+                    <p className="text-purple-500 font-mono tracking-widest uppercase text-xs sm:text-sm font-semibold">{locale === 'ru' ? 'Сооснователь & CTO' : 'Co-Founder & CTO'}</p>
                   </div>
                 </div>
                 <div className="relative z-10 sm:text-right text-center">

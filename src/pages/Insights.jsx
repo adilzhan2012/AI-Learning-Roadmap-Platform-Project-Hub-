@@ -561,7 +561,7 @@ export default function Insights() {
 
                   {/* Horizontal Grid lines */}
                   {[10, 30, 50, 70, 90].map(y => (
-                    <line key={y} x1="0" y1={y} x2="100" y2={y} stroke="currentColor" className="text-outline/30" strokeWidth="0.5" strokeDasharray="3 3" />
+                    <line key={y} x1="0" y1={y} x2="100" y2={y} stroke="currentColor" className="text-zinc-300 dark:text-white/10" strokeWidth="1" strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />
                   ))}
 
                   {/* Gradient Area Fill */}
@@ -575,6 +575,7 @@ export default function Insights() {
                     strokeWidth="3" 
                     strokeLinecap="round" 
                     strokeLinejoin="round" 
+                    vectorEffect="non-scaling-stroke"
                   />
                 </svg>
 

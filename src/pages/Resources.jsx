@@ -316,13 +316,14 @@ export default function Resources() {
           variants={cardVariants} 
           className="bg-surface border border-outline rounded-[24px] p-6 md:p-8 mb-10 flex flex-col md:flex-row gap-8 items-center relative overflow-hidden group cursor-pointer hover:border-indigo-500/40 transition-all shadow-xl"
         >
-          {/* Glassmorphic Glow background element */}
-          <div className="absolute -top-24 -right-24 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-indigo-500/20 transition-all" />
+          {/* Animated Glassmorphic Glow background elements */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-indigo-500/20 transition-all animate-pulse" style={{ animationDuration: '4s' }} />
+          <div className="absolute bottom-0 left-0 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-purple-500/20 transition-all animate-pulse" style={{ animationDelay: '1.5s', animationDuration: '4s' }} />
 
           {/* Featured Visual Thumbnail */}
-          <div className="w-full md:w-56 h-36 rounded-[16px] bg-indigo-950/40 border border-indigo-500/20 flex flex-col items-center justify-center flex-shrink-0 relative overflow-hidden group-hover:scale-[1.02] transition-transform">
-            <BookOpen className="w-10 h-10 text-indigo-400 mb-2 relative z-10" strokeWidth={1.5} />
-            <span className="text-[10px] font-mono text-indigo-300 font-bold tracking-wider z-10">РЕКОМЕНДУЕМОЕ ЧТЕНИЕ</span>
+          <div className="w-full md:w-56 h-36 rounded-[16px] bg-indigo-100/60 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-500/20 flex flex-col items-center justify-center flex-shrink-0 relative overflow-hidden group-hover:scale-[1.02] transition-transform">
+            <BookOpen className="w-10 h-10 text-indigo-500 dark:text-indigo-400 mb-2 relative z-10" strokeWidth={1.5} />
+            <span className="text-[10px] font-mono text-indigo-600 dark:text-indigo-300 font-bold tracking-wider z-10">РЕКОМЕНДУЕМОЕ ЧТЕНИЕ</span>
           </div>
 
           <div className="flex-1 min-w-0 z-10">
@@ -330,23 +331,23 @@ export default function Resources() {
               <span className="text-[9px] font-mono font-bold text-inverse-on-surface bg-on-surface rounded-[4px] px-2.5 py-0.5 inline-block uppercase tracking-tight">
                 {t('resources.featured')}
               </span>
-              <span className="text-[9px] font-mono text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded font-bold">
+              <span className="text-[9px] font-mono text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 px-2 py-0.5 rounded font-bold">
                 {resources[0].tags[0]}
               </span>
             </div>
 
-            <h2 className="text-xl md:text-2xl font-bold text-on-surface mb-2 group-hover:text-indigo-300 transition-colors font-clash truncate">
+            <h2 className="text-xl md:text-2xl font-bold text-on-surface mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors font-clash truncate">
               {resources[0].title}
             </h2>
-            <p className="text-xs text-on-surface-variant leading-relaxed mb-6 max-w-2xl line-clamp-2">
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed mb-6 max-w-2xl line-clamp-2">
               {resources[0].desc}
             </p>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <button className="bg-on-surface hover:bg-white text-inverse-on-surface rounded-[12px] px-5 py-2.5 text-xs font-bold transition-colors flex items-center gap-2 self-start font-sans">
+              <button className="bg-on-surface hover:opacity-90 text-inverse-on-surface rounded-[12px] px-5 py-2.5 text-xs font-bold transition-opacity flex items-center gap-2 self-start font-sans">
                 <BookOpen className="w-4 h-4" strokeWidth={1.5} /> {t('resources.readNow')}
               </button>
-              <div className="flex gap-4 text-[10px] font-mono text-on-surface-variant">
-                <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-indigo-400" strokeWidth={1.5} /> 5 мин чтения</span>
+              <div className="flex gap-4 text-[10px] font-mono text-zinc-500 dark:text-zinc-400">
+                <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-indigo-500 dark:text-indigo-400" strokeWidth={1.5} /> 5 мин чтения</span>
               </div>
             </div>
           </div>
