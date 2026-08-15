@@ -9,7 +9,7 @@
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log",
     "gcp-build": "npx puppeteer browsers install chrome",
-    "test": "node --test tests/**/*.test.js"
+    "test": "node --test 'tests/**/*.test.js' 'services/**/__tests__/**/*.test.js'"
   },
   "engines": {
     "node": "20"
