@@ -82,7 +82,7 @@ export default function MentorBubble({
         initial={{ opacity: 0, scale: 0.8, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.8, y: 20 }}
-        className="fixed bottom-24 right-6 z-[89] max-w-[280px] sm:max-w-[320px] bg-surface-container-high/95 border border-indigo-500/30 backdrop-blur-md p-3.5 rounded-2xl shadow-2xl flex flex-col gap-2 font-sans select-none text-left"
+        className="fixed bottom-24 right-6 md:left-8 md:right-auto z-[89] max-w-[280px] sm:max-w-[320px] bg-surface-container-high/95 border border-indigo-500/30 backdrop-blur-md p-3.5 rounded-2xl shadow-2xl flex flex-col gap-2 font-sans select-none text-left"
       >
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2">

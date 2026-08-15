@@ -1324,7 +1324,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                   </h3>
                   
                   {/* Description */}
-                  <p className="text-xs text-zinc-400 mt-2 leading-relaxed line-clamp-4">
+                  <p className={`text-xs mt-2 leading-relaxed line-clamp-4 ${isLightTheme ? 'text-zinc-600' : 'text-zinc-400'}`}>
                     {t(selectedNode.desc || selectedNode.description) || 'Нажми «Начать урок» чтобы сгенерировать материал'}
                   </p>
                 </div>
@@ -1333,11 +1333,11 @@ Respond in Russian. Keep your reply concise and professional.`;
                 <div className="flex-1 min-h-0 overflow-y-auto p-4 flex flex-col gap-4 custom-scrollbar">
                   {/* Meta stats */}
                   <div className="flex gap-2">
-                    <div className={`flex-1 border rounded-[12px] p-2.5 ${isLightTheme ? 'bg-zinc-100/80 border-zinc-200' : 'bg-zinc-950/40 border-white/5'}`}>
+                    <div className={`flex-1 border rounded-[12px] p-2.5 ${isLightTheme ? 'bg-white shadow-sm border-zinc-200' : 'bg-zinc-950/40 border-white/5'}`}>
                       <p className={`text-[10px] mb-0.5 font-sans ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>⏱ Время</p>
                       <p className={`text-xs font-bold font-mono ${isLightTheme ? 'text-zinc-900' : 'text-zinc-100'}`}>~{selectedNode.hours || selectedNode.estimatedTime || '2'} ч</p>
                     </div>
-                    <div className={`flex-1 border rounded-[12px] p-2.5 ${isLightTheme ? 'bg-zinc-100/80 border-zinc-200' : 'bg-zinc-950/40 border-white/5'}`}>
+                    <div className={`flex-1 border rounded-[12px] p-2.5 ${isLightTheme ? 'bg-white shadow-sm border-zinc-200' : 'bg-zinc-950/40 border-white/5'}`}>
                       <p className={`text-[10px] mb-0.5 font-sans ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>📄 Уроков</p>
                       <p className={`text-xs font-bold font-mono ${isLightTheme ? 'text-zinc-900' : 'text-zinc-100'}`}>{selectedNode.lessons || selectedNode.lessonsCount || '1'}</p>
                     </div>
@@ -1371,7 +1371,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                           <div key={preId} className={`flex items-center gap-2 p-2 rounded-[10px] border text-xs mb-1 font-sans ${
                             isDone
                               ? (isLightTheme ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300')
-                              : (isLightTheme ? 'bg-zinc-100 border-zinc-200 text-zinc-500' : 'bg-zinc-950/20 border-white/5 text-zinc-400')
+                              : (isLightTheme ? 'bg-white border-zinc-200 text-zinc-600 shadow-sm' : 'bg-zinc-950/20 border-white/5 text-zinc-400')
                           }`}>
                             <span className="font-bold">{isDone ? '✓' : '🔒'}</span>
                             <span className="truncate">{t(preNode?.label || preNode?.title || preId)}</span>
@@ -1390,7 +1390,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                         const nextNode = selectedCourse.nodes.find(n => String(n.id) === String(nextId));
                         return (
                           <div key={nextId} className={`flex items-center gap-2 p-2 rounded-[10px] border text-xs mb-1 font-sans ${
-                            isLightTheme ? 'border-zinc-200 bg-zinc-100/80 text-zinc-500' : 'border-white/5 bg-zinc-950/40 text-zinc-400'
+                            isLightTheme ? 'border-zinc-200 bg-white text-zinc-600 shadow-sm' : 'border-white/5 bg-zinc-950/40 text-zinc-400'
                           }`}>
                             <span className="text-violet-500 font-bold">→</span>
                             <span className="truncate">{t(nextNode?.label || nextNode?.title || nextId)}</span>
@@ -1408,9 +1408,9 @@ Respond in Russian. Keep your reply concise and professional.`;
                     disabled={selectedNode.status === 'locked'}
                     className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-[12px] text-xs font-bold transition-all transform active:scale-95 duration-150 font-sans ${
                       selectedNode.status === 'locked'
-                        ? (isLightTheme ? 'bg-zinc-200 border-zinc-300 text-zinc-400 cursor-not-allowed' : 'bg-zinc-800/40 border border-white/5 text-zinc-500 cursor-not-allowed')
+                        ? (isLightTheme ? 'bg-zinc-100 border border-zinc-300 text-zinc-500 cursor-not-allowed shadow-sm' : 'bg-zinc-800/40 border border-white/5 text-zinc-500 cursor-not-allowed')
                         : selectedNode.status === 'completed'
-                        ? (isLightTheme ? 'bg-transparent border border-zinc-300 text-zinc-900 hover:bg-zinc-200' : 'bg-transparent border border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-500')
+                        ? (isLightTheme ? 'bg-white border border-zinc-300 text-zinc-900 hover:bg-zinc-50 shadow-sm' : 'bg-transparent border border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-500')
                         : 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-md'
                     }`}
                   >
@@ -1437,14 +1437,18 @@ Respond in Russian. Keep your reply concise and professional.`;
 
                 {/* AI Mock Interview (ULTRA feature) */}
                 {plan === 'ULTRA' && (
-                  <div className="mt-4 w-full relative overflow-hidden p-4 rounded-[16px] bg-gradient-to-br from-purple-950/40 to-pink-950/40 border border-purple-500/20 flex flex-col gap-2.5 text-left shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+                  <div className={`mt-4 w-full relative overflow-hidden p-4 rounded-[16px] border flex flex-col gap-2.5 text-left ${
+                    isLightTheme 
+                      ? 'bg-purple-50/80 border-purple-200 shadow-sm' 
+                      : 'bg-gradient-to-br from-purple-950/40 to-pink-950/40 border-purple-500/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]'
+                  }`}>
                     <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1 text-[10px] font-bold text-purple-300">
+                      <span className={`flex items-center gap-1 text-[10px] font-bold ${isLightTheme ? 'text-purple-800' : 'text-purple-300'}`}>
                         🎓 AI Mock Interview
                       </span>
-                      <span className="text-[8px] bg-purple-500 text-on-surface px-1.5 py-0.5 rounded font-black tracking-wide leading-none">ULTRA</span>
+                      <span className={`text-[8px] px-1.5 py-0.5 rounded font-black tracking-wide leading-none ${isLightTheme ? 'bg-purple-600 text-white' : 'bg-purple-500 text-white'}`}>ULTRA</span>
                     </div>
-                    <p className="text-[10px] text-zinc-300 leading-normal">
+                    <p className={`text-[10px] leading-normal ${isLightTheme ? 'text-zinc-600' : 'text-zinc-300'}`}>
                       Готовы к собеседованию? Пройдите симуляцию технического или HR интервью по теме "{selectedCourse?.title}".
                     </p>
                     <button

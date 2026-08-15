@@ -610,7 +610,7 @@ ${planCourseInstruction}`;
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0, opacity: 0, y: 50 }}
             onClick={() => setIsOpen(true)}
-            className="fixed bottom-6 right-6 z-[90] h-14 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 border border-indigo-400/30 flex items-center justify-center text-on-surface shadow-[0_8px_30px_rgb(99,102,241,0.4)] hover:scale-105 active:scale-95 transition-all select-none group px-4 gap-2.5"
+            className="fixed bottom-[90px] right-4 md:bottom-8 md:left-8 md:right-auto z-[90] h-14 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 border border-indigo-400/30 flex items-center justify-center text-on-surface shadow-[0_8px_30px_rgb(99,102,241,0.4)] hover:scale-105 active:scale-95 transition-all select-none group px-4 gap-2.5"
           >
             {/* SVG Progress Ring */}
             <div className="relative w-7 h-7 flex items-center justify-center">
