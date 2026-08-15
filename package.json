@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test 'src/services/mentorContext/__tests__/**/*.test.js'"
   },
   "devDependencies": {
     "@tailwindcss/container-queries": "^0.1.1",
