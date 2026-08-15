@@ -204,6 +204,12 @@ async function processUsageLimitAndCounter(db, admin, userId, usageType, todaySt
       const updates = {};
       let updatedUsageCount = 0;
 
+      // Ensure ULTRA daily tokens are reset on any request on a new day
+      if (plan === 'ULTRA' && data.lastMentorDate !== todayStr) {
+        updates.ultraTokensUsed = 0;
+        updates.lastMentorDate = todayStr;
+      }
+
       if (usageType === 'roadmap') {
         updatedUsageCount = currentRoadmaps;
       } else if (usageType === 'ai_question') {
@@ -219,9 +225,6 @@ async function processUsageLimitAndCounter(db, admin, userId, usageType, todaySt
           : 1;
         updates.lastMentorDate = todayStr;
         updates.mentorMonthStart = monthStr;
-        if (plan === 'ULTRA' && data.lastMentorDate !== todayStr) {
-          updates.ultraTokensUsed = 0;
-        }
       } else if (usageType === 'homework_review') {
         updatedUsageCount = currentHwMonth === monthStr ? currentHwReviews + 1 : 1;
         updates.homeworkReviewsUsed = currentHwMonth === monthStr

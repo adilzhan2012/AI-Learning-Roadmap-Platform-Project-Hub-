@@ -235,4 +235,51 @@ describe('processUsageLimitAndCounter - ULTRA tokens daily reset unit tests', ()
     assert.equal(finalDoc.mentorMessagesUsed, 2);
     assert.equal(finalDoc.ultraTokensUsed, 1200, 'Tokens should accumulate to 1200 without being reset again');
   });
+
+  test('Scenario 6: First request of the day is homework_review, followed by mentor_message', async () => {
+    const mockDb = createTransactionalMockDb({
+      [subDocPath]: {
+        plan: 'ULTRA',
+        ultraTokensUsed: 290000, // yesterday tokens
+        lastMentorDate: yesterdayStr,
+        homeworkReviewsUsed: 2,
+        homeworkMonthStart: monthStr
+      }
+    });
+
+    // Step 1: User does homework_review as their first action of the new day
+    await processUsageLimitAndCounter(
+      mockDb,
+      adminMock,
+      userId,
+      'homework_review',
+      todayStr,
+      monthStr
+    );
+
+    const afterHwDoc = mockDb.getStore()[subDocPath];
+    assert.equal(afterHwDoc.lastMentorDate, todayStr, 'lastMentorDate must be updated to today');
+    assert.equal(afterHwDoc.ultraTokensUsed, 0, 'ultraTokensUsed must be reset to 0 during homework_review');
+    assert.equal(afterHwDoc.homeworkReviewsUsed, 3);
+
+    // Step 2: User subsequently calls mentor_message later the same day
+    const mentorResult = await processUsageLimitAndCounter(
+      mockDb,
+      adminMock,
+      userId,
+      'mentor_message',
+      todayStr,
+      monthStr
+    );
+
+    assert.equal(mentorResult.plan, 'ULTRA');
+    assert.equal(mentorResult.updatedUsageCount, 1);
+
+    // Simulate post-API token increment for the mentor message
+    const store = mockDb.getStore();
+    store[subDocPath].ultraTokensUsed += 600;
+
+    const finalDoc = mockDb.getStore()[subDocPath];
+    assert.equal(finalDoc.ultraTokensUsed, 600, 'Final tokens should be 600, not 290600');
+  });
 });
