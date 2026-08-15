@@ -134,7 +134,7 @@ async function processUsageLimitAndCounter(db, admin, userId, usageType, todaySt
       const currentMentor = data.lastMentorDate === todayStr ? (data.mentorMessagesUsed || 0) : 0;
       const currentHwMonth = data.homeworkMonthStart || monthStr;
       const currentHwReviews = currentHwMonth === monthStr ? (data.homeworkReviewsUsed || 0) : 0;
-      const currentUltraTokens = data.ultraTokensUsed || 0;
+      const currentUltraTokens = data.lastMentorDate === todayStr ? (data.ultraTokensUsed || 0) : 0;
 
       // Handle contextual mentor per lesson for FREE plan
       if (usageType === 'contextual_mentor_message' && lessonUsageRef) {
@@ -203,6 +203,12 @@ async function processUsageLimitAndCounter(db, admin, userId, usageType, todaySt
       // Note: 'roadmap' counters are NOT incremented here; they are incremented atomically via consumeRoadmapQuota on successful course creation or cache hit.
       const updates = {};
       let updatedUsageCount = 0;
+
+      // Ensure ULTRA daily tokens are reset on any request on a new day
+      if (plan === 'ULTRA' && data.lastMentorDate !== todayStr) {
+        updates.ultraTokensUsed = 0;
+        updates.lastMentorDate = todayStr;
+      }
 
       if (usageType === 'roadmap') {
         updatedUsageCount = currentRoadmaps;
@@ -469,6 +475,7 @@ exports.aiProxy = onCall(
 );
 
 exports.calculateLevel = calculateLevel;
+exports.processUsageLimitAndCounter = processUsageLimitAndCounter;
 
 // ----------------------------------------------------
 // Secure awardXP Cloud Function (Transaction Enabled)
