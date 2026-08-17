@@ -133,12 +133,12 @@ export default function Landing() {
         >
           {/* Left Text & Action Area */}
           <div className="flex-1 flex flex-col items-center lg:items-start text-center lg:text-left">
-            <motion.h1 variants={fadeUpVariants} className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight mb-4 md:mb-6 leading-tight">
+            <motion.h1 variants={fadeUpVariants} className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight mb-4 md:mb-6 leading-tight break-words">
               <span className="text-on-surface">
                 yourwayy.co
               </span>
             </motion.h1>
-            <motion.p variants={fadeUpVariants} className="text-lg sm:text-xl md:text-2xl text-on-surface-variant max-w-2xl mb-8 md:mb-10 font-light">
+            <motion.p variants={fadeUpVariants} className="text-lg sm:text-xl md:text-2xl text-on-surface-variant max-w-2xl mb-8 md:mb-10 font-light break-words">
               {t('landing.hero.subtitle')}
             </motion.p>
             

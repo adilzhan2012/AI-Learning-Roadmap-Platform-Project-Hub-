@@ -634,7 +634,7 @@ export default function Pricing() {
               ) : (
                 <button 
                   onClick={() => handleSelectPlan('ULTRA')}
-                  className="w-full py-4 rounded-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-on-surface hover:from-indigo-400 hover:to-purple-500 active:scale-[0.98] transition-all text-xs shadow-md"
+                  className="w-full py-4 rounded-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-400 hover:to-purple-500 active:scale-[0.98] transition-all text-xs shadow-md"
                 >
                   {billingPeriod === 'yearly' ? (locale === 'en' ? 'Switch to Yearly Ultra' : 'Перейти на годовой Ultra') : (locale === 'en' ? 'Switch to Monthly Ultra' : 'Перейти на месячный Ultra')}
                 </button>
@@ -642,7 +642,7 @@ export default function Pricing() {
             ) : (
               <button 
                 onClick={() => handleSelectPlan('ULTRA')}
-                className="w-full py-4 rounded-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-on-surface hover:from-indigo-400 hover:to-purple-500 active:scale-[0.98] transition-all text-xs shadow-md shadow-indigo-900/40"
+                className="w-full py-4 rounded-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-400 hover:to-purple-500 active:scale-[0.98] transition-all text-xs shadow-md shadow-indigo-900/40"
               >
                 Активировать Ultra
               </button>

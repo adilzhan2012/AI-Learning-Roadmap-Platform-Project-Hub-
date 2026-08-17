@@ -1201,6 +1201,7 @@ Respond in Russian. Keep your reply concise and professional.`;
               return (
                 <div
                   key={node.id}
+                  title={t('tooltip.reorder') || 'Изменить порядок'}
                   onPointerDown={(e) => handlePointerDown(e, node.id)}
                   onPointerMove={(e) => handlePointerMove(e, node.id)}
                   onPointerUp={(e) => handlePointerUp(e, node.id)}

@@ -177,7 +177,7 @@ export default function Topbar() {
       <header className="fixed top-0 left-0 right-0 z-[80] h-14 border-b border-outline bg-background/90 backdrop-blur-md flex items-center justify-between px-4 sm:px-6 md:px-8 lg:px-12 font-sans transition-colors duration-200">
         {/* Left Brand Area */}
         <div className="flex items-center gap-4 md:gap-6">
-          <div onClick={() => navigate('/dashboard')} className="flex items-center cursor-pointer select-none">
+          <div onClick={() => navigate('/')} className="flex items-center cursor-pointer select-none">
             <Logo variant="icon" className="h-9 md:h-9.5" scale={1.05} />
           </div>
         </div>

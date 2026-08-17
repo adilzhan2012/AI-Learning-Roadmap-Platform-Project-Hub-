@@ -255,7 +255,7 @@ export default function Resources() {
 
   const handleCardClick = async (resource, isLocked) => {
     if (isLocked) {
-      setUpgradeModalOpen(true);
+      navigate('/pricing');
       return;
     }
 

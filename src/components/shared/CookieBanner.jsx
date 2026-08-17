@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Cookie, ShieldAlert } from 'lucide-react';
+import { Cookie, ShieldAlert, Check, Shield } from 'lucide-react';
 import { useLocale } from '../../i18n.js';
 import LegalDocModal from './LegalDocModal.jsx';
 
@@ -111,14 +111,16 @@ export default function CookieBanner() {
           <div className="flex items-center gap-3 mt-1 flex-wrap sm:flex-nowrap">
             <button
               onClick={handleAcceptEssential}
-              className="flex-1 min-w-[120px] border border-outline bg-surface-container/40 hover:bg-on-surface/10 text-on-surface rounded-xl py-2 px-3 text-xs font-bold transition-colors"
+              className="flex-1 min-w-[120px] border border-outline bg-surface-container/40 hover:bg-on-surface/10 text-on-surface rounded-xl py-2 px-3 text-xs font-bold transition-colors flex justify-center items-center gap-2"
             >
+              <Shield className="w-3.5 h-3.5" />
               {isRu ? 'Только необходимые' : 'Only Essential'}
             </button>
             <button
               onClick={handleAcceptAll}
-              className="flex-1 min-w-[120px] bg-on-surface hover:bg-surface-container text-black rounded-xl py-2 px-3 text-xs font-bold transition-colors"
+              className="flex-1 min-w-[120px] bg-on-surface hover:bg-surface-container text-black rounded-xl py-2 px-3 text-xs font-bold transition-colors flex justify-center items-center gap-2"
             >
+              <Check className="w-3.5 h-3.5" />
               {isRu ? 'Принять все' : 'Accept All'}
             </button>
           </div>

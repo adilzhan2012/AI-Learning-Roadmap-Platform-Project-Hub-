@@ -173,7 +173,8 @@ export async function generateCourseAndSave(userId, topic, level, preferences = 
         console.warn("Deduplication check warning:", dedupErr);
       }
 
-      const currentLocale = getLocale();
+      const currentLocale = preferences.language || getLocale();
+      const languageName = currentLocale === 'ru' ? 'Russian' : 'English';
       // 2. Course Template Cache Check (Returns null if RAG / private / personalized)
       const templateKey = buildCourseCacheKey(topic, level, preferences, currentLocale);
       const templateRef = templateKey ? doc(db, 'courseTemplates', templateKey) : null;
@@ -254,7 +255,8 @@ Respond with strictly valid JSON: {"safe": boolean, "reason": "short explanation
         };
       } else {
         // AI Generation Pipeline
-        const languageName = currentLocale === 'ru' ? 'Russian' : 'English';
+        const generationLocale = preferences.language || currentLocale;
+        const languageName = generationLocale === 'ru' ? 'Russian' : 'English';
 
         const durationMode = preferences.duration || 'Standard';
         let targetNodeCount = 8;
