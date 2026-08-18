@@ -36,7 +36,7 @@ import { validateOrFallbackGradient, validateLessonContent, logPipelineMetric, s
 import { determineResourceType } from './resourceService.js';
 import { classifyCourseSubject, formatCourseHours } from '../utils/courseSubjectClassifier.js';
 
-export function withTimeout(promise, ms = 50000, customErrorMessage = 'Превышено время ожидания ответа ИИ.') {
+export function withTimeout(promise, ms = 120000, customErrorMessage = 'Превышено время ожидания ответа ИИ.') {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       const err = new Error(customErrorMessage);
@@ -608,8 +608,8 @@ Make it highly educational, long, and detailed so the user can genuinely learn f
     while (lessonAttempt <= MAX_LESSON_RETRIES) {
       const textResponse = await withTimeout(
         callGeminiWithRetry(null, currentLessonPrompt, 'ai_question'),
-        50000,
-        'Превышено время ожидания генерации урока (50 сек). Пожалуйста, попробуйте еще раз.'
+        120000,
+        'Превышено время ожидания генерации урока (120 сек). Пожалуйста, попробуйте еще раз.'
       );
 
       if (!textResponse) {
@@ -742,10 +742,10 @@ Return ONLY a valid JSON object:
 
   const textResponse = await withTimeout(
     callGeminiWithRetry(null, prompt, 'ai_question'),
-    50000,
+    120000,
     courseLanguage === 'en' 
-      ? 'Timeout generating homework assignment (50s). Please try again.' 
-      : 'Превышено время ожидания генерации задания (50 сек). Пожалуйста, попробуйте еще раз.'
+      ? 'Timeout generating homework assignment (120s). Please try again.' 
+      : 'Превышено время ожидания генерации задания (120 сек). Пожалуйста, попробуйте еще раз.'
   );
   if (!textResponse) throw new Error('Empty response from Gemini API');
 
@@ -853,8 +853,8 @@ Return ONLY a valid JSON object:
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userMessage }
     ]),
-    50000,
-    'Превышено время ожидания проверки задания (50 сек). Пожалуйста, попробуйте еще раз.'
+    120000,
+    'Превышено время ожидания проверки задания (120 сек). Пожалуйста, попробуйте еще раз.'
   );
   if (!textResponse) throw new Error('Empty response from Gemini API');
 

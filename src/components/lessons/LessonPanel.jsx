@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   CheckCircle,
   PlayCircle, 
@@ -89,7 +89,12 @@ export default function LessonPanel({
   const [generatingAssignment, setGeneratingAssignment] = useState(false);
   const [showPractice, setShowPractice] = useState(false);
   const [isUpgradeModalOpen, setUpgradeModalOpen] = useState(false);
-  const [isMobileMentorOpen, setIsMobileMentorOpen] = useState(false);
+  const [isMentorOpen, setIsMentorOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 1024;
+    }
+    return false;
+  });
 
   const handleReviewSection = (headingText) => {
     if (!contentRef.current || !headingText) return;
@@ -249,8 +254,25 @@ Return ONLY a valid JSON object:
       try {
         parsed = parseAIJson(result);
       } catch (parseErr) {
-        const isPassed = /пройдено/i.test(result) && !/не пройдено/i.test(result);
-        parsed = { passed: isPassed, feedback: result };
+        let isPassed = /"passed"\s*:\s*true/i.test(result);
+        if (!/"passed"/.test(result)) {
+           isPassed = /пройдено/i.test(result) && !/не пройдено/i.test(result);
+        }
+        
+        let extractedFeedback = result;
+        const fbIndex = result.indexOf('"feedback"');
+        if (fbIndex !== -1) {
+          const colonIndex = result.indexOf(':', fbIndex);
+          if (colonIndex !== -1) {
+            let value = result.substring(colonIndex + 1).trim();
+            if (value.startsWith('"')) value = value.substring(1);
+            if (value.endsWith('}')) value = value.slice(0, -1).trim();
+            if (value.endsWith('"')) value = value.slice(0, -1);
+            extractedFeedback = value.replace(/\\n/g, '\n').replace(/\\"/g, '"');
+          }
+        }
+        
+        parsed = { passed: isPassed, feedback: extractedFeedback };
       }
 
       const feedbackText = parsed.feedback || result;
@@ -494,15 +516,6 @@ Provide a code boilerplate template at the end.`;
               )}
 
               <button 
-                onClick={() => setIsMobileMentorOpen(true)}
-                className="lg:hidden flex items-center gap-2 px-3 py-1.5 hover:bg-indigo-500/10 text-indigo-400 border border-indigo-500/25 rounded-full transition-colors font-medium text-sm"
-                title={locale === 'en' ? "Mentor" : "Ментор"}
-              >
-                <Sparkles className="w-4 h-4" />
-                <span className="hidden md:inline">{locale === 'en' ? "Mentor" : "Ментор"}</span>
-              </button>
-
-              <button 
                 onClick={handleRealWorldInsight}
                 disabled={insightGenerating}
                 className="flex items-center gap-2 px-3 py-1.5 hover:bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 rounded-full transition-colors font-medium text-sm border border-yellow-500/20 disabled:opacity-50"
@@ -723,9 +736,23 @@ Provide a code boilerplate template at the end.`;
                             {locale === 'en' ? 'AI Code Review Result' : 'Результат AI Code Review'}
                           </span>
                         </div>
-                        <div className="prose prose-invert prose-xs text-left">
+                        <div className="prose prose-invert prose-xs text-left max-w-none w-full whitespace-pre-wrap break-words [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_code]:whitespace-pre-wrap [&_code]:break-words">
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {codeReviewResult}
+                            {(() => {
+                              let text = codeReviewResult;
+                              if (typeof text === 'string' && text.includes('"feedback"')) {
+                                const fbIndex = text.indexOf('"feedback"');
+                                const colonIndex = text.indexOf(':', fbIndex);
+                                if (colonIndex !== -1) {
+                                  let value = text.substring(colonIndex + 1).trim();
+                                  if (value.startsWith('"')) value = value.substring(1);
+                                  if (value.endsWith('}')) value = value.slice(0, -1).trim();
+                                  if (value.endsWith('"')) value = value.slice(0, -1);
+                                  text = value.replace(/\\n/g, '\n').replace(/\\"/g, '"');
+                                }
+                              }
+                              return text;
+                            })()}
                           </ReactMarkdown>
                         </div>
                       </div>
@@ -924,27 +951,61 @@ Provide a code boilerplate template at the end.`;
       {/* Contextual AI Mentor Panel (Hidden in Zen Mode or when Group Chat is open) */}
       {!isZenMode && !isGroupChatOpen && (
         <>
-          {isMobileMentorOpen && (
-            <div 
-              onClick={() => setIsMobileMentorOpen(false)} 
-              className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-xs transition-opacity" 
-            />
-          )}
-          <div className={`
-            fixed inset-0 md:left-auto md:right-0 md:top-0 md:bottom-0 md:w-[380px] z-50 lg:static lg:w-auto lg:block bg-background border-l border-outline shadow-2xl lg:shadow-none
-            ${isMobileMentorOpen ? 'block' : 'hidden'}
-          `}>
-            <ContextualMentor 
-              selectedNode={selectedNode}
-              selectedCourse={selectedCourse}
-              plan={plan}
-              usage={usage}
-              checkLimit={checkLimit}
-              incrementUsage={incrementUsage}
-              setUpgradeModalOpen={setUpgradeModalOpen}
-              onClose={() => setIsMobileMentorOpen(false)}
-            />
-          </div>
+          <AnimatePresence>
+            {isMentorOpen && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsMentorOpen(false)} 
+                className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-xs" 
+              />
+            )}
+          </AnimatePresence>
+          
+          <AnimatePresence>
+            {isMentorOpen && (
+              <motion.div 
+                initial={{ x: 50, width: 0, opacity: 0 }}
+                animate={{ x: 0, width: 'auto', opacity: 1 }}
+                exit={{ x: 50, width: 0, opacity: 0 }}
+                transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+                className="fixed inset-y-0 right-0 w-full md:w-[380px] z-50 lg:static lg:w-auto bg-background border-l border-outline shadow-2xl lg:shadow-none overflow-hidden"
+              >
+                <div className="w-full h-full lg:w-[350px] xl:w-[400px] flex shrink-0">
+                  <ContextualMentor 
+                    selectedNode={selectedNode}
+                    selectedCourse={selectedCourse}
+                    plan={plan}
+                    usage={usage}
+                    checkLimit={checkLimit}
+                    incrementUsage={incrementUsage}
+                    setUpgradeModalOpen={setUpgradeModalOpen}
+                    onClose={() => setIsMentorOpen(false)}
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {!isMentorOpen && (
+              <motion.button
+                initial={{ x: 50, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: 50, opacity: 0 }}
+                transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+                onClick={() => setIsMentorOpen(true)}
+                className="fixed right-0 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-3 px-2 py-4 bg-indigo-600/90 hover:bg-indigo-500 backdrop-blur-md text-white rounded-l-xl shadow-[0_0_20px_rgba(79,70,229,0.3)] border border-r-0 border-indigo-400/30 transition-colors font-bold group"
+                title={locale === 'en' ? "Open Smart Tutor" : "Открыть Умного Наставника"}
+              >
+                <Sparkles className="w-5 h-5 text-indigo-100 group-hover:scale-110 transition-transform" />
+                <span className="text-[11px] uppercase tracking-widest whitespace-nowrap" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+                  {locale === 'en' ? "Smart Tutor" : "Умный Наставник"}
+                </span>
+              </motion.button>
+            )}
+          </AnimatePresence>
         </>
       )}
     </div>

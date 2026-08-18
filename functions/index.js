@@ -305,6 +305,7 @@ exports.aiProxy = onCall(
   {
     enforceAppCheck: true,
     maxInstances: 10,
+    timeoutSeconds: 120,
   },
   async (request) => {
     if (!request.auth) {

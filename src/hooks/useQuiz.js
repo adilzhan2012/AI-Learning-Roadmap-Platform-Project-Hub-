@@ -91,10 +91,10 @@ Return ONLY a valid JSON object:
 
       const textResponse = await withTimeout(
         callGeminiWithRetry(apiKey, quizPrompt, 'ai_question'),
-        50000,
+        120000,
         courseLanguage === 'en'
-          ? 'Timeout generating quiz (50s). Please try again.'
-          : 'Превышено время ожидания генерации теста (50 сек). Пожалуйста, попробуйте еще раз.'
+          ? 'Timeout generating quiz (120s). Please try again.'
+          : 'Превышено время ожидания генерации теста (120 сек). Пожалуйста, попробуйте еще раз.'
       );
       if (!textResponse) throw new Error('Empty response');
 

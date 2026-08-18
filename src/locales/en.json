@@ -570,5 +570,6 @@
   "maintenance.estimatedCompletion": "Estimated Time Remaining",
   "maintenance.hours": "Hours",
   "maintenance.minutes": "Minutes",
-  "maintenance.seconds": "Seconds"
+  "maintenance.seconds": "Seconds",
+  "tooltip.reorder": "Reorder"
 }

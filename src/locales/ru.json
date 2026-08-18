@@ -570,5 +570,6 @@
   "maintenance.estimatedCompletion": "Ориентировочное время завершения",
   "maintenance.hours": "Часов",
   "maintenance.minutes": "Минут",
-  "maintenance.seconds": "Секунд"
+  "maintenance.seconds": "Секунд",
+  "tooltip.reorder": "Изменить порядок"
 }
