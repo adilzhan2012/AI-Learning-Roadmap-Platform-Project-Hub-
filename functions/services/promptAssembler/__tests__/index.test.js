@@ -28,10 +28,10 @@ describe('assembleSystemPrompt - 3x3 (mode x plan) and history assembly unit tes
         const result = assembleSystemPrompt(context, 'Новый вопрос');
 
         assert.ok(result.systemPrompt);
-        assert.ok(result.geminiMessages.length >= 3);
-        assert.equal(result.geminiMessages[0].role, 'system');
-        assert.equal(result.geminiMessages[result.geminiMessages.length - 1].role, 'user');
-        assert.equal(result.geminiMessages[result.geminiMessages.length - 1].content, 'Новый вопрос');
+        assert.ok(result.messages.length >= 3);
+        assert.equal(result.messages[0].role, 'system');
+        assert.equal(result.messages[result.messages.length - 1].role, 'user');
+        assert.equal(result.messages[result.messages.length - 1].content, 'Новый вопрос');
 
         // Mode specific assertions
         if (mode === 'global') {

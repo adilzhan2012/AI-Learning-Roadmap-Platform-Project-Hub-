@@ -63,16 +63,21 @@ import { sanitizeUserInput, sanitizeCode } from '../utils/sanitizeUserInput.js';
 // Retry helper with exponential backoff and model fallback for 503/429/404 errors
 // Call our secure Cloud Function proxy
 // fix/critical-round1: принимает опциональный messages[] для разделения system/user ролей (защита от prompt injection)
-export async function callGeminiWithRetry(apiKey, prompt, usageType, modelName, messages) {
+// feat/mentor-orchestrator: поддерживает extraOptions / mentorContext
+export async function callGeminiWithRetry(apiKey, prompt, usageType, modelName, messages, extraOptions = {}) {
   try {
     const aiProxy = httpsCallable(functions, 'aiProxy');
     const payload = {};
     
     // Если переданы структурированные messages — используем их, иначе prompt
-    if (messages && messages.length > 0) {
+    if (Array.isArray(messages) && messages.length > 0) {
       payload.messages = messages;
-    } else {
+    } else if (prompt) {
       payload.prompt = prompt;
+    }
+
+    if (extraOptions && typeof extraOptions === 'object') {
+      Object.assign(payload, extraOptions);
     }
     
     const knownUsageTypes = ['roadmap', 'ai_question', 'mentor_message', 'homework_review'];

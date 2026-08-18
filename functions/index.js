@@ -3,6 +3,7 @@ const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
 const Sentry = require("@sentry/google-cloud-serverless");
 const { GoogleAuth } = require("google-auth-library");
+const { assembleSystemPrompt } = require("./services/promptAssembler/index.js");
 
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
@@ -301,6 +302,56 @@ function mapModelName(model) {
   return 'google/gemini-2.5-flash';
 }
 
+function resolveGeminiMessages(requestData, userId, transactionResult) {
+  const { prompt, messages: clientMessages, usageType, mentorContext, userQuery } = requestData || {};
+  let geminiMessages;
+  let promptAssemblySource = 'legacy';
+
+  if (mentorContext && typeof mentorContext === 'object') {
+    try {
+      const serverMentorContext = {
+        ...mentorContext,
+        userId,
+        plan: transactionResult?.plan || 'FREE',
+        usage: {
+          isProSoftCapped: Boolean(transactionResult?.isProSoftCapped),
+          mentorMessagesUsed: transactionResult?.updatedUsageCount || 0
+        }
+      };
+
+      const queryText = typeof userQuery === 'string' && userQuery.trim().length > 0
+        ? userQuery
+        : (typeof prompt === 'string' ? prompt : '');
+
+      const assembled = assembleSystemPrompt(serverMentorContext, queryText);
+      geminiMessages = assembled.messages;
+      promptAssemblySource = 'orchestrator';
+
+      console.log(`[aiProxy] Prompt assembled via ORCHESTRATOR: mode=${serverMentorContext.mode}, plan=${serverMentorContext.plan}, historyLen=${assembled.historyMessages.length}`);
+    } catch (asmErr) {
+      console.error('[aiProxy] Orchestrator prompt assembly failed, falling back to legacy:', asmErr);
+      if (clientMessages && Array.isArray(clientMessages) && clientMessages.length > 0) {
+        geminiMessages = clientMessages;
+      } else if (typeof prompt === 'string' && prompt.length > 0) {
+        geminiMessages = [{ role: "user", content: prompt }];
+      } else {
+        throw new HttpsError(
+          "internal",
+          `Failed to assemble mentor prompt: ${asmErr.message}`
+        );
+      }
+    }
+  } else {
+    geminiMessages = clientMessages && clientMessages.length > 0
+      ? clientMessages
+      : [{ role: "user", content: prompt }];
+
+    console.log(`[aiProxy] Prompt assembled via LEGACY: usageType=${usageType || 'default'}, hasClientMessages=${Boolean(clientMessages && clientMessages.length > 0)}`);
+  }
+
+  return { geminiMessages, promptAssemblySource };
+}
+
 exports.aiProxy = onCall(
   {
     enforceAppCheck: true,
@@ -314,25 +365,22 @@ exports.aiProxy = onCall(
       );
     }
 
-    const { prompt, messages: clientMessages, usageType, modelName, lessonId } = request.data;
-    // fix/critical-round1: поддерживаем messages[] для разделения system/user ролей.
-    // Это структурная защита от prompt injection — сильнее, чем только санитизация текста.
-    if (!prompt && (!clientMessages || !Array.isArray(clientMessages) || clientMessages.length === 0)) {
+    const { prompt, messages: clientMessages, usageType, modelName, lessonId, mentorContext, userQuery } = request.data || {};
+    // fix/critical-round1: поддерживаем messages[] для разделения system/user ролей, а также mentorContext для оркестратора
+    if (!prompt && (!clientMessages || !Array.isArray(clientMessages) || clientMessages.length === 0) && !mentorContext) {
       throw new HttpsError(
         "invalid-argument",
-        "The function must be called with either a 'prompt' or 'messages' argument."
+        "The function must be called with either a 'prompt', 'messages', or 'mentorContext' argument."
       );
     }
-    // Build messages array: if explicit messages array provided, use it; otherwise wrap prompt
-    const geminiMessages = clientMessages && clientMessages.length > 0
-      ? clientMessages
-      : [{ role: "user", content: prompt }];
 
     const userId = request.auth.uid;
     const todayStr = new Date().toISOString().split('T')[0];
     const monthStr = todayStr.substring(0, 7);
 
     const transactionResult = await processUsageLimitAndCounter(db, admin, userId, usageType, todayStr, monthStr, lessonId);
+
+    const { geminiMessages } = resolveGeminiMessages(request.data, userId, transactionResult);
 
     let token, projectId;
     try {
@@ -476,6 +524,7 @@ exports.aiProxy = onCall(
 
 exports.calculateLevel = calculateLevel;
 exports.processUsageLimitAndCounter = processUsageLimitAndCounter;
+exports.resolveGeminiMessages = resolveGeminiMessages;
 
 // ----------------------------------------------------
 // Secure awardXP Cloud Function (Transaction Enabled)

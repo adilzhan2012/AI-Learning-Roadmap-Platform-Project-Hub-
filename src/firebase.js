@@ -8,10 +8,11 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
   GithubAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  connectAuthEmulator
 } from 'firebase/auth';
-import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
-import { getFunctions } from 'firebase/functions';
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, connectFirestoreEmulator } from 'firebase/firestore';
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 import { getStorage } from 'firebase/storage';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 
@@ -61,6 +62,23 @@ try {
   });
   functions = getFunctions(app);
   storage = getStorage(app);
+
+  // Connect to local Firebase Emulators in development when explicitly enabled
+  if (import.meta.env.DEV && import.meta.env.VITE_USE_EMULATOR === 'true') {
+    const emulatorHost = import.meta.env.VITE_EMULATOR_HOST || 'localhost';
+    console.log(`[Firebase] Connecting to Functions Emulator on ${emulatorHost}:5001`);
+    connectFunctionsEmulator(functions, emulatorHost, 5001);
+
+    if (import.meta.env.VITE_USE_FIRESTORE_EMULATOR === 'true') {
+      console.log(`[Firebase] Connecting to Firestore Emulator on ${emulatorHost}:8080`);
+      connectFirestoreEmulator(db, emulatorHost, 8080);
+    }
+
+    if (import.meta.env.VITE_USE_AUTH_EMULATOR === 'true') {
+      console.log(`[Firebase] Connecting to Auth Emulator on http://${emulatorHost}:9099`);
+      connectAuthEmulator(auth, `http://${emulatorHost}:9099`, { disableWarnings: true });
+    }
+  }
 
   // Initialize Analytics if supported
   isSupported().then((supported) => {

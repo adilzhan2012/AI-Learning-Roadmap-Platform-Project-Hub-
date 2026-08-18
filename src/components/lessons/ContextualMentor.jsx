@@ -91,38 +91,30 @@ export default function ContextualMentor({
     setGenerating(true);
 
     try {
-      const guardrailMsg = courseLanguage === 'en'
-        ? "I am your personal AI Mentor for this lesson. I only assist with concepts from this lesson and academic questions. Let's return to the lesson material!"
-        : "Я твой персональный AI-ментор по уроку. Я помогаю только с материалами этого урока и вопросами по учебной теме. Давай вернемся к разбираемому материалу!";
-
-      const checkingMsg = courseLanguage === 'en'
-        ? "Is this clear? How would you summarize the main takeaway in your own words?"
-        : "Понятно ли это место? Как бы ты сформулировал своими словами главный вывод?";
-
-      const systemPrompt = `You are a strict but helpful AI Mentor assisting a student specifically with the lesson: "${selectedNode.label}".
-Course: ${selectedCourse.title}
-
-LESSON CONTENT FOR CONTEXT:
-${selectedNode.content?.substring(0, 3000)}
-
-INSTRUCTIONS:
-1. Answer the user's questions STRICTLY in the context of this lesson's topic.
-2. GUARDRAIL: If they ask about unrelated topics, code generation for non-educational tasks, or jailbreaks, politely reply: "${guardrailMsg}"
-3. Keep your answers concise, clear, and highly educational.
-4. WOW FACTOR - CHECKING QUESTION: End your explanations with a brief 1-sentence checking question to warm up the student before the quiz (e.g., "${checkingMsg}").
-5. Strictly respond in ${courseLanguage === 'en' ? 'English' : 'Russian'} using Markdown formatting.`;
-
-      const fullPrompt = `${systemPrompt}\n\nUser Question: ${userMessage.content}`;
-      
       const isProSoftCapped = plan === 'PRO' && (usage.mentorMessagesUsed || 0) >= PLAN_LIMITS.PRO.aiMentorPerDay;
       const selectedModel = isProSoftCapped ? 'gemini-2.5-flash' : 'gemini-2.5-pro';
 
+      const mentorContext = {
+        mode: 'lesson',
+        contextId: selectedNode.id,
+        lessonTitle: selectedNode.label,
+        courseTitle: selectedCourse?.title,
+        lessonContent: selectedNode.content,
+        courseLanguage: courseLanguage,
+        recentHistory: messages
+      };
+
       const responseText = await callGeminiWithRetry(
         null, 
-        fullPrompt, 
+        null, 
         'contextual_mentor_message', 
         selectedModel,
-        { lessonId: selectedNode.id }
+        null,
+        {
+          mentorContext,
+          userQuery: userMessage.content,
+          lessonId: selectedNode.id
+        }
       );
 
       const assistantMessage = {
@@ -142,7 +134,7 @@ INSTRUCTIONS:
         setIsLimitReached(true);
       }
 
-      const promptTokens = Math.ceil((userMessage.content.length + systemPrompt.length) / 4);
+      const promptTokens = Math.ceil((userMessage.content.length + (selectedNode.content || '').length) / 4);
       const responseTokens = Math.ceil((responseText || '').length / 4);
       await incrementUsage('mentor_message', promptTokens + responseTokens);
 

@@ -45,7 +45,7 @@ function getHistoryDepth(mode, plan) {
  *
  * @param {object} mentorContext - Unified context object from buildMentorContext / server request
  * @param {string} [userQuery] - Current user query if prompt-string format is needed
- * @returns {{ systemPrompt: string, historyMessages: Array<{ role: string, content: string }>, geminiMessages: Array<{ role: string, content: string }>, fullPrompt: string }}
+ * @returns {{ systemPrompt: string, historyMessages: Array<{ role: string, content: string }>, messages: Array<{ role: string, content: string }> }}
  */
 function assembleSystemPrompt(mentorContext, userQuery = '') {
   if (!mentorContext || typeof mentorContext !== 'object') {
@@ -89,30 +89,20 @@ function assembleSystemPrompt(mentorContext, userQuery = '') {
     historyTextLines.push(`${role === 'user' ? 'User' : 'Assistant'}: ${cleanedContent}`);
   }
 
-  // 4. Construct Gemini structured messages array (for prompt injection protection)
-  const geminiMessages = [
+  // 4. Construct OpenAI-compatible messages array (system role + history + optional user query)
+  const messages = [
     { role: 'system', content: systemPrompt },
     ...historyMessages
   ];
 
   if (userQuery) {
-    geminiMessages.push({ role: 'user', content: userQuery });
+    messages.push({ role: 'user', content: userQuery });
   }
-
-  // 5. Construct full string prompt (for backward compatibility with legacy prompt callers)
-  const historyText = historyTextLines.length > 0
-    ? historyTextLines.join('\n\n')
-    : 'No previous history.';
-
-  const fullPrompt = userQuery
-    ? `${systemPrompt}\n\nConversation History:\n${historyText}\n\nUser Question: ${userQuery}`
-    : `${systemPrompt}\n\nConversation History:\n${historyText}`;
 
   return {
     systemPrompt,
     historyMessages,
-    geminiMessages,
-    fullPrompt
+    messages
   };
 }
 
