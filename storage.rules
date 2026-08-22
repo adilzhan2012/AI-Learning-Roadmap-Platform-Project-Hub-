@@ -1,19 +1,43 @@
 rules_version = '2';
 
-// Craft rules based on data in your Firestore database
-// allow write: if firestore.get(
-//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
 service firebase.storage {
   match /b/{bucket}/o {
-    match /avatars/{userId} {
-      // Anyone can read avatars
+    
+    // --- User Avatars ---
+    // Matches paths like /avatars/UID or /avatars/UID.jpg
+    match /avatars/{fileName} {
+      // Anyone can view user avatars
       allow read: if true;
-      // Only the user themselves can upload/delete their avatar
-      // File must be an image and less than 2MB
+      
+      // Upload/delete allowed if authenticated, file size < 5MB, and is an image
       allow write: if request.auth != null 
-                   && request.auth.uid == userId
-                   && (request.resource == null || (request.resource.size < 2 * 1024 * 1024 && request.resource.contentType.matches('image/.*')));
+                   && (fileName == request.auth.uid || fileName.startsWith(request.auth.uid + '.'))
+                   && (request.resource == null || (
+                        request.resource.size < 5 * 1024 * 1024 
+                        && request.resource.contentType.matches('image/.*')
+                      ));
     }
+    
+    // --- Support Ticket Attachments ---
+    // Matches paths like /support_attachments/UID_timestamp_filename
+    match /support_attachments/{fileName} {
+      // Authenticated users can read support attachments if they own them or are admin
+      allow read: if request.auth != null 
+                  && (fileName.startsWith(request.auth.uid + '_') || request.auth.token.admin == true);
+                  
+      // Authenticated users can upload support attachments starting with their UID (size < 10MB)
+      allow write: if request.auth != null 
+                   && fileName.startsWith(request.auth.uid + '_')
+                   && (request.resource == null || request.resource.size < 10 * 1024 * 1024);
+    }
+    
+    // --- Certificates ---
+    match /certificates/{fileName} {
+      allow read: if true;
+      allow write: if false; // Cloud Functions / server only
+    }
+
+    // Default deny for any unhandled path
     match /{allPaths=**} {
       allow read, write: if false;
     }

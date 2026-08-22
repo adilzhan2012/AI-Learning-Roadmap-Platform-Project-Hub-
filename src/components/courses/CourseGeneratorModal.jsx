@@ -27,6 +27,31 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const [detectedVideoTitle, setDetectedVideoTitle] = useState('');
+  const [fetchingYtTitle, setFetchingYtTitle] = useState(false);
+
+  React.useEffect(() => {
+    if (generationMode === 'rag' && ragType === 'url' && youtubeUrl.trim()) {
+      const match = youtubeUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/);
+      if (match) {
+        setFetchingYtTitle(true);
+        fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${match[1]}&format=json`)
+          .then(res => res.json())
+          .then(data => {
+            if (data && data.title) {
+              setDetectedVideoTitle(data.title);
+              setTopic(prev => (!prev.trim() || prev.startsWith('Курс') ? data.title : prev));
+            }
+          })
+          .catch(err => console.warn("YouTube oEmbed fetch error:", err))
+          .finally(() => setFetchingYtTitle(false));
+      } else {
+        setDetectedVideoTitle('');
+      }
+    } else {
+      setDetectedVideoTitle('');
+    }
+  }, [youtubeUrl, generationMode, ragType]);
 
   // Step 2: Level & Prerequisites
   const [level, setLevel] = useState('Beginner'); // Beginner, Intermediate, Advanced
@@ -90,11 +115,15 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
   const handleGenerate = () => {
     let finalTopic = topic.trim();
     
-    if (plan === 'ULTRA' && generationMode === 'rag') {
-      if (!finalTopic) {
-        finalTopic = ragType === 'pdf' 
-          ? locale === 'ru' ? `Курс на основе: ${uploadedFileName || 'книги'}` : `Course based on: ${uploadedFileName || 'book'}` 
-          : locale === 'ru' ? 'Курс на основе: YouTube лекции' : 'Course based on: YouTube lecture';
+    if (generationMode === 'rag') {
+      if (!finalTopic || finalTopic.startsWith('Курс')) {
+        if (ragType === 'url' && detectedVideoTitle) {
+          finalTopic = detectedVideoTitle;
+        } else {
+          finalTopic = ragType === 'pdf' 
+            ? (locale === 'ru' ? `Курс на основе: ${uploadedFileName || 'книги'}` : `Course based on: ${uploadedFileName || 'book'}`)
+            : (locale === 'ru' ? 'Курс на основе: YouTube лекции' : 'Course based on: YouTube lecture');
+        }
       }
     }
 
@@ -112,17 +141,18 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
       dailyTime, flashcardCount, courseStyle: tone, language: locale
     };
       
-    if (plan === 'ULTRA' && generationMode === 'rag') {
+    if (generationMode === 'rag') {
       preferences.ragMode = true;
       preferences.ragType = ragType;
       preferences.source = ragType === 'pdf' ? uploadedFileName : youtubeUrl;
+      preferences.videoTitle = detectedVideoTitle || finalTopic;
     }
 
     const topicToGen = finalTopic;
     const levelToGen = level;
 
     // Reset wizard state and close modal
-    setTopic(''); setLevel('Beginner'); setStep(1); setUploadedFileName(''); setYoutubeUrl('');
+    setTopic(''); setLevel('Beginner'); setStep(1); setUploadedFileName(''); setYoutubeUrl(''); setDetectedVideoTitle('');
     onClose();
 
     // Navigate to /graph page to run the course creation animation directly on the graph canvas!
@@ -138,11 +168,18 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
     });
   };
 
+  const handleFileSelected = (file) => {
+    if (!file) return;
+    setUploadedFileName(file.name);
+    const cleanTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ').trim();
+    setTopic(prev => (!prev.trim() || prev.startsWith('Курс') || prev.startsWith('Course') ? cleanTitle : prev));
+  };
+
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files.length > 0) {
-      setUploadedFileName(e.dataTransfer.files[0].name);
+      handleFileSelected(e.dataTransfer.files[0]);
     }
   };
 
@@ -177,14 +214,65 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
             </button>
           </div>
           {ragType === 'pdf' ? (
-            <div onDragOver={e => { e.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)} onDrop={handleDrop} className={`border-2 border-dashed rounded-xl p-5 flex flex-col items-center justify-center cursor-pointer transition-all ${isDragging ? 'border-indigo-400 bg-indigo-500/10' : 'border-indigo-500/25 bg-surface-container-lowest hover:bg-surface-container'}`} onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.pdf,.txt,.doc,.docx'; input.onchange = (e) => { if (e.target.files.length > 0) setUploadedFileName(e.target.files[0].name); }; input.click(); }}>
-              <FileText className="w-8 h-8 text-indigo-400 mb-2" />
-              <p className="text-[11px] font-bold text-center text-zinc-300">{uploadedFileName ? `Selected file: ${uploadedFileName}` : locale === 'ru' ? 'Перетащите PDF сюда или нажмите для выбора' : 'Drag PDF here or click to select'}</p>
+            <div className="space-y-3">
+              <div 
+                onDragOver={e => { e.preventDefault(); setIsDragging(true); }} 
+                onDragLeave={() => setIsDragging(false)} 
+                onDrop={handleDrop} 
+                className={`border-2 border-dashed rounded-xl p-5 flex flex-col items-center justify-center cursor-pointer transition-all ${isDragging ? 'border-indigo-400 bg-indigo-500/10' : 'border-indigo-500/25 bg-surface-container-lowest hover:bg-surface-container'}`} 
+                onClick={() => { 
+                  const input = document.createElement('input'); 
+                  input.type = 'file'; 
+                  input.accept = '.pdf,.txt,.doc,.docx'; 
+                  input.onchange = (e) => { 
+                    if (e.target.files.length > 0) handleFileSelected(e.target.files[0]); 
+                  }; 
+                  input.click(); 
+                }}
+              >
+                <FileText className="w-8 h-8 text-indigo-400 mb-2" />
+                <p className="text-[11px] font-bold text-center text-zinc-300">
+                  {uploadedFileName ? `${locale === 'ru' ? 'Выбран файл:' : 'Selected file:'} ${uploadedFileName}` : locale === 'ru' ? 'Перетащите PDF / документ сюда или нажмите для выбора' : 'Drag PDF / document here or click to select'}
+                </p>
+              </div>
+
+              {uploadedFileName && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-left text-xs">
+                  <span className="font-bold text-emerald-400 block mb-0.5">📄 {locale === 'ru' ? 'Документ прикреплен:' : 'Document attached:'}</span>
+                  <span className="text-on-surface font-medium leading-tight block">{uploadedFileName}</span>
+                </div>
+              )}
+
+              <div className="space-y-1 pt-1">
+                <label className="text-[10px] text-zinc-400 font-bold block">{locale === 'ru' ? 'Название курса / темы (авто-заполнено)' : 'Course Title / Topic (Auto-filled)'}</label>
+                <input type="text" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={uploadedFileName ? uploadedFileName.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') : (locale === 'ru' ? 'Тема курса' : 'Course Topic')} className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2 text-xs text-on-surface focus:border-indigo-500" />
+              </div>
             </div>
           ) : (
-            <div className="space-y-2">
-              <label className="text-[10px] text-zinc-400 font-bold block">{locale === 'ru' ? 'Ссылка на лекцию' : 'Lecture link'}</label>
-              <input type="text" value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2 text-xs text-on-surface focus:border-indigo-500" />
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-[10px] text-zinc-400 font-bold block">{locale === 'ru' ? 'Ссылка на лекцию' : 'Lecture link'}</label>
+                <input type="text" value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2 text-xs text-on-surface focus:border-indigo-500" />
+              </div>
+
+              {fetchingYtTitle && (
+                <div className="flex items-center gap-2 text-[11px] text-indigo-400 font-mono">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+                  {locale === 'ru' ? 'Распознавание названия лекции...' : 'Recognizing video title...'}
+                </div>
+              )}
+
+              {detectedVideoTitle && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-left text-xs">
+                  <span className="font-bold text-emerald-400 block mb-0.5">🎬 {locale === 'ru' ? 'Лекция распознана:' : 'Video recognized:'}</span>
+                  <span className="text-on-surface font-medium leading-tight block">{detectedVideoTitle}</span>
+                </div>
+              )}
+
+              <div className="space-y-1 pt-1">
+                <label className="text-[10px] text-zinc-400 font-bold block">{locale === 'ru' ? 'Название курса / темы (авто-заполнено)' : 'Course Title / Topic (Auto-filled)'}</label>
+                <input type="text" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={detectedVideoTitle || (locale === 'ru' ? 'Тема курса' : 'Course Topic')} className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2 text-xs text-on-surface focus:border-indigo-500" />
+              </div>
             </div>
           )}
         </div>
