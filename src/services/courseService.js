@@ -291,11 +291,13 @@ Learning Preferences:
           if (preferences.ragType === 'pdf') {
             ragContext = `\nSOURCE MATERIAL FOR GENERATION: The course structure and nodes MUST be generated based on the uploaded file contents: "${preferences.source}". Focus exclusively on topics covered in this material.`;
           } else {
-            ragContext = `\nSOURCE MATERIAL FOR GENERATION: The course structure and nodes MUST be generated based on the YouTube lecture / documentation link: "${preferences.source}". Analyze the lecture content/link and generate matching lessons.`;
+            const videoTitleText = preferences.videoTitle || topic;
+            ragContext = `\nCRITICAL SOURCE MATERIAL: The course MUST be created specifically for the YouTube lecture titled: "${videoTitleText}" (Link: ${preferences.source}). All generated modules, nodes, and lessons MUST strictly cover the exact subject matter of "${videoTitleText}". Do NOT produce generic web development, HTML, or CSS content unless "${videoTitleText}" is explicitly about web development.`;
           }
         }
 
-        const basePrompt = `You are an expert AI curriculum designer. Build a complete, highly structured learning roadmap for the topic: "${sanitizeUserInput(topic, 500)}" at difficulty level: "${sanitizeUserInput(level, 50)}".
+        const effectiveTopic = (preferences && preferences.videoTitle) ? preferences.videoTitle : topic;
+        const basePrompt = `You are an expert AI curriculum designer. Build a complete, highly structured learning roadmap for the topic: "${sanitizeUserInput(effectiveTopic, 500)}" at difficulty level: "${sanitizeUserInput(level, 50)}".
 ${prefString}
 ${ragContext}
 
