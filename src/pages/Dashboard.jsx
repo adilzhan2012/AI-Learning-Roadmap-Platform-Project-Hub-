@@ -200,7 +200,7 @@ export default function Dashboard() {
       
       const diff = endOfWeek - now;
       if (diff <= 0) {
-        setTimeLeft('Лига завершена');
+        setTimeLeft(locale === 'en' ? 'League ended' : 'Лига завершена');
         return;
       }
       
@@ -209,13 +209,16 @@ export default function Dashboard() {
       const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const secs = Math.floor((diff % (1000 * 60)) / 1000);
       
-      setTimeLeft(`${days}д ${hours}ч ${mins}м ${secs}с`);
+      setTimeLeft(locale === 'en' 
+        ? `${days}d ${hours}h ${mins}m ${secs}s` 
+        : `${days}д ${hours}ч ${mins}м ${secs}с`
+      );
     };
 
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [locale]);
 
   if (loading) {
     return (
@@ -227,16 +230,16 @@ export default function Dashboard() {
   }
 
   const leagueNameMap = {
-    silicon: 'Кремний',
-    graphite: 'Графит',
-    quartz: 'Кварц',
-    obsidian: 'Обсидиан',
-    platinum: 'Платина',
-    titan: 'Титан'
+    silicon: { ru: 'Кремний', en: 'Silicon' },
+    graphite: { ru: 'Графит', en: 'Graphite' },
+    quartz: { ru: 'Кварц', en: 'Quartz' },
+    obsidian: { ru: 'Обсидиан', en: 'Obsidian' },
+    platinum: { ru: 'Платина', en: 'Platinum' },
+    titan: { ru: 'Титан', en: 'Titan' }
   };
 
   const currentLeagueId = stats?.currentLeague || (plan === 'FREE' ? 'graphite' : 'quartz');
-  const leagueName = leagueNameMap[currentLeagueId] || 'Кварц';
+  const leagueName = leagueNameMap[currentLeagueId]?.[locale] || (locale === 'en' ? 'Quartz' : 'Кварц');
 
   return (
     <motion.div 
@@ -636,7 +639,7 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center justify-between text-[11px] font-bold text-indigo-600 dark:text-indigo-400 mt-4 border-t border-zinc-100 dark:border-white/5 pt-3">
-            <span>{locale === 'en' ? 'View full group' : 'Смотреть всю группу'}</span>
+            <span>{locale === 'en' ? 'View full group' : 'Посмотреть всю группу'}</span>
             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
           </div>
         </motion.div>

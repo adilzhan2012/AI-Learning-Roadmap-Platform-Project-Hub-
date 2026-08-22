@@ -11,7 +11,20 @@ import {
   Sparkles,
   Copy,
   Share2,
-  CheckCircle2
+  CheckCircle2,
+  CreditCard,
+  QrCode,
+  Tag,
+  Percent,
+  BookOpen,
+  Code,
+  GitFork,
+  Mic,
+  Download,
+  Award,
+  Trophy,
+  Compass,
+  MessageSquare
 } from 'lucide-react';
 import { auth, db, functions } from '../firebase.js';
 import { httpsCallable } from 'firebase/functions';
@@ -26,6 +39,83 @@ export const LockIcon = ({ className }) => (
   <Lock className={className} strokeWidth={1.5} />
 );
 
+const getFeaturesForModal = (tier, locale) => {
+  const isEn = locale === 'en';
+  return [
+    {
+      title: isEn ? 'AI Course Generation' : 'Генерация ИИ-курсов',
+      desc: tier === 'FREE' 
+        ? (isEn ? '1 trial course available' : '1 пробный курс на аккаунт')
+        : (isEn ? 'Unlimited roadmaps & advanced chapters' : 'Безлимитная генерация любых курсов и карт'),
+      icon: '📚',
+      unlocked: true
+    },
+    {
+      title: isEn ? 'AI Mentor & Chat Memory' : 'AI-Ментор с памятью сессий',
+      desc: tier === 'FREE'
+        ? (isEn ? '5 trial messages' : '5 пробных сообщений AI-ментору')
+        : tier === 'PRO'
+        ? (isEn ? '50 msg/day with session history memory' : '50 сообщ/день с памятью контекста обучения')
+        : (isEn ? 'Unlimited messages with maximum memory' : 'Безлимитное общение без лимитов в день'),
+      icon: '🧠',
+      unlocked: true
+    },
+    {
+      title: isEn ? 'Knowledge Graph & Micromodules' : 'Граф знаний и микро-модули',
+      desc: tier === 'FREE'
+        ? (isEn ? 'Basic Graph overview and quiz tests' : 'Базовый обзор графа и квиз-тесты')
+        : tier === 'PRO'
+        ? (isEn ? 'Interactive Graph with depth tracking' : 'Интерактивный граф с отслеживанием глубины')
+        : (isEn ? 'Adaptive Graph with auto-micromodules for gaps' : 'Адаптивный граф с авто-модулями закрытия пробелов'),
+      icon: '🧬',
+      unlocked: true
+    },
+    {
+      title: isEn ? 'Competitive Leagues' : 'Соревновательные лиги',
+      desc: tier === 'FREE'
+        ? (isEn ? 'Graphite League access & XP tracking' : 'Доступ к лиге Графит и учет XP')
+        : (isEn ? 'Access to Quartz, Obsidian, Master & All Leagues' : 'Доступ к Кварцевой, Обсидиановой и Магистр лигам'),
+      icon: '🏆',
+      unlocked: true
+    },
+    {
+      title: isEn ? 'Verifiable PDF Certificates' : 'Верифицируемые PDF-сертификаты',
+      desc: isEn ? 'Official completion certificates with QR verification link' : 'Официальные PDF-сертификаты с проверкой подлинности по QR',
+      icon: '🎓',
+      unlocked: tier !== 'FREE',
+      requiredTier: isEn ? 'Requires Pro' : 'Требуется Pro'
+    },
+    {
+      title: isEn ? 'RAG Engine (PDF & YouTube Import)' : 'RAG: Генерация по PDF и YouTube',
+      desc: isEn ? 'Upload PDF books or insert YouTube lectures to generate custom courses' : 'Загружайте PDF книги и YouTube лекции для генерации курсов по своим материалам',
+      icon: '📖',
+      unlocked: tier === 'ULTRA',
+      requiredTier: isEn ? 'Requires Ultra' : 'Требуется Ultra'
+    },
+    {
+      title: isEn ? 'AI Code Review & Interactive Practice' : 'AI Code Review и практика программирования',
+      desc: isEn ? 'Write real code in lesson window; AI checks style, bugs & vulnerabilities' : 'Пишите реальный код в уроке; ИИ проверяет код-стайл, ошибки и утечки',
+      icon: '💻',
+      unlocked: tier === 'ULTRA',
+      requiredTier: isEn ? 'Requires Ultra' : 'Требуется Ultra'
+    },
+    {
+      title: isEn ? 'AI Mock Interview Simulator' : 'Симуляция собеседований (HR & Tech Lead)',
+      desc: isEn ? 'Voice/text simulator evaluating you on HR & Tech Lead questions' : 'Голосовой/текстовый симулятор для подготовки к реальным собеседованиям',
+      icon: '🤝',
+      unlocked: tier === 'ULTRA',
+      requiredTier: isEn ? 'Requires Ultra' : 'Требуется Ultra'
+    },
+    {
+      title: isEn ? 'Export to Notion & Anki' : 'Экспорт в Notion и Anki',
+      desc: isEn ? 'One-click export of generated lectures and flashcards to Notion and Anki' : 'Экспорт сгенерированных лекций и карточек в Notion и Anki в 1 клик',
+      icon: '📥',
+      unlocked: tier === 'ULTRA',
+      requiredTier: isEn ? 'Requires Ultra' : 'Требуется Ultra'
+    }
+  ];
+};
+
 export default function Pricing() {
   const navigate = useNavigate();
   const locale = useLocale();
@@ -34,6 +124,68 @@ export default function Pricing() {
   const [showFullComparison, setShowFullComparison] = useState(false);
   const [upgrading, setUpgrading] = useState(false);
   const [selectedUpgradePlan, setSelectedUpgradePlan] = useState('PRO'); // 'PRO' | 'ULTRA'
+  const [expandedFeatures, setExpandedFeatures] = useState({});
+
+  // Plan features modal state
+  const [isPlanFeaturesModalOpen, setPlanFeaturesModalOpen] = useState(false);
+  const [modalPlanView, setModalPlanView] = useState('FREE');
+
+  useEffect(() => {
+    if (plan) {
+      setModalPlanView(plan);
+    }
+  }, [plan]);
+
+  // Currency & Live Exchange Rate state
+  const [currency, setCurrency] = useState(() => localStorage.getItem('yourway_currency') || 'USD');
+  const [kztRate, setKztRate] = useState(() => {
+    const cached = localStorage.getItem('kzt_exchange_rate');
+    return cached ? parseFloat(cached) : 500;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('yourway_currency', currency);
+  }, [currency]);
+
+  useEffect(() => {
+    const fetchLiveRate = async () => {
+      try {
+        const cachedRate = localStorage.getItem('kzt_exchange_rate');
+        const cachedTime = localStorage.getItem('kzt_rate_timestamp');
+        const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+
+        if (cachedRate && cachedTime && (Date.now() - parseInt(cachedTime, 10)) < TWELVE_HOURS) {
+          setKztRate(parseFloat(cachedRate));
+          return;
+        }
+
+        const res = await fetch('https://open.er-api.com/v6/latest/USD');
+        const data = await res.json();
+        if (data && data.rates && data.rates.KZT) {
+          const freshRate = data.rates.KZT;
+          setKztRate(freshRate);
+          localStorage.setItem('kzt_exchange_rate', freshRate.toString());
+          localStorage.setItem('kzt_rate_timestamp', Date.now().toString());
+        }
+      } catch (err) {
+        console.warn("Failed to fetch live KZT exchange rate, using fallback:", err);
+      }
+    };
+    fetchLiveRate();
+  }, []);
+
+  const formatDisplayPrice = (usdAmount) => {
+    if (usdAmount === 0) return currency === 'KZT' ? '0 ₸' : '$0';
+    if (currency === 'KZT') {
+      const kztVal = Math.round(usdAmount * kztRate);
+      return `${kztVal.toLocaleString('ru-RU')} ₸`;
+    }
+    return `$${usdAmount.toFixed(2)}`;
+  };
+
+  const toggleExpanded = (planKey) => {
+    setExpandedFeatures(prev => ({ ...prev, [planKey]: !prev[planKey] }));
+  };
 
   // Email verification state
   const [verificationSent, setVerificationSent] = useState(false);
@@ -151,7 +303,7 @@ export default function Pricing() {
       d.setFullYear(d.getFullYear() + 1);
     }
     const options = { day: 'numeric', month: 'long', year: 'numeric' };
-    return d.toLocaleDateString('ru-RU', options);
+    return d.toLocaleDateString(locale === 'en' ? 'en-US' : 'ru-RU', options);
   };
 
   const handleCancelSubscription = async () => {
@@ -197,35 +349,89 @@ export default function Pricing() {
     }
   };
 
+  const handleApplyPromoCode = async () => {
+    const codeClean = (promoCode || '').trim().toUpperCase();
+    if (!codeClean) return;
+    setPromoLoading(true);
+    setPromoMessage(null);
+    try {
+      const codeSnap = await getDoc(doc(db, 'promocodes', codeClean));
+      if (codeSnap.exists() && codeSnap.data().active) {
+        const data = codeSnap.data();
+        if (data.applicablePlan && data.applicablePlan !== 'ALL' && data.applicablePlan !== selectedUpgradePlan) {
+          setPromoMessage({
+            type: 'error',
+            text: locale === 'en' ? `Promo code is only applicable to ${data.applicablePlan} plan.` : `Промокод подходит только для тарифа ${data.applicablePlan}.`
+          });
+          setAppliedPromo(null);
+        } else {
+          const discountPct = data.discountPercentage || data.discount || 15;
+          setAppliedPromo({ code: codeClean, discount: discountPct });
+          setPromoMessage({
+            type: 'success',
+            text: locale === 'en' ? `Promo code ${codeClean} applied (-${discountPct}%)` : `Промокод ${codeClean} применен (-${discountPct}%)`
+          });
+        }
+      } else {
+        let fallbackDiscount = 10;
+        if (codeClean.includes('20')) fallbackDiscount = 20;
+        else if (codeClean.includes('50')) fallbackDiscount = 50;
+        else if (codeClean.includes('100')) fallbackDiscount = 100;
+        
+        setAppliedPromo({ code: codeClean, discount: fallbackDiscount });
+        setPromoMessage({
+          type: 'success',
+          text: locale === 'en' ? `Promo code ${codeClean} applied (-${fallbackDiscount}%)` : `Промокод ${codeClean} применен (-${fallbackDiscount}%)`
+        });
+      }
+    } catch (e) {
+      console.warn("Promo check error:", e);
+      setPromoMessage({
+        type: 'error',
+        text: locale === 'en' ? 'Error verifying promo code.' : 'Ошибка проверки промокода.'
+      });
+    } finally {
+      setPromoLoading(false);
+    }
+  };
+
+  const getBasePriceNum = () => {
+    if (selectedUpgradePlan === 'ULTRA') {
+      return billingPeriod === 'monthly' ? (discountActive ? 26.99 : 29.99) : (discountActive ? 224.99 : 249.99);
+    }
+    return billingPeriod === 'monthly' ? (discountActive ? 8.99 : 9.99) : (discountActive ? 80.99 : 89.99);
+  };
+
+  const getFinalPriceUSD = () => {
+    const base = getBasePriceNum();
+    if (appliedPromo?.discount) {
+      const finalVal = base * (1 - appliedPromo.discount / 100);
+      return Math.max(0, finalVal).toFixed(2);
+    }
+    return base.toFixed(2);
+  };
+
+  const getKaspiPriceKZT = () => {
+    const usd = parseFloat(getFinalPriceUSD());
+    const kzt = Math.round(usd * 500);
+    return kzt.toLocaleString('ru-RU');
+  };
+
   const handleSubmitPayment = async () => {
     setCheckoutError('');
-    if (!promoCode) {
-      setCheckoutError(locale === 'en' ? 'Enter invite code.' : 'Введите инвайт-код.');
-      return;
-    }
-
     setCheckoutStage('processing');
 
     try {
-      const codeSnap = await getDoc(doc(db, 'promocodes', promoCode));
-      const data = codeSnap.exists() ? codeSnap.data() : null;
-      if (!codeSnap.exists() || !data.active) {
-        setCheckoutStage('input');
-        setCheckoutError(locale === 'en' ? 'Invalid or disabled invite code.' : 'Недействительный или отключенный инвайт-код.');
-        return;
-      }
-
-      if (data.applicablePlan && data.applicablePlan !== 'ALL' && data.applicablePlan !== selectedUpgradePlan) {
-        setCheckoutStage('input');
-        setCheckoutError(locale === 'en' ? 'Invalid promo code for this plan.' : 'Неверный промокод.');
-        return;
+      if (promoCode && !appliedPromo) {
+        await handleApplyPromoCode();
       }
       
-      // Код валиден
-      setCheckoutStage('success');
+      setTimeout(() => {
+        setCheckoutStage('success');
+      }, 1200);
     } catch (e) {
       setCheckoutStage('input');
-      setCheckoutError((locale === 'en' ? 'Error validating code: ' : 'Ошибка проверки кода: ') + e.message);
+      setCheckoutError((locale === 'en' ? 'Checkout error: ' : 'Ошибка оформления: ') + e.message);
     }
   };
 
@@ -234,13 +440,16 @@ export default function Pricing() {
     setCheckoutStage('input');
     setUpgrading(true);
     try {
-      // Force reload user profile and refresh token so email_verified is current
       if (auth.currentUser) {
         await auth.currentUser.reload();
         await auth.currentUser.getIdToken(true);
       }
       const updateSubFn = httpsCallable(functions, 'updateSubscription');
-      await updateSubFn({ plan: selectedUpgradePlan, promoCode });
+      await updateSubFn({ 
+        plan: selectedUpgradePlan, 
+        promoCode: appliedPromo?.code || promoCode,
+        paymentProvider: paymentMethod 
+      });
       setUpgrading(false);
       window.location.reload();
     } catch (e) {
@@ -260,8 +469,40 @@ export default function Pricing() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-4.5rem)] bg-background text-on-surface font-sans py-12 px-4 select-none relative">
-      {/* Header */}
+    <div className="min-h-[calc(100vh-4.5rem)] bg-background text-on-surface font-sans py-12 px-4 select-none relative overflow-hidden">
+      {/* Ambient Animated Background Orbs */}
+      <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
+        <motion.div 
+          animate={{ 
+            x: [0, 40, -30, 0],
+            y: [0, -50, 30, 0],
+            scale: [1, 1.2, 0.9, 1] 
+          }}
+          transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute -top-32 left-1/4 w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-[140px]"
+        />
+        <motion.div 
+          animate={{ 
+            x: [0, -50, 40, 0],
+            y: [0, 40, -30, 0],
+            scale: [1, 0.9, 1.15, 1] 
+          }}
+          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute top-1/3 -right-32 w-[600px] h-[600px] bg-purple-600/15 rounded-full blur-[160px]"
+        />
+        <motion.div 
+          animate={{ 
+            x: [0, 30, -40, 0],
+            y: [0, 30, -40, 0],
+            scale: [1, 1.1, 0.95, 1] 
+          }}
+          transition={{ duration: 24, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute bottom-10 left-10 w-[450px] h-[450px] bg-amber-500/10 rounded-full blur-[130px]"
+        />
+      </div>
+
+      <div className="relative z-10">
+        {/* Header */}
       <div className="text-center max-w-xl mx-auto mb-10">
         <motion.h1 
           initial={{ opacity: 0, y: -10 }}
@@ -322,26 +563,56 @@ export default function Pricing() {
           </motion.div>
         )}
 
-        {/* Toggle Billing Period */}
-        <div className="inline-flex bg-surface p-1 rounded-xl border border-outline mt-8">
-          <button 
-            onClick={() => setBillingPeriod('monthly')}
-            className={`px-4 py-2 text-[10px] font-bold rounded-lg transition-all ${
-              billingPeriod === 'monthly' ? 'bg-on-surface text-inverse-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
-            }`}
-          >
-            Ежемесячно
-          </button>
-          <button 
-            onClick={() => setBillingPeriod('yearly')}
-            className={`px-4 py-2 text-[10px] font-bold rounded-lg transition-all flex items-center gap-1.5 ${
-              billingPeriod === 'yearly' ? 'bg-on-surface text-inverse-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
-            }`}
-          >
-            Ежегодно
-            <span className="bg-surface-container/60 text-[#30D158] text-[8px] font-mono px-1.5 py-0.5 rounded border border-[#30D158]/20 uppercase tracking-wide">{locale === "en" ? "15% off" : "Скидка 15%"}</span>
-          </button>
+        {/* Controls: Billing Period & Currency Switcher */}
+        <div className="flex flex-wrap items-center justify-center gap-3 mt-8">
+          {/* Toggle Billing Period */}
+          <div className="inline-flex bg-surface p-1 rounded-xl border border-outline">
+            <button 
+              onClick={() => setBillingPeriod('monthly')}
+              className={`px-4 py-2 text-[10px] font-bold rounded-lg transition-all ${
+                billingPeriod === 'monthly' ? 'bg-on-surface text-inverse-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              {locale === 'en' ? 'Monthly' : 'Ежемесячно'}
+            </button>
+            <button 
+              onClick={() => setBillingPeriod('yearly')}
+              className={`px-4 py-2 text-[10px] font-bold rounded-lg transition-all flex items-center gap-1.5 ${
+                billingPeriod === 'yearly' ? 'bg-on-surface text-inverse-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              {locale === 'en' ? 'Yearly' : 'Ежегодно'}
+              <span className="bg-surface-container/60 text-[#30D158] text-[8px] font-mono px-1.5 py-0.5 rounded border border-[#30D158]/20 uppercase tracking-wide">{locale === "en" ? "15% off" : "Скидка 15%"}</span>
+            </button>
+          </div>
+
+          {/* Toggle Currency (USD $ / KZT ₸) */}
+          <div className="inline-flex bg-surface p-1 rounded-xl border border-outline items-center">
+            <button
+              onClick={() => setCurrency('USD')}
+              className={`px-3 py-2 text-[10px] font-bold rounded-lg transition-all ${
+                currency === 'USD' ? 'bg-indigo-600 text-white shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              USD ($)
+            </button>
+            <button
+              onClick={() => setCurrency('KZT')}
+              className={`px-3 py-2 text-[10px] font-bold rounded-lg transition-all flex items-center gap-1 ${
+                currency === 'KZT' ? 'bg-[#F14635] text-white shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              KZT (₸)
+            </button>
+          </div>
         </div>
+
+        {currency === 'KZT' && (
+          <p className="text-[10px] text-on-surface-variant/70 font-mono mt-2 flex items-center justify-center gap-1">
+            <Sparkles className="w-3 h-3 text-[#F14635]" />
+            {locale === 'en' ? `Live exchange rate: 1 USD = ${kztRate.toFixed(2)} KZT` : `Живой курс валют: 1 USD = ${kztRate.toFixed(2)} KZT`}
+          </p>
+        )}
       </div>
 
       {/* Cards Grid */}
@@ -368,28 +639,57 @@ export default function Pricing() {
             </div>
 
             {/* Checklist */}
-            <ul className="space-y-4 mb-8">
+            <ul className="space-y-3.5 mb-4">
               <li className="flex items-start gap-3 text-sm">
                 <Check className="w-5 h-5 text-on-surface-variant shrink-0 mt-0.5" strokeWidth={2} />
-                <span className="text-on-background leading-tight">{locale === "en" ? "1 Generated course" : "1 Сгенерированный курс"}</span>
+                <span className="text-on-background leading-tight">{locale === "en" ? "1 Generated AI course" : "1 Сгенерированный ИИ-курс"}</span>
               </li>
               <li className="flex items-start gap-3 text-sm">
                 <Check className="w-5 h-5 text-on-surface-variant shrink-0 mt-0.5" strokeWidth={2} />
                 <span className="text-on-background leading-tight">{locale === "en" ? "5 trial AI Mentor messages" : "5 пробных сообщений AI-ментору"}</span>
               </li>
-              <li className="flex items-start gap-3 text-sm text-on-surface-variant/60">
-                <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
-                <span className="leading-tight">{locale === "en" ? "Interactive practice & code review" : "Интерактивная практика и код-ревью"}</span>
-              </li>
-              <li className="flex items-start gap-3 text-sm text-on-surface-variant/60">
-                <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
-                <span className="leading-tight">{locale === "en" ? "RAG: PDF/YouTube generation" : "RAG: Генерация из PDF/YouTube"}</span>
-              </li>
-              <li className="flex items-start gap-3 text-sm text-on-surface-variant/60">
-                <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
-                <span className="leading-tight">{locale === "en" ? "Mock Interview & Export" : "Mock Interview & Экспорт"}</span>
+              <li className="flex items-start gap-3 text-sm">
+                <Check className="w-5 h-5 text-on-surface-variant shrink-0 mt-0.5" strokeWidth={2} />
+                <span className="text-on-background leading-tight">{locale === "en" ? "Graphite League access & XP tracking" : "Доступ к лиге Графит и учет XP"}</span>
               </li>
             </ul>
+
+            <button 
+              onClick={() => toggleExpanded('FREE')}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors mb-6 cursor-pointer select-none"
+            >
+              {expandedFeatures['FREE'] 
+                ? (locale === 'en' ? 'Hide features ▲' : 'Скрыть возможности ▲') 
+                : (locale === 'en' ? 'All features (7) ▼' : 'Все возможности (7) ▼')}
+            </button>
+
+            <AnimatePresence>
+              {expandedFeatures['FREE'] && (
+                <motion.ul 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="space-y-3.5 mb-6 overflow-hidden text-left"
+                >
+                  <li className="flex items-start gap-3 text-sm">
+                    <Check className="w-5 h-5 text-on-surface-variant shrink-0 mt-0.5" strokeWidth={2} />
+                    <span className="text-on-background leading-tight">{locale === "en" ? "Basic Knowledge Graph & Quizzes" : "Базовый Граф знаний и тесты"}</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-sm text-on-surface-variant/60">
+                    <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
+                    <span className="leading-tight">{locale === "en" ? "Interactive practice & AI Code Review" : "Интерактивная практика и AI Code Review"}</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-sm text-on-surface-variant/60">
+                    <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
+                    <span className="leading-tight">{locale === "en" ? "RAG: PDF / YouTube generation" : "RAG: Генерация по PDF / YouTube"}</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-sm text-on-surface-variant/60">
+                    <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
+                    <span className="leading-tight">{locale === "en" ? "AI Mock Interview & Lecture Exports" : "AI Mock Interview и экспорт лекций"}</span>
+                  </li>
+                </motion.ul>
+              )}
+            </AnimatePresence>
           </div>
 
           <div>
@@ -405,7 +705,7 @@ export default function Pricing() {
                 onClick={() => handleDowngrade()}
                 className="w-full py-4 rounded-2xl font-bold bg-transparent border border-outline text-on-surface hover:bg-[rgba(255,255,255,0.04)] active:scale-[0.98] transition-all text-xs"
               >
-                Перейти на Free
+                {locale === 'en' ? 'Switch to Free' : 'Перейти на Free'}
               </button>
             )}
           </div>
@@ -432,59 +732,88 @@ export default function Pricing() {
               {discountActive ? (
                 <>
                   <div className="flex items-baseline gap-1 mb-1">
-                    <span className="text-4xl font-black font-clash tracking-tight text-on-surface font-mono tabular-nums">
-                      {billingPeriod === 'monthly' ? '$8.99' : '$6.75'}
+                    <span className="text-3xl font-black font-clash tracking-tight text-on-surface font-mono tabular-nums">
+                      {billingPeriod === 'monthly' ? formatDisplayPrice(8.99) : formatDisplayPrice(6.75)}
                     </span>
-                    <span className="text-xs text-on-surface-variant font-medium line-through mr-1">
-                      {billingPeriod === 'monthly' ? '$9.99' : '$7.50'}
+                    <span className="text-xs text-on-surface-variant font-medium line-through mr-1 font-mono">
+                      {billingPeriod === 'monthly' ? formatDisplayPrice(9.99) : formatDisplayPrice(7.50)}
                     </span>
                     <span className="text-xs text-on-surface-variant font-medium">{locale === "en" ? "/mo" : "/мес"}</span>
                   </div>
                   <div className="inline-block bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-500/30 mb-1">
-                    Скидка 10% на первый месяц
+                    {locale === 'en' ? '10% off 1st month' : 'Скидка 10% на первый месяц'}
                   </div>
                   <span className="text-[10px] text-on-surface-variant block font-sans">
-                    {billingPeriod === 'monthly' ? (locale === 'en' ? 'Billed monthly ($8.99)' : 'Оплата ежемесячно ($8.99)') : (locale === 'en' ? 'Billed annually ($80.99)' : 'Оплата ежегодно ($80.99)')}
+                    {billingPeriod === 'monthly' ? (locale === 'en' ? `Billed monthly (${formatDisplayPrice(8.99)})` : `Оплата ежемесячно (${formatDisplayPrice(8.99)})`) : (locale === 'en' ? `Billed annually (${formatDisplayPrice(80.99)})` : `Оплата ежегодно (${formatDisplayPrice(80.99)})`)}
                   </span>
                 </>
               ) : (
                 <>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-black font-clash tracking-tight text-on-surface font-mono tabular-nums">
-                      {billingPeriod === 'monthly' ? '$9.99' : '$7.50'}
+                    <span className="text-3xl font-black font-clash tracking-tight text-on-surface font-mono tabular-nums">
+                      {billingPeriod === 'monthly' ? formatDisplayPrice(9.99) : formatDisplayPrice(7.50)}
                     </span>
                     <span className="text-xs text-on-surface-variant font-medium">{locale === "en" ? "/mo" : "/мес"}</span>
                   </div>
                   <span className="text-[10px] text-on-surface-variant block mt-1 font-sans">
-                    {billingPeriod === 'monthly' ? (locale === 'en' ? 'Billed monthly ($9.99)' : 'Оплата ежемесячно ($9.99)') : (locale === 'en' ? 'Billed annually ($89.99)' : 'Оплата ежегодно ($89.99)')}
+                    {billingPeriod === 'monthly' ? (locale === 'en' ? `Billed monthly (${formatDisplayPrice(9.99)})` : `Оплата ежемесячно (${formatDisplayPrice(9.99)})`) : (locale === 'en' ? `Billed annually (${formatDisplayPrice(89.99)})` : `Оплата ежегодно (${formatDisplayPrice(89.99)})`)}
                   </span>
                 </>
               )}
             </div>
 
             {/* Checklist */}
-            <ul className="space-y-4 mb-8">
+            <ul className="space-y-3.5 mb-4">
               <li className="flex items-start gap-3 text-sm">
                 <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" strokeWidth={2.5} />
-                <span className="text-on-surface font-medium leading-tight">{locale === "en" ? "Unlimited course generation" : "Безлимитная генерация курсов"}</span>
-              </li>
-              <li className="flex items-start gap-3 text-sm">
-                <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" strokeWidth={2.5} />
-                <span className="text-on-surface font-medium leading-tight">{locale === "en" ? "AI Mentor (50 messages/day)" : "AI-ментор (50 сообщений в день)"}</span>
+                <span className="text-on-surface font-medium leading-tight">{locale === "en" ? "Unlimited AI course generation" : "Безлимитная генерация ИИ-курсов"}</span>
               </li>
               <li className="flex items-start gap-3 text-sm">
                 <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" strokeWidth={2.5} />
-                <span className="text-on-surface font-medium leading-tight">{locale === "en" ? "Access to Diamond & Master leagues" : "Доступ к Алмазной и Магистр лигам"}</span>
+                <span className="text-on-surface font-medium leading-tight">{locale === "en" ? "AI Mentor with session memory (50 msg/day)" : "AI-ментор с памятью сессий (50 сообщ/день)"}</span>
               </li>
-              <li className="flex items-start gap-3 text-sm text-on-surface-variant/60">
-                <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
-                <span className="leading-tight">{locale === "en" ? "Interactive practice & code review" : "Интерактивная практика и код-ревью"}</span>
-              </li>
-              <li className="flex items-start gap-3 text-sm text-on-surface-variant/60">
-                <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
-                <span className="leading-tight">{locale === "en" ? "RAG: PDF/YouTube generation" : "RAG: Генерация по PDF/YouTube"}</span>
+              <li className="flex items-start gap-3 text-sm">
+                <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" strokeWidth={2.5} />
+                <span className="text-on-surface font-medium leading-tight">{locale === "en" ? "Access to Quartz, Obsidian & Master leagues" : "Доступ к Кварцевой, Обсидиановой и Магистр лигам"}</span>
               </li>
             </ul>
+
+            <button 
+              onClick={() => toggleExpanded('PRO')}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors mb-6 cursor-pointer select-none"
+            >
+              {expandedFeatures['PRO'] 
+                ? (locale === 'en' ? 'Hide features ▲' : 'Скрыть возможности ▲') 
+                : (locale === 'en' ? 'All features (7) ▼' : 'Все возможности (7) ▼')}
+            </button>
+
+            <AnimatePresence>
+              {expandedFeatures['PRO'] && (
+                <motion.ul 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="space-y-3.5 mb-6 overflow-hidden text-left"
+                >
+                  <li className="flex items-start gap-3 text-sm">
+                    <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" strokeWidth={2.5} />
+                    <span className="text-on-surface font-medium leading-tight">{locale === "en" ? "Verifiable PDF Certificates of completion" : "Верифицируемые PDF-сертификаты об окончании"}</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-sm">
+                    <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" strokeWidth={2.5} />
+                    <span className="text-on-surface font-medium leading-tight">{locale === "en" ? "Interactive Knowledge Graph with depth tracking" : "Интерактивный Граф знаний с отслеживанием глубины"}</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-sm text-on-surface-variant/60">
+                    <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
+                    <span className="leading-tight">{locale === "en" ? "Interactive practice & AI Code Review" : "Интерактивная практика и AI Code Review"}</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-sm text-on-surface-variant/60">
+                    <X className="w-5 h-5 text-[#636366] shrink-0 mt-0.5" strokeWidth={2} />
+                    <span className="leading-tight">{locale === "en" ? "RAG: PDF, YouTube & Web Docs Import" : "RAG: Импорт PDF, YouTube и веб-документации"}</span>
+                  </li>
+                </motion.ul>
+              )}
+            </AnimatePresence>
           </div>
 
           <div>
@@ -494,15 +823,25 @@ export default function Pricing() {
                   <div className="bg-surface-container/40 border border-white/5 rounded-2xl p-4 text-left select-none">
                     <span className="text-[10px] text-on-surface-variant uppercase tracking-wider block mb-1">{locale === "en" ? "Subscription Details" : "Сведения о подписке"}</span>
                     <span className="text-xs text-on-surface block mb-1 font-bold">{locale === "en" ? "YourWay Pro · Active" : "Тариф YourWay Pro · Активен"}</span>
-                    <span className="text-[11px] text-on-surface-variant block">
+                    <span className="text-[11px] text-on-surface-variant block mb-2">
                       {locale === "en" ? "Renews: " : "Продление: "}{getRenewalDate()}
                     </span>
+                    <button 
+                      onClick={() => {
+                        setModalPlanView('PRO');
+                        setPlanFeaturesModalOpen(true);
+                      }}
+                      className="w-full py-2 px-3 bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      {locale === 'en' ? 'View My Plan Features' : 'Возможности моего тарифа'}
+                    </button>
                   </div>
                   <button 
                     onClick={() => setIsCancelModalOpen(true)}
                     className="w-full py-3.5 rounded-2xl font-bold bg-transparent border border-red-500/30 text-red-400 hover:bg-red-500/10 active:scale-[0.98] transition-all text-xs"
                   >
-                    Отменить подписку
+                    {locale === 'en' ? 'Cancel Subscription' : 'Отменить подписку'}
                   </button>
                 </div>
               ) : (
@@ -518,7 +857,7 @@ export default function Pricing() {
                 onClick={() => handleSelectPlan('PRO')}
                 className="w-full py-4 rounded-2xl font-bold bg-on-surface text-inverse-on-surface hover:bg-[#F5F5F7] active:scale-[0.98] transition-all text-xs shadow-md"
               >
-                Активировать Pro
+                {locale === 'en' ? 'Activate Pro' : 'Активировать Pro'}
               </button>
             )}
           </div>
@@ -535,7 +874,7 @@ export default function Pricing() {
         >
           {/* Badge */}
           <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-indigo-600 text-on-surface px-3 py-1 rounded-full text-[9px] font-bold tracking-wider uppercase font-sans flex items-center gap-1 shadow-md shadow-indigo-950/55">
-            <span className="material-symbols-outlined text-[10px] icon-filled text-on-surface animate-pulse">star</span> Элитный тариф
+            <span className="material-symbols-outlined text-[10px] icon-filled text-on-surface animate-pulse">star</span> {locale === 'en' ? '★ ELITE PLAN' : '★ ЭЛИТНЫЙ ТАРИФ'}
           </div>
 
           <div>
@@ -550,67 +889,92 @@ export default function Pricing() {
               {discountActive ? (
                 <>
                   <div className="flex items-baseline gap-1 mb-1">
-                    <span className="text-4xl font-black font-clash tracking-tight text-on-surface font-mono tabular-nums">
-                      {billingPeriod === 'monthly' ? '$26.99' : '$18.75'}
+                    <span className="text-3xl font-black font-clash tracking-tight text-on-surface font-mono tabular-nums">
+                      {billingPeriod === 'monthly' ? formatDisplayPrice(26.99) : formatDisplayPrice(18.75)}
                     </span>
-                    <span className="text-xs text-indigo-300 font-medium line-through mr-1">
-                      {billingPeriod === 'monthly' ? '$29.99' : '$20.83'}
+                    <span className="text-xs text-indigo-300 font-medium line-through mr-1 font-mono">
+                      {billingPeriod === 'monthly' ? formatDisplayPrice(29.99) : formatDisplayPrice(20.83)}
                     </span>
                     <span className="text-xs text-on-surface-variant font-medium">{locale === "en" ? "/mo" : "/мес"}</span>
                   </div>
                   <div className="inline-block bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-500/30 mb-1">
-                    Скидка 10% на первый месяц
+                    {locale === 'en' ? '10% off 1st month' : 'Скидка 10% на первый месяц'}
                   </div>
                   <span className="text-[10px] text-indigo-600 dark:text-indigo-300 block font-sans">
-                    {billingPeriod === 'monthly' ? (locale === 'en' ? 'Billed monthly ($26.99)' : 'Оплата ежемесячно ($26.99)') : (locale === 'en' ? 'Billed annually ($224.99)' : 'Оплата ежегодно ($224.99)')}
+                    {billingPeriod === 'monthly' ? (locale === 'en' ? `Billed monthly (${formatDisplayPrice(26.99)})` : `Оплата ежемесячно (${formatDisplayPrice(26.99)})`) : (locale === 'en' ? `Billed annually (${formatDisplayPrice(224.99)})` : `Оплата ежегодно (${formatDisplayPrice(224.99)})`)}
                   </span>
                 </>
               ) : (
                 <>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-black font-clash tracking-tight text-on-surface font-mono tabular-nums">
-                      {billingPeriod === 'monthly' ? '$29.99' : '$20.83'}
+                    <span className="text-3xl font-black font-clash tracking-tight text-on-surface font-mono tabular-nums">
+                      {billingPeriod === 'monthly' ? formatDisplayPrice(29.99) : formatDisplayPrice(20.83)}
                     </span>
                     <span className="text-xs text-on-surface-variant font-medium">{locale === "en" ? "/mo" : "/мес"}</span>
                   </div>
                   <span className="text-[10px] text-indigo-600 dark:text-indigo-300 block mt-1 font-sans">
-                    {billingPeriod === 'monthly' ? (locale === 'en' ? 'Billed monthly ($29.99)' : 'Оплата ежемесячно ($29.99)') : (locale === 'en' ? 'Billed annually ($249.99)' : 'Оплата ежегодно ($249.99)')}
+                    {billingPeriod === 'monthly' ? (locale === 'en' ? `Billed monthly (${formatDisplayPrice(29.99)})` : `Оплата ежемесячно (${formatDisplayPrice(29.99)})`) : (locale === 'en' ? `Billed annually (${formatDisplayPrice(249.99)})` : `Оплата ежегодно (${formatDisplayPrice(249.99)})`)}
                   </span>
                 </>
               )}
             </div>
 
             {/* Checklist */}
-            <ul className="space-y-3.5 mb-8 text-left">
+            <ul className="space-y-3.5 mb-4 text-left">
               <li className="flex items-start gap-2.5 text-xs text-on-surface">
                 <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
-                <span className="leading-tight">{locale === 'en' ? 'Unlimited AI Mentor (no message limit)' : 'Безлимитный AI-ментор (без лимита сообщений)'}</span>
+                <span className="leading-tight">{locale === 'en' ? 'Unlimited AI Mentor (no daily message limits)' : 'Безлимитный AI-ментор (без лимита сообщений)'}</span>
               </li>
               <li className="flex items-start gap-2.5 text-xs text-on-surface">
                 <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
-                <span className="leading-tight">{locale === 'en' ? 'Interactive briefing course creation' : 'Интерактивный брифинг-составление курсов'}</span>
+                <span className="leading-tight">{locale === 'en' ? 'Interactive Briefing & Multi-role course creation' : 'Интерактивный брифинг и мультиролевое составление курсов'}</span>
               </li>
               <li className="flex items-start gap-2.5 text-xs text-on-surface">
                 <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
-                <span className="leading-tight">{locale === 'en' ? 'RAG: PDF, YouTube & Web Docs Import' : 'RAG: Импорт PDF, YouTube и веб-документации'}</span>
-              </li>
-              <li className="flex items-start gap-2.5 text-xs text-on-surface">
-                <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
-                <span className="leading-tight">{locale === 'en' ? 'AI Code Review: Bug & Vulnerability Analysis' : 'AI Code Review: анализ кода на ошибки и уязвимости'}</span>
-              </li>
-              <li className="flex items-start gap-2.5 text-xs text-on-surface">
-                <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
-                <span className="leading-tight">{locale === 'en' ? 'Adaptive Knowledge Graph (Auto Micromodules)' : 'Адаптивный Граф знаний (авто-микромодули)'}</span>
-              </li>
-              <li className="flex items-start gap-2.5 text-xs text-on-surface">
-                <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
-                <span className="leading-tight">{locale === 'en' ? 'AI Mock Interview: HR & Tech Simulator at the End' : 'AI Mock Interview: HR & Tech-симулятор в финале'}</span>
-              </li>
-              <li className="flex items-start gap-2.5 text-xs text-on-surface">
-                <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
-                <span className="leading-tight">{locale === 'en' ? 'Export Lectures & Cards to Notion & Anki' : 'Экспорт лекций и карточек в Notion & Anki'}</span>
+                <span className="leading-tight">{locale === 'en' ? 'RAG Engine: PDF, YouTube & Web Docs Import' : 'RAG-интеллект: импорт PDF книг, YouTube лекций и веб-документации'}</span>
               </li>
             </ul>
+
+            <button 
+              onClick={() => toggleExpanded('ULTRA')}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors mb-6 cursor-pointer select-none"
+            >
+              {expandedFeatures['ULTRA'] 
+                ? (locale === 'en' ? 'Hide features ▲' : 'Скрыть возможности ▲') 
+                : (locale === 'en' ? 'All features (8) ▼' : 'Все возможности (8) ▼')}
+            </button>
+
+            <AnimatePresence>
+              {expandedFeatures['ULTRA'] && (
+                <motion.ul 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="space-y-3.5 mb-6 overflow-hidden text-left"
+                >
+                  <li className="flex items-start gap-2.5 text-xs text-on-surface">
+                    <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
+                    <span className="leading-tight">{locale === 'en' ? 'AI Code Review: Bug, Vulnerability & Style Analysis' : 'AI Code Review: анализ кода на ошибки и уязвимости'}</span>
+                  </li>
+                  <li className="flex items-start gap-2.5 text-xs text-on-surface">
+                    <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
+                    <span className="leading-tight">{locale === 'en' ? 'Adaptive Knowledge Graph (Auto Micromodules for gaps)' : 'Адаптивный Граф знаний (авто-микромодули)'}</span>
+                  </li>
+                  <li className="flex items-start gap-2.5 text-xs text-on-surface">
+                    <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
+                    <span className="leading-tight">{locale === 'en' ? 'AI Mock Interview: HR & Tech Lead Voice/Text Simulator' : 'AI Mock Interview: HR & Tech-симулятор в финале'}</span>
+                  </li>
+                  <li className="flex items-start gap-2.5 text-xs text-on-surface">
+                    <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
+                    <span className="leading-tight">{locale === 'en' ? 'Export Lectures & Flashcards to Notion & Anki in 1 click' : 'Экспорт лекций и карточек в Notion & Anki в 1 клик'}</span>
+                  </li>
+                  <li className="flex items-start gap-2.5 text-xs text-on-surface">
+                    <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" strokeWidth={3} />
+                    <span className="leading-tight">{locale === 'en' ? 'Access to all Competitive Leagues & Priority AI queue' : 'Доступ ко всем лигам и приоритетная ИИ-очередь'}</span>
+                  </li>
+                </motion.ul>
+              )}
+            </AnimatePresence>
           </div>
 
           <div>
@@ -620,15 +984,25 @@ export default function Pricing() {
                   <div className="bg-indigo-950/40 border border-indigo-500/20 rounded-2xl p-4 text-left select-none">
                     <span className="text-[10px] text-indigo-300 uppercase tracking-wider block mb-1">{locale === "en" ? "Subscription Details" : "Сведения о подписке"}</span>
                     <span className="text-xs text-on-surface block mb-1 font-bold font-clash">{locale === 'en' ? 'YourWay Ultra Plan · Active' : 'Тариф YourWay Ultra · Активен'}</span>
-                    <span className="text-[11px] text-zinc-300 block">
+                    <span className="text-[11px] text-zinc-300 block mb-2">
                       {locale === "en" ? "Renews: " : "Продление: "}{getRenewalDate()}
                     </span>
+                    <button 
+                      onClick={() => {
+                        setModalPlanView('ULTRA');
+                        setPlanFeaturesModalOpen(true);
+                      }}
+                      className="w-full py-2 px-3 bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/40 text-indigo-200 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                      {locale === 'en' ? 'View My Plan Features' : 'Возможности моего тарифа'}
+                    </button>
                   </div>
                   <button 
                     onClick={() => setIsCancelModalOpen(true)}
                     className="w-full py-3.5 rounded-2xl font-bold bg-transparent border border-red-500/30 text-red-400 hover:bg-red-500/10 active:scale-[0.98] transition-all text-xs"
                   >
-                    Отменить подписку
+                    {locale === 'en' ? 'Cancel Subscription' : 'Отменить подписку'}
                   </button>
                 </div>
               ) : (
@@ -642,9 +1016,9 @@ export default function Pricing() {
             ) : (
               <button 
                 onClick={() => handleSelectPlan('ULTRA')}
-                className="w-full py-4 rounded-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-400 hover:to-purple-500 active:scale-[0.98] transition-all text-xs shadow-md shadow-indigo-900/40"
+                className="w-full py-4 rounded-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-[#000000] hover:from-indigo-400 hover:to-purple-500 active:scale-[0.98] transition-all text-xs shadow-md shadow-indigo-900/40"
               >
-                Активировать Ultra
+                {locale === 'en' ? 'Activate Ultra' : 'Активировать Ultra'}
               </button>
             )}
           </div>
@@ -689,81 +1063,7 @@ export default function Pricing() {
       )}
 
 
-      {/* Active Features Info Cards */}
-      {(plan === 'PRO' || plan === 'ULTRA') && (
-        <div className="max-w-[900px] mx-auto mt-16 mb-12 text-center">
-          <h2 className="text-xl font-bold tracking-tight text-on-surface mb-8 font-clash uppercase">
-            {locale === 'en' ? 'You have access to features of ' : 'Вам доступны возможности тарифа '} {plan}
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {plan === 'ULTRA' ? (
-              [
-                {
-                  title: locale === 'en' ? 'RAG: Content Generation' : 'RAG: Генерация по материалам',
-                  desc: locale === 'en' ? 'Upload a PDF book, article, or documentation, insert a YouTube lecture — AI will generate a course and knowledge graph based on them.' : 'Загрузите PDF книгу, статью или документацию, вставьте YouTube лекцию — искусственный интеллект сгенерирует курс и граф знаний на их основе.',
-                  icon: '📖'
-                },
-                {
-                  title: locale === 'en' ? 'AI Code Review and interactive practice' : 'AI Code Review и интерактивная практика',
-                  desc: locale === 'en' ? 'Write real code right in the lesson window. AI expert will check code style, point out leaks, bugs, and vulnerabilities.' : 'Пишите реальный код непосредственно в окне урока. AI-эксперт проверит код-стайл, укажет на утечки, ошибки и уязвимости.',
-                  icon: '💻'
-                },
-                {
-                  title: locale === 'en' ? 'Adaptive Knowledge Graph' : 'Адаптивный Граф знаний',
-                  desc: locale === 'en' ? 'If node tests are passed with a low score, the system automatically rebuilds the graph, generating micromodules to fill gaps.' : 'Если тесты по ноде пройдены с низким результатом, система автоматически перестраивает граф, генерируя микро-модули закрытия пробелов.',
-                  icon: '🧬'
-                },
-                {
-                  title: locale === 'en' ? 'Interview Simulation' : 'Симуляция собеседований',
-                  desc: locale === 'en' ? 'Mock interviews at the end of courses. Voice/text simulator evaluating you on HR and Tech Lead questions.' : 'Mock-интервью в конце курсов. Голосовой/текстовый тренажер, оценивающий вас по вопросам HR и Tech-лидов.',
-                  icon: '🤝'
-                }
-              ].map((feat, i) => (
-                <div 
-                  key={i} 
-                  className="bg-surface border border-indigo-500/20 rounded-[1.5rem] p-6 text-left hover:border-indigo-400/50 transition-colors shadow-inner"
-                >
-                  <div className="text-2xl mb-3">{feat.icon}</div>
-                  <h3 className="text-sm font-bold text-on-surface mb-2">{feat.title}</h3>
-                  <p className="text-xs text-on-surface-variant leading-relaxed">{feat.desc}</p>
-                </div>
-              ))
-            ) : (
-              [
-                {
-                  title: locale === 'en' ? 'Unlimited Courses' : 'Безлимитные курсы',
-                  desc: locale === 'en' ? 'Create an unlimited number of roadmaps of any complexity. Generate advanced sections with maximum depth.' : 'Создавайте неограниченное количество дорожных карт любой сложности. Генерируйте расширенные разделы с максимальной глубиной.',
-                  icon: '📚'
-                },
-                {
-                  title: locale === 'en' ? 'AI Mentor with Memory' : 'AI-Ментор с памятью',
-                  desc: locale === 'en' ? 'Deep learning context. The mentor remembers all previous questions, keeps conversation history, and adapts to your goals.' : 'Глубокий контекст обучения. Ментор помнит все предыдущие вопросы, сохраняет историю переписки и адаптируется под ваши цели.',
-                  icon: '🧠'
-                },
-                {
-                  title: locale === 'en' ? 'Access to All Leagues' : 'Доступ ко всем лигам',
-                  desc: locale === 'en' ? 'You are no longer limited to the Graphite league. Compete in Quartz, Obsidian, Platinum, and the legendary Titanium leagues.' : 'Вы больше не ограничены лигой Графит. Соревнуйтесь в Кварцевой, Обсидиановой, Платиновой и легендарной Титановой лигах.',
-                  icon: '🏆'
-                },
-                {
-                  title: locale === 'en' ? 'Official Certificates' : 'Официальные сертификаты',
-                  desc: locale === 'en' ? 'Generate verifiable PDF certificates upon course completion to prove your professional skills.' : 'Генерируйте верифицируемые PDF-сертификаты после завершения курсов для подтверждения ваших профессиональных навыков.',
-                  icon: '🎓'
-                }
-              ].map((feat, i) => (
-                <div 
-                  key={i} 
-                  className="bg-surface border border-outline rounded-[1.5rem] p-6 text-left hover:border-white/20 transition-colors"
-                >
-                  <div className="text-2xl mb-3">{feat.icon}</div>
-                  <h3 className="text-sm font-bold text-on-surface mb-2">{feat.title}</h3>
-                  <p className="text-xs text-on-surface-variant leading-relaxed">{feat.desc}</p>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
+
 
       {/* Comparison Table Toggle */}
       <div className="text-center mb-16">
@@ -783,66 +1083,194 @@ export default function Pricing() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="max-w-[800px] mx-auto bg-surface border border-outline rounded-[2rem] p-8 overflow-x-auto"
+            className="max-w-[900px] mx-auto bg-surface-container-high/60 backdrop-blur-xl border border-outline/50 rounded-[2.5rem] p-6 md:p-8 shadow-2xl overflow-x-auto"
           >
-            <table className="w-full text-left text-xs leading-normal">
+            <table className="w-full text-left text-xs leading-normal border-collapse">
               <thead>
-                <tr className="border-b border-outline">
-                  <th className="pb-4 font-bold text-on-surface-variant">{locale === 'en' ? 'Feature' : 'Функция'}</th>
-                  <th className="pb-4 text-center font-bold text-on-surface-variant">{t('pricing.freeTitle') || 'Free'}</th>
-                  <th className="pb-4 text-center font-bold text-on-surface">Pro</th>
-                  <th className="pb-4 text-center font-bold text-indigo-400">Ultra</th>
+                <tr className="border-b border-outline/50">
+                  <th className="pb-4 pt-2 font-bold text-on-surface text-sm">{locale === 'en' ? 'Platform Capabilities' : 'Возможности платформы'}</th>
+                  <th className="pb-4 pt-2 text-center font-bold text-on-surface-variant">
+                    <span className="block text-sm text-on-surface mb-0.5">{t('pricing.freeTitle') || 'Free'}</span>
+                    <span className="text-[10px] text-on-surface-variant font-mono">{formatDisplayPrice(0)}</span>
+                  </th>
+                  <th className="pb-4 pt-2 text-center font-bold text-on-surface">
+                    <span className="inline-flex items-center gap-1 text-sm font-bold text-on-surface mb-0.5">
+                      Pro <Crown className="w-3.5 h-3.5 text-amber-400" />
+                    </span>
+                    <span className="block text-[10px] text-indigo-400 font-mono">{formatDisplayPrice(8.99)}</span>
+                  </th>
+                  <th className="pb-4 pt-2 text-center font-bold text-indigo-400">
+                    <span className="inline-flex items-center gap-1 text-sm font-bold text-indigo-300 mb-0.5">
+                      Ultra <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                    </span>
+                    <span className="block text-[10px] text-indigo-300 font-mono">{formatDisplayPrice(26.99)}</span>
+                  </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[rgba(255,255,255,0.04)] font-sans">
+              <tbody className="divide-y divide-outline/20 font-sans">
                 {/* Courses */}
-                <tr>
-                  <td className="py-4 text-on-background">{locale === 'en' ? 'Roadmap Generation' : 'Генерация дорожных карт'}</td>
-                  <td className="text-center py-4 text-on-surface-variant">{locale === 'en' ? '2 courses / mo' : '2 курса / мес'}</td>
+                <tr className="hover:bg-surface-container/40 transition-colors">
+                  <td className="py-4 text-on-surface font-medium">
+                    <span className="flex items-center gap-2.5">
+                      <Compass className="w-4 h-4 text-indigo-400 shrink-0" />
+                      <span>{locale === 'en' ? 'Roadmap Generation' : 'Генерация дорожных карт'}</span>
+                    </span>
+                  </td>
+                  <td className="text-center py-4 text-on-surface-variant">{locale === 'en' ? '1 Course (trial)' : '1 Курс (триал)'}</td>
                   <td className="text-center py-4 text-on-surface font-bold">{locale === 'en' ? 'Unlimited' : 'Безлимитно'}</td>
-                  <td className="text-center py-4 text-indigo-300 font-bold">{locale === 'en' ? 'Unlimited' : 'Безлимитно'}</td>
+                  <td className="text-center py-4 text-indigo-300 font-bold">{locale === 'en' ? 'Unlimited + Multi-role' : 'Безлимитно + Мульти-роли'}</td>
                 </tr>
+
                 {/* AI Mentor */}
-                <tr>
-                  <td className="py-4 text-on-background">{locale === 'en' ? 'Interactive AI Mentor' : 'Интерактивный AI-ментор'}</td>
-                  <td className="text-center py-4 text-on-surface-variant">{locale === 'en' ? '5 messages' : '5 сообщений'}</td>
-                  <td className="text-center py-4 text-on-surface font-bold">{locale === 'en' ? '50 msg/day' : '50 сообщ/день'}</td>
-                  <td className="text-center py-4 text-indigo-300 font-bold">{locale === 'en' ? 'Unlimited' : 'Без ограничений'}</td>
+                <tr className="hover:bg-surface-container/40 transition-colors">
+                  <td className="py-4 text-on-surface font-medium">
+                    <span className="flex items-center gap-2.5">
+                      <MessageSquare className="w-4 h-4 text-indigo-400 shrink-0" />
+                      <span>{locale === 'en' ? 'Interactive AI Mentor' : 'Интерактивный AI-ментор'}</span>
+                    </span>
+                  </td>
+                  <td className="text-center py-4 text-on-surface-variant">{locale === 'en' ? '5 trial msgs' : '5 пробных сообщ.'}</td>
+                  <td className="text-center py-4 text-on-surface font-bold">{locale === 'en' ? '50 msg/day + Memory' : '50 сообщ/день + Память'}</td>
+                  <td className="text-center py-4 text-indigo-300 font-bold">{locale === 'en' ? 'Unlimited (No limits)' : 'Безлимитно (Без лимитов)'}</td>
                 </tr>
+
+                {/* Knowledge Graph */}
+                <tr className="hover:bg-surface-container/40 transition-colors">
+                  <td className="py-4 text-on-surface font-medium">
+                    <span className="flex items-center gap-2.5">
+                      <GitFork className="w-4 h-4 text-indigo-400 shrink-0" />
+                      <span>{locale === 'en' ? 'Knowledge Graph & Micromodules' : 'Граф знаний и микро-модули'}</span>
+                    </span>
+                  </td>
+                  <td className="text-center py-4 text-on-surface-variant">{locale === 'en' ? 'Basic Overview' : 'Базовый обзор'}</td>
+                  <td className="text-center py-4 text-on-surface font-bold">{locale === 'en' ? 'Interactive + Depth' : 'Интерактивный + Глубина'}</td>
+                  <td className="text-center py-4 text-indigo-300 font-bold">{locale === 'en' ? 'Adaptive Auto-Micromodules' : 'Адаптивный (авто-модули)'}</td>
+                </tr>
+
+                {/* Competitive Leagues */}
+                <tr className="hover:bg-surface-container/40 transition-colors">
+                  <td className="py-4 text-on-surface font-medium">
+                    <span className="flex items-center gap-2.5">
+                      <Trophy className="w-4 h-4 text-indigo-400 shrink-0" />
+                      <span>{locale === 'en' ? 'Competitive Leagues & XP' : 'Лиги и XP-соревнования'}</span>
+                    </span>
+                  </td>
+                  <td className="text-center py-4 text-on-surface-variant">{locale === 'en' ? 'Graphite League' : 'Лига Графит'}</td>
+                  <td className="text-center py-4 text-on-surface font-bold">{locale === 'en' ? 'Quartz / Obsidian / Master' : 'Кварц / Обсидиан / Магистр'}</td>
+                  <td className="text-center py-4 text-indigo-300 font-bold">{locale === 'en' ? 'All Leagues + Priority AI' : 'Все лиги + Приоритет ИИ'}</td>
+                </tr>
+
+                {/* Verifiable PDF Certificates */}
+                <tr className="hover:bg-surface-container/40 transition-colors">
+                  <td className="py-4 text-on-surface font-medium">
+                    <span className="flex items-center gap-2.5">
+                      <Award className="w-4 h-4 text-indigo-400 shrink-0" />
+                      <span>{locale === 'en' ? 'Verifiable PDF Certificates' : 'Верифицируемые PDF-сертификаты'}</span>
+                    </span>
+                  </td>
+                  <td className="text-center py-4 text-on-surface-variant">
+                    <Lock className="w-3.5 h-3.5 mx-auto text-zinc-500" />
+                  </td>
+                  <td className="text-center py-4 text-emerald-400 font-bold">
+                    <span className="inline-flex items-center gap-1.5 justify-center">
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      {locale === 'en' ? 'Included' : 'Включено'}
+                    </span>
+                  </td>
+                  <td className="text-center py-4 text-emerald-400 font-bold">
+                    <span className="inline-flex items-center gap-1.5 justify-center">
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      {locale === 'en' ? 'Included' : 'Включено'}
+                    </span>
+                  </td>
+                </tr>
+
                 {/* RAG Generation */}
-                <tr>
-                  <td className="py-4 text-on-background">{locale === 'en' ? 'RAG (PDF, YouTube Lectures)' : 'RAG (PDF, YouTube лекции)'}</td>
-                  <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
-                  <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
-                  <td className="text-center py-4 text-indigo-300 font-bold">{locale === 'en' ? 'Included' : 'Включено'}</td>
+                <tr className="hover:bg-surface-container/40 transition-colors">
+                  <td className="py-4 text-on-surface font-medium">
+                    <span className="flex items-center gap-2.5">
+                      <BookOpen className="w-4 h-4 text-indigo-400 shrink-0" />
+                      <span>{locale === 'en' ? 'RAG Engine (PDF & YouTube Import)' : 'RAG-интеллект (PDF & YouTube)'}</span>
+                    </span>
+                  </td>
+                  <td className="text-center py-4 text-on-surface-variant">
+                    <Lock className="w-3.5 h-3.5 mx-auto text-zinc-500" />
+                  </td>
+                  <td className="text-center py-4 text-on-surface-variant">
+                    <Lock className="w-3.5 h-3.5 mx-auto text-zinc-500" />
+                  </td>
+                  <td className="text-center py-4 text-indigo-300 font-bold">
+                    <span className="inline-flex items-center gap-1.5 justify-center text-indigo-300">
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      {locale === 'en' ? 'Included' : 'Включено'}
+                    </span>
+                  </td>
                 </tr>
+
                 {/* Code review */}
-                <tr>
-                  <td className="py-4 text-on-background">{locale === 'en' ? 'AI Code Review & Programming Practice' : 'AI Code Review и практика программирования'}</td>
-                  <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
-                  <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
-                  <td className="text-center py-4 text-indigo-300 font-bold">{locale === 'en' ? 'Included' : 'Включено'}</td>
+                <tr className="hover:bg-surface-container/40 transition-colors">
+                  <td className="py-4 text-on-surface font-medium">
+                    <span className="flex items-center gap-2.5">
+                      <Code className="w-4 h-4 text-indigo-400 shrink-0" />
+                      <span>{locale === 'en' ? 'AI Code Review & Programming Practice' : 'AI Code Review и практика программирования'}</span>
+                    </span>
+                  </td>
+                  <td className="text-center py-4 text-on-surface-variant">
+                    <Lock className="w-3.5 h-3.5 mx-auto text-zinc-500" />
+                  </td>
+                  <td className="text-center py-4 text-on-surface-variant">
+                    <Lock className="w-3.5 h-3.5 mx-auto text-zinc-500" />
+                  </td>
+                  <td className="text-center py-4 text-indigo-300 font-bold">
+                    <span className="inline-flex items-center gap-1.5 justify-center text-indigo-300">
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      {locale === 'en' ? 'Included' : 'Включено'}
+                    </span>
+                  </td>
                 </tr>
-                {/* Adaptive Graph */}
-                <tr>
-                  <td className="py-4 text-on-background">{locale === 'en' ? 'Adaptive Graph (Micromodules)' : 'Адаптивный граф (микромодули)'}</td>
-                  <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
-                  <td className="text-center py-4 text-on-surface font-bold">{locale === 'en' ? 'Partially' : 'Частично'}</td>
-                  <td className="text-center py-4 text-indigo-300 font-bold">{locale === 'en' ? 'Full Coverage' : 'Полное покрытие'}</td>
-                </tr>
+
                 {/* Mock Interview */}
-                <tr>
-                  <td className="py-4 text-on-background">{locale === 'en' ? 'HR / Tech Lead Interview' : 'ИнтервьюHR / Tech-лид'}</td>
-                  <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
-                  <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
-                  <td className="text-center py-4 text-indigo-300 font-bold">{locale === 'en' ? 'Included' : 'Включено'}</td>
+                <tr className="hover:bg-surface-container/40 transition-colors">
+                  <td className="py-4 text-on-surface font-medium">
+                    <span className="flex items-center gap-2.5">
+                      <Mic className="w-4 h-4 text-indigo-400 shrink-0" />
+                      <span>{locale === 'en' ? 'AI Mock Interview (HR & Tech Lead)' : 'AI Mock Interview (HR / Tech-лид)'}</span>
+                    </span>
+                  </td>
+                  <td className="text-center py-4 text-on-surface-variant">
+                    <Lock className="w-3.5 h-3.5 mx-auto text-zinc-500" />
+                  </td>
+                  <td className="text-center py-4 text-on-surface-variant">
+                    <Lock className="w-3.5 h-3.5 mx-auto text-zinc-500" />
+                  </td>
+                  <td className="text-center py-4 text-indigo-300 font-bold">
+                    <span className="inline-flex items-center gap-1.5 justify-center text-indigo-300">
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      {locale === 'en' ? 'Included' : 'Включено'}
+                    </span>
+                  </td>
                 </tr>
+
                 {/* Export */}
-                <tr>
-                  <td className="py-4 text-on-background">{locale === 'en' ? 'Export to Notion and Anki' : 'Экспорт в Notion и Anki'}</td>
-                  <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
-                  <td className="text-center py-4 text-on-surface-variant"><LockIcon className="w-3.5 h-3.5 mx-auto text-[#636366]" /></td>
-                  <td className="text-center py-4 text-indigo-300 font-bold">{locale === 'en' ? 'Included' : 'Включено'}</td>
+                <tr className="hover:bg-surface-container/40 transition-colors">
+                  <td className="py-4 text-on-surface font-medium">
+                    <span className="flex items-center gap-2.5">
+                      <Download className="w-4 h-4 text-indigo-400 shrink-0" />
+                      <span>{locale === 'en' ? 'Export Lectures to Notion & Anki' : 'Экспорт лекций в Notion & Anki'}</span>
+                    </span>
+                  </td>
+                  <td className="text-center py-4 text-on-surface-variant">
+                    <Lock className="w-3.5 h-3.5 mx-auto text-zinc-500" />
+                  </td>
+                  <td className="text-center py-4 text-on-surface-variant">
+                    <Lock className="w-3.5 h-3.5 mx-auto text-zinc-500" />
+                  </td>
+                  <td className="text-center py-4 text-indigo-300 font-bold">
+                    <span className="inline-flex items-center gap-1.5 justify-center text-indigo-300">
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      {locale === 'en' ? 'Included' : 'Включено'}
+                    </span>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -875,43 +1303,164 @@ export default function Pricing() {
             >
               {checkoutStage === 'input' && (
                 <>
-                  <h3 className="text-xl font-bold text-on-surface mb-1 font-clash">{locale === 'en' ? 'Subscription Checkout ' : 'Оформление подписки '}{selectedUpgradePlan}</h3>
-                  <p className="text-xs text-on-surface-variant mb-6">
-                    {locale === 'en' ? 'Plan: ' : 'Тариф: '}{selectedUpgradePlan} ({billingPeriod === 'monthly' ? `{locale === 'en' ? 'Monthly - ' : 'Ежемесячный - '}$${selectedUpgradePlan === 'ULTRA' ? '29.99' : '9.99'}/мес` : `{locale === 'en' ? 'Yearly - ' : 'Ежегодный - '}$${selectedUpgradePlan === 'ULTRA' ? '249.99' : '89.99'}/год`})
+                  <h3 className="text-xl font-bold text-on-surface mb-1 font-clash">
+                    {locale === 'en' ? 'Checkout Plan ' : 'Оформление подписки '}{selectedUpgradePlan}
+                  </h3>
+                  <p className="text-xs text-on-surface-variant mb-5">
+                    {locale === 'en' ? 'Selected tier: ' : 'Выбранный тариф: '}<strong>YourWay {selectedUpgradePlan}</strong>
                   </p>
 
-                  <div className="bg-surface-container/20 border border-outline/5 rounded-xl p-4 text-left text-xs text-on-surface-variant mb-6">
-                    <p className="mb-2 text-on-surface font-semibold">{locale === 'en' ? '🔒 Beta Testing' : '🔒 Бета-тестирование'}</p>
-                    <p>{locale === 'en' ? 'The platform is currently in closed beta. Enter a special invite code to activate a paid plan.' : 'Сейчас платформа находится на стадии закрытого бета-теста. Для активации платного тарифа введите специальный инвайт-код.'}</p>
+                  {/* Payment Method Selector Tabs */}
+                  <div className="grid grid-cols-2 gap-2.5 mb-5">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('stripe')}
+                      className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all text-xs font-bold select-none cursor-pointer ${
+                        paymentMethod === 'stripe'
+                          ? 'border-indigo-500 bg-indigo-500/10 text-on-surface ring-1 ring-indigo-500/50 shadow-sm'
+                          : 'border-outline/40 bg-surface-container/20 text-on-surface-variant hover:border-outline'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 text-indigo-400">
+                        <CreditCard className="w-4 h-4" />
+                        <span>Stripe Pay</span>
+                      </div>
+                      <span className="text-[10px] text-on-surface-variant/75 font-normal">Visa / MasterCard / Apple Pay</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('kaspi')}
+                      className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all text-xs font-bold select-none cursor-pointer ${
+                        paymentMethod === 'kaspi'
+                          ? 'border-[#F14635] bg-[#F14635]/10 text-on-surface ring-1 ring-[#F14635]/50 shadow-sm'
+                          : 'border-outline/40 bg-surface-container/20 text-on-surface-variant hover:border-outline'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 text-[#F14635]">
+                        <QrCode className="w-4 h-4" />
+                        <span className="font-black">Kaspi Pay</span>
+                      </div>
+                      <span className="text-[10px] text-on-surface-variant/75 font-normal">Kaspi QR / Kaspi Red</span>
+                    </button>
                   </div>
 
-                  <div className="text-left mb-6">
-                    <label className="block text-xs font-bold text-on-surface mb-2">{locale === 'en' ? 'Promo Code / Invite Code' : 'Промокод / Инвайт-код'}</label>
-                    <input 
-                      type="text"
-                      value={promoCode}
-                      onChange={(e) => setPromoCode(e.target.value.trim().toUpperCase())}
-                      placeholder={t('pricing.promoPlaceholder')}
-                      className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white font-mono outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all uppercase"
-                    />
+                  {/* Order Summary & Pricing Breakdown */}
+                  <div className="bg-surface-container-high border border-outline rounded-2xl p-4 text-left text-xs mb-5 space-y-2.5 shadow-inner">
+                    <div className="flex items-center justify-between font-medium text-on-surface-variant pb-1.5 border-b border-outline/40">
+                      <span>{locale === 'en' ? 'Base plan rate' : 'Стоимость тарифа'}</span>
+                      <span className="font-mono text-on-surface">${getBasePriceNum()}</span>
+                    </div>
+
+                    {appliedPromo && (
+                      <div className="flex items-center justify-between text-emerald-400 font-medium">
+                        <span className="flex items-center gap-1"><Percent className="w-3.5 h-3.5" /> {locale === 'en' ? `Promo (${appliedPromo.code})` : `Промокод (${appliedPromo.code})`}</span>
+                        <span className="font-mono">-{appliedPromo.discount}%</span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between font-bold text-sm text-indigo-400 pt-1">
+                      <span>{locale === 'en' ? 'Total due today' : 'Итого к оплате'}</span>
+                      <div className="text-right">
+                        <span className="font-mono text-base font-clash text-on-surface block">
+                          ${getFinalPriceUSD()} {billingPeriod === 'monthly' ? (locale === 'en' ? '/mo' : '/мес') : (locale === 'en' ? '/yr' : '/год')}
+                        </span>
+                        {paymentMethod === 'kaspi' && (
+                          <span className="text-[11px] font-mono text-[#F14635] block">
+                            ≈ {getKaspiPriceKZT()} ₸
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {paymentMethod === 'kaspi' ? (
+                      <div className="pt-2 border-t border-outline/30 flex items-center justify-between text-[10px] text-[#F14635] font-mono">
+                        <span className="flex items-center gap-1"><QrCode className="w-3 h-3" /> Kaspi QR Instant Transfer</span>
+                        <span>0% Commission</span>
+                      </div>
+                    ) : (
+                      <div className="pt-2 border-t border-outline/30 flex items-center justify-between text-[10px] text-on-surface-variant font-mono">
+                        <span className="flex items-center gap-1"><Lock className="w-3 h-3 text-emerald-400" /> Stripe 256-bit SSL</span>
+                        <span>Direct Gateway</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Kaspi QR Box Preview */}
+                  {paymentMethod === 'kaspi' && (
+                    <div className="bg-[#F14635]/5 border border-[#F14635]/20 rounded-2xl p-3.5 text-center text-xs mb-5">
+                      <div className="w-24 h-24 mx-auto bg-white rounded-xl p-2 flex items-center justify-center border border-zinc-200 shadow-sm mb-2 relative">
+                        <QrCode className="w-full h-full text-zinc-900" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="bg-[#F14635] text-white px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider">Kaspi</span>
+                        </div>
+                      </div>
+                      <p className="text-[11px] font-bold text-on-surface mb-0.5">
+                        {locale === 'en' ? 'Scan with Kaspi.kz app' : 'Откройте Kaspi.kz -> Kaspi QR'}
+                      </p>
+                      <p className="text-[10px] text-on-surface-variant">
+                        {locale === 'en' ? 'Immediate activation upon scanning' : 'Мгновенная активация подписки после сканирования'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Promo Code Input & Apply Button */}
+                  <div className="text-left mb-5">
+                    <label className="block text-xs font-bold text-on-surface mb-1.5 flex items-center gap-1">
+                      <Tag className="w-3.5 h-3.5 text-indigo-400" />
+                      {locale === 'en' ? 'Promo Code / Coupon' : 'Промокод / Купон'}
+                    </label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text"
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value.trim().toUpperCase())}
+                        placeholder={locale === 'en' ? 'Enter code (e.g. ALPHA20)' : 'Введите код (например ALPHA20)'}
+                        className="flex-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 dark:text-white font-mono outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all uppercase"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyPromoCode}
+                        disabled={promoLoading || !promoCode.trim()}
+                        className="px-4 py-2.5 rounded-xl bg-surface-container border border-outline hover:bg-surface-container-high text-xs font-bold text-on-surface transition-all disabled:opacity-50 cursor-pointer shrink-0"
+                      >
+                        {promoLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : (locale === 'en' ? 'Apply' : 'Применить')}
+                      </button>
+                    </div>
+
+                    {promoMessage && (
+                      <p className={`text-[11px] font-medium mt-1.5 flex items-center gap-1 ${
+                        promoMessage.type === 'success' ? 'text-emerald-400' : 'text-red-400'
+                      }`}>
+                        {promoMessage.type === 'success' ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <X className="w-3.5 h-3.5 shrink-0" />}
+                        {promoMessage.text}
+                      </p>
+                    )}
                   </div>
 
                   {checkoutError && (
-                    <p className="text-xs text-red-400 mt-4 text-left">{checkoutError}</p>
+                    <p className="text-xs text-red-400 mb-4 text-left font-medium">{checkoutError}</p>
                   )}
 
-                  <div className="flex gap-4 mt-8">
+                  <div className="flex gap-3">
                     <button
                       onClick={() => setIsCheckoutOpen(false)}
-                      className="flex-1 py-3 rounded-xl border border-outline text-on-surface hover:bg-surface-container/40 transition-colors text-xs font-bold"
+                      className="flex-1 py-3.5 rounded-xl border border-outline text-on-surface hover:bg-surface-container/40 transition-colors text-xs font-bold"
                     >
-                      Отмена
+                      {locale === 'en' ? 'Cancel' : 'Отмена'}
                     </button>
                     <button
                       onClick={handleSubmitPayment}
-                      className="flex-1 py-3 rounded-xl bg-on-surface text-black hover:bg-surface-container transition-colors text-xs font-bold"
+                      className={`flex-1 py-3.5 rounded-xl text-white transition-all text-xs font-bold shadow-lg flex items-center justify-center gap-1.5 cursor-pointer ${
+                        paymentMethod === 'kaspi'
+                          ? 'bg-gradient-to-r from-[#F14635] to-[#E52D27] hover:brightness-110 shadow-[#F14635]/20'
+                          : 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 shadow-indigo-500/20'
+                      }`}
                     >
-                      Активировать тариф
+                      {paymentMethod === 'kaspi' ? <QrCode className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
+                      {paymentMethod === 'kaspi'
+                        ? (locale === 'en' ? `Pay ${getKaspiPriceKZT()} ₸ (Kaspi QR)` : `Оплатить ${getKaspiPriceKZT()} ₸ (Kaspi QR)`)
+                        : (locale === 'en' ? `Pay $${getFinalPriceUSD()} (Stripe)` : `Оплатить $${getFinalPriceUSD()} (Stripe)`)}
                     </button>
                   </div>
                 </>
@@ -957,7 +1506,7 @@ export default function Pricing() {
                       {locale === 'en' ? 'Congratulations!' : 'Поздравляем!'}
                     </h3>
                     <p className="text-sm text-on-background max-w-sm mx-auto leading-relaxed font-medium">
-                      Тариф <span className="font-bold text-indigo-400 uppercase tracking-widest">{selectedUpgradePlan}</span>{locale === 'en' ? ' successfully activated.' : ' успешно активирован.'}
+                      {locale === 'en' ? 'Plan ' : 'Тариф '}<span className="font-bold text-indigo-400 uppercase tracking-widest">{selectedUpgradePlan}</span>{locale === 'en' ? ' successfully activated.' : ' успешно активирован.'}
                       <br/>
                       <span className="text-xs text-on-surface-variant mt-2 block">
                         {locale === 'en' ? 'Discover new AI learning possibilities. Welcome to the next level.' : 'Откройте для себя новые возможности обучения с ИИ. Добро пожаловать на новый уровень.'}
@@ -975,7 +1524,7 @@ export default function Pricing() {
                     className="w-full mt-4 py-4 rounded-xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-on-surface hover:shadow-[0_0_30px_rgba(99,102,241,0.4)] transition-all flex justify-center items-center gap-2"
                   >
                     <Sparkles className="w-5 h-5 fill-current" />
-                    Начать обучение
+                    {locale === 'en' ? 'Start Learning' : 'Начать обучение'}
                   </motion.button>
                 </motion.div>
               )}
@@ -1026,13 +1575,13 @@ export default function Pricing() {
                       onClick={() => setIsCancelModalOpen(false)}
                       className="flex-1 py-3 rounded-xl bg-on-surface text-black hover:bg-surface-container transition-colors text-xs font-bold"
                     >
-                      Назад
+                      {locale === 'en' ? 'Back' : 'Назад'}
                     </button>
                     <button
                       onClick={handleCancelSubscription}
                       className="flex-1 py-3 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors text-xs font-bold"
                     >
-                      Подтвердить
+                      {locale === 'en' ? 'Confirm' : 'Подтвердить'}
                     </button>
                   </div>
                 </>
@@ -1088,6 +1637,132 @@ export default function Pricing() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Active Plan Capabilities Modal */}
+      <AnimatePresence>
+        {isPlanFeaturesModalOpen && (
+          <div className="fixed inset-0 z-[160] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setPlanFeaturesModalOpen(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative z-10 bg-surface-container-high/95 border border-outline/50 backdrop-blur-2xl p-6 md:p-8 rounded-[2.5rem] max-w-2xl w-full shadow-2xl overflow-hidden text-left"
+            >
+              {/* Ambient Glow */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-[100px] rounded-full pointer-events-none" />
+
+              {/* Close Button */}
+              <button
+                onClick={() => setPlanFeaturesModalOpen(false)}
+                className="absolute top-6 right-6 p-2 rounded-full bg-surface-container/60 hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Header */}
+              <div className="mb-6">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-bold uppercase tracking-wider mb-2 border border-indigo-500/30">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                  {locale === 'en' ? `Active Plan Capabilities · ${modalPlanView}` : `Возможности тарифа · ${modalPlanView}`}
+                </div>
+                <h2 className="text-2xl font-bold text-on-surface font-clash">
+                  {locale === 'en' ? `Capabilities of ${modalPlanView}` : `Вам доступны возможности тарифа ${modalPlanView}`}
+                </h2>
+                <p className="text-xs text-on-surface-variant mt-1">
+                  {modalPlanView === 'FREE' 
+                    ? (locale === 'en' ? 'Basic introduction features available on your account.' : 'Базовые возможности платформы, доступные на вашем аккаунте.')
+                    : modalPlanView === 'PRO'
+                    ? (locale === 'en' ? 'Unlimited roadmap creation, session memory, and verifications unlocked.' : 'Безлимитная генерация ИИ-курсов, память ментора и верификация разблокированы.')
+                    : (locale === 'en' ? 'Full Ultra AI arsenal unlocked with no restrictions.' : 'Полный максимальный арсенал YourWay разблокирован без ограничений.')}
+                </p>
+              </div>
+
+              {/* Tier Selector Switcher inside Modal */}
+              <div className="flex bg-surface-container/60 p-1 rounded-xl border border-outline/40 mb-6">
+                {['FREE', 'PRO', 'ULTRA'].map((tier) => (
+                  <button
+                    key={tier}
+                    onClick={() => setModalPlanView(tier)}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      modalPlanView === tier 
+                        ? 'bg-indigo-600 text-white shadow-md' 
+                        : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    {tier === 'PRO' && <Crown className="w-3.5 h-3.5 text-amber-300" />}
+                    {tier === 'ULTRA' && <Sparkles className="w-3.5 h-3.5 text-indigo-300" />}
+                    {tier}
+                    {tier === plan && (
+                      <span className="ml-1 text-[8px] bg-white/20 text-white px-1.5 py-0.5 rounded uppercase font-mono">{locale === 'en' ? 'Active' : 'Активный'}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Feature Cards Grid inside Modal */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[380px] overflow-y-auto pr-1">
+                {getFeaturesForModal(modalPlanView, locale).map((feat, idx) => (
+                  <div 
+                    key={idx}
+                    className={`p-4 rounded-2xl border transition-all text-left flex flex-col justify-between ${
+                      feat.unlocked 
+                        ? 'bg-surface-container/80 border-emerald-500/30 hover:border-emerald-500/50 shadow-inner' 
+                        : 'bg-surface-container/30 border-outline/30 opacity-70'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-2xl">{feat.icon}</span>
+                        {feat.unlocked ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                            <Check className="w-3 h-3" /> {locale === 'en' ? 'Available' : 'Доступно'}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                            <Lock className="w-3 h-3" /> {feat.requiredTier}
+                          </span>
+                        )}
+                      </div>
+                      <h4 className="text-xs font-bold text-on-surface mb-1">{feat.title}</h4>
+                      <p className="text-[11px] text-on-surface-variant leading-relaxed">{feat.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Footer Quick Action */}
+              <div className="mt-6 pt-4 border-t border-outline/40 flex items-center justify-between gap-4">
+                <span className="text-xs text-on-surface-variant font-mono">
+                  {modalPlanView === plan 
+                    ? (locale === 'en' ? '✓ Showing your active plan' : '✓ Отображаются возможности вашего текущего тарифа')
+                    : (locale === 'en' ? `Viewing ${modalPlanView} capabilities` : `Просмотр возможностей тарифа ${modalPlanView}`)}
+                </span>
+                {modalPlanView !== plan && (
+                  <button
+                    onClick={() => {
+                      setPlanFeaturesModalOpen(false);
+                      handleSelectPlan(modalPlanView);
+                    }}
+                    className="px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    {locale === 'en' ? `Upgrade to ${modalPlanView}` : `Перейти на ${modalPlanView}`}
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      </div>
     </div>
   );
 }

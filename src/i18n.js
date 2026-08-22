@@ -20,42 +20,19 @@ const getInitialLocale = () => {
   }
 };
 
-let currentLocale = getInitialLocale();
-let localesCache = {};
-let isLoading = false;
+import ruDict from './locales/ru.json';
+import enDict from './locales/en.json';
 
-// Preload the current locale initially if possible, or we will load it asynchronously
+let currentLocale = getInitialLocale();
+let localesCache = {
+  ru: ruDict,
+  en: enDict
+};
+
 async function loadLocale(locale) {
   if (localesCache[locale]) return localesCache[locale];
-  isLoading = true;
-  try {
-    let data;
-    switch (locale) {
-      case 'ru': data = await import('./locales/ru.json'); break;
-      case 'en':
-      default: data = await import('./locales/en.json'); break;
-    }
-    localesCache[locale] = data.default || data;
-  } catch (error) {
-    console.error(`Failed to load locale: ${locale}`, error);
-    // fallback to English if it fails
-    if (locale !== 'en') {
-       if (!localesCache['en']) {
-         const enData = await import('./locales/en.json');
-         localesCache['en'] = enData.default || enData;
-       }
-       localesCache[locale] = localesCache['en'];
-    }
-  } finally {
-    isLoading = false;
-  }
-  return localesCache[locale];
+  return localesCache[locale] || enDict;
 }
-
-// Initial load trigger
-loadLocale(currentLocale).then(() => {
-  window.dispatchEvent(new CustomEvent('locale:loaded', { detail: { locale: currentLocale } }));
-});
 
 export function getCourseLocale(course) {
   return (course && course.language) ? course.language : 'ru';

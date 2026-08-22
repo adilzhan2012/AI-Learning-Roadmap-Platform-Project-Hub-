@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Sparkles, ArrowRight, Activity, Terminal, Moon } from 'lucide-react';
+import { Sparkles, ArrowRight, Activity, Moon, CheckCircle2, Zap, Layers, Terminal } from 'lucide-react';
 import Logo from '../components/shared/Logo.jsx';
 import LaunchCountdown from '../components/shared/LaunchCountdown.jsx';
 import { auth } from '../firebase.js';
@@ -129,20 +129,26 @@ export default function Landing() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-100px" }}
-          className="max-w-7xl mx-auto w-full flex flex-col lg:flex-row items-center justify-between gap-10 lg:gap-16 text-left"
+          className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 items-center gap-8 lg:gap-12 text-left"
         >
           {/* Left Text & Action Area */}
-          <div className="flex-1 flex flex-col items-center lg:items-start text-center lg:text-left">
-            <motion.h1 variants={fadeUpVariants} className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight mb-4 md:mb-6 leading-tight break-words">
+          <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
+            <motion.div variants={fadeUpVariants} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold mb-4">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>AI Learning Platform</span>
+            </motion.div>
+
+            <motion.h1 variants={fadeUpVariants} className="text-4xl sm:text-5xl lg:text-7xl font-bold tracking-tight mb-4 md:mb-6 leading-tight break-words">
               <span className="text-on-surface">
                 yourwayy.co
               </span>
             </motion.h1>
-            <motion.p variants={fadeUpVariants} className="text-lg sm:text-xl md:text-2xl text-on-surface-variant max-w-2xl mb-8 md:mb-10 font-light break-words">
+            
+            <motion.p variants={fadeUpVariants} className="text-base sm:text-lg md:text-xl text-on-surface-variant max-w-xl mb-8 font-light break-words">
               {t('landing.hero.subtitle')}
             </motion.p>
             
-            <motion.div variants={fadeUpVariants} className="flex flex-col sm:flex-row items-center gap-4 mb-8 w-full sm:w-auto">
+            <motion.div variants={fadeUpVariants} className="flex flex-col sm:flex-row items-center gap-4 mb-4 w-full sm:w-auto">
               {isLoggedIn ? (
                 <Link to="/dashboard" className="w-full sm:w-auto">
                   <motion.button 
@@ -167,63 +173,124 @@ export default function Landing() {
             </motion.div>
           </div>
 
-          {/* Right Square Hero PNG Logo Container */}
-          <motion.div 
-            variants={fadeUpVariants}
-            className="w-72 h-72 sm:w-80 sm:h-80 md:w-[380px] md:h-[380px] lg:w-[420px] lg:h-[420px] aspect-square flex-shrink-0 flex items-center justify-center"
-          >
-            <img 
-              src="/logo-icon-dark.png" 
-              alt="yourway.co Logo" 
-              className="w-full h-full object-contain object-center" 
-            />
-          </motion.div>
+          {/* Right Interactive AI Roadmap Generator Bento Card Preview */}
+          <div className="w-full flex items-center justify-center lg:justify-end">
+            <motion.div 
+              variants={fadeUpVariants}
+              className="relative w-full max-w-lg min-h-[340px] rounded-[2.5rem] overflow-hidden bg-surface-container/70 backdrop-blur-2xl border border-primary/25 shadow-2xl group cursor-pointer p-6 sm:p-7 flex flex-col justify-between transition-all duration-500 hover:border-primary/50 hover:shadow-[0_0_50px_rgba(var(--color-primary),0.25)]"
+              whileHover={{ y: -4, scale: 1.01 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            >
+            {/* Ambient Background Glows */}
+            <div className="absolute -top-20 -right-20 w-56 h-56 bg-primary/20 rounded-full blur-[70px] pointer-events-none group-hover:bg-primary/35 transition-all duration-700" />
+            <div className="absolute -bottom-20 -left-20 w-56 h-56 bg-purple-500/20 rounded-full blur-[70px] pointer-events-none group-hover:bg-purple-500/35 transition-all duration-700" />
 
-          {/* Interactive Glassmorphism Dashboard Preview */}
-          <motion.div 
-            variants={fadeUpVariants}
-            className="relative w-full aspect-video rounded-[2.5rem] overflow-hidden bg-surface-container backdrop-blur-xl border border-outline shadow-2xl group cursor-pointer card-hover"
-            whileHover={{ scale: 1.02 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-          >
-            
-            {/* Mock Dashboard UI Inside */}
-            <div className="absolute inset-4 rounded-[1.5rem] bg-surface border border-outline-variant flex flex-col overflow-hidden">
-              <div className="h-12 border-b border-outline-variant flex items-center px-6 gap-4">
-                <div className="flex gap-2">
-                  <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
-                  <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
-                  <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
-                </div>
-                <div className="flex-1 h-6 bg-on-surface/5 rounded-full flex items-center justify-center">
-                  <span className="text-xs text-neutral-500 font-mono tracking-wider">yourwayy.co</span>
-                </div>
+            {/* Header bar with Status Badge */}
+            <div className="flex items-center justify-between gap-3 mb-4 z-10">
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold">
+                <Sparkles className="w-3.5 h-3.5 animate-pulse text-primary" />
+                <span>{t('landing.demo.statusBadge')}</span>
               </div>
-              <div className="flex-1 p-8 flex items-center justify-center">
-                <div className="text-center">
-                   <motion.div 
-                     animate={{ rotate: 360 }} 
-                     transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                     className="inline-block mb-4"
-                   >
-                     <Terminal className="w-16 h-16 text-primary/30 group-hover:text-primary/60 transition-colors duration-500" />
-                   </motion.div>
-                   <p className="text-on-surface-variant font-medium tracking-wide uppercase text-sm">{t('landing.hero.graphInterface')}</p>
-                </div>
+              <div className="flex gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500/80"></div>
+                <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/80"></div>
+                <div className="w-2.5 h-2.5 rounded-full bg-green-500/80"></div>
               </div>
             </div>
-            
-            {/* Click overlay to redirect */}
-            <Link to={isLoggedIn ? "/dashboard" : "/register"} className="absolute inset-0 z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-background/40 backdrop-blur-sm">
+
+            {/* AI Prompt Input Bar Simulation */}
+            <div className="relative mb-5 z-10">
+              <div className="w-full bg-surface/90 border border-outline-variant rounded-2xl py-3 px-4 flex items-center justify-between gap-3 shadow-inner">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Zap className="w-4 h-4 text-primary flex-shrink-0" />
+                  <span className="text-xs sm:text-sm text-on-surface font-medium truncate">
+                    {t('landing.demo.promptValue')}
+                  </span>
+                </div>
+                <span className="px-2.5 py-1 rounded-lg bg-primary text-on-primary text-[10px] font-bold uppercase tracking-wider flex-shrink-0 shadow-md">
+                  AI GEN
+                </span>
+              </div>
+            </div>
+
+            {/* Dynamic Generated Steps */}
+            <div className="flex flex-col gap-2.5 z-10 flex-1 justify-center my-2">
+              {/* Step 1 */}
+              <motion.div 
+                initial={{ x: -10, opacity: 0 }}
+                whileInView={{ x: 0, opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.1 }}
+                className="flex items-center justify-between p-3.5 rounded-2xl bg-surface-container-high/60 border border-outline-variant/50 text-xs sm:text-sm"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                  <span className="text-on-surface font-medium truncate">{t('landing.demo.step1.title')}</span>
+                </div>
+                <span className="text-[11px] font-semibold text-emerald-500 bg-emerald-500/10 px-2.5 py-0.5 rounded-full flex-shrink-0">
+                  {t('landing.demo.step1.status')}
+                </span>
+              </motion.div>
+
+              {/* Step 2 (In Progress) */}
+              <motion.div 
+                initial={{ x: -10, opacity: 0 }}
+                whileInView={{ x: 0, opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.2 }}
+                className="flex items-center justify-between p-3.5 rounded-2xl bg-primary/10 border border-primary/40 text-xs sm:text-sm shadow-sm"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="relative flex h-2.5 w-2.5 flex-shrink-0">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+                  </span>
+                  <span className="text-on-surface font-semibold truncate">{t('landing.demo.step2.title')}</span>
+                </div>
+                <span className="text-[11px] font-bold text-primary bg-primary/15 px-2.5 py-0.5 rounded-full flex-shrink-0">
+                  {t('landing.demo.step2.status')}
+                </span>
+              </motion.div>
+
+              {/* Step 3 */}
+              <motion.div 
+                initial={{ x: -10, opacity: 0 }}
+                whileInView={{ x: 0, opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.3 }}
+                className="flex items-center justify-between p-3.5 rounded-2xl bg-surface-container-high/30 border border-outline-variant/30 text-xs sm:text-sm opacity-75"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Layers className="w-4 h-4 text-on-surface-variant flex-shrink-0" />
+                  <span className="text-on-surface-variant font-medium truncate">{t('landing.demo.step3.title')}</span>
+                </div>
+                <span className="text-[11px] font-medium text-on-surface-variant bg-on-surface/5 px-2.5 py-0.5 rounded-full flex-shrink-0">
+                  {t('landing.demo.step3.status')}
+                </span>
+              </motion.div>
+            </div>
+
+            {/* Footer Metadata */}
+            <div className="pt-3 mt-2 border-t border-outline-variant/40 flex items-center justify-between text-[11px] text-on-surface-variant z-10">
+              <div className="flex items-center gap-1.5 font-medium">
+                <Activity className="w-3.5 h-3.5 text-primary" />
+                <span>{t('landing.demo.nodesMeta')}</span>
+              </div>
+              <span className="font-mono text-[10px] opacity-70">yourwayy.co</span>
+            </div>
+
+            {/* Hover Action Overlay */}
+            <Link to={isLoggedIn ? "/dashboard" : "/register"} className="absolute inset-0 z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 bg-background/60 backdrop-blur-md">
               <motion.span 
-                initial={{ y: 20 }}
-                whileInView={{ y: 0 }}
-                className="px-6 py-3 rounded-full bg-primary text-on-primary font-semibold shadow-xl flex items-center gap-2"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="px-6 py-3 rounded-full bg-primary text-on-primary font-semibold shadow-2xl flex items-center gap-2 text-sm"
               >
                 {t('landing.hero.launchEnv')} <ArrowRight className="w-4 h-4" />
               </motion.span>
             </Link>
           </motion.div>
+          </div>
 
         </motion.div>
       </main>

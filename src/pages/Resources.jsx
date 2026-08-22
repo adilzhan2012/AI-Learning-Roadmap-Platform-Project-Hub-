@@ -47,8 +47,7 @@ const cardVariants = {
   exit: { opacity: 0, y: 10, transition: { duration: 0.15 } }
 };
 
-function ResourceCard({ resource, onClick, isLocked, userPlan }) {
-  const [bookmarked, setBookmarked] = useState(false);
+function ResourceCard({ resource, onClick, isLocked, userPlan, isBookmarked, onToggleBookmark, locale }) {
   const [utilityInfo, setUtilityInfo] = useState(null);
 
   const typeInfo = RESOURCE_TYPES[resource.type] || RESOURCE_TYPES.article;
@@ -80,8 +79,8 @@ function ResourceCard({ resource, onClick, isLocked, userPlan }) {
           <div className="w-10 h-10 bg-surface/90 border border-white/10 rounded-2xl flex items-center justify-center text-amber-400 shadow-xl mb-2">
             <Lock className="w-4.5 h-4.5" strokeWidth={1.5} />
           </div>
-          <span className="text-xs font-bold text-white mb-1">Доступно в PRO</span>
-          <span className="text-[10px] text-on-surface-variant max-w-[160px]">Разблокируйте полный курс и все материалы</span>
+          <span className="text-xs font-bold text-white mb-1">{locale === 'en' ? 'Available in PRO' : 'Доступно в PRO'}</span>
+          <span className="text-[10px] text-on-surface-variant max-w-[160px]">{locale === 'en' ? 'Unlock full course & all learning materials' : 'Разблокируйте полный курс и все материалы'}</span>
         </div>
       )}
 
@@ -99,7 +98,7 @@ function ResourceCard({ resource, onClick, isLocked, userPlan }) {
             </div>
             {utilityInfo !== null && (
               <span className="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded font-bold">
-                {utilityInfo}% полезности
+                {utilityInfo}% {locale === 'en' ? 'utility' : 'полезности'}
               </span>
             )}
           </div>
@@ -124,10 +123,11 @@ function ResourceCard({ resource, onClick, isLocked, userPlan }) {
               <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" strokeWidth={1.5} />{typeInfo.estimate}</span>
             </div>
             <button 
-              onClick={(e) => { e.stopPropagation(); setBookmarked(!bookmarked); }}
-              className={`p-1.5 rounded-[6px] transition-colors ${bookmarked ? 'text-inverse-on-surface bg-on-surface' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'}`}
+              onClick={(e) => { e.stopPropagation(); onToggleBookmark && onToggleBookmark(); }}
+              className={`p-1.5 rounded-[6px] transition-colors ${isBookmarked ? 'text-indigo-400 bg-indigo-500/20 border border-indigo-500/30' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'}`}
+              title={isBookmarked ? (locale === 'en' ? 'Remove from favorites' : 'Удалить из избранного') : (locale === 'en' ? 'Add to favorites' : 'Добавить в избранное')}
             >
-              {bookmarked ? <BookmarkCheck className="w-4 h-4" strokeWidth={1.5} /> : <Bookmark className="w-4 h-4" strokeWidth={1.5} />}
+              {isBookmarked ? <BookmarkCheck className="w-4 h-4 text-indigo-400" strokeWidth={1.5} /> : <Bookmark className="w-4 h-4" strokeWidth={1.5} />}
             </button>
           </div>
         </div>
@@ -138,6 +138,7 @@ function ResourceCard({ resource, onClick, isLocked, userPlan }) {
 
 const TABS = [
   { id: 'All', labelKey: 'resources.tabs.all' },
+  { id: 'Favorites', labelKey: 'resources.tabs.favorites' },
   { id: 'Articles', labelKey: 'resources.tabs.articles' },
   { id: 'Videos', labelKey: 'resources.tabs.videos' },
   { id: 'Cheat Sheets', labelKey: 'resources.tabs.cheatsheets' },
@@ -229,6 +230,23 @@ export default function Resources() {
     return () => unsubscribe();
   }, [locale]);
 
+  const [bookmarkedIds, setBookmarkedIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('yourway_bookmarked_resource_ids');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const toggleBookmark = (id) => {
+    setBookmarkedIds(prev => {
+      const next = prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id];
+      localStorage.setItem('yourway_bookmarked_resource_ids', JSON.stringify(next));
+      return next;
+    });
+  };
+
   const availableCategories = Array.from(new Set(resources.map(r => r.tags[0]).filter(Boolean)));
 
   const toggleCategory = (cat) => {
@@ -242,7 +260,8 @@ export default function Resources() {
                           r.desc.toLowerCase().includes(searchQuery.toLowerCase());
 
     let matchesTab = true;
-    if (activeTab === 'Articles') matchesTab = r.type === 'article';
+    if (activeTab === 'Favorites') matchesTab = bookmarkedIds.includes(r.id);
+    else if (activeTab === 'Articles') matchesTab = r.type === 'article';
     else if (activeTab === 'Videos') matchesTab = r.type === 'video';
     else if (activeTab === 'Cheat Sheets') matchesTab = r.type === 'cheatsheet';
     else if (activeTab === 'Repositories') matchesTab = r.type === 'repository';
@@ -284,7 +303,9 @@ export default function Resources() {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-4.5rem)] bg-background text-on-surface">
         <Loader2 className="w-8 h-8 animate-spin text-indigo-400 mb-2" />
-        <p className="text-sm text-on-surface-variant font-mono">Загрузка адаптивной библиотеки ресурсов...</p>
+        <p className="text-sm text-on-surface-variant font-mono">
+          {locale === 'en' ? 'Loading adaptive resource library...' : 'Загрузка адаптивной библиотеки ресурсов...'}
+        </p>
       </div>
     );
   }
@@ -302,7 +323,7 @@ export default function Resources() {
           <p className="text-sm text-on-surface-variant max-w-xl">{t('resources.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2 text-xs font-mono text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-xl self-start md:self-auto">
-          <Sparkles className="w-3.5 h-3.5" /> Тариф: <span className="font-bold text-white uppercase">{plan}</span>
+          <Sparkles className="w-3.5 h-3.5" /> {locale === 'en' ? 'Plan' : 'Тариф'}: <span className="font-bold text-white uppercase">{plan}</span>
         </div>
       </motion.div>
 
@@ -323,7 +344,7 @@ export default function Resources() {
           {/* Featured Visual Thumbnail */}
           <div className="w-full md:w-56 h-36 rounded-[16px] bg-indigo-100/60 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-500/20 flex flex-col items-center justify-center flex-shrink-0 relative overflow-hidden group-hover:scale-[1.02] transition-transform">
             <BookOpen className="w-10 h-10 text-indigo-500 dark:text-indigo-400 mb-2 relative z-10" strokeWidth={1.5} />
-            <span className="text-[10px] font-mono text-indigo-600 dark:text-indigo-300 font-bold tracking-wider z-10">РЕКОМЕНДУЕМОЕ ЧТЕНИЕ</span>
+            <span className="text-[10px] font-mono text-indigo-600 dark:text-indigo-300 font-bold tracking-wider z-10">{locale === 'en' ? 'RECOMMENDED READING' : 'РЕКОМЕНДУЕМОЕ ЧТЕНИЕ'}</span>
           </div>
 
           <div className="flex-1 min-w-0 z-10">
@@ -347,7 +368,7 @@ export default function Resources() {
                 <BookOpen className="w-4 h-4" strokeWidth={1.5} /> {t('resources.readNow')}
               </button>
               <div className="flex gap-4 text-[10px] font-mono text-zinc-500 dark:text-zinc-400">
-                <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-indigo-500 dark:text-indigo-400" strokeWidth={1.5} /> 5 мин чтения</span>
+                <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-indigo-500 dark:text-indigo-400" strokeWidth={1.5} /> {locale === 'en' ? '5 min read' : '5 мин чтения'}</span>
               </div>
             </div>
           </div>
@@ -358,18 +379,18 @@ export default function Resources() {
       {resources.length === 0 ? (
         <div className="py-20 text-center bg-surface border border-outline rounded-[16px] text-on-surface-variant font-sans">
           <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-20" strokeWidth={1.5} />
-          <p className="text-sm font-semibold">Нет доступных ресурсов</p>
-          <p className="text-xs text-on-surface-variant/60 mt-1">Создайте хотя бы один курс, чтобы сформировать ИИ-библиотеку ресурсов.</p>
+          <p className="text-sm font-semibold">{locale === 'en' ? 'No resources available' : 'Нет доступных ресурсов'}</p>
+          <p className="text-xs text-on-surface-variant/60 mt-1">{locale === 'en' ? 'Create at least one course to build your AI resource library.' : 'Создайте хотя бы один курс, чтобы сформировать ИИ-библиотеку ресурсов.'}</p>
         </div>
       ) : (
         <div className="flex flex-col lg:flex-row gap-8 w-full min-w-0">
           {/* Left Column Filters */}
           <div className="w-full lg:w-48 flex-shrink-0 space-y-6">
             <div className="bg-surface border border-outline rounded-[16px] p-4">
-              <h4 className="text-[10px] font-bold uppercase tracking-tight text-on-surface-variant mb-3 font-sans">Курсы</h4>
+              <h4 className="text-[10px] font-bold uppercase tracking-tight text-on-surface-variant mb-3 font-sans">{locale === 'en' ? 'Courses' : 'Курсы'}</h4>
               <div className="space-y-2">
                 {availableCategories.length === 0 ? (
-                  <p className="text-xs text-on-surface-variant">Категории отсутствуют</p>
+                  <p className="text-xs text-on-surface-variant">{locale === 'en' ? 'No categories' : 'Категории отсутствуют'}</p>
                 ) : (
                   availableCategories.map(cat => (
                     <label key={cat} className="flex items-center gap-3 cursor-pointer group select-none">
@@ -404,7 +425,7 @@ export default function Resources() {
                 <Search className="w-4 h-4 text-on-surface-variant" strokeWidth={1.5} />
                 <input
                   type="text"
-                  placeholder="Поиск по адаптивным ресурсам..."
+                  placeholder={locale === 'en' ? 'Search resources...' : 'Поиск по адаптивным ресурсам...'}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full bg-transparent text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none"
@@ -451,6 +472,9 @@ export default function Resources() {
                         resource={resource} 
                         isLocked={access.isLocked}
                         userPlan={plan}
+                        isBookmarked={bookmarkedIds.includes(resource.id)}
+                        onToggleBookmark={() => toggleBookmark(resource.id)}
+                        locale={locale}
                         onClick={() => handleCardClick(resource, access.isLocked)}
                       />
                     );
@@ -464,7 +488,7 @@ export default function Resources() {
                     onClick={() => setVisibleCount(prev => prev + 9)}
                     className="bg-surface-container-high hover:bg-[#3C3C3E] text-white px-6 py-2.5 rounded-xl text-xs font-bold transition-colors border border-outline shadow-sm"
                   >
-                    Показать остальные материалы
+                    {locale === 'en' ? 'Show More Materials' : 'Показать остальные материалы'}
                   </button>
                 </div>
               )}

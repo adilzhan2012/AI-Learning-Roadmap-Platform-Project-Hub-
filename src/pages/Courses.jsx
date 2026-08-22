@@ -234,10 +234,9 @@ function CourseCard({
   if (viewMode === 'list') {
     return (
       <motion.div
-        layout
         variants={cardVariants}
         onClick={handleCardClick}
-        className={`relative bg-white dark:bg-[#1A1A1C] rounded-[18px] sm:rounded-[20px] shadow-sm border p-3.5 sm:p-4 flex flex-row items-center justify-between gap-3 sm:gap-4 transition-all duration-300 hover:shadow-md cursor-pointer group ${
+        className={`relative w-full bg-white dark:bg-[#1A1A1C] rounded-[18px] sm:rounded-[20px] shadow-sm border p-3.5 sm:p-4 flex flex-row items-center justify-between gap-3 sm:gap-4 transition-all duration-300 hover:shadow-md cursor-pointer group ${
           theme.borderClass
         } ${
           isSelected 
@@ -988,8 +987,7 @@ export default function Courses() {
 
           {/* Catalog Grid / List */}
           <motion.div 
-            layout 
-            className={viewMode === 'list' ? 'flex flex-col gap-4 pb-8' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 pb-8'}
+            className={viewMode === 'list' ? 'flex flex-col gap-4 pb-8 w-full' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 pb-8 w-full'}
           >
             <AnimatePresence mode="popLayout">
               {sortedFilteredCourses.map((course) => (

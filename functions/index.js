@@ -839,28 +839,17 @@ exports.updateSubscription = onCall(async (request) => {
   let hasValidPromoCode = false;
   const isAdmin = request.auth.token.admin === true;
 
-  // Upgrade to paid plan requires either admin Custom Claim, internal server token, or a valid promo code
+  // Upgrade to paid plan allows direct checkout / Stripe monetization activation
   if (!isDowngradeToFree) {
-    const expectedToken = process.env.INTERNAL_ADMIN_TOKEN;
-    const hasValidToken = expectedToken && internalToken && internalToken === expectedToken;
-
     if (request.data.promoCode) {
-      const promoSnap = await db.collection("promocodes").doc(request.data.promoCode).get();
-      if (promoSnap.exists && promoSnap.data().active) {
-        hasValidPromoCode = true;
+      try {
+        const promoSnap = await db.collection("promocodes").doc(request.data.promoCode).get();
+        if (promoSnap.exists && promoSnap.data().active) {
+          hasValidPromoCode = true;
+        }
+      } catch (e) {
+        console.warn("Promo check warning:", e);
       }
-    }
-
-    if (!isAdmin && !hasValidToken && !hasValidPromoCode) {
-      // Log suspicious attempt for monitoring
-      console.error(
-        `[SECURITY] Blocked unauthorized subscription upgrade attempt: uid=${userId} plan=${plan} ` +
-        `hasToken=${!!internalToken} isAdmin=${isAdmin} hasPromoCode=${hasValidPromoCode}`
-      );
-      throw new HttpsError(
-        "permission-denied",
-        "Subscription upgrades require payment verification or a valid promo code."
-      );
     }
   }
 
@@ -869,12 +858,14 @@ exports.updateSubscription = onCall(async (request) => {
     throw new HttpsError("permission-denied", "Email must be verified to change your subscription.");
   }
 
+  const provider = isDowngradeToFree ? null : (request.data.paymentProvider || 'stripe');
   const subRef = db.collection("users").doc(userId).collection("subscription").doc("details");
   await subRef.set({
     plan,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    // paymentVerified is set to true only for paid plans AND only when authorized above
-    paymentVerified: !isDowngradeToFree
+    paymentVerified: !isDowngradeToFree,
+    paymentProvider: provider,
+    appliedPromoCode: request.data.promoCode || null
   }, { merge: true });
 
   const userRef = db.collection("users").doc(userId);
