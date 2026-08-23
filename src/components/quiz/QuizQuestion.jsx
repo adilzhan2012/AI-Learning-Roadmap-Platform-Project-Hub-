@@ -10,7 +10,9 @@ export default function QuizQuestion({ question, selectedOption, onSelect }) {
       exit={{ opacity: 0, x: -20 }}
       className="w-full"
     >
-      <h3 className="text-xl font-bold text-on-surface mb-6">{question.question}</h3>
+      <h3 className="text-xl font-bold text-on-surface mb-6">
+        {question.question || question.questionText || question.prompt || question.title || ''}
+      </h3>
       <div className="space-y-3">
         {question.options.map((option, index) => {
           const isSelected = selectedOption === index;

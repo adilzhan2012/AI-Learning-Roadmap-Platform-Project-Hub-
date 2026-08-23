@@ -82,23 +82,30 @@ export default function QuizModal({
     let score = 0;
     const failedDetails = [];
     const explanations = questions.map((q, i) => {
-      const isCorrect = answers[i] === q.correctIndex;
+      const correctIdx = typeof q.correctIndex === 'number' 
+        ? q.correctIndex 
+        : (typeof q.correctAnswer === 'number' ? q.correctAnswer : 0);
+      const isCorrect = answers[i] === correctIdx;
+      const qText = q.question || q.questionText || q.prompt || q.title || `Вопрос ${i + 1}`;
+      const correctOption = q.options?.[correctIdx] || '';
+      const userOption = q.options?.[answers[i]] || 'нет ответа';
+
       if (isCorrect) {
         score++;
       } else {
         failedDetails.push({
-          questionText: q.question,
-          userAnswer: q.options[answers[i]] || 'нет ответа',
-          correctAnswer: q.options[q.correctIndex],
+          questionText: qText,
+          userAnswer: userOption,
+          correctAnswer: correctOption,
           sectionHeading: q.sectionHeading || ''
         });
       }
       return { 
         isCorrect, 
-        text: q.explanation,
-        questionText: q.question,
-        userAnswer: q.options[answers[i]] || 'нет ответа',
-        correctAnswer: q.options[q.correctIndex],
+        text: q.explanation || '',
+        questionText: qText,
+        userAnswer: userOption,
+        correctAnswer: correctOption,
         sectionHeading: q.sectionHeading || ''
       };
     });

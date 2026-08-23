@@ -21,7 +21,7 @@ import { useQuiz } from '../../hooks/useQuiz.js';
 import { usePlanLimits } from '../../hooks/usePlanLimits.js';
 import QuizModal from '../quiz/QuizModal.jsx';
 import UpgradeModal from '../shared/UpgradeModal.jsx';
-import { generateLessonContent, updateNodeStatus, generateELI5Content, generateRealWorldExample, updateNodeFields, rebuildGraphForFailedNode, callGeminiWithRetry } from '../../services/courseService.js';
+import { generateLessonContent, updateNodeStatus, generateELI5Content, generateRealWorldExample, updateNodeFields, rebuildGraphForFailedNode, callGeminiWithRetry, scheduleNextLessonPrefetch } from '../../services/courseService.js';
 // fix/critical-round1: санитизация user input перед вставкой в промпты
 import { sanitizeUserInput, sanitizeCode } from '../../utils/sanitizeUserInput.js';
 import { AIParsingError } from '../../utils/aiResponseParser.js';
@@ -38,12 +38,21 @@ import SelectionPopover from '../shared/SelectionPopover.jsx';
 import { useTextSelection } from '../../hooks/useTextSelection.js';
 import MotivationalWidget from '../shared/MotivationalWidget.jsx';
 
+const isLessonContentValid = (c) => {
+  if (!c || typeof c !== 'string') return false;
+  const trimmed = c.trim();
+  if (trimmed === '# Урок' || trimmed.length < 150) return false;
+  const bodyWithoutTitle = trimmed.replace(/^#\s+[^\n]+/m, '').trim();
+  return bodyWithoutTitle.length > 80;
+};
+
 const cleanContentText = (text) => {
   if (!text) return '';
   return text
-    .replace(/---FLASHCARD---[\s\S]*?(?=(?:---FLASHCARD---|##|\n\s*\n\s*##|$))/gi, '')
-    .replace(/\n\s*---\s*$/g, '')
+    .replace(/---FLASHCARD---[\s\S]*?---/gi, '')
+    .replace(/---FLASHCARD---[\s\S]*/gi, '')
     .replace(/\[IMAGE:.*?\]/gi, '')
+    .replace(/\n\s*---\s*$/g, '')
     .trim();
 };
 
@@ -75,6 +84,7 @@ export default function LessonPanel({
   const { selection, clear } = useTextSelection(contentRef);
 
   // Added missing states
+  const [generatedContent, setGeneratedContent] = useState('');
   const [isELI5, setIsELI5] = useState(false);
   const [eli5Generating, setEli5Generating] = useState(false);
   const [insight, setInsight] = useState('');
@@ -95,6 +105,10 @@ export default function LessonPanel({
     }
     return false;
   });
+
+  useEffect(() => {
+    setGeneratedContent('');
+  }, [selectedNode?.id]);
 
   const handleReviewSection = (headingText) => {
     if (!contentRef.current || !headingText) return;
@@ -123,12 +137,19 @@ export default function LessonPanel({
         selectedNode.id, 
         selectedCourse.title, 
         selectedNode.label, 
-        selectedNode.desc
+        selectedNode.desc,
+        selectedCourse.preferences || {}
       );
       if (content) {
+        setGeneratedContent(content);
+        const updatedCourse = {
+          ...selectedCourse,
+          nodes: (selectedCourse.nodes || []).map(n => 
+            String(n.id) === String(selectedNode.id) ? { ...n, content } : n
+          )
+        };
         const updatedNode = { ...selectedNode, content };
-        // Pass the updated node up so the UI re-renders with the new content
-        onNodeUpdated(updatedNode, selectedCourse);
+        onNodeUpdated(updatedNode, updatedCourse);
       }
     } catch (e) {
       console.error("Error generating lesson:", e);
@@ -139,6 +160,13 @@ export default function LessonPanel({
       setGenerating(false);
     }
   };
+
+  // Smart Pre-fetching effect for next lesson (N+1) with 7s debounce
+  useEffect(() => {
+    if (selectedCourse && selectedNode && (selectedNode.content || selectedNode.lessonData)) {
+      scheduleNextLessonPrefetch(selectedCourse, selectedNode.id);
+    }
+  }, [selectedCourse, selectedNode]);
 
   const handleOpenQuiz = async (forceFresh = false, customFailedConcepts = null) => {
     if (!selectedNode?.content) return;
@@ -427,15 +455,30 @@ Provide a code boilerplate template at the end.`;
   if (!selectedNode) return null;
 
   // Parse Flashcards
-  let displayContent = isELI5 ? (selectedNode.eli5Content || '') : (selectedNode.content || '');
-  const flashcardRegex = /---FLASHCARD---\s*(?:Term|Термин)\s*:\s*(.*?)\s*(?:Def|Definition|Определение|Объяснение)\s*:\s*(.*?)(?=\s*---FLASHCARD---|\s*---|\s*##|\s*$)/gi;
+  let displayContent = isELI5 ? (selectedNode.eli5Content || '') : (generatedContent || selectedNode.content || '');
+  if ((!displayContent || displayContent.trim() === '# Урок') && selectedNode.lessonData && selectedNode.lessonData.contentMarkdown) {
+    const { title, contentMarkdown, mermaidDiagram } = selectedNode.lessonData;
+    displayContent = `# ${title || selectedNode.label}\n\n${contentMarkdown}`;
+    if (mermaidDiagram && !displayContent.includes('```mermaid')) {
+      displayContent += `\n\n\`\`\`mermaid\n${mermaidDiagram}\n\`\`\``;
+    }
+  }
   const flashcards = [];
-  let match;
-  while ((match = flashcardRegex.exec(displayContent)) !== null) {
-    const term = match[1].replace(/---+$/, '').trim();
-    const definition = match[2].replace(/---+$/, '').trim();
-    if (term && definition) {
-      flashcards.push({ term, definition });
+  if (selectedNode.lessonData && Array.isArray(selectedNode.lessonData.flashcards) && selectedNode.lessonData.flashcards.length > 0) {
+    selectedNode.lessonData.flashcards.forEach(fc => {
+      if (fc.term && fc.definition) {
+        flashcards.push({ term: fc.term, definition: fc.definition });
+      }
+    });
+  } else {
+    const flashcardRegex = /---FLASHCARD---\s*(?:Term|Термин)\s*:\s*(.*?)\s*(?:Def|Definition|Определение|Объяснение)\s*:\s*(.*?)(?=\s*---FLASHCARD---|\s*---|\s*##|\s*$)/gi;
+    let match;
+    while ((match = flashcardRegex.exec(displayContent)) !== null) {
+      const term = match[1].replace(/---+$/, '').trim();
+      const definition = match[2].replace(/---+$/, '').trim();
+      if (term && definition) {
+        flashcards.push({ term, definition });
+      }
     }
   }
 
@@ -566,7 +609,7 @@ Provide a code boilerplate template at the end.`;
 
       {/* Main Content Area */}
       <div className="flex-1 min-h-0 overflow-y-auto relative custom-scrollbar bg-background text-left">
-        {selectedNode.content ? (
+        {Boolean(isLessonContentValid(displayContent)) ? (
           <div className="flex flex-col min-h-full">
             {adaptationBanner && (
               <div className="mx-6 md:mx-10 mt-6 p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex gap-3 items-center text-xs text-indigo-300">

@@ -1347,7 +1347,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                   {/* Mastery Score */}
                   {(() => {
                     const qResult = quizResults?.[selectedNode.id];
-                    const mScore = qResult ? calculateMastery(qResult.score, qResult.lastAttemptAt?.toDate?.() || qResult.lastAttemptAt) : null;
+                    const mScore = qResult ? calculateMastery(qResult.score, qResult.lastAttemptAt?.toDate?.() || qResult.lastAttemptAt, qResult.total) : null;
                     return (
                       <MasteryBlock 
                         masteryScore={mScore} 
@@ -1654,21 +1654,23 @@ Respond in Russian. Keep your reply concise and professional.`;
               isGroupChatOpen={isGroupPanelOpen}
               onQuizComplete={() => setQuizRefreshTrigger(prev => prev + 1)}
               onNodeUpdated={(updatedNode, updatedCourse) => {
+                if (updatedNode) {
+                  setSelectedNode(updatedNode);
+                }
                 if (updatedCourse) {
-                  setCourses(courses.map(c => c.id === updatedCourse.id ? updatedCourse : c));
+                  setCourses(prev => prev.map(c => c.id === updatedCourse.id ? updatedCourse : c));
                   setSelectedCourse(updatedCourse);
-                } else {
-                  const updatedNodes = selectedCourse.nodes.map(n => n.id === updatedNode.id ? updatedNode : n);
+                } else if (updatedNode && selectedCourse) {
+                  const updatedNodes = (selectedCourse.nodes || []).map(n => n.id === updatedNode.id ? updatedNode : n);
                   const newCourse = { ...selectedCourse, nodes: updatedNodes };
                   setSelectedCourse(newCourse);
-                  setCourses(courses.map(c => c.id === newCourse.id ? newCourse : c));
+                  setCourses(prev => prev.map(c => c.id === newCourse.id ? newCourse : c));
                 }
                 if (updatedNode && updatedNode.homeworkStatus === 'reviewed') {
                   updateGroupProgress(updatedNode.id, updatedNode.label || updatedNode.title, true, true);
                 } else if (updatedNode && updatedNode.status === 'completed') {
                   updateGroupProgress(updatedNode.id, updatedNode.label || updatedNode.title, true, false);
                 }
-                setSelectedNode(updatedNode);
               }}
             />
           </motion.div>

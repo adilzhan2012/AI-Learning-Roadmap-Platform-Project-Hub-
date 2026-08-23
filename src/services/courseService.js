@@ -35,6 +35,9 @@ import { parseAIJson, AIParsingError } from '../utils/aiResponseParser.js';
 import { validateOrFallbackGradient, validateLessonContent, logPipelineMetric, sanitizeImageKeyword } from '../utils/coursePipelineUtils.js';
 import { determineResourceType } from './resourceService.js';
 import { classifyCourseSubject, formatCourseHours } from '../utils/courseSubjectClassifier.js';
+import { buildLessonPrompt } from './ai/lessonPromptBuilder.js';
+import { callAiProxy } from './ai/aiProxyClient.js';
+import { LESSON_JSON_SCHEMA, parseAndValidateLessonJson } from './ai/lessonSchema.js';
 
 export function withTimeout(promise, ms = 120000, customErrorMessage = 'Превышено время ожидания ответа ИИ.') {
   return new Promise((resolve, reject) => {
@@ -507,7 +510,41 @@ The response must be a valid JSON object matching this schema:
   return genPromise;
 }
 
-// 1.5 Generate Lesson Content
+// In-flight locks for pre-fetching next lessons
+const prefetchLocks = new Set();
+
+/**
+ * Smart Pre-fetching: Triggers background pre-generation of the next lesson (N+1)
+ * with a 7-second debounce delay and in-flight lock by nodeId.
+ */
+export function scheduleNextLessonPrefetch(course, currentNodeId) {
+  if (!course || !course.nodes || !currentNodeId) return;
+
+  const currentIndex = course.nodes.findIndex(n => String(n.id) === String(currentNodeId));
+  if (currentIndex === -1 || currentIndex >= course.nodes.length - 1) return;
+
+  const nextNode = course.nodes[currentIndex + 1];
+  if (!nextNode || nextNode.content || nextNode.lessonData) return;
+
+  const lockKey = `${course.id}_${nextNode.id}`;
+  if (prefetchLocks.has(lockKey)) return;
+
+  setTimeout(async () => {
+    if (prefetchLocks.has(lockKey)) return;
+    prefetchLocks.add(lockKey);
+    try {
+      console.log(`[Smart Pre-fetch] Starting background pre-generation for next lesson node: ${nextNode.id} (${nextNode.label})`);
+      await generateLessonContent(course.id, nextNode.id, course.title, nextNode.label, nextNode.desc, course.preferences || {});
+      console.log(`[Smart Pre-fetch] Successfully pre-fetched lesson for node: ${nextNode.id}`);
+    } catch (err) {
+      console.warn(`[Smart Pre-fetch] Background pre-generation failed for node ${nextNode.id}:`, err?.message || err);
+    } finally {
+      prefetchLocks.delete(lockKey);
+    }
+  }, 7000);
+}
+
+// 1.5 Generate Lesson Content (Structured Outputs / JSON Schema)
 export async function generateLessonContent(courseId, nodeId, courseTitle, topicLabel, topicDesc, preferences = {}) {
   const courseRef = doc(db, 'courses', courseId);
   const snap = await getDoc(courseRef);
@@ -516,30 +553,43 @@ export async function generateLessonContent(courseId, nodeId, courseTitle, topic
   const courseData = snap.data();
   const targetNode = (courseData.nodes || []).find(n => String(n.id) === String(nodeId));
   
-  // If content is already generated on the user node, return it immediately
-  if (targetNode && targetNode.content) {
+  const isContentValid = (c) => {
+    if (!c || typeof c !== 'string') return false;
+    const trimmed = c.trim();
+    if (trimmed === '# Урок' || trimmed.length < 150) return false;
+    const bodyWithoutTitle = trimmed.replace(/^#\s+[^\n]+/m, '').trim();
+    return bodyWithoutTitle.length > 80;
+  };
+
+  // If valid content is already generated on the user node, return it immediately
+  if (targetNode && isContentValid(targetNode.content)) {
     return targetNode.content;
   }
 
   const courseLanguage = courseData.language || 'ru';
-  const languageName = courseLanguage === 'ru' ? 'Russian' : 'English';
-  const practiceHeading = courseLanguage === 'en' ? '## Practice / Homework' : '## Практика / Домашнее задание';
-
   const courseTemplateId = courseData.courseTemplateId || buildCourseCacheKey(courseData.topic || courseTitle, courseData.level || 'Intermediate', preferences, courseLanguage);
   const rawNodeId = targetNode?.rawNodeId || targetNode?.id || nodeId;
   const lessonKey = buildLessonCacheKey(rawNodeId);
 
   // Check lesson cache in courseTemplates/{templateId}/lessons/{lessonKey}
   let cachedContent = null;
+  let cachedLessonData = null;
   let lessonDocRef = null;
 
   if (courseTemplateId) {
     try {
       lessonDocRef = doc(db, 'courseTemplates', courseTemplateId, 'lessons', lessonKey);
       const lessonSnap = await getDoc(lessonDocRef);
-      if (lessonSnap.exists() && lessonSnap.data().content) {
-        cachedContent = lessonSnap.data().content;
-        logCacheMetric('lesson', true, `${courseTemplateId}/${lessonKey}`);
+      if (lessonSnap.exists()) {
+        const snapData = lessonSnap.data();
+        if (isContentValid(snapData.content) || (snapData.lessonData && isContentValid(snapData.lessonData.contentMarkdown))) {
+          cachedContent = snapData.content;
+          cachedLessonData = snapData.lessonData;
+          logCacheMetric('lesson', true, `${courseTemplateId}/${lessonKey}`);
+        } else {
+          console.warn("Cached lesson content is invalid or truncated, ignoring template cache.");
+          logCacheMetric('lesson', false, `${courseTemplateId}/${lessonKey}`);
+        }
       } else {
         logCacheMetric('lesson', false, `${courseTemplateId}/${lessonKey}`);
       }
@@ -550,111 +600,52 @@ export async function generateLessonContent(courseId, nodeId, courseTitle, topic
   }
 
   let finalContent = cachedContent;
+  let finalLessonData = cachedLessonData;
 
   if (!finalContent) {
-    let prefString = '';
-    let flashcardInstruction = 'include 3-5 flashcards';
-    
-    if (preferences.dailyTime || preferences.flashcardCount || preferences.courseStyle) {
-      const timeStr = preferences.dailyTime === '15m' ? '15 minutes per day' : preferences.dailyTime === '60m' ? '1 hour per day' : '30 minutes per day';
-      const styleStr = preferences.courseStyle === 'Simple' ? 'Simple and explain-like-I-am-5 style' : preferences.courseStyle === 'Gamified' ? 'Gamified / Fantasy style' : 'Friendly and conversational style';
-      prefString = `
-Learning Preferences:
-- Study pace: Designed for a study speed of ${timeStr}
-- Style and Tone: Use a ${styleStr} to write the content
-      `.trim();
-      
-      if (preferences.flashcardCount) {
-        flashcardInstruction = `include EXACTLY ${preferences.flashcardCount} flashcards`;
-      }
-    } else {
-      prefString = `
-Advanced Preferences:
-- Focus: ${preferences.focus || 'Theory'}
-- Goal: ${preferences.goal || 'General'}
-- Tone: ${preferences.tone || 'Academic'}
-- Tech Stack: ${preferences.stack || 'Agnostic'}
-      `.trim();
-    }
-
-    let basePrompt = `You are an expert tutor. Write a comprehensive, highly detailed lesson in Markdown format for the topic: "${sanitizeUserInput(topicLabel, 300)}".
-This lesson is part of a larger course called "${sanitizeUserInput(courseTitle, 200)}".
-Topic context: ${sanitizeUserInput(topicDesc, 500)}
-${prefString}
-
-CRITICAL INSTRUCTION: You MUST generate the ENTIRE lesson content in the ${languageName} language.
-Requirements:
-1. Start with an engaging H1 title.
-2. Provide a deep, step-by-step explanation of the concepts.
-3. Include relevant examples, analogies, or code snippets if applicable.
-4. Use rich markdown formatting (bolding, lists, blockquotes) to make it highly readable.
-5. End with a short summary.
-6. The output should be pure markdown, suitable for rendering in a React-Markdown component.
-7. CRITICAL: You must include at least ONE Markdown table and ONE Mermaid diagram (using \`\`\`mermaid) to visually and structurally explain the concepts.
-7. CRITICAL: Add exactly ONE image placeholder right after the H1 title using this EXACT format: \`[IMAGE: English Keyword for Wikipedia Search]\` (e.g., \`[IMAGE: Python (programming language)]\` or \`[IMAGE: Arduino Uno]\`). Use highly specific nouns.
-8. CRITICAL: At the end of the lesson content, create a Practice section. Start it with an H2 heading "${practiceHeading}". Include 1-3 practical tasks.
-9. CRITICAL: At the very end of the file (after the homework), ${flashcardInstruction} for the most important key terms using EXACTLY this text format:
----FLASHCARD---
-Term: [Concept Name]
-Def: [A concise, 1-2 sentence definition]
----
-Make it highly educational, long, and detailed so the user can genuinely learn from it.`;
-
-    const MAX_LESSON_RETRIES = 2;
-    let currentLessonPrompt = basePrompt;
-    let lessonAttempt = 0;
-    let rawResponse = null;
-
-    while (lessonAttempt <= MAX_LESSON_RETRIES) {
-      const textResponse = await withTimeout(
-        callGeminiWithRetry(null, currentLessonPrompt, 'ai_question'),
-        120000,
-        'Превышено время ожидания генерации урока (120 сек). Пожалуйста, попробуйте еще раз.'
-      );
-
-      if (!textResponse) {
-        if (lessonAttempt < MAX_LESSON_RETRIES) {
-          lessonAttempt++;
-          continue;
-        }
-        throw new Error('Empty response from Gemini API');
-      }
-
-      const lessonVal = validateLessonContent(textResponse);
-      if (!lessonVal.valid) {
-        console.warn(`Lesson validation failed on attempt ${lessonAttempt + 1}:`, lessonVal.errors);
-        logPipelineMetric('lesson_validation_failed', { attempt: lessonAttempt + 1, errors: lessonVal.errors });
-        if (lessonAttempt < MAX_LESSON_RETRIES) {
-          lessonAttempt++;
-          currentLessonPrompt = `${basePrompt}\n\nCRITICAL FIX REQUIRED: Your previous output failed validation with errors:\n${lessonVal.errors.map(e => `- ${e}`).join('\n')}\nPlease fix these issues immediately!`;
-          continue;
-        }
-      }
-
-      rawResponse = textResponse;
-      break;
-    }
-
-    if (!rawResponse) throw new Error('Lesson generation failed validation');
-
-    // Sanitize image keywords in [IMAGE: Keyword] tags (Item 8)
-    finalContent = rawResponse.replace(/\[IMAGE:\s*([^\]]+)\]/g, (match, p1) => {
-      return `[IMAGE: ${sanitizeImageKeyword(p1)}]`;
+    const { systemInstruction, userPrompt } = buildLessonPrompt({
+      courseTitle,
+      topicLabel,
+      topicDesc,
+      language: courseLanguage,
+      preferences
     });
 
-    logPipelineMetric('lesson_generation_success', { attempts: lessonAttempt + 1 });
+    const rawResponse = await withTimeout(
+      callAiProxy({
+        prompt: userPrompt,
+        systemInstruction,
+        usageType: 'ai_question',
+        modelName: 'google/gemini-2.5-flash',
+        responseSchema: LESSON_JSON_SCHEMA
+      }),
+      120000,
+      'Превышено время ожидания генерации урока (120 сек). Пожалуйста, попробуйте еще раз.'
+    );
+
+    if (!rawResponse) {
+      throw new Error('Empty response from AI Proxy');
+    }
+
+    const { lessonData, compiledContent } = parseAndValidateLessonJson(rawResponse, courseLanguage);
+    finalContent = compiledContent;
+    finalLessonData = lessonData;
+
+    logPipelineMetric('lesson_generation_success', { structured: true });
 
     // Save generated lesson to template cache for other users
-    if (lessonDocRef) {
+    if (lessonDocRef && isContentValid(finalContent)) {
       try {
         await runTransaction(db, async (txn) => {
           const snap = await txn.get(lessonDocRef);
-          if (snap.exists() && snap.data().content) {
+          if (snap.exists() && (isContentValid(snap.data().content) || (snap.data().lessonData && isContentValid(snap.data().lessonData.contentMarkdown)))) {
             finalContent = snap.data().content;
+            finalLessonData = snap.data().lessonData || finalLessonData;
           } else {
             txn.set(lessonDocRef, {
               rawNodeId,
               content: finalContent,
+              lessonData: finalLessonData,
               createdAt: new Date().toISOString()
             }, { merge: true });
           }
@@ -665,10 +656,10 @@ Make it highly educational, long, and detailed so the user can genuinely learn f
     }
   }
 
-  // Update content on user's specific node in Firestore
+  // Update content and lessonData on user's specific node in Firestore
   const updatedNodes = (courseData.nodes || []).map(n => {
     if (String(n.id) === String(nodeId)) {
-      return { ...n, content: finalContent };
+      return { ...n, content: finalContent, lessonData: finalLessonData };
     }
     return n;
   });

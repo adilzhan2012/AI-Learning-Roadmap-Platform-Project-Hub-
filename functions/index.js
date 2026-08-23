@@ -315,7 +315,7 @@ exports.aiProxy = onCall(
       );
     }
 
-    const { prompt, messages: clientMessages, usageType, modelName, lessonId } = request.data;
+    const { prompt, messages: clientMessages, systemInstruction, usageType, modelName, lessonId, responseSchema, responseFormat, generationConfig: clientGenConfig } = request.data;
     // fix/critical-round1: поддерживаем messages[] для разделения system/user ролей.
     // Это структурная защита от prompt injection — сильнее, чем только санитизация текста.
     if (!prompt && (!clientMessages || !Array.isArray(clientMessages) || clientMessages.length === 0)) {
@@ -324,10 +324,14 @@ exports.aiProxy = onCall(
         "The function must be called with either a 'prompt' or 'messages' argument."
       );
     }
-    // Build messages array: if explicit messages array provided, use it; otherwise wrap prompt
-    const geminiMessages = clientMessages && clientMessages.length > 0
-      ? clientMessages
+    // Build messages array: include systemInstruction if provided
+    const rawMessages = clientMessages && clientMessages.length > 0
+      ? [...clientMessages]
       : [{ role: "user", content: prompt }];
+    
+    const geminiMessages = systemInstruction
+      ? [{ role: "system", content: systemInstruction }, ...rawMessages]
+      : rawMessages;
 
     const userId = request.auth.uid;
     const todayStr = new Date().toISOString().split('T')[0];
@@ -362,30 +366,53 @@ exports.aiProxy = onCall(
     let lastError;
     const requestedModel = modelName || request.data.model;
     const mappedRequestedModel = mapModelName(requestedModel);
-    const modelsToTry = Array.from(new Set([
-      mappedRequestedModel,
-      "google/gemini-2.5-flash",
-      "google/gemini-2.5-pro",
-      "google/gemini-1.5-flash",
-      "google/gemini-1.5-pro"
-    ]));
+    
+    // Model selection optimization:
+    // Lock default model for lessons to Flash, avoiding expensive Pro fallbacks for standard lessons.
+    const isProRequired = (usageType === 'homework_review') || (requestedModel && requestedModel.toLowerCase().includes('pro'));
+    const modelsToTry = isProRequired 
+      ? Array.from(new Set([mappedRequestedModel, "google/gemini-2.5-pro", "google/gemini-1.5-pro", "google/gemini-2.5-flash"]))
+      : Array.from(new Set([mappedRequestedModel, "google/gemini-2.5-flash", "google/gemini-1.5-flash"]));
+
+    // Prepare generationConfig & responseSchema for Vertex AI Structured Output
+    const genConfig = { ...(clientGenConfig || {}) };
+    if (responseSchema) {
+      genConfig.responseMimeType = "application/json";
+      genConfig.responseSchema = responseSchema;
+    } else if (responseFormat && responseFormat.response_schema) {
+      genConfig.responseMimeType = "application/json";
+      genConfig.responseSchema = responseFormat.response_schema;
+    }
 
     const maxRetries = 5;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       for (const modelNameStr of modelsToTry) {
         try {
+          const requestBody = {
+            model: modelNameStr,
+            messages: geminiMessages,
+            temperature: 0.2,
+            max_tokens: 4096,
+          };
+          if (responseFormat) {
+            requestBody.response_format = responseFormat;
+          } else if (responseSchema) {
+            requestBody.response_format = {
+              type: "json_object"
+            };
+          }
+          if (Object.keys(genConfig).length > 0) {
+            requestBody.generationConfig = genConfig;
+          }
+
           const response = await fetch(vertexUrl, {
             method: "POST",
             headers: {
               "Authorization": `Bearer ${token}`,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-              model: modelNameStr,
-              messages: geminiMessages,
-              temperature: 0.2,
-            }),
+            body: JSON.stringify(requestBody),
           });
 
           if (!response.ok) {
@@ -396,20 +423,18 @@ exports.aiProxy = onCall(
           const data = await response.json();
           const assistantReply = data.choices[0].message.content;
           
-          // fix/critical-round1: счётчик использования теперь атомарно инкрементируется
-          // в pre-API транзакции. Здесь остаётся только ULTRA token accounting,
-          // т.к. зависит от фактической длины ответа (известна только post-API).
+          // Ultra Token Accounting using usageMetadata from Vertex AI response
           if (usageType === 'mentor_message' && transactionResult?.plan === 'ULTRA') {
             try {
               const subRef = db.collection('users').doc(userId).collection('subscription').doc('details');
-              const msgLen = geminiMessages.reduce((acc, m) => acc + (m.content || '').length, 0);
-              const promptTokens = Math.ceil(msgLen / 4);
-              const replyTokens = Math.ceil(assistantReply.length / 4);
+              const promptTokens = data.usage?.prompt_tokens ?? data.usageMetadata?.promptTokenCount ?? Math.ceil(geminiMessages.reduce((acc, m) => acc + (m.content || '').length, 0) / 4);
+              const replyTokens = data.usage?.completion_tokens ?? data.usageMetadata?.candidatesTokenCount ?? Math.ceil(assistantReply.length / 4);
+              const totalTokens = data.usage?.total_tokens ?? data.usageMetadata?.totalTokenCount ?? (promptTokens + replyTokens);
+
               await subRef.set({
-                ultraTokensUsed: admin.firestore.FieldValue.increment(promptTokens + replyTokens)
+                ultraTokensUsed: admin.firestore.FieldValue.increment(totalTokens)
               }, { merge: true });
             } catch (tokenErr) {
-              // Non-critical — не прерываем ответ пользователю
               console.warn('[aiProxy] Failed to update ULTRA token count:', tokenErr);
             }
           }

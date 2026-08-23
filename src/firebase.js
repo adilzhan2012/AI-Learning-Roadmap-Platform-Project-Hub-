@@ -62,6 +62,20 @@ try {
   functions = getFunctions(app);
   storage = getStorage(app);
 
+  // Connect to Firebase Local Emulators if VITE_USE_EMULATORS is set
+  if (import.meta.env.VITE_USE_EMULATORS === 'true' || import.meta.env.VITE_FIREBASE_EMULATOR === 'true') {
+    console.log("⚡ Connecting to Firebase Local Emulators...");
+    const { connectAuthEmulator } = await import('firebase/auth');
+    const { connectFirestoreEmulator } = await import('firebase/firestore');
+    const { connectFunctionsEmulator } = await import('firebase/functions');
+    const { connectStorageEmulator } = await import('firebase/storage');
+
+    connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+    connectFirestoreEmulator(db, '127.0.0.1', 8080);
+    connectFunctionsEmulator(functions, '127.0.0.1', 5001);
+    connectStorageEmulator(storage, '127.0.0.1', 9199);
+  }
+
   // Initialize Analytics if supported
   isSupported().then((supported) => {
     if (supported) {

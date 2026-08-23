@@ -14,6 +14,22 @@ const MasteryBlock = ({ masteryScore, attempts = [], onViewHistory }) => {
 
   const colors = getColor(masteryScore);
 
+  const normalizeAttemptScore = (a) => {
+    if (!a) return 0;
+    let s = Number(a.score || 0);
+    if (s <= 10 && a.total && a.total > 0) {
+      s = Math.round((s / a.total) * 100);
+    } else if (s <= 10 && s > 0) {
+      s = Math.min(100, Math.round(s * 25));
+    }
+    return Math.max(0, Math.min(100, s));
+  };
+
+  const getAttemptDate = (a) => {
+    if (!a) return null;
+    return a.date || a.timestamp || a.createdAt || (a.lastAttemptAt?.toDate ? a.lastAttemptAt.toDate() : a.lastAttemptAt);
+  };
+
   // SVG Chart Setup
   const width = 300;
   const height = 120;
@@ -23,11 +39,13 @@ const MasteryBlock = ({ masteryScore, attempts = [], onViewHistory }) => {
   const maxY = 95;
 
   const points = (attempts || []).map((a, i) => {
+    const scoreVal = normalizeAttemptScore(a);
+    const dateVal = getAttemptDate(a);
     const x = attempts.length === 1 
       ? 150 
       : minX + (i * (maxX - minX)) / (attempts.length - 1);
-    const y = maxY - (a.score * (maxY - minY)) / 100;
-    return { x, y, score: a.score, date: a.date };
+    const y = maxY - (scoreVal * (maxY - minY)) / 100;
+    return { x, y, score: scoreVal, date: dateVal };
   });
 
   const pathD = points.reduce((acc, p, i) => {
@@ -40,10 +58,17 @@ const MasteryBlock = ({ masteryScore, attempts = [], onViewHistory }) => {
 
   const passingY = maxY - (60 * (maxY - minY)) / 100;
 
-  const formatDate = (isoString) => {
+  const formatDate = (dateVal) => {
+    if (!dateVal) return '';
     try {
-      const date = new Date(isoString);
-      return date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      let date;
+      if (typeof dateVal?.toDate === 'function') {
+        date = dateVal.toDate();
+      } else {
+        date = new Date(dateVal);
+      }
+      if (isNaN(date.getTime())) return '';
+      return date.toLocaleDateString('ru-RU', { month: 'short', day: 'numeric' }) + ' ' + date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     } catch {
       return '';
     }
@@ -113,8 +138,8 @@ const MasteryBlock = ({ masteryScore, attempts = [], onViewHistory }) => {
                 <div className="py-4 text-center">
                   <CheckCircle className="w-8 h-8 text-on-surface mx-auto mb-2" strokeWidth={1.5} />
                   <p className="text-xs font-bold text-on-background">Пройдена 1 попытка</p>
-                  <p className="text-[11px] text-on-surface-variant mt-0.5">Результат: <strong className="text-on-surface font-mono">{attempts[0].score}%</strong></p>
-                  <p className="text-[10px] text-on-surface-variant/70 mt-1 font-mono">{formatDate(attempts[0].date)}</p>
+                  <p className="text-[11px] text-on-surface-variant mt-0.5">Результат: <strong className="text-on-surface font-mono">{normalizeAttemptScore(attempts[0])}%</strong></p>
+                  <p className="text-[10px] text-on-surface-variant/70 mt-1 font-mono">{formatDate(getAttemptDate(attempts[0]))}</p>
                 </div>
               ) : (
                 // SVG Graph
@@ -211,7 +236,8 @@ const MasteryBlock = ({ masteryScore, attempts = [], onViewHistory }) => {
             <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1 scrollbar-thin">
               {[...attempts].reverse().map((attempt, index) => {
                 const attemptNum = attempts.length - index;
-                const isPassed = attempt.score >= 60;
+                const scoreVal = normalizeAttemptScore(attempt);
+                const isPassed = scoreVal >= 60;
                 return (
                   <div 
                     key={index} 
@@ -223,10 +249,10 @@ const MasteryBlock = ({ masteryScore, attempts = [], onViewHistory }) => {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`font-bold font-mono ${isPassed ? 'text-on-surface' : 'text-[#FF453A]'}`}>
-                        {attempt.score}%
+                        {scoreVal}%
                       </span>
                       <span className="text-[10px] text-on-surface-variant/60 font-mono">
-                        {formatDate(attempt.date)}
+                        {formatDate(getAttemptDate(attempt))}
                       </span>
                     </div>
                   </div>

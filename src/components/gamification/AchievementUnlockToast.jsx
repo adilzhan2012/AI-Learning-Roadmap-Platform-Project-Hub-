@@ -8,7 +8,7 @@ export default function AchievementUnlockToast({ achievement }) {
       layout
       initial={{ opacity: 0, x: 50, scale: 0.9 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9, opacity: 0 }}
+      exit={{ opacity: 0, scale: 0.9 }}
       transition={{ type: 'spring', damping: 20, stiffness: 300 }}
       className="bg-surface border border-amber-500/30 px-5 py-4 rounded-2xl shadow-2xl flex items-center gap-4 min-w-[300px] max-w-sm w-full origin-top-right relative z-50 pointer-events-auto"
     >
