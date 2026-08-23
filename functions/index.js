@@ -1,6 +1,7 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
+const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 const Sentry = require("@sentry/google-cloud-serverless");
 const { GoogleAuth } = require("google-auth-library");
 const { assembleSystemPrompt } = require("./services/promptAssembler/index.js");
@@ -148,8 +149,8 @@ async function processUsageLimitAndCounter(db, admin, userId, usageType, todaySt
         }
 
         txn.set(lessonUsageRef, {
-          messagesUsed: admin.firestore.FieldValue.increment(1),
-          lastUsedAt: admin.firestore.FieldValue.serverTimestamp()
+          messagesUsed: FieldValue.increment(1),
+          lastUsedAt: FieldValue.serverTimestamp()
         }, { merge: true });
 
         return { plan, updatedUsageCount: lessonMessagesUsed + 1, remainingLessonMessages: Math.max(0, 3 - (lessonMessagesUsed + 1)) };
@@ -216,20 +217,20 @@ async function processUsageLimitAndCounter(db, admin, userId, usageType, todaySt
       } else if (usageType === 'ai_question') {
         updatedUsageCount = data.lastQuestionDate === todayStr ? currentAiQ + 1 : 1;
         updates.aiQuestionsUsed = data.lastQuestionDate === todayStr
-          ? admin.firestore.FieldValue.increment(1)
+          ? FieldValue.increment(1)
           : 1;
         updates.lastQuestionDate = todayStr;
       } else if (usageType === 'mentor_message') {
         updatedUsageCount = data.lastMentorDate === todayStr ? currentMentor + 1 : 1;
         updates.mentorMessagesUsed = data.lastMentorDate === todayStr
-          ? admin.firestore.FieldValue.increment(1)
+          ? FieldValue.increment(1)
           : 1;
         updates.lastMentorDate = todayStr;
         updates.mentorMonthStart = monthStr;
       } else if (usageType === 'homework_review') {
         updatedUsageCount = currentHwMonth === monthStr ? currentHwReviews + 1 : 1;
         updates.homeworkReviewsUsed = currentHwMonth === monthStr
-          ? admin.firestore.FieldValue.increment(1)
+          ? FieldValue.increment(1)
           : 1;
         updates.homeworkMonthStart = monthStr;
       }
@@ -453,7 +454,7 @@ exports.aiProxy = onCall(
               const promptTokens = Math.ceil(msgLen / 4);
               const replyTokens = Math.ceil(assistantReply.length / 4);
               await subRef.set({
-                ultraTokensUsed: admin.firestore.FieldValue.increment(promptTokens + replyTokens)
+                ultraTokensUsed: FieldValue.increment(promptTokens + replyTokens)
               }, { merge: true });
             } catch (tokenErr) {
               // Non-critical — не прерываем ответ пользователю
@@ -729,9 +730,9 @@ exports.awardXP = onCall(async (request) => {
     const newLevelCalc = calculateLevel(newXp);
 
     const updates = {
-      xp: admin.firestore.FieldValue.increment(amount),
-      totalXPEarned: admin.firestore.FieldValue.increment(amount),
-      xpHistory: admin.firestore.FieldValue.arrayUnion({
+      xp: FieldValue.increment(amount),
+      totalXPEarned: FieldValue.increment(amount),
+      xpHistory: FieldValue.arrayUnion({
         amount,
         reason: reasonKey,
         timestamp: new Date().toISOString()
@@ -798,7 +799,7 @@ exports.unlockAchievement = onCall(async (request) => {
 
     // Set achievement document
     transaction.set(achRef, {
-      unlockedAt: admin.firestore.FieldValue.serverTimestamp()
+      unlockedAt: FieldValue.serverTimestamp()
     });
 
     const userData = userDoc.data();
@@ -814,9 +815,9 @@ exports.unlockAchievement = onCall(async (request) => {
       const newLevelCalc = calculateLevel(newXp);
 
       const updates = {
-        xp: admin.firestore.FieldValue.increment(amount),
-        totalXPEarned: admin.firestore.FieldValue.increment(amount),
-        xpHistory: admin.firestore.FieldValue.arrayUnion({
+        xp: FieldValue.increment(amount),
+        totalXPEarned: FieldValue.increment(amount),
+        xpHistory: FieldValue.arrayUnion({
           amount,
           reason: reasonKey,
           timestamp: new Date().toISOString()
@@ -920,7 +921,7 @@ exports.updateSubscription = onCall(async (request) => {
   const subRef = db.collection("users").doc(userId).collection("subscription").doc("details");
   await subRef.set({
     plan,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
     // paymentVerified is set to true only for paid plans AND only when authorized above
     paymentVerified: !isDowngradeToFree
   }, { merge: true });
@@ -1050,11 +1051,11 @@ exports.adminSetMaintenance = onCall(async (request) => {
 
   const updates = {
     isActive,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    updatedAt: FieldValue.serverTimestamp()
   };
 
   if (isActive && endTime) {
-    updates.endTime = admin.firestore.Timestamp.fromDate(new Date(endTime));
+    updates.endTime = Timestamp.fromDate(new Date(endTime));
   } else {
     updates.endTime = null;
   }
@@ -1369,7 +1370,7 @@ exports.generateCertificate = onCall(
       modulesCount,
       hoursLearned,
       userLevel,
-      issuedAt: admin.firestore.FieldValue.serverTimestamp(),
+      issuedAt: FieldValue.serverTimestamp(),
       fileUrl,
       tier: plan,
     };
@@ -1381,7 +1382,7 @@ exports.generateCertificate = onCall(
       await db.collection("users").doc(userId).set(
         {
           stats: {
-            certificatesCount: admin.firestore.FieldValue.increment(1),
+            certificatesCount: FieldValue.increment(1),
           },
         },
         { merge: true }
@@ -1506,7 +1507,7 @@ exports.saveMentorFeedback = onCall(async (request) => {
     rating,
     modelName: modelName || "llama-3.3-70b-versatile",
     context: context || "general",
-    createdAt: admin.firestore.FieldValue.serverTimestamp()
+    createdAt: FieldValue.serverTimestamp()
   });
 
   return { success: true };
@@ -1564,9 +1565,9 @@ exports.consumeRoadmapQuota = onCall(async (request) => {
     }
 
     const updates = {
-      roadmapsGenerated: admin.firestore.FieldValue.increment(1),
+      roadmapsGenerated: FieldValue.increment(1),
       roadmapsGeneratedThisMonth: data.roadmapsMonthStart === monthStr
-        ? admin.firestore.FieldValue.increment(1)
+        ? FieldValue.increment(1)
         : 1,
       roadmapsMonthStart: monthStr
     };
@@ -1716,7 +1717,7 @@ async function startGroupLessonTx(groupId) {
 
     txn.update(groupRef, {
       status: 'active',
-      startedAt: admin.firestore.FieldValue.serverTimestamp(),
+      startedAt: FieldValue.serverTimestamp(),
       activityFeed: updatedFeed
     });
 
@@ -1803,8 +1804,8 @@ exports.createGroup = onCall(async (request) => {
         inviteeId: inv.userId,
         inviteeUsername: inv.username,
         status: 'pending',
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+        createdAt: FieldValue.serverTimestamp(),
+        expiresAt: Timestamp.fromDate(expiresAt),
         warningSent: false
       }
     });
@@ -1830,7 +1831,7 @@ exports.createGroup = onCall(async (request) => {
     members,
     invitedUserIds,
     acceptedUserIds,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
     startedAt: null,
     activityFeed
   });
@@ -2137,8 +2138,8 @@ exports.updateGroupMemberProgress = onCall(async (request) => {
 
 // 7. Scheduled/callable check for invitation TTL
 exports.checkGroupInvitationsTTL = onCall(async () => {
-  const now = admin.firestore.Timestamp.now();
-  const in24Hours = admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000));
+  const now = Timestamp.now();
+  const in24Hours = Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000));
 
   const expiredSnap = await db.collection("group_invitations")
     .where("status", "==", "pending")

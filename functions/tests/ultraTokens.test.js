@@ -54,8 +54,12 @@ function createTransactionalMockDb(initialDocData = {}) {
           const merged = { ...current };
 
           for (const [key, val] of Object.entries(updates)) {
-            if (val && val._type === 'increment') {
-              merged[key] = (merged[key] || 0) + val.value;
+            if (val && typeof val === 'object' && (val.constructor?.name === 'NumericIncrementTransform' || val._type === 'increment' || typeof val.isEqual === 'function')) {
+              // Real Firestore FieldValue.increment instance or mock
+              const incVal = val.value !== undefined ? val.value : (val.operand !== undefined ? val.operand : 1);
+              merged[key] = (merged[key] || 0) + incVal;
+            } else if (val && typeof val === 'object' && (val.constructor?.name === 'ServerTimestampTransform' || val._type === 'timestamp')) {
+              merged[key] = new Date().toISOString();
             } else {
               merged[key] = val;
             }
@@ -281,5 +285,117 @@ describe('processUsageLimitAndCounter - ULTRA tokens daily reset unit tests', ()
 
     const finalDoc = mockDb.getStore()[subDocPath];
     assert.equal(finalDoc.ultraTokensUsed, 600, 'Final tokens should be 600, not 290600');
+  });
+});
+
+describe('processUsageLimitAndCounter - FieldValue modular increment unit tests for repeated calls', () => {
+  const userId = 'user_repeated_caller';
+  const subDocPath = `users/${userId}/subscription/details`;
+  const lessonDocPath = `users/${userId}/lessonUsage/lesson_geo_1`;
+  const todayStr = '2026-08-23';
+  const monthStr = '2026-08';
+  // Empty admin mock without admin.firestore.FieldValue to prove it relies on modular import
+  const bareAdminMock = {};
+
+  test('ai_question: second request on the same day increments aiQuestionsUsed with modular FieldValue', async () => {
+    const mockDb = createTransactionalMockDb({
+      [subDocPath]: {
+        plan: 'FREE',
+        aiQuestionsUsed: 1,
+        lastQuestionDate: todayStr
+      }
+    });
+
+    const result = await processUsageLimitAndCounter(
+      mockDb,
+      bareAdminMock,
+      userId,
+      'ai_question',
+      todayStr,
+      monthStr
+    );
+
+    assert.equal(result.plan, 'FREE');
+    assert.equal(result.updatedUsageCount, 2);
+    const stored = mockDb.getStore()[subDocPath];
+    assert.equal(stored.aiQuestionsUsed, 2);
+  });
+
+  test('mentor_message: second request on the same day increments mentorMessagesUsed with modular FieldValue', async () => {
+    const mockDb = createTransactionalMockDb({
+      [subDocPath]: {
+        plan: 'PRO',
+        mentorMessagesUsed: 3,
+        lastMentorDate: todayStr,
+        mentorMonthStart: monthStr
+      }
+    });
+
+    const result = await processUsageLimitAndCounter(
+      mockDb,
+      bareAdminMock,
+      userId,
+      'mentor_message',
+      todayStr,
+      monthStr
+    );
+
+    assert.equal(result.plan, 'PRO');
+    assert.equal(result.updatedUsageCount, 4);
+    const stored = mockDb.getStore()[subDocPath];
+    assert.equal(stored.mentorMessagesUsed, 4);
+  });
+
+  test('homework_review: second request in the same month increments homeworkReviewsUsed with modular FieldValue', async () => {
+    const mockDb = createTransactionalMockDb({
+      [subDocPath]: {
+        plan: 'PRO',
+        homeworkReviewsUsed: 5,
+        homeworkMonthStart: monthStr
+      }
+    });
+
+    const result = await processUsageLimitAndCounter(
+      mockDb,
+      bareAdminMock,
+      userId,
+      'homework_review',
+      todayStr,
+      monthStr
+    );
+
+    assert.equal(result.plan, 'PRO');
+    assert.equal(result.updatedUsageCount, 6);
+    const stored = mockDb.getStore()[subDocPath];
+    assert.equal(stored.homeworkReviewsUsed, 6);
+  });
+
+  test('contextual_mentor_message: second request on same lesson increments lessonUsage with modular FieldValue', async () => {
+    const mockDb = createTransactionalMockDb({
+      [subDocPath]: {
+        plan: 'FREE'
+      },
+      [lessonDocPath]: {
+        messagesUsed: 1,
+        lastUsedAt: '2026-08-23T10:00:00.000Z'
+      }
+    });
+
+    const result = await processUsageLimitAndCounter(
+      mockDb,
+      bareAdminMock,
+      userId,
+      'contextual_mentor_message',
+      todayStr,
+      monthStr,
+      'lesson_geo_1'
+    );
+
+    assert.equal(result.plan, 'FREE');
+    assert.equal(result.updatedUsageCount, 2);
+    assert.equal(result.remainingLessonMessages, 1);
+    const storedLesson = mockDb.getStore()[lessonDocPath];
+    assert.equal(storedLesson.messagesUsed, 2);
+    assert.ok(storedLesson.lastUsedAt);
   });
 });
