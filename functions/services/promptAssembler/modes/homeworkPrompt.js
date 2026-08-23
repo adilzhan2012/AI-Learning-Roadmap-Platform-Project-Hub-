@@ -20,6 +20,14 @@ function getHomeworkPrompt(mentorContext) {
   const hwTask = mentorContext.homeworkTask || {};
   const hwPromptText = hwTask.prompt || '(No specific homework prompt provided)';
 
+  let rubricBlock = '';
+  if (Array.isArray(hwTask.rubric) && hwTask.rubric.length > 0) {
+    const formattedCriteria = hwTask.rubric
+      .map((r, i) => `${i + 1}. ${typeof r === 'object' ? (r.criterion || r.title || JSON.stringify(r)) : r}`)
+      .join('\n');
+    rubricBlock = `\n\nEVALUATION CRITERIA:\n${formattedCriteria}`;
+  }
+
   return `MODE: SOCRATIC HOMEWORK MENTOR
 Topic: "${topicLabel}"
 
@@ -27,7 +35,7 @@ LESSON REFERENCE MATERIAL:
 ${lessonSnippet ? lessonSnippet + '...' : '(No reference material)'}
 
 HOMEWORK ASSIGNMENT TASK:
-${hwPromptText}
+${hwPromptText}${rubricBlock}
 
 CRITICAL SOCRATIC INSTRUCTIONS:
 1. You MUST act strictly as a Socratic mentor.

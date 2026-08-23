@@ -320,6 +320,10 @@ function resolveGeminiMessages(requestData, userId, transactionResult) {
         }
       };
 
+      if (serverMentorContext.mode === 'homework' && serverMentorContext.plan !== 'ULTRA') {
+        throw new HttpsError('permission-denied', 'HOMEWORK_MENTOR_REQUIRES_ULTRA_PLAN');
+      }
+
       const queryText = typeof userQuery === 'string' && userQuery.trim().length > 0
         ? userQuery
         : (typeof prompt === 'string' ? prompt : '');
@@ -330,6 +334,9 @@ function resolveGeminiMessages(requestData, userId, transactionResult) {
 
       console.log(`[aiProxy] Prompt assembled via ORCHESTRATOR: mode=${serverMentorContext.mode}, plan=${serverMentorContext.plan}, historyLen=${assembled.historyMessages.length}`);
     } catch (asmErr) {
+      if (asmErr instanceof HttpsError) {
+        throw asmErr;
+      }
       console.error('[aiProxy] Orchestrator prompt assembly failed, falling back to legacy:', asmErr);
       if (clientMessages && Array.isArray(clientMessages) && clientMessages.length > 0) {
         geminiMessages = clientMessages;
@@ -357,6 +364,7 @@ exports.aiProxy = onCall(
   {
     enforceAppCheck: true,
     maxInstances: 10,
+    timeoutSeconds: 120,
   },
   async (request) => {
     if (!request.auth) {

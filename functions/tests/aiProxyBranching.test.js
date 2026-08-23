@@ -51,6 +51,89 @@ describe('aiProxy prompt branching (Orchestrator vs Legacy)', () => {
     assert.equal(lastMsg.content, 'Как работает Virtual DOM?');
   });
 
+  test('Orchestrator path: constructs homework Socratic prompt with history when mode is homework for ULTRA user', () => {
+    const ultraTransactionResult = {
+      plan: 'ULTRA',
+      isProSoftCapped: false,
+      updatedUsageCount: 0
+    };
+
+    const requestData = {
+      mentorContext: {
+        mode: 'homework',
+        contextId: 'course_1_node_2',
+        lessonTitle: 'Основы массивов',
+        lessonContent: 'Массивы в JavaScript хранят упорядоченные коллекции...',
+        homeworkTask: {
+          prompt: 'Напишите функцию фильтрации четных чисел',
+          rubric: [{ criterion: 'Использовать метод filter', weight: 30 }]
+        },
+        courseLanguage: 'ru',
+        recentHistory: [
+          { role: 'user', content: 'С чего мне начать?' },
+          { role: 'assistant', content: 'Подумай об операторе остатка от деления %' }
+        ]
+      },
+      userQuery: 'Как проверить число на четность?'
+    };
+
+    const { geminiMessages, promptAssemblySource } = resolveGeminiMessages(
+      requestData,
+      userId,
+      ultraTransactionResult
+    );
+
+    assert.equal(promptAssemblySource, 'orchestrator');
+    assert.ok(Array.isArray(geminiMessages));
+    assert.equal(geminiMessages[0].role, 'system');
+    assert.match(geminiMessages[0].content, /MODE: SOCRATIC HOMEWORK MENTOR/);
+    assert.match(geminiMessages[0].content, /Напишите функцию фильтрации четных чисел/);
+    assert.match(geminiMessages[0].content, /EVALUATION CRITERIA/);
+    assert.match(geminiMessages[0].content, /Использовать метод filter/);
+    assert.match(geminiMessages[0].content, /CRITICAL SOCRATIC INSTRUCTIONS/);
+
+    // History check
+    assert.equal(geminiMessages[1].role, 'user');
+    assert.equal(geminiMessages[1].content, 'С чего мне начать?');
+    assert.equal(geminiMessages[2].role, 'assistant');
+    assert.equal(geminiMessages[2].content, 'Подумай об операторе остатка от деления %');
+
+    // Query check
+    const lastMsg = geminiMessages[geminiMessages.length - 1];
+    assert.equal(lastMsg.role, 'user');
+    assert.equal(lastMsg.content, 'Как проверить число на четность?');
+  });
+
+  test('Security: non-ULTRA user (FREE/PRO) requesting mode="homework" throws permission-denied HttpsError', () => {
+    const freeTransactionResult = {
+      plan: 'FREE',
+      isProSoftCapped: false,
+      updatedUsageCount: 0
+    };
+
+    const requestData = {
+      mentorContext: {
+        mode: 'homework',
+        contextId: 'course_1_node_2',
+        lessonTitle: 'Основы массивов',
+        lessonContent: 'Массивы...',
+        homeworkTask: { prompt: 'Сделай задание' }
+      },
+      userQuery: 'Помоги с кодом'
+    };
+
+    assert.throws(
+      () => {
+        resolveGeminiMessages(requestData, userId, freeTransactionResult);
+      },
+      (err) => {
+        assert.equal(err.code, 'permission-denied');
+        assert.match(err.message, /HOMEWORK_MENTOR_REQUIRES_ULTRA_PLAN/);
+        return true;
+      }
+    );
+  });
+
   test('Legacy path: returns clientMessages when mentorContext is not provided', () => {
     const requestData = {
       messages: [

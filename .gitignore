@@ -6,4 +6,5 @@ node_modules
 dist
 dist-ssr
 *.local
+*-debug.log
 .system_generated

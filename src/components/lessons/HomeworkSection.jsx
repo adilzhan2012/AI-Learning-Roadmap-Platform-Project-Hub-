@@ -31,6 +31,7 @@ import { usePlanLimits } from '../../hooks/usePlanLimits.js';
 import { PLAN_LIMITS } from '../../constants/planLimits.js';
 import UpgradeModal from '../shared/UpgradeModal.jsx';
 import { AIParsingError } from '../../utils/aiResponseParser.js';
+import { buildMentorContext } from '../../services/mentorContext/index.js';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -139,21 +140,34 @@ export default function HomeworkSection({ courseId, nodeId, lessonContent, topic
     setChatLoading(true);
 
     try {
-      const languageName = courseLanguage === 'en' ? 'English' : 'Russian';
-      const prompt = `You are a Socratic AI mentor for a user doing their homework. 
-The user is currently studying the following topic: "${topicLabel}".
-Here is the lesson content they just read:
-${lessonContent.substring(0, 2000)}...
+      const contextId = `${courseId}_${nodeId}`;
+      const mentorContext = await buildMentorContext({
+        userId: auth.currentUser?.uid,
+        mode: 'homework',
+        contextId,
+        courseId,
+        nodeId,
+        lessonTitle: topicLabel,
+        lessonContent: lessonContent ? lessonContent.substring(0, 2000) : '',
+        homeworkTask: {
+          prompt: promptData?.prompt || '',
+          rubric: Array.isArray(promptData?.rubric) ? promptData.rubric : []
+        },
+        courseLanguage,
+        historyOverride: chatHistory
+      });
 
-Here is the homework task they need to complete:
-${promptData?.prompt}
-
-The user's question:
-"${userMessage}"
-
-CRITICAL INSTRUCTION: You MUST act as a Socratic mentor. Do NOT solve the homework for them. Do NOT give them the direct answer. Instead, give them hints, point out where to look, or ask them a leading question to guide them to the answer. Answer in ${languageName}, be very supportive, friendly, and concise.`;
-
-      const resText = await callGeminiWithRetry(null, prompt, 'ai_chat');
+      const resText = await callGeminiWithRetry(
+        null,
+        null,
+        'ai_chat',
+        null,
+        null,
+        {
+          mentorContext,
+          userQuery: userMessage
+        }
+      );
       const updatedHistory = [...newHistory, { role: 'assistant', content: resText }];
       setChatHistory(updatedHistory);
       await saveHomeworkChatHistory(courseId, nodeId, updatedHistory);

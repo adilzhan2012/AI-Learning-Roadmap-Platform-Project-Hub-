@@ -611,8 +611,8 @@ Make it highly educational, long, and detailed so the user can genuinely learn f
     while (lessonAttempt <= MAX_LESSON_RETRIES) {
       const textResponse = await withTimeout(
         callGeminiWithRetry(null, currentLessonPrompt, 'ai_question'),
-        50000,
-        'Превышено время ожидания генерации урока (50 сек). Пожалуйста, попробуйте еще раз.'
+        90000,
+        'Превышено время ожидания генерации урока (90 сек). Пожалуйста, попробуйте еще раз.'
       );
 
       if (!textResponse) {
