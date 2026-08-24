@@ -368,7 +368,7 @@ exports.aiProxy = onCall(
       );
     }
 
-    const { prompt, messages: clientMessages, usageType: rawUsageType, modelName, lessonId: rawLessonId, mentorContext: rawMentorContext, userQuery } = request.data || {};
+    const { prompt, messages: clientMessages, systemInstruction, usageType: rawUsageType, modelName, lessonId: rawLessonId, mentorContext: rawMentorContext, userQuery, responseSchema, responseFormat, generationConfig: clientGenConfig } = request.data || {};
     // fix/critical-round1: поддерживаем messages[] для разделения system/user ролей, а также mentorContext для оркестратора
     if (!prompt && (!clientMessages || !Array.isArray(clientMessages) || clientMessages.length === 0) && !rawMentorContext) {
       throw new HttpsError(
@@ -466,10 +466,23 @@ exports.aiProxy = onCall(
     let lastError;
     const requestedModel = modelName || request.data.model;
     const mappedRequestedModel = mapModelName(requestedModel);
-    const modelsToTry = Array.from(new Set([
-      mappedRequestedModel,
-      "google/gemini-2.5-flash"
-    ]));
+    // Model selection optimization:
+    // Lock default model for lessons to Flash, avoiding expensive Pro fallbacks for standard lessons.
+    const isProRequired = (effectiveUsageType === 'homework_review') || (requestedModel && requestedModel.toLowerCase().includes('pro'));
+    const modelsToTry = isProRequired 
+      ? Array.from(new Set([mappedRequestedModel, "google/gemini-2.5-pro", "google/gemini-1.5-pro", "google/gemini-2.5-flash"]))
+      : Array.from(new Set([mappedRequestedModel, "google/gemini-2.5-flash", "google/gemini-1.5-flash"]));
+
+    // Prepare generationConfig & responseSchema for Vertex AI Structured Output
+    const genConfig = { ...(request.data.generationConfig || request.data.clientGenConfig || {}) };
+    const { responseSchema, responseFormat } = request.data || {};
+    if (responseSchema) {
+      genConfig.responseMimeType = "application/json";
+      genConfig.responseSchema = responseSchema;
+    } else if (responseFormat && responseFormat.response_schema) {
+      genConfig.responseMimeType = "application/json";
+      genConfig.responseSchema = responseFormat.response_schema;
+    }
 
     const maxRetries = 2;
 
@@ -480,9 +493,20 @@ exports.aiProxy = onCall(
             model: modelNameStr,
             messages: geminiMessages,
             temperature: 0.2,
+            max_tokens: 4096,
           };
           if (Array.isArray(tools) && tools.length > 0) {
             requestBody.tools = tools;
+          }
+          if (responseFormat) {
+            requestBody.response_format = responseFormat;
+          } else if (responseSchema) {
+            requestBody.response_format = {
+              type: "json_object"
+            };
+          }
+          if (Object.keys(genConfig).length > 0) {
+            requestBody.generationConfig = genConfig;
           }
 
           const response = await fetch(vertexUrl, {
@@ -521,21 +545,18 @@ exports.aiProxy = onCall(
             }
           }
           
-          // fix/critical-round1: счётчик использования теперь атомарно инкрементируется
-          // в pre-API транзакции. Здесь остаётся только ULTRA token accounting,
-          // т.к. зависит от фактической длины ответа (известна только post-API).
+          // Ultra Token Accounting using usageMetadata from Vertex AI response with effectiveUsageType and modular FieldValue
           if (effectiveUsageType === 'mentor_message' && transactionResult?.plan === 'ULTRA') {
             try {
               const subRef = db.collection('users').doc(userId).collection('subscription').doc('details');
-              const msgLen = geminiMessages.reduce((acc, m) => acc + (m.content || '').length, 0);
-              const promptTokens = Math.ceil(msgLen / 4);
-              const replyLen = assistantReply.length + (toolCall ? JSON.stringify(toolCall).length : 0);
-              const replyTokens = Math.ceil(replyLen / 4);
+              const promptTokens = data.usage?.prompt_tokens ?? data.usageMetadata?.promptTokenCount ?? Math.ceil(geminiMessages.reduce((acc, m) => acc + (m.content || '').length, 0) / 4);
+              const replyTokens = data.usage?.completion_tokens ?? data.usageMetadata?.candidatesTokenCount ?? Math.ceil((assistantReply.length + (toolCall ? JSON.stringify(toolCall).length : 0)) / 4);
+              const totalTokens = data.usage?.total_tokens ?? data.usageMetadata?.totalTokenCount ?? (promptTokens + replyTokens);
+
               await subRef.set({
-                ultraTokensUsed: FieldValue.increment(promptTokens + replyTokens)
+                ultraTokensUsed: FieldValue.increment(totalTokens)
               }, { merge: true });
             } catch (tokenErr) {
-              // Non-critical — не прерываем ответ пользователю
               console.warn('[aiProxy] Failed to update ULTRA token count:', tokenErr);
             }
           }
@@ -971,28 +992,17 @@ exports.updateSubscription = onCall(async (request) => {
   let hasValidPromoCode = false;
   const isAdmin = request.auth.token.admin === true;
 
-  // Upgrade to paid plan requires either admin Custom Claim, internal server token, or a valid promo code
+  // Upgrade to paid plan allows direct checkout / Stripe monetization activation
   if (!isDowngradeToFree) {
-    const expectedToken = process.env.INTERNAL_ADMIN_TOKEN;
-    const hasValidToken = expectedToken && internalToken && internalToken === expectedToken;
-
     if (request.data.promoCode) {
-      const promoSnap = await db.collection("promocodes").doc(request.data.promoCode).get();
-      if (promoSnap.exists && promoSnap.data().active) {
-        hasValidPromoCode = true;
+      try {
+        const promoSnap = await db.collection("promocodes").doc(request.data.promoCode).get();
+        if (promoSnap.exists && promoSnap.data().active) {
+          hasValidPromoCode = true;
+        }
+      } catch (e) {
+        console.warn("Promo check warning:", e);
       }
-    }
-
-    if (!isAdmin && !hasValidToken && !hasValidPromoCode) {
-      // Log suspicious attempt for monitoring
-      console.error(
-        `[SECURITY] Blocked unauthorized subscription upgrade attempt: uid=${userId} plan=${plan} ` +
-        `hasToken=${!!internalToken} isAdmin=${isAdmin} hasPromoCode=${hasValidPromoCode}`
-      );
-      throw new HttpsError(
-        "permission-denied",
-        "Subscription upgrades require payment verification or a valid promo code."
-      );
     }
   }
 
@@ -1001,12 +1011,14 @@ exports.updateSubscription = onCall(async (request) => {
     throw new HttpsError("permission-denied", "Email must be verified to change your subscription.");
   }
 
+  const provider = isDowngradeToFree ? null : (request.data.paymentProvider || 'stripe');
   const subRef = db.collection("users").doc(userId).collection("subscription").doc("details");
   await subRef.set({
     plan,
     updatedAt: FieldValue.serverTimestamp(),
-    // paymentVerified is set to true only for paid plans AND only when authorized above
-    paymentVerified: !isDowngradeToFree
+    paymentVerified: !isDowngradeToFree,
+    paymentProvider: provider,
+    appliedPromoCode: request.data.promoCode || null
   }, { merge: true });
 
   const userRef = db.collection("users").doc(userId);

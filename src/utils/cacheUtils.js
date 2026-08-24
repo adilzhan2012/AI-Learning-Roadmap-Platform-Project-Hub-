@@ -74,8 +74,12 @@ export function buildCourseCacheKey(topic, level, preferences = {}, explicitLoca
 
   const rawKey = `course_v${CACHE_VERSION}_p${PROMPT_VERSION}_${locale}_${normTopic}_${normLevel}_${duration}_${style}_${focus}_${stack}`;
   
-  // Replace non-alphanumeric chars with underscore for a clean Firestore doc ID
-  return rawKey.replace(/[^a-z0-9_-]/gi, '_').substring(0, 150);
+  // Replace non-alphanumeric unicode chars with underscore for a clean Firestore doc ID
+  return rawKey
+    .replace(/[^\p{L}\p{N}_-]/gu, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .substring(0, 150);
 }
 
 /**

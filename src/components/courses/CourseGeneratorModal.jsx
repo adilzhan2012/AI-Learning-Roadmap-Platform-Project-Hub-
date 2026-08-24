@@ -93,8 +93,8 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
     if (plan === 'ULTRA' && generationMode === 'rag') {
       if (!finalTopic) {
         finalTopic = ragType === 'pdf' 
-          ? `Курс на основе: ${uploadedFileName || 'книги'}` 
-          : `Курс на основе: YouTube лекции`;
+          ? locale === 'ru' ? `Курс на основе: ${uploadedFileName || 'книги'}` : `Course based on: ${uploadedFileName || 'book'}` 
+          : locale === 'ru' ? 'Курс на основе: YouTube лекции' : 'Course based on: YouTube lecture';
       }
     }
 
@@ -109,7 +109,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
     
     const preferences = {
       duration, focus, goal: actualGoal, tone, prerequisites,
-      dailyTime, flashcardCount, courseStyle: tone
+      dailyTime, flashcardCount, courseStyle: tone, language: locale
     };
       
     if (plan === 'ULTRA' && generationMode === 'rag') {
@@ -151,17 +151,17 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
   const renderStep1 = () => (
     <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="space-y-5">
       <div className="mb-2">
-        <h4 className="text-lg font-bold text-on-surface">Что будем изучать?</h4>
-        <p className="text-xs text-on-surface-variant">Введите тему или загрузите свои материалы (для ULTRA).</p>
+        <h4 className="text-lg font-bold text-on-surface">{locale === 'ru' ? 'Что будем изучать?' : 'What will we study?'}</h4>
+        <p className="text-xs text-on-surface-variant">{locale === 'ru' ? 'Введите тему или загрузите свои материалы (для ULTRA).' : 'Enter a topic or upload your materials (for ULTRA).'}</p>
       </div>
 
       {plan === 'ULTRA' && (
         <div className="bg-surface-container-high border border-outline-variant p-1 rounded-xl flex gap-1 text-xs shrink-0 select-none">
           <button type="button" onClick={() => setGenerationMode('topic')} className={`flex-1 py-2 font-bold rounded-lg transition-all ${generationMode === 'topic' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
-            💡 Своя тема
+            💡 {locale === 'ru' ? 'Своя тема' : 'Custom topic'}
           </button>
           <button type="button" onClick={() => setGenerationMode('rag')} className={`flex-1 py-2 font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${generationMode === 'rag' ? 'bg-indigo-600 text-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface animate-pulse'}`}>
-            <Sparkles className="w-3 h-3 text-indigo-300" /> Из материалов
+            <Sparkles className="w-3 h-3 text-indigo-300" /> {locale === 'ru' ? 'Из материалов' : 'From materials'}
           </button>
         </div>
       )}
@@ -170,28 +170,28 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
         <div className="bg-indigo-950/20 border border-indigo-500/20 p-4 rounded-2xl space-y-4 text-left">
           <div className="flex gap-2 text-xs">
             <button type="button" onClick={() => setRagType('pdf')} className={`px-3 py-1.5 rounded-lg border font-bold flex items-center gap-1 transition-all ${ragType === 'pdf' ? 'bg-indigo-600 border-indigo-500 text-on-surface' : 'bg-surface-container border-outline-variant text-zinc-400'}`}>
-              <FileText className="w-3.5 h-3.5" /> PDF / Документ
+              <FileText className="w-3.5 h-3.5" /> {locale === 'ru' ? 'PDF / Документ' : 'PDF / Document'}
             </button>
             <button type="button" onClick={() => setRagType('url')} className={`px-3 py-1.5 rounded-lg border font-bold flex items-center gap-1 transition-all ${ragType === 'url' ? 'bg-indigo-600 border-indigo-500 text-on-surface' : 'bg-surface-container border-outline-variant text-zinc-400'}`}>
-              <Video className="w-3.5 h-3.5" /> YouTube / Ссылка
+              <Video className="w-3.5 h-3.5" /> {locale === 'ru' ? 'YouTube / Ссылка' : 'YouTube / Link'}
             </button>
           </div>
           {ragType === 'pdf' ? (
             <div onDragOver={e => { e.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)} onDrop={handleDrop} className={`border-2 border-dashed rounded-xl p-5 flex flex-col items-center justify-center cursor-pointer transition-all ${isDragging ? 'border-indigo-400 bg-indigo-500/10' : 'border-indigo-500/25 bg-surface-container-lowest hover:bg-surface-container'}`} onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.pdf,.txt,.doc,.docx'; input.onchange = (e) => { if (e.target.files.length > 0) setUploadedFileName(e.target.files[0].name); }; input.click(); }}>
               <FileText className="w-8 h-8 text-indigo-400 mb-2" />
-              <p className="text-[11px] font-bold text-center text-zinc-300">{uploadedFileName ? `Выбран файл: ${uploadedFileName}` : 'Перетащите PDF сюда или нажмите для выбора'}</p>
+              <p className="text-[11px] font-bold text-center text-zinc-300">{uploadedFileName ? `Selected file: ${uploadedFileName}` : locale === 'ru' ? 'Перетащите PDF сюда или нажмите для выбора' : 'Drag PDF here or click to select'}</p>
             </div>
           ) : (
             <div className="space-y-2">
-              <label className="text-[10px] text-zinc-400 font-bold block">Ссылка на лекцию</label>
+              <label className="text-[10px] text-zinc-400 font-bold block">{locale === 'ru' ? 'Ссылка на лекцию' : 'Lecture link'}</label>
               <input type="text" value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2 text-xs text-on-surface focus:border-indigo-500" />
             </div>
           )}
         </div>
       ) : (
         <div>
-          <label className="block text-sm font-bold text-on-surface mb-2">Название темы</label>
-          <input type="text" value={topic} onChange={(e) => setTopic(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') handleNext(); }} placeholder="Например: Архитектура высоконагруженных систем" className="w-full bg-surface-container border border-outline-variant rounded-xl px-4 py-4 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all duration-200 font-medium" />
+          <label className="block text-sm font-bold text-on-surface mb-2">{locale === 'ru' ? 'Название темы' : 'Topic Name'}</label>
+          <input type="text" value={topic} onChange={(e) => setTopic(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') handleNext(); }} placeholder={locale === 'ru' ? 'Например: Архитектура высоконагруженных систем' : 'e.g. High-Load Systems Architecture'} className="w-full bg-surface-container border border-outline-variant rounded-xl px-4 py-4 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all duration-200 font-medium" />
         </div>
       )}
     </motion.div>
@@ -200,15 +200,15 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
   const renderStep2 = () => (
     <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="space-y-5">
       <div className="mb-2">
-        <h4 className="text-lg font-bold text-on-surface">Точка А: Ваш текущий уровень</h4>
-        <p className="text-xs text-on-surface-variant">От этого зависит, насколько базовые концепции будет объяснять ИИ.</p>
+        <h4 className="text-lg font-bold text-on-surface">{locale === 'ru' ? 'Точка А: Ваш текущий уровень' : 'Point A: Your Current Level'}</h4>
+        <p className="text-xs text-on-surface-variant">{locale === 'ru' ? 'От этого зависит, насколько базовые концепции будет объяснять ИИ.' : 'This determines how basic the AI explanations will be.'}</p>
       </div>
 
       <div className="space-y-3">
         {[
-          { id: 'Beginner', title: 'Абсолютный новичок', desc: 'Ничего не знаю в этой теме, нужно с самых основ.', icon: <User className="w-5 h-5 text-emerald-400" /> },
-          { id: 'Intermediate', title: 'Базовое понимание', desc: 'Знаком с теорией, но мало практики. Нужна структура.', icon: <BookOpen className="w-5 h-5 text-amber-400" /> },
-          { id: 'Advanced', title: 'Практик (Продвинутый)', desc: 'Уже работаю с этим, нужно углубить знания под капотом.', icon: <Zap className="w-5 h-5 text-rose-400" /> }
+          { id: 'Beginner', title: locale === 'ru' ? 'Абсолютный новичок' : 'Absolute Beginner', desc: locale === 'ru' ? 'Ничего не знаю в этой теме, нужно с самых основ.' : 'I know nothing about this topic, need the basics.', icon: <User className="w-5 h-5 text-emerald-400" /> },
+          { id: 'Intermediate', title: locale === 'ru' ? 'Базовое понимание' : 'Basic Understanding', desc: locale === 'ru' ? 'Знаком с теорией, но мало практики. Нужна структура.' : 'Know the theory, but lack practice. Need structure.', icon: <BookOpen className="w-5 h-5 text-amber-400" /> },
+          { id: 'Advanced', title: locale === 'ru' ? 'Практик (Продвинутый)' : 'Practitioner (Advanced)', desc: locale === 'ru' ? 'Уже работаю с этим, нужно углубить знания под капотом.' : 'Already work with this, need deeper insights under the hood.', icon: <Zap className="w-5 h-5 text-rose-400" /> }
         ].map(lvl => {
           const isLocked = (lvl.id === 'Advanced' && plan !== 'ULTRA') || (lvl.id === 'Intermediate' && plan === 'FREE');
           return (
@@ -232,8 +232,8 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
       </div>
 
       <div className="pt-2">
-        <label className="block text-xs font-bold text-on-surface-variant mb-2">Что вы уже точно знаете? (ИИ пропустит это)</label>
-        <input type="text" value={prerequisites} onChange={e => setPrerequisites(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') handleNext(); }} placeholder="Например: знаю Python, базовую математику" className="w-full bg-surface-container border border-outline-variant rounded-lg px-4 py-3 text-sm text-on-surface focus:ring-1 focus:ring-primary" />
+        <label className="block text-xs font-bold text-on-surface-variant mb-2">{locale === 'ru' ? 'Что вы уже точно знаете? (ИИ пропустит это)' : 'What do you already know? (AI will skip this)'}</label>
+        <input type="text" value={prerequisites} onChange={e => setPrerequisites(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') handleNext(); }} placeholder={locale === 'ru' ? 'Например: знаю Python, базовую математику' : 'e.g. I know Python and basic math'} className="w-full bg-surface-container border border-outline-variant rounded-lg px-4 py-3 text-sm text-on-surface focus:ring-1 focus:ring-primary" />
       </div>
     </motion.div>
   );
@@ -241,15 +241,15 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
   const renderStep3 = () => (
     <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="space-y-5">
       <div className="mb-2">
-        <h4 className="text-lg font-bold text-on-surface">Точка Б: Глобальная цель</h4>
-        <p className="text-xs text-on-surface-variant">Зачем вам этот курс? Это определит фокус уроков.</p>
+        <h4 className="text-lg font-bold text-on-surface">{locale === 'ru' ? 'Точка Б: Глобальная цель' : 'Point B: Global Goal'}</h4>
+        <p className="text-xs text-on-surface-variant">{locale === 'ru' ? 'Зачем вам этот курс? Это определит фокус уроков.' : 'Why do you need this course? This will determine the focus of lessons.'}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-3">
         {[
-          { id: 'Interview', title: 'Подготовка к собеседованию', desc: 'Упор на теорию, частые вопросы и алгоритмы.', icon: <Briefcase className="w-4 h-4" /> },
-          { id: 'Project', title: 'Создание продукта / Решение задачи', desc: 'Упор на практику, архитектуру и реальный код.', icon: <Target className="w-4 h-4" /> },
-          { id: 'General', title: 'Общее развитие / Академический интерес', desc: 'Сбалансированное фундаментальное понимание.', icon: <Compass className="w-4 h-4" /> }
+          { id: 'Interview', title: locale === 'ru' ? 'Подготовка к собеседованию' : 'Interview Preparation', desc: locale === 'ru' ? 'Упор на теорию, частые вопросы и алгоритмы.' : 'Focus on theory, common questions, and algorithms.', icon: <Briefcase className="w-4 h-4" /> },
+          { id: 'Project', title: locale === 'ru' ? 'Создание продукта / Решение задачи' : 'Building a Product / Solving a Problem', desc: locale === 'ru' ? 'Упор на практику, архитектуру и реальный код.' : 'Focus on practice, architecture, and real-world code.', icon: <Target className="w-4 h-4" /> },
+          { id: 'General', title: locale === 'ru' ? 'Общее развитие / Академический интерес' : 'General Development / Academic Interest', desc: locale === 'ru' ? 'Сбалансированное фундаментальное понимание.' : 'Balanced fundamental understanding.', icon: <Compass className="w-4 h-4" /> }
         ].map((g, idx) => {
           const isLocked = plan === 'FREE' && idx > 0;
           return (
@@ -270,8 +270,8 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
       </div>
 
       <div className="pt-2">
-        <label className="block text-xs font-bold text-on-surface-variant mb-2">Своя конкретная задача (опционально)</label>
-        <input type="text" value={customGoal} onChange={e => setCustomGoal(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') handleNext(); }} placeholder="Например: Мне нужно перевести проект с React на Vue" className="w-full bg-surface-container border border-outline-variant rounded-lg px-4 py-3 text-sm text-on-surface focus:ring-1 focus:ring-primary" />
+        <label className="block text-xs font-bold text-on-surface-variant mb-2">{locale === 'ru' ? 'Своя конкретная задача (опционально)' : 'Your specific goal (optional)'}</label>
+        <input type="text" value={customGoal} onChange={e => setCustomGoal(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') handleNext(); }} placeholder={locale === 'ru' ? 'Например: Мне нужно перевести проект с React на Vue' : 'e.g. I need to migrate a project from React to Vue'} className="w-full bg-surface-container border border-outline-variant rounded-lg px-4 py-3 text-sm text-on-surface focus:ring-1 focus:ring-primary" />
       </div>
     </motion.div>
   );
@@ -279,17 +279,17 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
   const renderStep4 = () => (
     <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="space-y-5">
       <div className="mb-2">
-        <h4 className="text-lg font-bold text-on-surface">Глубина и Интенсивность</h4>
-        <p className="text-xs text-on-surface-variant">Настройте объем курса под ваше расписание.</p>
+        <h4 className="text-lg font-bold text-on-surface">{locale === 'ru' ? 'Глубина и Интенсивность' : 'Depth and Intensity'}</h4>
+        <p className="text-xs text-on-surface-variant">{locale === 'ru' ? 'Настройте объем курса под ваше расписание.' : 'Tailor the course volume to your schedule.'}</p>
       </div>
 
       <div>
-        <label className="block text-xs font-bold text-on-surface-variant mb-2">Глубина курса (Длительность)</label>
+        <label className="block text-xs font-bold text-on-surface-variant mb-2">{locale === 'ru' ? 'Глубина курса (Длительность)' : 'Course Depth (Duration)'}</label>
         <div className="space-y-2">
           {[
-            { id: 'Express', title: 'Экспресс-погружение', desc: 'Только суть. Ровно 5 самых важных тем.' },
-            { id: 'Standard', title: 'Стандартный трек', desc: 'Сбалансированный курс. Ровно 8 тем.' },
-            { id: 'Deep Dive', title: 'Мастер-класс (Deep Dive)', desc: 'Глубокий разбор с механикой под капотом. Ровно 12 тем.' }
+            { id: 'Express', title: locale === 'ru' ? 'Экспресс-погружение' : 'Express Dive', desc: locale === 'ru' ? 'Только суть. Ровно 5 самых важных тем.' : 'Just the essence. Exactly 5 core topics.' },
+            { id: 'Standard', title: locale === 'ru' ? 'Стандартный трек' : 'Standard Track', desc: locale === 'ru' ? 'Сбалансированный курс. Ровно 8 тем.' : 'Balanced course. Exactly 8 topics.' },
+            { id: 'Deep Dive', title: locale === 'ru' ? 'Мастер-класс (Deep Dive)' : 'Masterclass (Deep Dive)', desc: locale === 'ru' ? 'Глубокий разбор с механикой под капотом. Ровно 12 тем.' : 'Deep analysis with under-the-hood mechanics. Exactly 12 topics.' }
           ].map((d, idx) => {
             const isLocked = plan === 'FREE' && idx > 0;
             return (
@@ -307,7 +307,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
       </div>
 
       <div className="pt-2">
-        <label className="block text-xs font-bold text-on-surface-variant mb-2 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> Дневная норма времени</label>
+        <label className="block text-xs font-bold text-on-surface-variant mb-2 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {locale === 'ru' ? 'Дневная норма времени' : 'Daily Time Commitment'}</label>
         <div className="grid grid-cols-3 gap-2">
           {['15m', '30m', '60m'].map((t, idx) => {
             const isLocked = plan === 'FREE' && idx > 0;
@@ -316,7 +316,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
               key={t} type="button" onClick={() => { if (isLocked) { setUpgradeReason('time'); setUpgradeModalOpen(true); } else setDailyTime(t); }}
               className={`py-2.5 flex items-center justify-center gap-1 rounded-lg text-xs font-bold border transition-all ${dailyTime === t ? 'bg-primary/10 border-primary text-primary' : 'bg-surface-container border-outline-variant text-on-surface-variant hover:text-on-surface'}`}
             >
-              {t === '60m' ? '1 час' : t + 'ин'} / день
+              {t === '60m' ? (locale === 'ru' ? '1 час' : '1 hr') : (locale === 'ru' ? t + 'ин' : t + 'in')} / {locale === 'ru' ? 'день' : 'day'}
               {isLocked && <Lock className="w-3 h-3 opacity-60" />}
             </button>
           )})}
@@ -328,17 +328,17 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
   const renderStep5 = () => (
     <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="space-y-5">
       <div className="mb-2">
-        <h4 className="text-lg font-bold text-on-surface">Финальные штрихи</h4>
-        <p className="text-xs text-on-surface-variant">Стиль общения и параметры запоминания.</p>
+        <h4 className="text-lg font-bold text-on-surface">{locale === 'ru' ? 'Финальные штрихи' : 'Final Touches'}</h4>
+        <p className="text-xs text-on-surface-variant">{locale === 'ru' ? 'Стиль общения и параметры запоминания.' : 'Communication style and retention parameters.'}</p>
       </div>
 
       <div>
-        <label className="block text-xs font-bold text-on-surface-variant mb-2">Фокус материала</label>
+        <label className="block text-xs font-bold text-on-surface-variant mb-2">{locale === 'ru' ? 'Фокус материала' : 'Material Focus'}</label>
         <div className="grid grid-cols-2 gap-2">
            {[
-             { id: 'Theory', label: 'Теория и концепции' },
-             { id: 'Practice', label: 'Практика и задачи' },
-             { id: 'Code', label: 'Только код и кейсы' }
+             { id: 'Theory', label: locale === 'ru' ? 'Теория и концепции' : 'Theory and Concepts' },
+             { id: 'Practice', label: locale === 'ru' ? 'Практика и задачи' : 'Practice and Tasks' },
+             { id: 'Code', label: locale === 'ru' ? 'Только код и кейсы' : 'Only Code and Cases' }
            ].map((f, idx) => {
              const isLocked = plan === 'FREE' && idx > 1;
              return (
@@ -351,12 +351,12 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
       </div>
 
       <div>
-        <label className="block text-xs font-bold text-on-surface-variant mb-2">Тон ментора (Стиль текста)</label>
+        <label className="block text-xs font-bold text-on-surface-variant mb-2">{locale === 'ru' ? 'Тон ментора (Стиль текста)' : 'Mentor Tone (Text Style)'}</label>
         <div className="grid grid-cols-3 gap-2">
            {[
-             { id: 'Academic', label: 'Строгий' },
-             { id: 'Friendly', label: 'Дружелюбный' },
-             { id: 'Gamified', label: 'Игровой' }
+             { id: 'Academic', label: locale === 'ru' ? 'Строгий' : 'Strict' },
+             { id: 'Friendly', label: locale === 'ru' ? 'Дружелюбный' : 'Friendly' },
+             { id: 'Gamified', label: locale === 'ru' ? 'Игровой' : 'Gamified' }
            ].map((t, idx) => {
              const isLocked = false;
              return (
@@ -369,7 +369,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
       </div>
 
       <div>
-        <label className="block text-xs font-bold text-on-surface-variant mb-2">Сколько карточек (Anki) генерировать на урок?</label>
+        <label className="block text-xs font-bold text-on-surface-variant mb-2">{locale === 'ru' ? 'Сколько карточек (Anki) генерировать на урок?' : 'How many flashcards (Anki) to generate per lesson?'}</label>
         <div className="grid grid-cols-3 gap-2">
           {['3', '5', '8'].map((c, idx) => {
             const isLocked = plan === 'FREE' && idx > 0;
@@ -379,7 +379,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
                 onClick={() => { if (isLocked) { setUpgradeReason('cards'); setUpgradeModalOpen(true); } else setFlashcardCount(c); }}
                 className={`py-2.5 rounded-lg text-xs font-bold border flex items-center justify-center gap-1 transition-all ${flashcardCount === c ? 'bg-primary/10 border-primary text-primary' : 'bg-surface-container border-outline-variant text-on-surface-variant hover:text-on-surface'}`}
               >
-                {c} штук {isLocked && <Lock className="w-3 h-3 opacity-60" />}
+                {c} {locale === 'ru' ? 'штук' : 'cards'} {isLocked && <Lock className="w-3 h-3 opacity-60" />}
               </button>
             )
           })}
@@ -393,9 +393,9 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
           </div>
           <div>
             <span className="text-sm font-bold text-on-surface flex items-center gap-2">
-              <Users className="w-4 h-4 text-indigo-500" /> Пройти с друзьями
+              <Users className="w-4 h-4 text-indigo-500" /> {locale === 'ru' ? 'Пройти с друзьями' : 'Learn with Friends'}
             </span>
-            <span className="text-[11px] text-on-surface-variant">Создать групповой класс после генерации</span>
+            <span className="text-[11px] text-on-surface-variant">{locale === 'ru' ? 'Создать групповой класс после генерации' : 'Create a group class after generation'}</span>
           </div>
         </label>
       </div>
@@ -420,7 +420,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
               <div className="p-6 border-b border-outline-variant bg-surface-container-lowest flex justify-between items-center shrink-0">
                 <div className="w-full pr-4">
                   <h3 className="text-xl font-bold text-on-surface flex items-center gap-2">
-                    <Brain className="w-5 h-5 text-primary" /> Генератор Курсов
+                    <Brain className="w-5 h-5 text-primary" /> {locale === 'ru' ? locale === 'ru' ? 'Генератор Курсов' : 'Course Generator' : 'Course Generator'}
                   </h3>
                   {/* Progress Bar */}
                   <div className="flex items-center gap-1.5 mt-3 w-full">
@@ -457,7 +457,7 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
                   type="button" disabled={step === 1} onClick={handleBack}
                   className={`px-4 py-2.5 rounded-xl font-bold flex items-center gap-1 transition-all ${step === 1 ? 'opacity-0 pointer-events-none' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'}`}
                 >
-                  <ChevronLeft className="w-4 h-4" /> Назад
+                  <ChevronLeft className="w-4 h-4" /> {locale === 'ru' ? 'Назад' : 'Back'}
                 </button>
                 
                 {step < totalSteps ? (
@@ -465,14 +465,14 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
                     type="button" onClick={handleNext}
                     className="px-6 py-2.5 rounded-xl text-sm font-bold bg-on-surface text-surface hover:opacity-90 transition-all flex items-center gap-1"
                   >
-                    Далее <ChevronRight className="w-4 h-4" />
+                    {locale === 'ru' ? 'Далее' : 'Next'} <ChevronRight className="w-4 h-4" />
                   </button>
                 ) : (
                   <button 
                     type="button" onClick={handleGenerate} disabled={!hasApiKey}
                     className="px-6 py-2.5 rounded-xl text-sm font-bold bg-primary text-on-primary shadow-lg shadow-primary/20 hover:bg-primary/95 transition-all flex items-center gap-1.5"
                   >
-                    Создать <Sparkles className="w-4 h-4 fill-white" />
+                    {locale === 'ru' ? 'Создать' : 'Generate'} <Sparkles className="w-4 h-4 fill-white" />
                   </button>
                 )}
               </div>

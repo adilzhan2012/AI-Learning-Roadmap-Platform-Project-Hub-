@@ -63,26 +63,24 @@ try {
   functions = getFunctions(app);
   storage = getStorage(app);
 
-  // Connect to local Firebase Emulators in development when explicitly enabled
+  // Connect to Firebase Local Emulators if VITE_USE_EMULATORS or VITE_USE_EMULATOR is set
   if (import.meta.env.DEV) {
     if (typeof window !== 'undefined') {
-      window.__debugFirebase = { functions, auth, db, httpsCallable };
+      window.__debugFirebase = { functions, auth, db, httpsCallable, storage };
     }
 
-    if (import.meta.env.VITE_USE_EMULATOR === 'true') {
-      const emulatorHost = import.meta.env.VITE_EMULATOR_HOST || 'localhost';
-      console.log(`[Firebase] Connecting to Functions Emulator on ${emulatorHost}:5001`);
+    if (
+      import.meta.env.VITE_USE_EMULATORS === 'true' ||
+      import.meta.env.VITE_USE_EMULATOR === 'true' ||
+      import.meta.env.VITE_FIREBASE_EMULATOR === 'true'
+    ) {
+      const emulatorHost = import.meta.env.VITE_EMULATOR_HOST || '127.0.0.1';
+      console.log(`⚡ [Firebase] Connecting to Local Emulators on ${emulatorHost}...`);
+
+      connectAuthEmulator(auth, `http://${emulatorHost}:9099`, { disableWarnings: true });
+      connectFirestoreEmulator(db, emulatorHost, 8080);
       connectFunctionsEmulator(functions, emulatorHost, 5001);
-
-      if (import.meta.env.VITE_USE_FIRESTORE_EMULATOR === 'true') {
-        console.log(`[Firebase] Connecting to Firestore Emulator on ${emulatorHost}:8080`);
-        connectFirestoreEmulator(db, emulatorHost, 8080);
-      }
-
-      if (import.meta.env.VITE_USE_AUTH_EMULATOR === 'true') {
-        console.log(`[Firebase] Connecting to Auth Emulator on http://${emulatorHost}:9099`);
-        connectAuthEmulator(auth, `http://${emulatorHost}:9099`, { disableWarnings: true });
-      }
+      connectStorageEmulator(storage, emulatorHost, 9199);
     }
   }
 

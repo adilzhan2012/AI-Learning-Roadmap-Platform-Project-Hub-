@@ -26,14 +26,14 @@ import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getUserCourses, deleteCourse, toggleCoursePin, requestCourseCertificate, getCourseCertificate, getCourseById } from '../services/courseService.js';
-import { t } from '../i18n.js';
+import { t, useLocale } from '../i18n.js';
 import CourseGeneratorModal from '../components/courses/CourseGeneratorModal.jsx';
 import CreateGroupModal from '../components/groups/CreateGroupModal.jsx';
 import ManageGroupModal from '../components/groups/ManageGroupModal.jsx';
 import { useUserGroups } from '../hooks/useUserGroups.js';
 import { removeGroupMember, deleteGroup } from '../services/groupService.js';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
-import { getSubjectTheme, formatCourseHours } from '../utils/courseSubjectClassifier.js';
+import { getSubjectTheme, formatCourseHours, getSubjectLabel, classifyCourseSubject } from '../utils/courseSubjectClassifier.js';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -47,16 +47,17 @@ const cardVariants = {
 };
 
 function SortSelector({ value, onChange }) {
+  const locale = useLocale();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
   const options = [
-    { id: 'date_desc', label: t('courses.sort.newest') || 'Новые сначала' },
-    { id: 'date_asc', label: t('courses.sort.oldest') || 'Старые сначала' },
-    { id: 'title_asc', label: t('courses.sort.az') || 'По алфавиту (А–Я)' },
-    { id: 'title_desc', label: t('courses.sort.za') || 'По алфавиту (Я–А)' },
-    { id: 'progress_desc', label: t('courses.sort.progressDesc') || 'По прогрессу (высокий → низкий)' },
-    { id: 'progress_asc', label: t('courses.sort.progressAsc') || 'По прогрессу (низкий → высокий)' }
+    { id: 'date_desc', label: locale === 'en' ? 'Newest first' : (t('courses.sort.newest') || 'Новые сначала') },
+    { id: 'date_asc', label: locale === 'en' ? 'Oldest first' : (t('courses.sort.oldest') || 'Старые сначала') },
+    { id: 'title_asc', label: locale === 'en' ? 'Alphabetical (A–Z)' : (t('courses.sort.az') || 'По алфавиту (А–Я)') },
+    { id: 'title_desc', label: locale === 'en' ? 'Alphabetical (Z–A)' : (t('courses.sort.za') || 'По алфавиту (Я–А)') },
+    { id: 'progress_desc', label: locale === 'en' ? 'Highest progress' : (t('courses.sort.progressDesc') || 'По прогрессу (высокий → низкий)') },
+    { id: 'progress_asc', label: locale === 'en' ? 'Lowest progress' : (t('courses.sort.progressAsc') || 'По прогрессу (низкий → высокий)') }
   ];
 
   const selectedOption = options.find(o => o.id === value) || options[0];
@@ -123,6 +124,7 @@ function SortSelector({ value, onChange }) {
 }
 
 function DeleteConfirmModal({ isOpen, onClose, onConfirm, isDeleting, count = 1 }) {
+  const locale = useLocale();
   return (
     <AnimatePresence>
       {isOpen && (
@@ -140,19 +142,25 @@ function DeleteConfirmModal({ isOpen, onClose, onConfirm, isDeleting, count = 1 
               <Trash2 className="w-6 h-6 text-[#FF453A]" strokeWidth={1.5} />
             </div>
             <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">
-              {count > 1 ? `Удалить выбранные курсы (${count})?` : (t('courses.confirmDeleteTitle') || 'Удалить курс?')}
+              {count > 1 
+                ? (locale === 'en' ? `Delete selected courses (${count})?` : `Удалить выбранные курсы (${count})?`) 
+                : (t('courses.confirmDeleteTitle') || (locale === 'en' ? 'Delete Course?' : 'Удалить курс?'))}
             </h3>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6">
               {count > 1 
-                ? `Вы уверены, что хотите полностью удалить ${count} выбранных курсов? Они будут окончательно сотрете из базы данных.` 
-                : (t('courses.confirmDeleteSubtitle') || 'Вы уверены, что хотите удалить этот курс? Это действие необратимо.')}
+                ? (locale === 'en' 
+                    ? `Are you sure you want to permanently delete ${count} selected courses? This action cannot be undone.` 
+                    : `Вы уверены, что хотите полностью удалить ${count} выбранных курсов? Они будут окончательно сотрете из базы данных.`)
+                : (t('courses.confirmDeleteSubtitle') || (locale === 'en' 
+                    ? 'Are you sure you want to delete this course? This action cannot be undone.' 
+                    : 'Вы уверены, что хотите удалить этот курс? Это действие необратимо.'))}
             </p>
             <div className="flex gap-3">
-              <button disabled={isDeleting} onClick={onClose} className="flex-1 py-2.5 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-white/10 rounded-[12px] text-xs font-bold text-zinc-900 dark:text-white hover:bg-[#3A3A3C] transition-colors">
-                {t('courses.cancel') || 'Отмена'}
+              <button disabled={isDeleting} onClick={onClose} className="flex-1 py-2.5 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-white/10 rounded-[12px] text-xs font-bold text-zinc-900 dark:text-white hover:bg-zinc-200 dark:hover:bg-[#3A3A3C] transition-colors cursor-pointer">
+                {locale === 'en' ? 'Cancel' : (t('courses.cancel') || 'Отмена')}
               </button>
-              <button disabled={isDeleting} onClick={onConfirm} className="flex-1 py-2.5 bg-[#FF453A] text-white rounded-[12px] text-xs font-bold hover:bg-[#FF453A]/90 transition-colors flex justify-center items-center">
-                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : (t('courses.delete') || 'Удалить')}
+              <button disabled={isDeleting} onClick={onConfirm} className="flex-1 py-2.5 bg-[#FF453A] text-white rounded-[12px] text-xs font-bold hover:bg-[#FF453A]/90 transition-colors flex justify-center items-center cursor-pointer">
+                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : (locale === 'en' ? 'Delete' : (t('courses.delete') || 'Удалить'))}
               </button>
             </div>
           </motion.div>
@@ -176,8 +184,12 @@ function CourseCard({
   onManageGroup
 }) {
   const navigate = useNavigate();
-  const theme = getSubjectTheme(course.subject, course.topic, course.title, course.nodes);
+  const locale = useLocale();
+  const detectedSubject = classifyCourseSubject(course.topic, course.title, course.nodes);
+  const effectiveSubject = (detectedSubject && detectedSubject !== 'Общее') ? detectedSubject : (course.subject || 'Общее');
+  const theme = getSubjectTheme(effectiveSubject, course.topic, course.title, course.nodes);
   const SubjectIcon = theme.icon;
+  const subjectLabel = getSubjectLabel(effectiveSubject, locale);
 
   const handleCardClick = (e) => {
     if (isSelectionMode) {
@@ -200,7 +212,7 @@ function CourseCard({
   };
 
   const isCompleted = course.progress === 100;
-  const formattedHours = formatCourseHours(course.hours);
+  const formattedHours = formatCourseHours(course.hours, locale);
 
   const [cert, setCert] = useState(null);
   const [certLoading, setCertLoading] = useState(false);
@@ -234,10 +246,9 @@ function CourseCard({
   if (viewMode === 'list') {
     return (
       <motion.div
-        layout
         variants={cardVariants}
         onClick={handleCardClick}
-        className={`relative bg-white dark:bg-[#1A1A1C] rounded-[18px] sm:rounded-[20px] shadow-sm border p-3.5 sm:p-4 flex flex-row items-center justify-between gap-3 sm:gap-4 transition-all duration-300 hover:shadow-md cursor-pointer group ${
+        className={`relative w-full bg-white dark:bg-[#1A1A1C] rounded-[18px] sm:rounded-[20px] shadow-sm border p-3.5 sm:p-4 flex flex-row items-center justify-between gap-3 sm:gap-4 transition-all duration-300 hover:shadow-md cursor-pointer group ${
           theme.borderClass
         } ${
           isSelected 
@@ -267,12 +278,12 @@ function CourseCard({
             {course.isPinned && (
               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full shrink-0">
                 <Pin className="w-3 h-3 fill-amber-500" />
-                Закреплен
+                {locale === 'en' ? 'Pinned' : 'Закреплен'}
               </span>
             )}
             <span className={`inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-full border ${theme.bgBadgeClass} shrink-0`}>
               <SubjectIcon className="w-3 h-3" strokeWidth={2} />
-              <span className="truncate max-w-[110px] sm:max-w-none">{course.subject || 'Общее'}</span>
+              <span className="truncate max-w-[110px] sm:max-w-none">{subjectLabel}</span>
             </span>
             <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-white/5 px-2 py-0.5 rounded-full border border-zinc-200 dark:border-white/10 shrink-0">
               {translatedLevel}
@@ -289,7 +300,7 @@ function CourseCard({
             <span>•</span>
             <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {formattedHours}</span>
             <span>•</span>
-            <span className="flex items-center gap-1"><BookOpen className="w-3 h-3" /> {course.nodes?.length || 0}</span>
+            <span className="flex items-center gap-1"><BookOpen className="w-3 h-3" /> {course.nodes?.length || 0} {locale === 'en' ? 'lessons' : (t('courses.lessons') || 'уроков')}</span>
           </div>
         </div>
 
@@ -315,8 +326,8 @@ function CourseCard({
                 e.stopPropagation();
                 onManageGroup && onManageGroup(courseGroup);
               }}
-              className="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-xl transition-all border border-indigo-500/20"
-              title="Управление группой"
+              className="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-xl transition-all border border-indigo-500/20 cursor-pointer"
+              title={locale === 'en' ? 'Manage group' : 'Управление группой'}
             >
               <Users className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2} />
             </button>
@@ -326,23 +337,23 @@ function CourseCard({
                 e.stopPropagation();
                 onOpenGroupModal && onOpenGroupModal(course);
               }}
-              className="p-2 bg-zinc-100 dark:bg-white/5 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 text-zinc-400 hover:text-indigo-500 rounded-xl transition-all"
-              title="Пройти с друзьями"
+              className="p-2 bg-zinc-100 dark:bg-white/5 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 text-zinc-400 hover:text-indigo-500 rounded-xl transition-all cursor-pointer"
+              title={locale === 'en' ? 'Study with friends' : 'Пройти с друзьями'}
             >
               <Users className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2} />
             </button>
           )}
           <button 
             onClick={handlePin}
-            className={`p-2 rounded-xl transition-all ${course.isPinned ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : 'bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-400 hover:text-amber-400'}`}
-            title={course.isPinned ? "Открепить" : "Закрепить"}
+            className={`p-2 rounded-xl transition-all cursor-pointer ${course.isPinned ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : 'bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-400 hover:text-amber-400'}`}
+            title={course.isPinned ? (locale === 'en' ? 'Unpin' : 'Открепить') : (locale === 'en' ? 'Pin' : 'Закрепить')}
           >
             <Pin className={`w-3.5 h-3.5 ${course.isPinned ? 'fill-amber-500' : ''}`} strokeWidth={2} />
           </button>
           <button 
             onClick={handleDelete}
-            className="p-2 bg-red-50 dark:bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all"
-            title="Удалить курс"
+            className="p-2 bg-red-50 dark:bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all cursor-pointer"
+            title={locale === 'en' ? 'Delete course' : 'Удалить курс'}
           >
             <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />
           </button>
@@ -353,7 +364,6 @@ function CourseCard({
 
   return (
     <motion.div
-      layout
       variants={cardVariants}
       onClick={handleCardClick}
       className={`relative bg-white dark:bg-[#1A1A1C] rounded-[22px] shadow-sm dark:shadow-none border overflow-hidden transition-all duration-300 hover:shadow-xl cursor-pointer flex flex-col h-full group ${
@@ -376,7 +386,7 @@ function CourseCard({
           ) : (
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border shadow-sm ${theme.bgBadgeClass}`}>
               <SubjectIcon className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
-              <span className="truncate">{course.subject || 'Общее'}</span>
+              <span className="truncate">{subjectLabel}</span>
             </span>
           )}
           
@@ -387,7 +397,7 @@ function CourseCard({
           {course.isPinned && (
             <span className="inline-flex items-center gap-1 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0">
               <Pin className="w-3 h-3 fill-amber-500" />
-              Закреплен
+              {locale === 'en' ? 'Pinned' : 'Закреплен'}
             </span>
           )}
         </div>
@@ -399,8 +409,8 @@ function CourseCard({
                 e.stopPropagation();
                 onManageGroup && onManageGroup(courseGroup);
               }}
-              className="p-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-lg transition-all border border-indigo-500/20"
-              title="Управление группой"
+              className="p-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-lg transition-all border border-indigo-500/20 cursor-pointer"
+              title={locale === 'en' ? 'Manage group' : 'Управление группой'}
             >
               <Users className="w-3.5 h-3.5" strokeWidth={2} />
             </button>
@@ -410,23 +420,23 @@ function CourseCard({
                 e.stopPropagation();
                 onOpenGroupModal && onOpenGroupModal(course);
               }}
-              className="p-1.5 bg-white dark:bg-white/5 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 text-zinc-400 hover:text-indigo-500 rounded-lg transition-all border border-zinc-200 dark:border-white/10"
-              title="Пройти с друзьями"
+              className="p-1.5 bg-white dark:bg-white/5 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 text-zinc-400 hover:text-indigo-500 rounded-lg transition-all border border-zinc-200 dark:border-white/10 cursor-pointer"
+              title={locale === 'en' ? 'Study with friends' : 'Пройти с друзьями'}
             >
               <Users className="w-3.5 h-3.5" strokeWidth={2} />
             </button>
           )}
           <button 
             onClick={handlePin}
-            className={`p-1.5 rounded-lg transition-all border ${course.isPinned ? 'bg-amber-500/20 border-amber-500/30 text-amber-500' : 'bg-white dark:bg-white/5 hover:bg-zinc-100 dark:hover:bg-white/10 border-zinc-200 dark:border-white/10 text-zinc-400 hover:text-amber-500'}`}
-            title={course.isPinned ? "Открепить" : "Закрепить"}
+            className={`p-1.5 rounded-lg transition-all border cursor-pointer ${course.isPinned ? 'bg-amber-500/20 border-amber-500/30 text-amber-500' : 'bg-white dark:bg-white/5 hover:bg-zinc-100 dark:hover:bg-white/10 border-zinc-200 dark:border-white/10 text-zinc-400 hover:text-amber-500'}`}
+            title={course.isPinned ? (locale === 'en' ? 'Unpin' : 'Открепить') : (locale === 'en' ? 'Pin' : 'Закрепить')}
           >
             <Pin className={`w-3.5 h-3.5 ${course.isPinned ? 'fill-amber-500' : ''}`} strokeWidth={2} />
           </button>
           <button 
             onClick={handleDelete}
-            className="p-1.5 bg-white dark:bg-white/5 hover:bg-red-500 text-zinc-400 hover:text-white rounded-lg transition-all border border-zinc-200 dark:border-white/10"
-            title="Удалить курс"
+            className="p-1.5 bg-white dark:bg-white/5 hover:bg-red-500 text-zinc-400 hover:text-white rounded-lg transition-all border border-zinc-200 dark:border-white/10 cursor-pointer"
+            title={locale === 'en' ? 'Delete course' : 'Удалить курс'}
           >
             <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />
           </button>
@@ -440,7 +450,7 @@ function CourseCard({
             {t(course.title)}
           </h3>
           <p className="text-xs text-zinc-600 dark:text-zinc-300 mb-4 sm:mb-5 line-clamp-2 leading-relaxed font-sans">
-            {course.description || 'Учебный курс и интерактивная дорожная карта знания.'}
+            {course.description || (locale === 'en' ? 'Interactive study course and knowledge roadmap.' : 'Учебный курс и интерактивная дорожная карта знания.')}
           </p>
         </div>
 
@@ -471,7 +481,7 @@ function CourseCard({
               <div className="p-1 bg-zinc-100 dark:bg-white/5 rounded-md text-zinc-400">
                 <BookOpen className="w-3.5 h-3.5" strokeWidth={2} />
               </div>
-              {course.nodes?.length || 0} {t('courses.lessons')}
+              {course.nodes?.length || 0} {locale === 'en' ? 'lessons' : (t('courses.lessons') || 'уроков')}
             </span>
           </div>
 
@@ -481,7 +491,7 @@ function CourseCard({
               {certLoading ? (
                 <div className="flex items-center justify-center gap-2 py-2 bg-indigo-500/10 rounded-xl text-xs font-semibold text-indigo-400">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Генерация...</span>
+                  <span>{locale === 'en' ? 'Generating...' : 'Генерация...'}</span>
                 </div>
               ) : cert?.fileUrl ? (
                 <div className="flex items-center gap-2">
@@ -489,17 +499,17 @@ function CourseCard({
                     href={cert.fileUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    <span>Скачать PDF</span>
+                    <span>{locale === 'en' ? 'Download PDF' : 'Скачать PDF'}</span>
                   </a>
                   <a
                     href={`#/verify/${cert.certId}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-2 bg-zinc-100 dark:bg-white/10 hover:bg-zinc-200 dark:hover:bg-white/20 text-zinc-700 dark:text-white rounded-xl"
-                    title="Проверить"
+                    className="p-2 bg-zinc-100 dark:bg-white/10 hover:bg-zinc-200 dark:hover:bg-white/20 text-zinc-700 dark:text-white rounded-xl cursor-pointer"
+                    title={locale === 'en' ? 'Verify' : 'Проверить'}
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
@@ -509,14 +519,14 @@ function CourseCard({
                   <button
                     type="button"
                     onClick={handleGetCert}
-                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white font-bold text-xs rounded-xl transition-all shadow-md active:scale-98"
+                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white font-bold text-xs rounded-xl transition-all shadow-md active:scale-98 cursor-pointer"
                   >
                     <Award className="w-4 h-4 text-amber-200" />
-                    <span>Получить сертификат</span>
+                    <span>{locale === 'en' ? 'Get Certificate' : 'Получить сертификат'}</span>
                   </button>
                   {plan === 'FREE' && (
                     <span className="text-[9px] text-zinc-500 dark:text-zinc-400 text-center leading-tight mt-1">
-                      Upgrade to Pro для QR-верификации и PDF
+                      {locale === 'en' ? 'Upgrade to Pro for QR verification & PDF' : 'Upgrade to Pro для QR-верификации и PDF'}
                     </span>
                   )}
                 </div>
@@ -531,6 +541,7 @@ function CourseCard({
 
 export default function Courses() {
   const navigate = useNavigate();
+  const locale = useLocale();
   const { plan } = usePlanLimits();
   const [user, setUser] = useState(auth.currentUser);
   const [userCourses, setUserCourses] = useState([]);
@@ -571,8 +582,8 @@ export default function Courses() {
         try {
           const gc = await getCourseById(cId);
           if (gc) groupCourses.push(gc);
-        } catch (err) {
-          console.error("Error fetching group course", cId, err);
+        } catch {
+          // Course was deleted or unavailable, ignore safely
         }
       }
       fetched = [...fetched, ...groupCourses];
@@ -773,7 +784,7 @@ export default function Courses() {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-background text-zinc-900 dark:text-white gap-4 w-full">
         <Loader2 className="w-8 h-8 animate-spin text-zinc-900 dark:text-white" />
-        <p className="text-sm font-medium tracking-wide font-clash">{t('courses.loadingCatalog')}</p>
+        <p className="text-sm font-medium tracking-wide font-clash">{t('courses.loadingCatalog') || 'Loading courses...'}</p>
       </div>
     );
   }
@@ -783,7 +794,7 @@ export default function Courses() {
       initial="hidden"
       animate="show"
       variants={containerVariants}
-      className="max-w-[2000px] mx-auto text-zinc-900 dark:text-white font-sans pb-24 relative px-4 sm:px-6"
+      className="max-w-[2000px] mx-auto text-zinc-900 dark:text-white font-sans pb-24 relative px-4 sm:px-6 pt-6 sm:pt-8"
     >
       {/* Top Header */}
       <motion.div variants={cardVariants} className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -804,7 +815,7 @@ export default function Courses() {
                   setIsSelectionMode(true);
                 }
               }}
-              className={`flex-1 sm:flex-none justify-center px-4 py-2.5 rounded-[12px] font-bold text-xs transition-all flex items-center gap-2 font-sans border shadow-sm ${
+              className={`flex-1 sm:flex-none justify-center px-4 py-2.5 rounded-[12px] font-bold text-xs transition-all flex items-center gap-2 font-sans border shadow-sm cursor-pointer ${
                 isSelectionMode 
                   ? 'bg-indigo-600 border-indigo-500 text-white shadow-md' 
                   : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-white/15 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700'
@@ -812,13 +823,13 @@ export default function Courses() {
             >
               <CheckSquare className="w-4 h-4 shrink-0" />
               <span className="truncate">
-                {isSelectionMode ? (t('common.cancel') || 'Отмена') : (t('courses.batchSelect') || 'Выбрать')}
+                {isSelectionMode ? (locale === 'en' ? 'Cancel' : (t('common.cancel') || 'Отмена')) : (locale === 'en' ? 'Batch Select' : (t('courses.batchSelect') || 'Выбрать'))}
               </span>
             </button>
           )}
           <button
             onClick={() => setShowGenModal(true)}
-            className="flex-1 sm:flex-none justify-center bg-zinc-900 !text-white hover:bg-zinc-800 dark:bg-white dark:!text-zinc-900 dark:hover:bg-zinc-200 px-5 sm:px-6 py-2.5 rounded-[12px] font-bold text-xs transition-colors whitespace-nowrap flex items-center gap-2 font-sans shadow-sm"
+            className="flex-1 sm:flex-none justify-center bg-zinc-900 !text-white hover:bg-zinc-800 dark:bg-white dark:!text-zinc-900 dark:hover:bg-zinc-200 px-5 sm:px-6 py-2.5 rounded-[12px] font-bold text-xs transition-colors whitespace-nowrap flex items-center gap-2 font-sans shadow-sm cursor-pointer"
           >
             <Sparkles className="w-4 h-4 fill-current shrink-0" />
             <span>{t('dashboard.generateCourse')}</span>
@@ -839,7 +850,7 @@ export default function Courses() {
           </p>
           <button
             onClick={() => setShowGenModal(true)}
-            className="bg-zinc-900 !text-white hover:bg-zinc-800 dark:bg-white dark:!text-zinc-900 dark:hover:bg-zinc-200 px-8 py-3.5 rounded-[12px] font-bold text-xs transition-all flex items-center gap-2 font-sans"
+            className="bg-zinc-900 !text-white hover:bg-zinc-800 dark:bg-white dark:!text-zinc-900 dark:hover:bg-zinc-200 px-8 py-3.5 rounded-[12px] font-bold text-xs transition-all flex items-center gap-2 font-sans cursor-pointer"
           >
             <Sparkles className="w-4 h-4 fill-current" />
             {t('dashboard.generateFirst')}
@@ -853,16 +864,16 @@ export default function Courses() {
             {/* Status Capsule Tabs */}
             <div className="segmented-container max-w-full overflow-x-auto no-scrollbar">
               {[
-                { id: 'all', label: t('courses.filter.all') || 'Все' },
-                { id: 'active', label: t('courses.filter.active') || 'В процессе' },
-                { id: 'completed', label: t('courses.filter.completed') || 'Завершённые' }
+                { id: 'all', label: locale === 'en' ? 'All Courses' : (t('courses.filter.all') || 'Все') },
+                { id: 'active', label: locale === 'en' ? 'Active' : (t('courses.filter.active') || 'В процессе') },
+                { id: 'completed', label: locale === 'en' ? 'Completed' : (t('courses.filter.completed') || 'Завершённые') }
               ].map(tab => {
                 const isActive = statusTab === tab.id;
                 return (
                   <button
                     key={tab.id}
                     onClick={() => setStatusTab(tab.id)}
-                    className={`segmented-item whitespace-nowrap ${isActive ? 'active' : ''}`}
+                    className={`segmented-item whitespace-nowrap cursor-pointer ${isActive ? 'active' : ''}`}
                   >
                     {tab.label}
                   </button>
@@ -877,7 +888,7 @@ export default function Courses() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" strokeWidth={1.5} />
                 <input 
                   type="text" 
-                  placeholder={t('courses.search') || 'Поиск...'}
+                  placeholder={locale === 'en' ? 'Search courses...' : (t('courses.search') || 'Поиск...')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full bg-white dark:bg-[#1A1A1C] border border-zinc-300 dark:border-white/15 rounded-[12px] py-2 pl-9 pr-3 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-indigo-500 transition-colors shadow-2xs"
@@ -892,15 +903,15 @@ export default function Courses() {
                 <div className="flex bg-zinc-100 dark:bg-zinc-800/80 rounded-[12px] p-1 border border-zinc-200 dark:border-white/10 shadow-2xs shrink-0">
                   <button 
                     onClick={() => setViewMode('grid')}
-                    className={`p-1.5 rounded-[8px] transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm border border-zinc-200/60 dark:border-white/10' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
-                    title="Сетка"
+                    className={`p-1.5 rounded-[8px] transition-all cursor-pointer ${viewMode === 'grid' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm border border-zinc-200/60 dark:border-white/10' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
+                    title={locale === 'en' ? 'Grid' : 'Сетка'}
                   >
                     <Grid className="w-4 h-4" strokeWidth={1.5} />
                   </button>
                   <button 
                     onClick={() => setViewMode('list')}
-                    className={`p-1.5 rounded-[8px] transition-all ${viewMode === 'list' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm border border-zinc-200/60 dark:border-white/10' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
-                    title="Список"
+                    className={`p-1.5 rounded-[8px] transition-all cursor-pointer ${viewMode === 'list' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm border border-zinc-200/60 dark:border-white/10' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
+                    title={locale === 'en' ? 'List' : 'Список'}
                   >
                     <ListIcon className="w-4 h-4" strokeWidth={1.5} />
                   </button>
@@ -915,33 +926,34 @@ export default function Courses() {
             <div>
               <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-2 flex items-center gap-1.5">
                 <Filter className="w-3.5 h-3.5 text-indigo-500" />
-                <span>Тема курса</span>
+                <span>{locale === 'en' ? 'Course Topic' : 'Тема курса'}</span>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={() => setSelectedSubjects([])}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border cursor-pointer ${
                     selectedSubjects.length === 0 
                       ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' 
                       : 'bg-zinc-50 dark:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-indigo-400'
                   }`}
                 >
-                  Все темы
+                  {locale === 'en' ? 'All Topics' : 'Все темы'}
                 </button>
 
                 {availableSubjects.map(subj => {
                   const isSelected = selectedSubjects.includes(subj);
+                  const label = getSubjectLabel(subj, locale);
                   return (
                     <button
                       key={subj}
                       onClick={() => toggleSubjectChip(subj)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all border ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all border cursor-pointer ${
                         isSelected
                           ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
                           : 'bg-zinc-50 dark:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-indigo-400'
                       }`}
                     >
-                      {subj}
+                      {label}
                     </button>
                   );
                 })}
@@ -951,18 +963,18 @@ export default function Courses() {
             {/* Level Chips */}
             <div className="border-t border-zinc-100 dark:border-white/5 pt-3">
               <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-2">
-                <span>Сложность</span>
+                <span>{locale === 'en' ? 'Difficulty' : 'Сложность'}</span>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={() => setSelectedLevels([])}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border cursor-pointer ${
                     selectedLevels.length === 0 
                       ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' 
                       : 'bg-zinc-50 dark:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-indigo-400'
                   }`}
                 >
-                  Любая сложность
+                  {locale === 'en' ? 'All Levels' : 'Любая сложность'}
                 </button>
 
                 {availableLevels.map(lvl => {
@@ -972,7 +984,7 @@ export default function Courses() {
                     <button
                       key={lvl}
                       onClick={() => toggleLevelChip(lvl)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all border ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all border cursor-pointer ${
                         isSelected
                           ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
                           : 'bg-zinc-50 dark:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-indigo-400'
@@ -987,14 +999,13 @@ export default function Courses() {
           </motion.div>
 
           {/* Catalog Grid / List */}
-          <motion.div 
-            layout 
-            className={viewMode === 'list' ? 'flex flex-col gap-4 pb-8' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 pb-8'}
+          <div 
+            className={viewMode === 'list' ? 'flex flex-col gap-4 pb-8 w-full' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 pb-8 w-full'}
           >
-            <AnimatePresence mode="popLayout">
+            <AnimatePresence>
               {sortedFilteredCourses.map((course) => (
                 <CourseCard 
-                  key={course.id} 
+                  key={`${course.id}-${viewMode}`} 
                   course={course} 
                   onDelete={setCourseToDelete}
                   onTogglePin={handleTogglePin}
@@ -1016,16 +1027,16 @@ export default function Courses() {
                 className="col-span-full py-16 sm:py-20 flex flex-col items-center justify-center text-zinc-500 dark:text-zinc-400 bg-white dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-[20px] text-center px-4"
               >
                 <Search className="w-10 h-10 sm:w-12 sm:h-12 mb-3 opacity-20" strokeWidth={1.5} />
-                <p className="text-xs sm:text-sm font-semibold text-zinc-700 dark:text-zinc-300">{t('courses.noMatching') || 'Курсов по выбранным фильтрам не найдено'}</p>
+                <p className="text-xs sm:text-sm font-semibold text-zinc-700 dark:text-zinc-300">{t('courses.noMatching') || (locale === 'en' ? 'No courses found for selected filters' : 'Курсов по выбранным фильтрам не найдено')}</p>
                 <button 
                   onClick={() => { setSelectedSubjects([]); setSelectedLevels([]); setSearchQuery(''); setStatusTab('all'); }}
-                  className="mt-3 text-xs text-indigo-500 hover:underline font-medium"
+                  className="mt-3 text-xs text-indigo-500 hover:underline font-medium cursor-pointer"
                 >
-                  Сбросить все фильтры
+                  {locale === 'en' ? 'Reset all filters' : 'Сбросить все фильтры'}
                 </button>
               </motion.div>
             )}
-          </motion.div>
+          </div>
         </div>
       )}
 

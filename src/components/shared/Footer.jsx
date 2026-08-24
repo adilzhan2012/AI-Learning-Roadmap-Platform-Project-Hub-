@@ -164,12 +164,26 @@ export default function Footer() {
                     <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
                   </svg>
                 </a>
-                <a href="#" className="text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center">
+                <a 
+                  href="https://www.youtube.com/channel/UCK2tM6tjfYL0hUBlTv2MXIA" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-on-surface-variant hover:text-red-500 transition-colors flex items-center justify-center"
+                  aria-label="YouTube"
+                  title="YouTube"
+                >
                   <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.753 0 .716-.43 1.333-1.038 1.606.012.185.019.373.019.563 0 3.328-3.414 6.03-7.618 6.03-4.202 0-7.618-2.702-7.618-6.03 0-.19.006-.378.019-.563-.611-.273-1.042-.892-1.042-1.606 0-.967.786-1.753 1.754-1.753.473 0 .894.181 1.202.486C7.03 8.358 8.681 7.8 10.499 7.732l.91-4.254a.24.24 0 0 1 .286-.185l3.111.654a1.26 1.26 0 0 1 2.204-.203zM8.337 11.75a1.536 1.536 0 1 0 0 3.071 1.536 1.536 0 0 0 0-3.071zm7.326 0a1.536 1.536 0 1 0 0 3.071 1.536 1.536 0 0 0 0-3.071zm-3.668 5.485c1.472 0 2.684-.666 2.766-.713a.476.476 0 0 0-.48-.823c-.024.015-1.038.584-2.286.584-1.25 0-2.264-.57-2.288-.584a.476.476 0 0 0-.479.823c.08.047 1.294.713 2.767.713z" />
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                   </svg>
                 </a>
-                <a href="#" className="text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center">
+                <a 
+                  href="https://www.tiktok.com/@yourway.co?_r=1&_t=ZS-996YOWZZFFU" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-on-surface-variant hover:text-[#FE2C55] transition-colors flex items-center justify-center"
+                  aria-label="TikTok"
+                  title="TikTok"
+                >
                   <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.01.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93v7.2c0 1.14-.38 2.29-1.07 3.16-.68.88-1.66 1.47-2.75 1.7-1.1.24-2.26.15-3.3-.3-1.03-.44-1.92-1.21-2.45-2.18-.54-.97-.73-2.14-.54-3.24.19-1.11.77-2.12 1.61-2.83.84-.71 1.93-1.07 3.03-1.03.35.01.7.07 1.05.15V14c-.21-.06-.43-.1-.65-.11-1.08-.06-2.18.35-2.91 1.18-.73.83-.98 2.01-.65 3.07.32 1.07 1.18 1.91 2.27 2.15 1.08.24 2.24-.04 3.03-.78.78-.73 1.22-1.8 1.22-2.88V.02h-1.99z" />
                   </svg>

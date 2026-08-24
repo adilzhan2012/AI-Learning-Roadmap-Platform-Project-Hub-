@@ -24,12 +24,11 @@ export const SUBJECT_NAMES = {
 
 const KEYWORD_RULES = [
   {
-    subject: SUBJECT_NAMES.WEB,
+    subject: SUBJECT_NAMES.LANGUAGES,
     keywords: [
-      'web', 'html', 'css', 'react', 'vue', 'angular', 'next.js', 'nextjs', 'node',
-      'nodejs', 'javascript', 'typescript', 'frontend', 'backend', 'fullstack',
-      'tailwind', 'express.js', 'django', 'fastapi', 'rest api', 'dom', 'browser',
-      'верстк', 'сайт', 'веб', 'фронтенд', 'бэкенд'
+      'english', 'spanish', 'german', 'french', 'chinese', 'japanese', 'grammar',
+      'vocabulary', 'ielts', 'toefl', 'language', 'английск', 'испанск', 'немецк',
+      'язык', 'грамматик', 'словар'
     ]
   },
   {
@@ -43,13 +42,23 @@ const KEYWORD_RULES = [
     wordExactKeywords: ['ai', 'ml']
   },
   {
+    subject: SUBJECT_NAMES.WEB,
+    keywords: [
+      'html', 'css', 'react', 'vue', 'angular', 'next.js', 'nextjs',
+      'javascript', 'typescript', 'frontend', 'backend', 'fullstack',
+      'tailwind', 'express.js', 'django', 'fastapi', 'rest api', 'browser',
+      'верстк', 'сайт', 'фронтенд', 'бэкенд'
+    ],
+    wordExactKeywords: ['web', 'dom', 'node', 'nodejs']
+  },
+  {
     subject: SUBJECT_NAMES.PROGRAMMING,
     keywords: [
-      'programming', 'python', 'c++', 'cpp', 'c#', 'java', 'rust', 'go', 'golang',
-      'swift', 'kotlin', 'algorithm', 'data structure', 'git', 'linux', 'docker',
-      'sql', 'postgres', 'database', 'ооп', 'алгоритм', 'программ', 'код',
+      'programming', 'python', 'algorithm', 'data structure', 'linux', 'docker',
+      'postgres', 'database', 'ооп', 'алгоритм', 'программ', 'код',
       'разработк', 'баз данных', 'структур данных'
-    ]
+    ],
+    wordExactKeywords: ['c++', 'cpp', 'c#', 'java', 'rust', 'go', 'golang', 'swift', 'kotlin', 'git', 'sql']
   },
   {
     subject: SUBJECT_NAMES.MATH,
@@ -78,21 +87,23 @@ const KEYWORD_RULES = [
     ]
   },
   {
-    subject: SUBJECT_NAMES.LANGUAGES,
-    keywords: [
-      'english', 'spanish', 'german', 'french', 'chinese', 'japanese', 'grammar',
-      'vocabulary', 'ielts', 'toefl', 'language', 'английск', 'испанск', 'немецк',
-      'язык', 'грамматик', 'словар'
-    ]
-  },
-  {
     subject: SUBJECT_NAMES.SCIENCE,
     keywords: [
       'physics', 'chemistry', 'biology', 'history', 'philosophy', 'astronomy',
-      'физик', 'хими', 'биологи', 'истори', 'философи', 'астрономи'
+      'geography', 'географи', 'физик', 'хими', 'биологи', 'истори', 'философи', 'астрономи'
     ]
   }
 ];
+
+function escapeRegex(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function hasExactWord(text, word) {
+  const escaped = escapeRegex(word.toLowerCase());
+  const regex = new RegExp(`(?:^|[^a-z0-9_#+])${escaped}(?:$|[^a-z0-9_#+])`, 'i');
+  return regex.test(text);
+}
 
 /**
  * Classifies a course into a subject based on topic, title, and node labels.
@@ -105,11 +116,10 @@ export function classifyCourseSubject(topic = '', title = '', nodes = []) {
   ].filter(Boolean).join(' ').toLowerCase();
 
   for (const rule of KEYWORD_RULES) {
-    // 1. Check exact word keywords (e.g. 'ai', 'ml', 'ui', 'ux')
+    // 1. Check exact word keywords (e.g. 'ai', 'ml', 'ui', 'ux', 'c++', 'c#', 'dom')
     if (rule.wordExactKeywords) {
       for (const ekw of rule.wordExactKeywords) {
-        const regex = new RegExp(`\\b${ekw}\\b`, 'i');
-        if (regex.test(combinedText)) {
+        if (hasExactWord(combinedText, ekw)) {
           return rule.subject;
         }
       }
@@ -209,26 +219,66 @@ export function getSubjectTheme(subject, fallbackTopic = '', fallbackTitle = '',
 }
 
 /**
- * Formats raw course hours metadata to localized Russian string.
- * Resolves bug where "Express" / "Standard" / "Deep Dive" or raw English strings leakage occurred.
+ * Maps subject identifier/russian name to localized user-facing name.
  */
-export function formatCourseHours(rawHours) {
-  if (!rawHours || rawHours === 'null' || rawHours === 'undefined') return '0 ч';
+export function getSubjectLabel(subject = '', locale = 'ru') {
+  const isEn = locale === 'en';
+  switch (subject) {
+    case SUBJECT_NAMES.WEB:
+    case 'Веб-разработка':
+    case 'Web Development':
+      return isEn ? 'Web Development' : 'Веб-разработка';
+    case SUBJECT_NAMES.PROGRAMMING:
+    case 'Программирование':
+    case 'Programming':
+      return isEn ? 'Programming' : 'Программирование';
+    case SUBJECT_NAMES.AI:
+    case 'Искусственный интеллект':
+    case 'AI':
+      return isEn ? 'AI & Data Science' : 'Искусственный интеллект';
+    case SUBJECT_NAMES.LANGUAGES:
+    case 'Языки':
+    case 'Languages':
+      return isEn ? 'Languages' : 'Языки';
+    case SUBJECT_NAMES.DESIGN:
+    case 'Дизайн & UX':
+    case 'Design & UX':
+      return isEn ? 'Design & UX' : 'Дизайн & UX';
+    case SUBJECT_NAMES.MATH:
+    case 'Математика':
+    case 'Mathematics':
+      return isEn ? 'Mathematics' : 'Математика';
+    case SUBJECT_NAMES.BUSINESS:
+    case 'Бизнес & Менеджмент':
+    case 'Business & Management':
+      return isEn ? 'Business & Management' : 'Бизнес & Менеджмент';
+    case SUBJECT_NAMES.SCIENCE:
+    case 'Науки & Гуманитария':
+    case 'Science & Humanities':
+      return isEn ? 'Science & Humanities' : 'Науки & Гуманитария';
+    default:
+      return isEn ? 'General' : 'Общее';
+  }
+}
+
+/**
+ * Formats raw course hours metadata to localized string.
+ */
+export function formatCourseHours(rawHours, locale = 'ru') {
+  const isEn = locale === 'en';
+  if (!rawHours || rawHours === 'null' || rawHours === 'undefined') return isEn ? '0h' : '0 ч';
   
   const val = String(rawHours).trim();
 
-  if (/^express$/i.test(val)) return 'Экспресс';
-  if (/^standard$/i.test(val)) return 'Стандарт';
-  if (/^(deep dive|masterclass)$/i.test(val)) return 'Глубокое погружение';
+  if (/^(express|экспресс)$/i.test(val)) return isEn ? 'Express' : 'Экспресс';
+  if (/^(standard|стандарт)$/i.test(val)) return isEn ? 'Standard' : 'Стандарт';
+  if (/^(deep dive|masterclass|глубокое погружение|углубленный|углублённый)$/i.test(val)) return isEn ? 'Deep Dive' : 'Глубокое погружение';
 
-  // If format is like "12h" or "1.5h" -> convert "h" to " ч"
-  if (/^\d+(\.\d+)?h$/i.test(val)) {
-    return val.replace(/h/i, ' ч');
-  }
-
-  // If pure number like "12" -> "12 ч"
-  if (/^\d+(\.\d+)?$/.test(val)) {
-    return `${val} ч`;
+  // If format is like "12h" or "1.5h" or "12 ч"
+  const hourMatch = val.match(/^(\d+(?:\.\d+)?)\s*(?:h|ч|час|часа|часов)?$/i);
+  if (hourMatch) {
+    const num = hourMatch[1];
+    return isEn ? `${num}h` : `${num} ч`;
   }
 
   return val;

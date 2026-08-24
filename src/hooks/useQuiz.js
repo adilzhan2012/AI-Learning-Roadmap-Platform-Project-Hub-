@@ -17,13 +17,33 @@ export const useQuiz = () => {
       const userId = auth.currentUser?.uid;
       let cachedQuestions = null;
 
+      const normalizeQ = (q, idx) => {
+        const qText = q.question || q.questionText || q.prompt || q.title || `Вопрос ${idx + 1}`;
+        const cIdx = typeof q.correctIndex === 'number' 
+          ? q.correctIndex 
+          : (typeof q.correctAnswer === 'number' 
+              ? q.correctAnswer 
+              : 0);
+        return {
+          ...q,
+          id: q.id || idx + 1,
+          question: qText,
+          questionText: qText,
+          correctIndex: cIdx,
+          correctAnswer: cIdx,
+          options: Array.isArray(q.options) ? q.options : [],
+          explanation: q.explanation || '',
+          sectionHeading: q.sectionHeading || ''
+        };
+      };
+
       // Only check cache if forceFresh is false and no failed concepts are passed
       if (userId && nodeId && !forceFresh && (!failedConcepts || failedConcepts.length === 0)) {
         try {
           const quizRef = doc(db, 'users', userId, 'quizResults', String(nodeId));
           const quizSnap = await getDoc(quizRef);
           if (quizSnap.exists() && quizSnap.data().questions && quizSnap.data().questions.length > 0) {
-            cachedQuestions = quizSnap.data().questions;
+            cachedQuestions = quizSnap.data().questions.map(normalizeQ);
           }
         } catch (cacheErr) {
           console.warn("Quiz cache read warning:", cacheErr);
@@ -60,16 +80,16 @@ You MUST include at least 2 questions specifically targeting these failed concep
       }
 
       const quizPrompt = `You are an expert tutor creating a quiz to verify student understanding.
-Analyze the following lesson content and create a 3-5 question multiple-choice quiz.
+Analyze the following lesson content and create a 5-question multiple-choice quiz.
 CRITICAL INSTRUCTION: Respond ENTIRELY in ${languageName} language.
 ${adaptivityPromptPart}
 Lesson Content:
 ${(lessonContent || '').substring(0, 4000)}
 
 Requirements:
-1. Generate between 3 and 5 questions based directly on the material provided.
+1. Generate EXACTLY 5 questions based directly on the material provided.
 2. Each question MUST have exactly 4 options.
-3. "correctAnswer": Index of the correct option (0, 1, 2, or 3).
+3. "correctIndex": Index of the correct option (0, 1, 2, or 3).
 4. "explanation": Brief explanation of why that answer is correct.
 5. "sectionHeading": The nearest section heading/topic in the lesson.
 
@@ -78,8 +98,10 @@ Return ONLY a valid JSON object:
   "questions": [
     {
       "id": 1,
+      "question": "Clear question text?",
       "questionText": "Clear question text?",
       "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
+      "correctIndex": 0,
       "correctAnswer": 0,
       "explanation": "Detailed explanation of why this answer is correct and others are wrong",
       "sectionHeading": "Nearest H2/H3 Heading Text in Material"
@@ -91,10 +113,10 @@ Return ONLY a valid JSON object:
 
       const textResponse = await withTimeout(
         callGeminiWithRetry(apiKey, quizPrompt, 'ai_question'),
-        50000,
+        120000,
         courseLanguage === 'en'
-          ? 'Timeout generating quiz (50s). Please try again.'
-          : 'Превышено время ожидания генерации теста (50 сек). Пожалуйста, попробуйте еще раз.'
+          ? 'Timeout generating quiz (120s). Please try again.'
+          : 'Превышено время ожидания генерации теста (120 сек). Пожалуйста, попробуйте еще раз.'
       );
       if (!textResponse) throw new Error('Empty response');
 
@@ -103,6 +125,8 @@ Return ONLY a valid JSON object:
         throw new Error('Invalid quiz format');
       }
 
+      const normalizedQuestions = parsed.questions.map(normalizeQ);
+
       if (userId && nodeId) {
         try {
           const quizRef = doc(db, 'users', userId, 'quizResults', String(nodeId));
@@ -110,7 +134,7 @@ Return ONLY a valid JSON object:
             userId,
             roadmapId,
             nodeId: String(nodeId),
-            questions: parsed.questions,
+            questions: normalizedQuestions,
             lastGeneratedAt: serverTimestamp()
           }, { merge: true });
         } catch (writeErr) {
@@ -118,7 +142,7 @@ Return ONLY a valid JSON object:
         }
       }
 
-      return parsed.questions;
+      return normalizedQuestions;
 
     } catch (err) {
       console.error('Quiz generation failed:', err);
@@ -161,19 +185,25 @@ Return ONLY a valid JSON object:
         });
       }
 
+      const scorePercentage = total > 0 ? Math.round((score / total) * 100) : 100;
+      const nowIso = new Date().toISOString();
+
       attempts.push({
-        score,
+        score: scorePercentage,
+        rawScore: score,
         total,
         passed,
         failedConcepts: failedDetails.map(d => d.sectionHeading || d.questionText),
-        timestamp: new Date().toISOString()
+        date: nowIso,
+        timestamp: nowIso
       });
 
       const dataToSave = {
         userId,
         roadmapId,
         nodeId: String(nodeId),
-        score,
+        score: scorePercentage,
+        rawScore: score,
         total,
         attempts,
         attemptsCount: attempts.length,

@@ -80,6 +80,7 @@
   "resources.featuredDesc": "An in-depth walkthrough of the Transformer model — from positional encoding and multi-head attention to layer normalization and feed-forward networks. Perfect for anyone looking to truly understand the architecture behind GPT, BERT, and beyond.",
   "resources.readNow": "Read Now",
   "resources.tabs.all": "All",
+  "resources.tabs.favorites": "Favorites",
   "resources.tabs.articles": "Articles",
   "resources.tabs.videos": "Videos",
   "resources.tabs.cheatsheets": "Cheat Sheets",
@@ -306,6 +307,17 @@
   "landing.hero.startLearning": "Start Learning Now",
   "landing.hero.graphInterface": "Interactive Knowledge Graph Interface",
   "landing.hero.launchEnv": "Launch Environment",
+  "landing.demo.statusBadge": "AI Engine • Gemini Active",
+  "landing.demo.promptPlaceholder": "Enter any topic to generate a roadmap...",
+  "landing.demo.promptValue": "I want to learn Fullstack AI Development in 3 months",
+  "landing.demo.generating": "Generating Knowledge Graph...",
+  "landing.demo.step1.title": "1. Frontend Core (React & Tailwind)",
+  "landing.demo.step1.status": "Completed • 100%",
+  "landing.demo.step2.title": "2. AI API & Prompt Engineering",
+  "landing.demo.step2.status": "In Progress • 65%",
+  "landing.demo.step3.title": "3. Vector Databases & RAG Architecture",
+  "landing.demo.step3.status": "Prerequisite Node",
+  "landing.demo.nodesMeta": "14 Lessons • 4 Projects • Interactive Graph",
   "landing.beta.badge": "Public Beta Live",
   "landing.beta.title": "Welcome to the Beta version!",
   "landing.beta.desc": "We have launched the public beta of the platform. The core functionality, including course generation and the knowledge graph, is now available. You might encounter minor bugs, but we are actively working to resolve them.",
@@ -570,5 +582,6 @@
   "maintenance.estimatedCompletion": "Estimated Time Remaining",
   "maintenance.hours": "Hours",
   "maintenance.minutes": "Minutes",
-  "maintenance.seconds": "Seconds"
+  "maintenance.seconds": "Seconds",
+  "tooltip.reorder": "Reorder"
 }

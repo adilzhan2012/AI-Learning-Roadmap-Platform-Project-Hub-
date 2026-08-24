@@ -13,11 +13,11 @@ Welcome to **YourWayy**, an interactive, personalized, and AI-driven educational
 ## ✨ Key Features (English)
 
 * **Interactive Knowledge Graph:** Visualize your learning path. Our dynamic Vis.js graph shows prerequisites and connections between concepts and courses.
-* **AI-Generated Lessons (Powered by Grok API):** Utilizing the advanced capabilities of the Grok API (xAI), the platform generates comprehensive, up-to-date, and interactive markdown lessons on the fly based on the topic you select.
+* **AI-Generated Lessons (Powered by Gemini API):** Utilizing the advanced capabilities of the Gemini API (Google), the platform generates comprehensive, up-to-date, and interactive markdown lessons on the fly based on the topic you select.
 * **Gamification & Achievements:** Earn XP, climb the ranks in learning leagues, unlock achievements, and track your daily streaks. Learning has never been this engaging!
 * **AI Mentor:** Get instant help, code reviews, and explanations from a smart AI tutor embedded directly in your learning environment.
 * **Personalized Dashboard:** Track your daily activity, enrolled courses, and overall progress.
-* **Multi-Language Support (i18n):** Fully localized interface natively supporting **English, Russian, Kazakh, and Chinese**.
+* **Multi-Language Support (i18n):** Fully localized interface natively supporting **English and Russian**.
 * **Modern UI/UX:** Built with React, Tailwind CSS, and Framer Motion for a sleek, glassmorphic, and highly animated interface supporting both Dark and Light modes.
 * **Secure Authentication & Database:** Uses Firebase Authentication for secure login and Cloud Firestore to safely sync your progress across devices.
 
@@ -28,7 +28,7 @@ Welcome to **YourWayy**, an interactive, personalized, and AI-driven educational
 * **Animations:** Framer Motion
 * **Graph Visualization:** Vis-Network
 * **Backend / Auth:** Firebase (Auth, Cloud Firestore, Functions, Storage)
-* **AI Integration:** Grok API (xAI)
+* **AI Integration:** Gemini API (Google)
 * **Routing:** React Router v6
 * **Error Tracking:** Sentry
 
@@ -52,7 +52,7 @@ Ensure you have [Node.js](https://nodejs.org/) (v18+) installed on your machine.
    ```
 
 3. **Environment Variables:**
-   Create a `.env` file in the root directory and add your Firebase, Sentry, reCAPTCHA, and Grok API configurations:
+   Create a `.env` file in the root directory and add your Firebase, Sentry, reCAPTCHA, and Gemini API configurations:
    ```env
    VITE_FIREBASE_API_KEY=your_firebase_api_key
    VITE_FIREBASE_AUTH_DOMAIN=your_firebase_auth_domain
@@ -86,11 +86,11 @@ Ensure you have [Node.js](https://nodejs.org/) (v18+) installed on your machine.
 ## ✨ Ключевые особенности
 
 * **Интерактивный Граф Знаний:** Визуализируйте свой путь обучения. Наш динамичный граф на базе Vis.js показывает зависимости и связи между концепциями и курсами.
-* **Уроки, генерируемые ИИ (на базе Grok API):** Используя передовые возможности Grok API (xAI), платформа "на лету" генерирует подробные, актуальные и интерактивные уроки в формате markdown на основе выбранной темы.
+* **Уроки, генерируемые ИИ (на базе Gemini API):** Используя передовые возможности Gemini API (Google), платформа "на лету" генерирует подробные, актуальные и интерактивные уроки в формате markdown на основе выбранной темы.
 * **Геймификация и Достижения:** Зарабатывайте XP, продвигайтесь по лигам, открывайте достижения и поддерживайте ежедневные стрики активности. Учиться еще никогда не было так увлекательно!
 * **AI Ментор:** Получайте мгновенную помощь, проверку кода и объяснения от умного ИИ-наставника, встроенного прямо в вашу учебную среду.
 * **Персональный Dashboard (Панель управления):** Отслеживайте свою ежедневную активность, курсы, на которые вы записаны, и общий прогресс.
-* **Мультиязычность (i18n):** Полностью локализованный интерфейс со встроенной поддержкой **Английского, Русского, Казахского и Китайского** языков.
+* **Мультиязычность (i18n):** Полностью локализованный интерфейс со встроенной поддержкой **Английского и Русского** языков.
 * **Современный UI/UX дизайн:** Разработано с использованием React, Tailwind CSS и Framer Motion. Интерфейс выполнен в стиле глассморфизма, имеет плавные анимации и поддерживает тёмную и светлую темы.
 * **Безопасная аутентификация и База данных:** Использует Firebase Authentication для безопасного входа и Cloud Firestore для надежной синхронизации вашего прогресса на разных устройствах.
 
@@ -101,7 +101,7 @@ Ensure you have [Node.js](https://nodejs.org/) (v18+) installed on your machine.
 * **Анимации:** Framer Motion
 * **Визуализация Графов:** Vis-Network
 * **Бэкенд / Авторизация:** Firebase (Auth, Cloud Firestore, Functions, Storage)
-* **Интеграция ИИ:** Grok API (xAI)
+* **Интеграция ИИ:** Gemini API (Google)
 * **Роутинг:** React Router v6
 * **Трекинг ошибок:** Sentry
 

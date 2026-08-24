@@ -83,8 +83,13 @@ export default function Leagues({ embedded = false }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedLeagueId, setSelectedLeagueId] = useState('quartz');
+  const [visibleUserCount, setVisibleUserCount] = useState(10);
   const [timeLeft, setTimeLeft] = useState('');
   const [dbUsers, setDbUsers] = useState([]);
+
+  useEffect(() => {
+    setVisibleUserCount(10);
+  }, [selectedLeagueId]);
 
   // Helper to determine dynamic league based on XP if user document has no explicit currentLeague
   const determineLeagueFromXP = (xp = 0, currentLeague) => {
@@ -361,77 +366,90 @@ export default function Leagues({ embedded = false }) {
                     : 'No participants in this league yet. Take quizzes to claim the top spot!'}
                 </div>
               ) : (
-                leaderboard.map((item, idx) => {
-                  const rank = idx + 1;
-                  const isPromotionZoneBorder = rank === 6;
-                  const isDemotionZoneBorder = rank === 24;
-                  
-                  return (
-                    <React.Fragment key={item.id}>
-                      <div
-                        className={`flex items-center justify-between p-3.5 rounded-[12px] transition-all ${
-                          item.isCurrentUser
-                            ? 'bg-surface-container-highest border-[1.5px] border-primary font-bold shadow-md z-10 relative'
-                            : 'hover:bg-on-surface/[0.02]'
-                        }`}
+                <>
+                  {leaderboard.slice(0, visibleUserCount).map((item, idx) => {
+                    const rank = idx + 1;
+                    const isPromotionZoneBorder = rank === 6;
+                    const isDemotionZoneBorder = rank === 24;
+                    
+                    return (
+                      <React.Fragment key={item.id}>
+                        <div
+                          className={`flex items-center justify-between p-3.5 rounded-[12px] transition-all ${
+                            item.isCurrentUser
+                              ? 'bg-surface-container-highest border-[1.5px] border-primary font-bold shadow-md z-10 relative'
+                              : 'hover:bg-on-surface/[0.02]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-4">
+                            {/* Position (Tabular numbers) */}
+                            <span className={`w-6 text-center font-mono tabular-nums text-xs ${
+                              rank <= 3 ? 'text-sm font-bold text-on-surface' : 'text-on-surface-variant'
+                            }`}>
+                              {rank}
+                            </span>
+
+                            {/* Avatar */}
+                            <UserAvatar 
+                              photoURL={item.photoURL}
+                              firstName={item.name}
+                              avatarColor={item.avatarColor}
+                              className={`w-8 h-8 text-xs font-bold border ${
+                                item.isCurrentUser
+                                  ? 'border-primary shadow-[0_0_10px_rgba(var(--primary),0.3)]'
+                                  : 'border-outline'
+                              }`}
+                            />
+
+                            {/* Name */}
+                            <span className={`text-xs ${
+                              item.isCurrentUser ? 'text-on-surface font-bold' : 'text-on-surface'
+                            }`}>
+                              {item.name} {item.isCurrentUser && (isRu ? ' (Вы)' : ' (You)')}
+                            </span>
+                          </div>
+
+                          {/* XP (Tabular numbers) */}
+                          <span className="font-mono tabular-nums text-xs font-semibold text-on-surface">
+                            {item.weeklyXP} XP
+                          </span>
+                        </div>
+
+                        {/* Zone markers */}
+                        {isPromotionZoneBorder && (
+                          <div className="py-2.5 px-4 flex items-center gap-4 select-none">
+                            <div className="flex-1 h-[1px] bg-outline/50" />
+                            <span className="text-[10px] font-sans font-medium text-on-surface-variant whitespace-nowrap uppercase tracking-wider">
+                              {isRu ? 'Зона повышения' : 'Promotion zone'}
+                            </span>
+                            <div className="flex-1 h-[1px] bg-outline/50" />
+                          </div>
+                        )}
+
+                        {isDemotionZoneBorder && (
+                          <div className="py-2.5 px-4 flex items-center gap-4 select-none">
+                            <div className="flex-1 h-[1px] bg-outline/30" />
+                            <span className="text-[10px] font-sans font-medium text-on-surface-variant whitespace-nowrap uppercase tracking-wider">
+                              {isRu ? 'Зона понижения' : 'Demotion zone'}
+                            </span>
+                            <div className="flex-1 h-[1px] bg-outline/30" />
+                          </div>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+
+                  {leaderboard.length > visibleUserCount && (
+                    <div className="p-4 text-center border-t border-outline-variant/30">
+                      <button
+                        onClick={() => setVisibleUserCount(prev => prev + 10)}
+                        className="px-6 py-2.5 rounded-xl bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant text-xs font-bold text-on-surface transition-all shadow-sm"
                       >
-                        <div className="flex items-center gap-4">
-                          {/* Position (Tabular numbers) */}
-                          <span className={`w-6 text-center font-mono tabular-nums text-xs ${
-                            rank <= 3 ? 'text-sm font-bold text-on-surface' : 'text-on-surface-variant'
-                          }`}>
-                            {rank}
-                          </span>
-
-                          {/* Avatar */}
-                          <UserAvatar 
-                            photoURL={item.photoURL}
-                            firstName={item.name}
-                            avatarColor={item.avatarColor}
-                            className={`w-8 h-8 text-xs font-bold border ${
-                              item.isCurrentUser
-                                ? 'border-primary shadow-[0_0_10px_rgba(var(--primary),0.3)]'
-                                : 'border-outline'
-                            }`}
-                          />
-
-                          {/* Name */}
-                          <span className={`text-xs ${
-                            item.isCurrentUser ? 'text-on-surface font-bold' : 'text-on-surface'
-                          }`}>
-                            {item.name} {item.isCurrentUser && (isRu ? ' (Вы)' : ' (You)')}
-                          </span>
-                        </div>
-
-                        {/* XP (Tabular numbers) */}
-                        <span className="font-mono tabular-nums text-xs font-semibold text-on-surface">
-                          {item.weeklyXP} XP
-                        </span>
-                      </div>
-
-                      {/* Zone markers */}
-                      {isPromotionZoneBorder && (
-                        <div className="py-2.5 px-4 flex items-center gap-4 select-none">
-                          <div className="flex-1 h-[1px] bg-outline/50" />
-                          <span className="text-[10px] font-sans font-medium text-on-surface-variant whitespace-nowrap uppercase tracking-wider">
-                            {isRu ? 'Зона повышения' : 'Promotion zone'}
-                          </span>
-                          <div className="flex-1 h-[1px] bg-outline/50" />
-                        </div>
-                      )}
-
-                      {isDemotionZoneBorder && (
-                        <div className="py-2.5 px-4 flex items-center gap-4 select-none">
-                          <div className="flex-1 h-[1px] bg-outline/30" />
-                          <span className="text-[10px] font-sans font-medium text-on-surface-variant whitespace-nowrap uppercase tracking-wider">
-                            {isRu ? 'Зона понижения' : 'Demotion zone'}
-                          </span>
-                          <div className="flex-1 h-[1px] bg-outline/30" />
-                        </div>
-                      )}
-                    </React.Fragment>
-                  );
-                })
+                        {isRu ? `Показать ещё (осталось ${leaderboard.length - visibleUserCount})` : `Show More (${leaderboard.length - visibleUserCount} remaining)`}
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>

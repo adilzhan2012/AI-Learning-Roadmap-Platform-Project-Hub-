@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:emulators": "VITE_USE_EMULATORS=true vite",
+    "emulators": "npx -y firebase-tools emulators:start --only auth,firestore,functions",
     "build": "vite build",
     "preview": "vite preview",
-    "emulators": "firebase emulators:start --only functions",
-    "test": "node --test 'src/services/mentorContext/__tests__/**/*.test.js'"
+    "test": "node --test 'src/services/**/*.test.js'"
   },
   "devDependencies": {
     "@tailwindcss/container-queries": "^0.1.1",

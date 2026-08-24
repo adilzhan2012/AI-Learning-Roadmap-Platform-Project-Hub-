@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   CheckCircle,
   PlayCircle, 
@@ -21,7 +21,7 @@ import { useQuiz } from '../../hooks/useQuiz.js';
 import { usePlanLimits } from '../../hooks/usePlanLimits.js';
 import QuizModal from '../quiz/QuizModal.jsx';
 import UpgradeModal from '../shared/UpgradeModal.jsx';
-import { generateLessonContent, updateNodeStatus, generateELI5Content, generateRealWorldExample, updateNodeFields, rebuildGraphForFailedNode, callGeminiWithRetry } from '../../services/courseService.js';
+import { generateLessonContent, updateNodeStatus, generateELI5Content, generateRealWorldExample, updateNodeFields, rebuildGraphForFailedNode, callGeminiWithRetry, scheduleNextLessonPrefetch } from '../../services/courseService.js';
 // fix/critical-round1: санитизация user input перед вставкой в промпты
 import { sanitizeUserInput, sanitizeCode } from '../../utils/sanitizeUserInput.js';
 import { AIParsingError } from '../../utils/aiResponseParser.js';
@@ -33,17 +33,31 @@ import ContextualMentor from './ContextualMentor.jsx';
 import HomeworkSection from './HomeworkSection.jsx';
 import { markdownToSlides } from '../../services/courseService.js';
 import SlideViewer from './SlideViewer.jsx';
-import DynamicImage from './DynamicImage.jsx';
 import SelectionPopover from '../shared/SelectionPopover.jsx';
 import { useTextSelection } from '../../hooks/useTextSelection.js';
 import MotivationalWidget from '../shared/MotivationalWidget.jsx';
+import { extractFlashcardsFromMarkdown } from '../../services/ai/lessonSchema.js';
+import LessonToolsDropdown from './modals/LessonToolsDropdown.jsx';
+import ExportLessonModal from './modals/ExportLessonModal.jsx';
+import FlashcardsModal from './modals/FlashcardsModal.jsx';
+import InsightModal from './modals/InsightModal.jsx';
+import ELI5Modal from './modals/ELI5Modal.jsx';
+
+const isLessonContentValid = (c) => {
+  if (!c || typeof c !== 'string') return false;
+  const trimmed = c.trim();
+  if (trimmed === '# Урок' || trimmed.length < 150) return false;
+  const bodyWithoutTitle = trimmed.replace(/^#\s+[^\n]+/m, '').trim();
+  return bodyWithoutTitle.length > 80;
+};
 
 const cleanContentText = (text) => {
   if (!text) return '';
   return text
-    .replace(/---FLASHCARD---[\s\S]*?(?=(?:---FLASHCARD---|##|\n\s*\n\s*##|$))/gi, '')
-    .replace(/\n\s*---\s*$/g, '')
+    .replace(/---FLASHCARD---[\s\S]*?---/gi, '')
+    .replace(/---FLASHCARD---[\s\S]*/gi, '')
     .replace(/\[IMAGE:.*?\]/gi, '')
+    .replace(/\n\s*---\s*$/g, '')
     .trim();
 };
 
@@ -75,6 +89,7 @@ export default function LessonPanel({
   const { selection, clear } = useTextSelection(contentRef);
 
   // Added missing states
+  const [generatedContent, setGeneratedContent] = useState('');
   const [isELI5, setIsELI5] = useState(false);
   const [eli5Generating, setEli5Generating] = useState(false);
   const [insight, setInsight] = useState('');
@@ -86,10 +101,21 @@ export default function LessonPanel({
   const [practiceAssignment, setPracticeAssignment] = useState('');
   const [reviewingCode, setReviewingCode] = useState(false);
   const [codeReviewResult, setCodeReviewResult] = useState('');
-  const [generatingAssignment, setGeneratingAssignment] = useState(false);
-  const [showPractice, setShowPractice] = useState(false);
+  const [isExportModalOpen, setExportModalOpen] = useState(false);
+  const [isFlashcardsModalOpen, setFlashcardsModalOpen] = useState(false);
+  const [isInsightModalOpen, setInsightModalOpen] = useState(false);
+  const [isELI5ModalOpen, setELI5ModalOpen] = useState(false);
   const [isUpgradeModalOpen, setUpgradeModalOpen] = useState(false);
-  const [isMobileMentorOpen, setIsMobileMentorOpen] = useState(false);
+  const [isMentorOpen, setIsMentorOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 1024;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    setGeneratedContent('');
+  }, [selectedNode?.id]);
 
   const handleReviewSection = (headingText) => {
     if (!contentRef.current || !headingText) return;
@@ -118,12 +144,19 @@ export default function LessonPanel({
         selectedNode.id, 
         selectedCourse.title, 
         selectedNode.label, 
-        selectedNode.desc
+        selectedNode.desc,
+        selectedCourse.preferences || {}
       );
       if (content) {
+        setGeneratedContent(content);
+        const updatedCourse = {
+          ...selectedCourse,
+          nodes: (selectedCourse.nodes || []).map(n => 
+            String(n.id) === String(selectedNode.id) ? { ...n, content } : n
+          )
+        };
         const updatedNode = { ...selectedNode, content };
-        // Pass the updated node up so the UI re-renders with the new content
-        onNodeUpdated(updatedNode, selectedCourse);
+        onNodeUpdated(updatedNode, updatedCourse);
       }
     } catch (e) {
       console.error("Error generating lesson:", e);
@@ -134,6 +167,26 @@ export default function LessonPanel({
       setGenerating(false);
     }
   };
+
+  // Smart Pre-fetching effect for next lesson (N+1) with 7s debounce
+  useEffect(() => {
+    if (selectedCourse && selectedNode && (selectedNode.content || selectedNode.lessonData)) {
+      scheduleNextLessonPrefetch(selectedCourse, selectedNode.id);
+    }
+  }, [selectedCourse, selectedNode]);
+
+  // Background pre-fetch for Real-World Insight so "Зачем мне это?" is ready instantly
+  useEffect(() => {
+    const existing = selectedNode?.insight || selectedNode?.lessonData?.realWorldApplication || selectedNode?.lessonData?.insight;
+    if (existing) {
+      setInsight(existing);
+    } else if (selectedNode && (selectedNode.content || selectedNode.lessonData)) {
+      const timer = setTimeout(() => {
+        handleRealWorldInsight(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedNode?.id, selectedNode?.content]);
 
   const handleOpenQuiz = async (forceFresh = false, customFailedConcepts = null) => {
     if (!selectedNode?.content) return;
@@ -249,8 +302,25 @@ Return ONLY a valid JSON object:
       try {
         parsed = parseAIJson(result);
       } catch (parseErr) {
-        const isPassed = /пройдено/i.test(result) && !/не пройдено/i.test(result);
-        parsed = { passed: isPassed, feedback: result };
+        let isPassed = /"passed"\s*:\s*true/i.test(result);
+        if (!/"passed"/.test(result)) {
+           isPassed = /пройдено/i.test(result) && !/не пройдено/i.test(result);
+        }
+        
+        let extractedFeedback = result;
+        const fbIndex = result.indexOf('"feedback"');
+        if (fbIndex !== -1) {
+          const colonIndex = result.indexOf(':', fbIndex);
+          if (colonIndex !== -1) {
+            let value = result.substring(colonIndex + 1).trim();
+            if (value.startsWith('"')) value = value.substring(1);
+            if (value.endsWith('}')) value = value.slice(0, -1).trim();
+            if (value.endsWith('"')) value = value.slice(0, -1);
+            extractedFeedback = value.replace(/\\n/g, '\n').replace(/\\"/g, '"');
+          }
+        }
+        
+        parsed = { passed: isPassed, feedback: extractedFeedback };
       }
 
       const feedbackText = parsed.feedback || result;
@@ -335,24 +405,15 @@ Provide a code boilerplate template at the end.`;
     document.body.removeChild(link);
   };
 
-  const handleELI5Toggle = async () => {
-    if (!selectedNode?.content) return;
-    if (isELI5) {
-      setIsELI5(false);
-      return;
-    }
-    if (selectedNode.eli5Content) {
-      setIsELI5(true);
-      return;
-    }
+  const handleGenerateELI5 = async () => {
+    if (!displayContent) return;
     setEli5Generating(true);
     try {
       const rawNodeId = selectedNode.rawNodeId || selectedNode.id;
       const courseLang = selectedCourse?.language || 'ru';
-      const simplified = await generateELI5Content(selectedNode.content, selectedCourse?.courseTemplateId, rawNodeId, courseLang);
+      const simplified = await generateELI5Content(displayContent, selectedCourse?.courseTemplateId, rawNodeId, courseLang);
       const updatedNode = { ...selectedNode, eli5Content: simplified };
       onNodeUpdated(updatedNode);
-      setIsELI5(true);
       await updateNodeFields(selectedCourse.id, selectedNode.id, { eli5Content: simplified });
     } catch (e) {
       console.error(e);
@@ -362,25 +423,30 @@ Provide a code boilerplate template at the end.`;
     }
   };
 
-  const handleRealWorldInsight = async () => {
-    if (!selectedNode?.content) return;
-    if (selectedNode.insight) {
-      setInsight(selectedNode.insight);
+  const handleRealWorldInsight = async (silent = false) => {
+    const existing = selectedNode?.insight || selectedNode?.lessonData?.realWorldApplication || selectedNode?.lessonData?.insight;
+    if (existing) {
+      setInsight(existing);
       return;
     }
-    setInsightGenerating(true);
+    if (!displayContent && !selectedNode?.desc && !selectedNode?.label) return;
+    if (!silent) setInsightGenerating(true);
     try {
       const courseLang = selectedCourse?.language || 'ru';
       const generatedInsight = await generateRealWorldExample(selectedNode.label, selectedNode.desc, courseLang);
-      const updatedNode = { ...selectedNode, insight: generatedInsight };
-      onNodeUpdated(updatedNode);
-      setInsight(generatedInsight);
-      await updateNodeFields(selectedCourse.id, selectedNode.id, { insight: generatedInsight });
+      if (generatedInsight) {
+        const updatedNode = { ...selectedNode, insight: generatedInsight };
+        onNodeUpdated(updatedNode);
+        setInsight(generatedInsight);
+        await updateNodeFields(selectedCourse.id, selectedNode.id, { insight: generatedInsight });
+      }
     } catch (e) {
-      console.error(e);
-      setGenError(selectedCourse?.language === 'en' ? 'Failed to generate real-world example.' : 'Не удалось сгенерировать пример.');
+      console.error("Failed to generate real-world example:", e);
+      if (!silent) {
+        setGenError(selectedCourse?.language === 'en' ? 'Failed to generate real-world example.' : 'Не удалось сгенерировать пример.');
+      }
     } finally {
-      setInsightGenerating(false);
+      if (!silent) setInsightGenerating(false);
     }
   };
 
@@ -405,16 +471,25 @@ Provide a code boilerplate template at the end.`;
   if (!selectedNode) return null;
 
   // Parse Flashcards
-  let displayContent = isELI5 ? (selectedNode.eli5Content || '') : (selectedNode.content || '');
-  const flashcardRegex = /---FLASHCARD---\s*(?:Term|Термин)\s*:\s*(.*?)\s*(?:Def|Definition|Определение|Объяснение)\s*:\s*(.*?)(?=\s*---FLASHCARD---|\s*---|\s*##|\s*$)/gi;
-  const flashcards = [];
-  let match;
-  while ((match = flashcardRegex.exec(displayContent)) !== null) {
-    const term = match[1].replace(/---+$/, '').trim();
-    const definition = match[2].replace(/---+$/, '').trim();
-    if (term && definition) {
-      flashcards.push({ term, definition });
+  let displayContent = isELI5 ? (selectedNode.eli5Content || '') : (generatedContent || selectedNode.content || '');
+  if ((!displayContent || displayContent.trim() === '# Урок') && selectedNode.lessonData && selectedNode.lessonData.contentMarkdown) {
+    const { title, contentMarkdown, mermaidDiagram } = selectedNode.lessonData;
+    displayContent = `# ${title || selectedNode.label}\n\n${contentMarkdown}`;
+    if (mermaidDiagram && !displayContent.includes('```mermaid')) {
+      displayContent += `\n\n\`\`\`mermaid\n${mermaidDiagram}\n\`\`\``;
     }
+  }
+
+  let flashcards = [];
+  if (selectedNode.lessonData && Array.isArray(selectedNode.lessonData.flashcards) && selectedNode.lessonData.flashcards.length > 0) {
+    selectedNode.lessonData.flashcards.forEach(fc => {
+      if (fc.term && fc.definition) {
+        flashcards.push({ term: fc.term, definition: fc.definition });
+      }
+    });
+  }
+  if (flashcards.length === 0) {
+    flashcards = extractFlashcardsFromMarkdown(displayContent, selectedNode.label || selectedNode.title, courseLanguage || locale);
   }
 
   // Parse Images
@@ -447,7 +522,7 @@ Provide a code boilerplate template at the end.`;
 
   return (
     <div className="flex w-full h-full bg-background overflow-hidden">
-      <div className="flex-1 border-l border-white/10 shadow-2xl flex flex-col relative h-full text-zinc-300 min-w-0 min-h-0 overflow-hidden">
+      <div className={`flex-1 ${isZenMode ? 'border-none' : 'border-l border-white/10 shadow-2xl'} flex flex-col relative h-full text-zinc-300 min-w-0 min-h-0 overflow-hidden`}>
         {/* Header */}
       <div className="flex items-center justify-between p-4 md:p-6 border-b border-white/10 bg-background flex-shrink-0">
         <div>
@@ -457,79 +532,24 @@ Provide a code boilerplate template at the end.`;
           <h2 className="text-xl md:text-2xl font-bold text-zinc-900 dark:text-zinc-100 line-clamp-1">{t(selectedNode.label)}</h2>
         </div>
         <div className="flex items-center gap-2">
-          {selectedNode.content && (
-            <>
-              {/* Notion/Anki Export */}
-              {plan === 'ULTRA' && (
-                <div className="relative group flex-shrink-0">
-                  <button 
-                    className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-indigo-500/10 text-indigo-400 border border-indigo-500/25 rounded-full transition-colors font-medium text-sm"
-                    title={locale === 'en' ? "Export lesson" : "Экспорт урока"}
-                  >
-                    <span>{locale === 'en' ? "📥 Export" : "📥 Экспорт"}</span>
-                  </button>
-                  <div className="absolute right-0 mt-2 w-48 bg-surface border border-white/10 rounded-xl py-1.5 shadow-xl hidden group-hover:block z-50 text-left">
-                    <button 
-                      onClick={handleExportNotion}
-                      className="w-full text-left px-4 py-2 hover:bg-zinc-100 dark:bg-zinc-800 text-xs text-zinc-200 transition-colors"
-                    >
-                      {locale === 'en' ? "📓 Export Notes (.md)" : "📓 Экспорт конспекта (.md)"}
-                    </button>
-                    <button 
-                      onClick={handleExportHomework}
-                      className="w-full text-left px-4 py-2 hover:bg-zinc-100 dark:bg-zinc-800 text-xs text-emerald-400 font-bold transition-colors"
-                    >
-                      {locale === 'en' ? "💻 Download Homework (.md)" : "💻 Скачать ДЗ (.md)"}
-                    </button>
-                    {flashcards.length > 0 && (
-                      <button 
-                        onClick={handleExportAnki}
-                        className="w-full text-left px-4 py-2 hover:bg-zinc-100 dark:bg-zinc-800 text-xs text-zinc-200 transition-colors"
-                      >
-                        {locale === 'en' ? "📇 Flashcards for Anki (.csv)" : "📇 Карточки в Anki (.csv)"}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <button 
-                onClick={() => setIsMobileMentorOpen(true)}
-                className="lg:hidden flex items-center gap-2 px-3 py-1.5 hover:bg-indigo-500/10 text-indigo-400 border border-indigo-500/25 rounded-full transition-colors font-medium text-sm"
-                title={locale === 'en' ? "Mentor" : "Ментор"}
-              >
-                <Sparkles className="w-4 h-4" />
-                <span className="hidden md:inline">{locale === 'en' ? "Mentor" : "Ментор"}</span>
-              </button>
-
-              <button 
-                onClick={handleRealWorldInsight}
-                disabled={insightGenerating}
-                className="flex items-center gap-2 px-3 py-1.5 hover:bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 rounded-full transition-colors font-medium text-sm border border-yellow-500/20 disabled:opacity-50"
-                title={locale === 'en' ? "Why do I need this?" : "Зачем мне это знать?"}
-              >
-                {insightGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lightbulb className="w-4 h-4" />}
-                <span className="hidden md:inline">{locale === 'en' ? "Why learn this?" : "Зачем мне это?"}</span>
-              </button>
-
-              <button 
-                onClick={() => alert(locale === 'en' ? 'Under development! "Explain Like I\'m 5" option will be added soon.' : 'В разработке! Опция "Просто о сложном" скоро будет добавлена.')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors font-medium text-sm border opacity-70 hover:bg-primary/10 text-primary border-primary/20`}
-                title={locale === 'en' ? "Explain Like I'm 5 (Coming Soon)" : "Объясни как 5-летнему (В разработке)"}
-              >
-                <Baby className="w-4 h-4" />
-                <span className="hidden md:inline">{locale === 'en' ? "ELI5 (Soon)" : "Просто о сложном (Скоро)"}</span>
-              </button>
-
-              <button 
-                onClick={() => alert(locale === 'en' ? 'Under development! Slides view will be added soon.' : 'В разработке! Слайды скоро будут добавлены.')}
-                className="flex items-center gap-2 px-3 py-1.5 hover:bg-zinc-100 dark:bg-zinc-800 rounded-full transition-colors font-medium text-sm border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 opacity-70"
-                title={locale === 'en' ? "Slides (Coming Soon)" : "Слайды (В разработке)"}
-              >
-                <PlayCircle className="w-4 h-4" />
-                <span className="hidden md:inline">{locale === 'en' ? "Slides (Soon)" : "Слайды (Скоро)"}</span>
-              </button>
-            </>
+          {Boolean(isLessonContentValid(displayContent)) && (
+            <LessonToolsDropdown 
+              onOpenFlashcards={() => setFlashcardsModalOpen(true)}
+              onOpenExport={() => setExportModalOpen(true)}
+              onOpenInsight={() => {
+                setInsightModalOpen(true);
+                if (!insight && !selectedNode.insight) handleRealWorldInsight();
+              }}
+              onOpenELI5={() => {
+                setELI5ModalOpen(true);
+                if (!selectedNode.eli5Content) handleGenerateELI5();
+              }}
+              onOpenSlides={handleOpenSlides}
+              flashcardsCount={flashcards.length}
+              hasInsight={Boolean(insight || selectedNode.insight)}
+              hasELI5={Boolean(selectedNode.eli5Content)}
+              hasSlides={Boolean(selectedNode.slides && selectedNode.slides.length > 0)}
+            />
           )}
 
           {toggleZenMode && (
@@ -553,7 +573,7 @@ Provide a code boilerplate template at the end.`;
 
       {/* Main Content Area */}
       <div className="flex-1 min-h-0 overflow-y-auto relative custom-scrollbar bg-background text-left">
-        {selectedNode.content ? (
+        {Boolean(isLessonContentValid(displayContent)) ? (
           <div className="flex flex-col min-h-full">
             {adaptationBanner && (
               <div className="mx-6 md:mx-10 mt-6 p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex gap-3 items-center text-xs text-indigo-300">
@@ -723,9 +743,23 @@ Provide a code boilerplate template at the end.`;
                             {locale === 'en' ? 'AI Code Review Result' : 'Результат AI Code Review'}
                           </span>
                         </div>
-                        <div className="prose prose-invert prose-xs text-left">
+                        <div className="prose prose-invert prose-xs text-left max-w-none w-full whitespace-pre-wrap break-words [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_code]:whitespace-pre-wrap [&_code]:break-words">
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {codeReviewResult}
+                            {(() => {
+                              let text = codeReviewResult;
+                              if (typeof text === 'string' && text.includes('"feedback"')) {
+                                const fbIndex = text.indexOf('"feedback"');
+                                const colonIndex = text.indexOf(':', fbIndex);
+                                if (colonIndex !== -1) {
+                                  let value = text.substring(colonIndex + 1).trim();
+                                  if (value.startsWith('"')) value = value.substring(1);
+                                  if (value.endsWith('}')) value = value.slice(0, -1).trim();
+                                  if (value.endsWith('"')) value = value.slice(0, -1);
+                                  text = value.replace(/\\n/g, '\n').replace(/\\"/g, '"');
+                                }
+                              }
+                              return text;
+                            })()}
                           </ReactMarkdown>
                         </div>
                       </div>
@@ -912,10 +946,51 @@ Provide a code boilerplate template at the end.`;
         onUpgrade={() => navigate('/pricing')} 
       />
 
+      {/* Export Lesson Modal */}
+      <ExportLessonModal 
+        isOpen={isExportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        topic={selectedNode.label || selectedNode.title || 'Урок'}
+        lessonContent={displayContent}
+        homework={selectedNode.homework || selectedNode.lessonData?.homework}
+        flashcards={flashcards}
+      />
+
+      {/* Interactive Flashcards Modal */}
+      <FlashcardsModal 
+        isOpen={isFlashcardsModalOpen}
+        onClose={() => setFlashcardsModalOpen(false)}
+        topic={selectedNode.label || selectedNode.title || 'Термины урока'}
+        flashcards={flashcards}
+        lessonContent={displayContent}
+      />
+
+      {/* Real-World Insight Modal */}
+      <InsightModal 
+        isOpen={isInsightModalOpen}
+        onClose={() => setInsightModalOpen(false)}
+        topic={selectedNode.label || selectedNode.title || 'Урок'}
+        content={insight || selectedNode.insight}
+        loading={insightGenerating}
+        onGenerate={handleRealWorldInsight}
+      />
+
+      {/* ELI5 Modal */}
+      <ELI5Modal 
+        isOpen={isELI5ModalOpen}
+        onClose={() => setELI5ModalOpen(false)}
+        topic={selectedNode.label || selectedNode.title || 'Урок'}
+        content={selectedNode.eli5Content}
+        loading={eli5Generating}
+        onGenerate={handleGenerateELI5}
+      />
+
       {/* Slide Viewer Overlay */}
       {showSlides && (
         <SlideViewer
-          slides={selectedNode.slides || markdownToSlides(selectedNode.content || '')}
+          slides={selectedNode.slides || markdownToSlides(displayContent || '')}
+          topic={selectedNode.label || selectedNode.title || 'Презентация урока'}
+          nodeId={selectedNode.id}
           onClose={() => setShowSlides(false)}
         />
       )}
@@ -924,27 +999,61 @@ Provide a code boilerplate template at the end.`;
       {/* Contextual AI Mentor Panel (Hidden in Zen Mode or when Group Chat is open) */}
       {!isZenMode && !isGroupChatOpen && (
         <>
-          {isMobileMentorOpen && (
-            <div 
-              onClick={() => setIsMobileMentorOpen(false)} 
-              className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-xs transition-opacity" 
-            />
-          )}
-          <div className={`
-            fixed inset-0 md:left-auto md:right-0 md:top-0 md:bottom-0 md:w-[380px] z-50 lg:static lg:w-auto lg:block bg-background border-l border-outline shadow-2xl lg:shadow-none
-            ${isMobileMentorOpen ? 'block' : 'hidden'}
-          `}>
-            <ContextualMentor 
-              selectedNode={selectedNode}
-              selectedCourse={selectedCourse}
-              plan={plan}
-              usage={usage}
-              checkLimit={checkLimit}
-              incrementUsage={incrementUsage}
-              setUpgradeModalOpen={setUpgradeModalOpen}
-              onClose={() => setIsMobileMentorOpen(false)}
-            />
-          </div>
+          <AnimatePresence>
+            {isMentorOpen && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsMentorOpen(false)} 
+                className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-xs" 
+              />
+            )}
+          </AnimatePresence>
+          
+          <AnimatePresence>
+            {isMentorOpen && (
+              <motion.div 
+                initial={{ x: 50, width: 0, opacity: 0 }}
+                animate={{ x: 0, width: 'auto', opacity: 1 }}
+                exit={{ x: 50, width: 0, opacity: 0 }}
+                transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+                className="fixed inset-y-0 right-0 w-full md:w-[380px] z-50 lg:static lg:w-auto bg-background border-l border-outline shadow-2xl lg:shadow-none overflow-hidden"
+              >
+                <div className="w-full h-full lg:w-[350px] xl:w-[400px] flex shrink-0">
+                  <ContextualMentor 
+                    selectedNode={selectedNode}
+                    selectedCourse={selectedCourse}
+                    plan={plan}
+                    usage={usage}
+                    checkLimit={checkLimit}
+                    incrementUsage={incrementUsage}
+                    setUpgradeModalOpen={setUpgradeModalOpen}
+                    onClose={() => setIsMentorOpen(false)}
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {!isMentorOpen && (
+              <motion.button
+                initial={{ x: 50, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: 50, opacity: 0 }}
+                transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+                onClick={() => setIsMentorOpen(true)}
+                className="fixed right-0 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-3 px-2 py-4 bg-indigo-600/90 hover:bg-indigo-500 backdrop-blur-md text-white rounded-l-xl shadow-[0_0_20px_rgba(79,70,229,0.3)] border border-r-0 border-indigo-400/30 transition-colors font-bold group"
+                title={locale === 'en' ? "Open Smart Tutor" : "Открыть Умного Наставника"}
+              >
+                <Sparkles className="w-5 h-5 text-indigo-100 group-hover:scale-110 transition-transform" />
+                <span className="text-[11px] uppercase tracking-widest whitespace-nowrap" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+                  {locale === 'en' ? "Smart Tutor" : "Умный Наставник"}
+                </span>
+              </motion.button>
+            )}
+          </AnimatePresence>
         </>
       )}
     </div>

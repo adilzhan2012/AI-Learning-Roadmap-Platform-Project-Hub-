@@ -83,6 +83,7 @@
   "resources.featuredDesc": "Подробный разбор модели Transformer — от позиционного кодирования и многоголового внимания до нормализации слоев и сетей прямого распространения. Идеально подходит для тех, кто хочет по-настоящему понять архитектуру GPT, BERT и других моделей.",
   "resources.readNow": "Читать сейчас",
   "resources.tabs.all": "Все",
+  "resources.tabs.favorites": "Избранное",
   "resources.tabs.articles": "Статьи",
   "resources.tabs.videos": "Видео",
   "resources.tabs.cheatsheets": "Шпаргалки",
@@ -321,6 +322,17 @@
   "landing.hero.startLearning": "Начать обучение сейчас",
   "landing.hero.graphInterface": "Интерактивный интерфейс графа знаний",
   "landing.hero.launchEnv": "Запустить среду",
+  "landing.demo.statusBadge": "AI Движок • Gemini Активен",
+  "landing.demo.promptPlaceholder": "Введите любую тему для создания карты...",
+  "landing.demo.promptValue": "Хочу освоить Fullstack AI Разработку за 3 месяца",
+  "landing.demo.generating": "Генерация Графа Знаний...",
+  "landing.demo.step1.title": "1. Основы Frontend (React и Tailwind)",
+  "landing.demo.step1.status": "Пройдено • 100%",
+  "landing.demo.step2.title": "2. AI API и Инженерия Промптов",
+  "landing.demo.step2.status": "В процессе • 65%",
+  "landing.demo.step3.title": "3. Векторные БД и Архитектура RAG",
+  "landing.demo.step3.status": "Нода-пререквизит",
+  "landing.demo.nodesMeta": "14 Уроков • 4 Проекта • Интерактивный Граф",
   "landing.beta.badge": "Публичная бета запущена",
   "landing.beta.title": "Добро пожаловать в бета-версию!",
   "landing.beta.desc": "Мы запустили публичную бету платформы. Сейчас доступен базовый функционал, генерация курсов и граф знаний. Возможны небольшие баги, но мы активно работаем над их устранением.",
@@ -570,5 +582,6 @@
   "maintenance.estimatedCompletion": "Ориентировочное время завершения",
   "maintenance.hours": "Часов",
   "maintenance.minutes": "Минут",
-  "maintenance.seconds": "Секунд"
+  "maintenance.seconds": "Секунд",
+  "tooltip.reorder": "Изменить порядок"
 }
