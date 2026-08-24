@@ -45,7 +45,7 @@ export default function ContextualMentor({
         queryText: "",
         replyText: replyContent,
         rating,
-        modelName: 'llama-3.3-70b-versatile',
+        modelName: 'gemini-2.5-flash',
         context: `lesson_${selectedNode?.id || 'unknown'}`
       });
     } catch (e) {

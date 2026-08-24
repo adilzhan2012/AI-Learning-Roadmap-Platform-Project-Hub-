@@ -19,6 +19,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { callGeminiWithRetry, getUserCourses, getUserStats } from '../services/courseService.js';
+import { buildMentorContext } from '../services/mentorContext/index.js';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import { PLAN_LIMITS } from '../constants/planLimits.js';
 import ReactMarkdown from 'react-markdown';
@@ -150,35 +151,6 @@ export default function Mentor() {
         throw new Error('MISSING_API_KEY');
       }
 
-      // Build context-rich system prompt for Gemini
-      const enrolledCoursesText = courses.length > 0 
-        ? courses.map(c => `- ${c.title} (${c.level}, Прогресс: ${c.progress}%)`).join('\n')
-        : 'Нет активных курсов.';
-
-      const activeLocale = profile.locale || localStorage.getItem('yourway-locale') || 'ru';
-      const defaultLang = activeLocale === 'en' ? 'English' : 'Russian';
-
-      const systemPrompt = `You are an expert AI Mentor on the learning platform yourway.co.
-User Context:
-- Name: ${profile.firstName || (activeLocale === 'en' ? 'Learner' : 'Пользователь')}
-- Subscription Plan: ${plan}
-- Weekly Streak: ${profile.streakDays || 1} days
-
-Enrolled Roadmaps & Progress:
-${enrolledCoursesText}
-
-INSTRUCTIONS:
-1. Be a supportive, friendly, and expert technical tutor.
-2. Adapt your tone and explanation complexity based on the user's queries.
-3. If they mention they are stuck or it's "too hard/too easy", guide them to regenerate their roadmap in the dashboard with customized parameters.
-4. Keep your responses highly educational, structured, and clear. Use Markdown (bold text, lists, code snippets, blockquotes).
-5. Address the user directly using their name when appropriate.
-6. Default to responding in ${defaultLang}, but match the language if the user writes in another language.
-7. If they ask about quiz errors, explain the underlying logic thoroughly so they understand.
-8. IMPORTANT LIMITATION: If the user asks to create, design, compose, or write a course syllabus, roadmap, or study plan (e.g., "составь курс", "make a study plan"):
-   - If they are on plan "ULTRA", guide them through the interactive briefing.
-   - If they are on "FREE" or "PRO" plan, you MUST politely refuse to draft or write the syllabus. Explain that personalized course generation, interactive syllabus briefings, and materials-based roadmaps (RAG) are exclusive to the ULTRA plan. Suggest they upgrade to ULTRA to unlock this capability.`;
-
       // Smart model routing: use Gemini 2.5 Flash for short queries, Gemini 2.5 Pro for complex/deep responses
       const isProSoftCapped = plan === 'PRO' && (usage.mentorMessagesUsed || 0) >= PLAN_LIMITS.PRO.aiMentorPerDay;
       const isComplexQuery = text.length > 200 || text.toLowerCase().includes('объясни') || text.toLowerCase().includes('почему') || text.toLowerCase().includes('ошибка');
@@ -187,8 +159,32 @@ INSTRUCTIONS:
         ? 'gemini-2.5-flash' 
         : (isComplexQuery ? 'gemini-2.5-pro' : 'gemini-2.5-flash');
 
-      const fullPrompt = `${systemPrompt}\n\nUser Question: ${text}`;
-      const responseText = await callGeminiWithRetry(apiKey, fullPrompt, 'mentor_message', selectedModel);
+      const activeLocale = profile.locale || localStorage.getItem('yourway-locale') || 'ru';
+      const mentorContext = await buildMentorContext({
+        userId: user?.uid,
+        mode: 'global',
+        contextId: null,
+        userProfile: {
+          name: profile.firstName || (activeLocale === 'en' ? 'Learner' : 'Пользователь'),
+          firstName: profile.firstName,
+          streakDays: profile.streakDays || 1,
+          enrolledCourses: courses
+        },
+        courseLanguage: activeLocale === 'en' ? 'en' : 'ru',
+        historyOverride: messages
+      });
+
+      const responseText = await callGeminiWithRetry(
+        null,
+        null,
+        'mentor_message',
+        selectedModel,
+        null,
+        {
+          mentorContext,
+          userQuery: text
+        }
+      );
 
       const assistantMessage = {
         id: (Date.now() + 1).toString(),
@@ -207,7 +203,7 @@ INSTRUCTIONS:
         return next;
       });
 
-      const promptTokens = Math.ceil((text.length + systemPrompt.length) / 4);
+      const promptTokens = Math.ceil(text.length / 4);
       const responseTokens = Math.ceil((responseText || '').length / 4);
       const totalTokens = promptTokens + responseTokens;
 

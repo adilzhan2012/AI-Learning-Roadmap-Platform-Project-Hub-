@@ -12,7 +12,7 @@ import {
   connectAuthEmulator
 } from 'firebase/auth';
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, connectFirestoreEmulator } from 'firebase/firestore';
-import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
+import { getFunctions, connectFunctionsEmulator, httpsCallable } from 'firebase/functions';
 import { getStorage } from 'firebase/storage';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 
@@ -64,19 +64,25 @@ try {
   storage = getStorage(app);
 
   // Connect to local Firebase Emulators in development when explicitly enabled
-  if (import.meta.env.DEV && import.meta.env.VITE_USE_EMULATOR === 'true') {
-    const emulatorHost = import.meta.env.VITE_EMULATOR_HOST || 'localhost';
-    console.log(`[Firebase] Connecting to Functions Emulator on ${emulatorHost}:5001`);
-    connectFunctionsEmulator(functions, emulatorHost, 5001);
-
-    if (import.meta.env.VITE_USE_FIRESTORE_EMULATOR === 'true') {
-      console.log(`[Firebase] Connecting to Firestore Emulator on ${emulatorHost}:8080`);
-      connectFirestoreEmulator(db, emulatorHost, 8080);
+  if (import.meta.env.DEV) {
+    if (typeof window !== 'undefined') {
+      window.__debugFirebase = { functions, auth, db, httpsCallable };
     }
 
-    if (import.meta.env.VITE_USE_AUTH_EMULATOR === 'true') {
-      console.log(`[Firebase] Connecting to Auth Emulator on http://${emulatorHost}:9099`);
-      connectAuthEmulator(auth, `http://${emulatorHost}:9099`, { disableWarnings: true });
+    if (import.meta.env.VITE_USE_EMULATOR === 'true') {
+      const emulatorHost = import.meta.env.VITE_EMULATOR_HOST || 'localhost';
+      console.log(`[Firebase] Connecting to Functions Emulator on ${emulatorHost}:5001`);
+      connectFunctionsEmulator(functions, emulatorHost, 5001);
+
+      if (import.meta.env.VITE_USE_FIRESTORE_EMULATOR === 'true') {
+        console.log(`[Firebase] Connecting to Firestore Emulator on ${emulatorHost}:8080`);
+        connectFirestoreEmulator(db, emulatorHost, 8080);
+      }
+
+      if (import.meta.env.VITE_USE_AUTH_EMULATOR === 'true') {
+        console.log(`[Firebase] Connecting to Auth Emulator on http://${emulatorHost}:9099`);
+        connectAuthEmulator(auth, `http://${emulatorHost}:9099`, { disableWarnings: true });
+      }
     }
   }
 

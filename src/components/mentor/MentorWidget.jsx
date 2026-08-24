@@ -27,6 +27,10 @@ import ReactMarkdown from 'react-markdown';
 import MentorBubble from './MentorBubble.jsx';
 import { t, useLocale } from '../../i18n.js';
 import { getUserStats, getUserCourses, callGeminiWithRetry } from '../../services/courseService.js';
+import { buildMentorContext } from '../../services/mentorContext/index.js';
+
+// Feature flag for Vertex AI Gemini Function Calling (Tool Use)
+const USE_FUNCTION_CALLING = true;
 
 export default function MentorWidget() {
   const navigate = useNavigate();
@@ -39,7 +43,6 @@ export default function MentorWidget() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [generating, setGenerating] = useState(false);
-  const [courseGenerating, setCourseGenerating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [generatedTopics, setGeneratedTopics] = useState(new Set());
   const [timeRemaining, setTimeRemaining] = useState('');
@@ -73,7 +76,7 @@ export default function MentorWidget() {
         queryText: "",
         replyText: replyContent,
         rating,
-        modelName: isProSoftCapped ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile',
+        modelName: isProSoftCapped ? 'gemini-2.5-flash' : 'gemini-2.5-pro',
         context: 'global_widget'
       });
     } catch (e) {
@@ -153,6 +156,8 @@ export default function MentorWidget() {
               id: newId,
               title: 'Первый диалог',
               createdAt: new Date(),
+              mode: 'global',
+              contextId: null,
               messages: []
             };
             const docRef = doc(db, 'users', user.uid, 'mentorSessions', newId);
@@ -190,7 +195,7 @@ export default function MentorWidget() {
   // Auto Scroll to Bottom of Chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, generating, courseGenerating]);
+  }, [messages, generating]);
 
   // Helper to extract JSON from assistant responses (briefing draft or final confirmation)
   const parseJsonBlock = (text) => {
@@ -218,6 +223,8 @@ export default function MentorWidget() {
       id: newId,
       title: `Диалог #${sessions.length + 1}`,
       createdAt: new Date(),
+      mode: 'global',
+      contextId: null,
       messages: []
     };
     try {
@@ -258,6 +265,8 @@ export default function MentorWidget() {
             id: newId,
             title: 'Первый диалог',
             createdAt: new Date(),
+            mode: 'global',
+            contextId: null,
             messages: []
           };
           const newDocRef = doc(db, 'users', user.uid, 'mentorSessions', newId);
@@ -290,7 +299,7 @@ export default function MentorWidget() {
   const handleSendMessage = async (e, textOverride = null) => {
     if (e) e.preventDefault();
     const text = textOverride || input;
-    if (!text.trim() || generating || courseGenerating) return;
+    if (!text.trim() || generating) return;
 
     if (!user) {
       navigate('/login');
@@ -325,7 +334,9 @@ export default function MentorWidget() {
 
         const updateData = { 
           messages: next, 
-          title: displayTitle 
+          title: displayTitle,
+          mode: 'global',
+          contextId: null
         };
 
         setDoc(docRef, updateData, { merge: true }).then(() => {
@@ -334,10 +345,10 @@ export default function MentorWidget() {
           // Trigger async smart rename if needed
           if (needsRename) {
             const prompt = `Сгенерируй очень короткий заголовок (максимум 3-4 слова) для диалога, отражающий суть вопроса. Вопрос: "${text}". Выведи только заголовок, без кавычек и точек.`;
-            callGeminiWithRetry(null, prompt, 'gemini-2.5-flash').then(smartTitle => {
+            callGeminiWithRetry(null, prompt, 'ai_question', 'gemini-2.5-flash').then(smartTitle => {
               if (smartTitle && smartTitle.trim()) {
                 const cleanTitle = smartTitle.trim().replace(/^["']|["']$/g, '').substring(0, 40);
-                setDoc(docRef, { title: cleanTitle }, { merge: true }).then(() => {
+                setDoc(docRef, { title: cleanTitle, mode: 'global', contextId: null }, { merge: true }).then(() => {
                   setSessions(sPrev => sPrev.map(s => s.id === activeSessionId ? { ...s, title: cleanTitle } : s));
                 });
               }
@@ -358,120 +369,62 @@ export default function MentorWidget() {
         ? courses.map(c => `- ${c.title} (${c.level}, Прогресс: ${c.progress}%)`).join('\n')
         : 'Нет активных курсов.';
 
-      let planCourseInstruction = '';
-      if (plan === 'ULTRA') {
-        planCourseInstruction = `
-ULTRA SUBSCRIBER SPECIAL ABILITY - INTERACTIVE ROADMAP BRIEFING:
-If the user wants to learn a new topic, prepare for an interview, or create a syllabus (e.g. "Хочу подтянуть Go для backend-разработки"):
-1. CRITICAL: You MUST FIRST guide them through an interactive briefing. Ask 2-3 clarifying questions about their background, their schedule, and their exact goals. Do NOT output any JSON draft until they have answered your questions.
-2. ONLY AFTER they have provided these details, suggest a customized course pacing and list of modules.
-3. When you show them a draft of the course modules and schedule, you MUST output this draft as a JSON block matching the following structure so the application can render a custom interactive UI:
-\`\`\`json
-{
-  "action": "propose_course",
-  "topic": "Go для backend-разработки",
-  "level": "Intermediate",
-  "preferences": {
-    "dailyTime": "45m",
-    "courseStyle": "Friendly",
-    "flashcardCount": "5",
-    "prerequisites": "Skip basic programming concepts",
-    "duration": "3 months, 45m on weekdays, 2h on Saturday"
-  },
-  "modules": [
-    "Введение в синтаксис Go",
-    "Конкурентность и горутины",
-    "Веб-серверы и API на Go"
-  ]
-}
-\`\`\`
-Ask them if the modules look good or if they want to adjust anything.
-4. Once they explicitly confirm they are happy with the draft structure, reply with a confirmation and output a final JSON block:
-\`\`\`json
-{
-  "action": "generate_course",
-  "topic": "Go для backend-разработки",
-  "level": "Intermediate",
-  "preferences": {
-    "dailyTime": "45m",
-    "courseStyle": "Friendly",
-    "flashcardCount": "5",
-    "prerequisites": "Skip basic programming concepts",
-    "duration": "3 months, 45m on weekdays, 2h on Saturday"
-  }
-}
-\`\`\`
-This will trigger the automatic course generation. Keep the JSON blocks valid.`;
-      } else if (plan === 'PRO') {
-        planCourseInstruction = `
-PRO SUBSCRIBER ABILITY - DIRECT COURSE PROPOSAL:
-If the user asks to create a course or learn a topic (e.g. "составь курс по React"):
-1. Immediately output a proposed course JSON block matching:
-\`\`\`json
-{
-  "action": "propose_course",
-  "topic": "Тема курса",
-  "level": "Intermediate",
-  "preferences": {
-    "dailyTime": "30m",
-    "courseStyle": "Practical",
-    "flashcardCount": "5",
-    "prerequisites": "Basic skills",
-    "duration": "1 month"
-  },
-  "modules": [
-    "Модуль 1",
-    "Модуль 2",
-    "Модуль 3"
-  ]
-}
-\`\`\`
-2. In text, tell them you generated a standard roadmap for them. Add a note: "Подсказка: На подписке **ULTRA** я могу провести персональный бриф из 3 вопросов и подстроить программу под твой график и стек."`;
-      }
-
-      const systemPrompt = `You are an expert AI Mentor on the learning platform yourway.co.
-User Context:
-- Name: ${profile.firstName || 'Пользователь'}
-- Subscription Plan: ${plan}
-- Weekly Streak: ${profile.streakDays || 1} days
-
-Enrolled Roadmaps & Progress:
-${enrolledCoursesText}
-
-INSTRUCTIONS:
-1. Be a supportive, friendly, and expert technical tutor.
-2. Adapt your tone and explanation complexity based on the user's queries.
-3. Keep your responses highly educational, structured, and clear.
-4. CRITICAL: ALWAYS respond ENTIRELY in Russian. Do NOT use Chinese characters or English unless quoting code.
-5. Address the user by name, but ONLY ONCE at the very beginning of the conversation. Do NOT repeat greetings like "Привет, Имя" or "Добрый день" in every single message. Just jump straight into answering the question.
-6. IMPORTANT LIMITATION: If the user asks to create, design, compose, or write a course syllabus, roadmap, or study plan (e.g., "составь курс", "сделай программу обучения"):
-   - If they are on plan "ULTRA", guide them through the interactive briefing (as instructed below).
-   - If they are on plan "PRO", generate the direct course proposal as instructed below.
-   - If they are on plan "FREE", you MUST politely refuse to draft or write the syllabus. Explain that personalized course generation, interactive syllabus briefings, and materials-based roadmaps (RAG) are exclusive to PRO and ULTRA plans. Suggest they upgrade to PRO or ULTRA to unlock this capability.
-7. IMPORTANT: Do NOT assume the user wants to discuss their existing courses unless they explicitly mention them. If they ask to "create a course" or "learn a new topic", they are asking for a NEW course, so IGNORE the existing enrolled roadmaps.
-8. REMEMBER THE CONTEXT: You must continue the conversation based on the 'Conversation History' provided below. Do not repeat questions you already asked.
-9. WOW FACTOR - PERSONALIZED ANALOGIES: When explaining complex technical concepts (like concurrency, pointers, algorithms, state management), use vivid real-world analogies tailored to everyday situations to make the explanation unforgettable.
-${planCourseInstruction}`;
-
       const isComplexQuery = text.length > 200 || text.toLowerCase().includes('объясни') || text.toLowerCase().includes('почему') || text.toLowerCase().includes('ошибка');
       const selectedModel = isProSoftCapped 
         ? 'gemini-2.5-flash' 
         : (isComplexQuery ? 'gemini-2.5-pro' : 'gemini-2.5-flash');
 
-      const historyText = messages.slice(-6).map(m => {
-        if (m.id === 'welcome' || !m.content) return '';
-        return `${m.role === 'user' ? 'User' : 'Assistant'}: ${cleanMessageContent(m.content)}`;
-      }).filter(Boolean).join('\n\n');
+      const mentorContext = await buildMentorContext({
+        userId: user?.uid,
+        mode: 'global',
+        contextId: activeSessionId || null,
+        userProfile: {
+          name: profile.firstName || (locale === 'en' ? 'Learner' : 'Пользователь'),
+          firstName: profile.firstName,
+          streakDays: profile.streakDays || 1,
+          enrolledCourses: courses
+        },
+        courseLanguage: locale === 'en' ? 'en' : 'ru',
+        historyOverride: messages
+      });
 
-      const fullPrompt = `${systemPrompt}\n\nConversation History:\n${historyText || 'No previous history.'}\n\nUser Question: ${text}`;
-      const responseText = await callGeminiWithRetry(null, fullPrompt, 'mentor_message', selectedModel);
+      const response = await callGeminiWithRetry(
+        null,
+        null,
+        'mentor_message',
+        selectedModel,
+        null,
+        {
+          mentorContext,
+          userQuery: text,
+          returnFullResponse: true
+        }
+      );
 
-      const parsedAction = parseJsonBlock(responseText);
+      const responseText = typeof response === 'string' ? response : (response?.result || '');
+      const responseToolCall = typeof response === 'object' ? response?.toolCall : null;
+
+      let parsedAction = null;
+      if (USE_FUNCTION_CALLING && responseToolCall) {
+        if (responseToolCall.name === 'propose_course' || responseToolCall.name === 'generate_course') {
+          parsedAction = {
+            action: responseToolCall.name,
+            topic: responseToolCall.args?.topic,
+            level: responseToolCall.args?.difficulty || responseToolCall.args?.level || 'Intermediate',
+            modules: responseToolCall.args?.modules || [],
+            preferences: responseToolCall.args?.preferences || { dailyTime: '45m', duration: '1 month' }
+          };
+        }
+      } else {
+        // Fallback to legacy string JSON parsing
+        parsedAction = parseJsonBlock(responseText);
+      }
       
       const assistantMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: responseText || 'Извините, не удалось сгенерировать ответ.'
+        content: responseText || 'Извините, не удалось сгенерировать ответ.',
+        toolCall: responseToolCall
       };
 
       setMessages(prev => {
@@ -484,7 +437,11 @@ ${planCourseInstruction}`;
         }
         if ((plan === 'PRO' || plan === 'ULTRA') && user && activeSessionId) {
           const docRef = doc(db, 'users', user.uid, 'mentorSessions', activeSessionId);
-          setDoc(docRef, { messages: next }, { merge: true }).then(() => {
+          setDoc(docRef, { 
+            messages: next,
+            mode: 'global',
+            contextId: null
+          }, { merge: true }).then(() => {
             setSessions(sPrev => sPrev.map(s => s.id === activeSessionId ? { ...s, messages: next } : s));
           }).catch(err => {
             console.error("Failed to save session history:", err);
@@ -493,7 +450,7 @@ ${planCourseInstruction}`;
         return next;
       });
 
-      const promptTokens = Math.ceil((text.length + systemPrompt.length) / 4);
+      const promptTokens = Math.ceil(text.length / 4);
       const responseTokens = Math.ceil((responseText || '').length / 4);
       const totalTokens = promptTokens + responseTokens;
 
@@ -526,13 +483,14 @@ ${planCourseInstruction}`;
 
   const triggerCourseGeneration = (topic, level, preferences) => {
     if (!user) return;
+    setIsOpen(false);
     setGeneratedTopics(prev => new Set([...prev, topic]));
     navigate('/graph', {
       state: {
         isGenerating: true,
         topic,
-        level,
-        preferences,
+        level: level || 'Intermediate',
+        preferences: preferences || { dailyTime: '45m', duration: '1 month' },
         userUid: user.uid
       }
     });
@@ -798,7 +756,39 @@ ${planCourseInstruction}`;
                     {messages.map((msg, index) => {
                       const isAssistant = msg.role === 'assistant';
                       const cleanContent = cleanMessageContent(msg.content);
-                      const proposalData = isAssistant ? parseJsonBlock(msg.content) : null;
+                      let proposalData = null;
+                      if (isAssistant) {
+                        if (USE_FUNCTION_CALLING && msg.toolCall?.name === 'propose_course') {
+                          proposalData = {
+                            action: 'propose_course',
+                            topic: msg.toolCall.args?.topic,
+                            level: msg.toolCall.args?.difficulty || msg.toolCall.args?.level || 'Intermediate',
+                            preferences: {
+                              dailyTime: msg.toolCall.args?.preferences?.dailyTime || '45m',
+                              duration: msg.toolCall.args?.preferences?.duration || '1 month',
+                              courseStyle: msg.toolCall.args?.preferences?.courseStyle || 'Friendly',
+                              prerequisites: msg.toolCall.args?.preferences?.prerequisites || ''
+                            },
+                            modules: msg.toolCall.args?.modules || []
+                          };
+                        } else {
+                          const parsed = parseJsonBlock(msg.content);
+                          if (parsed && (parsed.action === 'propose_course' || parsed.topic)) {
+                            proposalData = {
+                              action: parsed.action || 'propose_course',
+                              topic: parsed.topic,
+                              level: parsed.level || parsed.difficulty || 'Intermediate',
+                              preferences: {
+                                dailyTime: parsed.preferences?.dailyTime || '45m',
+                                duration: parsed.preferences?.duration || '1 month',
+                                courseStyle: parsed.preferences?.courseStyle || 'Friendly',
+                                prerequisites: parsed.preferences?.prerequisites || ''
+                              },
+                              modules: parsed.modules || []
+                            };
+                          }
+                        }
+                      }
 
                       return (
                         <div key={msg.id || index} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
@@ -855,12 +845,12 @@ ${planCourseInstruction}`;
                                 📚 {proposalData.topic}
                               </h4>
                               <p className="text-xs text-on-surface-variant leading-relaxed mb-3">
-                                {proposalData.preferences.duration} • {proposalData.preferences.dailyTime} {locale === 'en' ? '/ day' : 'в день'}
+                                {(proposalData.preferences?.duration || '1 month')} • {(proposalData.preferences?.dailyTime || '45m')} {locale === 'en' ? '/ day' : 'в день'}
                               </p>
                               
                               <button 
                                 onClick={() => triggerCourseGeneration(proposalData.topic, proposalData.level, proposalData.preferences)}
-                                disabled={courseGenerating || generatedTopics.has(proposalData.topic)}
+                                disabled={generatedTopics.has(proposalData.topic)}
                                 className="w-full flex items-center justify-center gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-on-surface font-bold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 {generatedTopics.has(proposalData.topic) 
@@ -893,22 +883,13 @@ ${planCourseInstruction}`;
                       </div>
                     )}
 
-                    {courseGenerating && (
-                      <div className="flex flex-col items-center justify-center py-4 bg-indigo-500/5 dark:bg-[#1E1B4B]/20 border border-indigo-500/10 rounded-xl gap-2">
-                        <Loader2 className="w-5 h-5 animate-spin text-indigo-500 dark:text-indigo-400" />
-                        <span className="text-[10px] text-indigo-600 dark:text-indigo-300 font-bold">
-                          {locale === 'en' ? 'Synthesizing syllabus and content...' : 'Синтез программы и знаний...'}
-                        </span>
-                      </div>
-                    )}
-
                     <div ref={chatEndRef} />
                   </div>
 
                   {/* Input Bar */}
                   {isProSoftCapped && (
                     <div className="px-3 py-1.5 bg-amber-500/10 border-t border-outline-variant text-[10px] text-amber-600 dark:text-amber-400 flex items-center justify-between select-none shrink-0 w-full">
-                      <span>⚡ Дневной лимит вопросов повышенной точности исчерпан. Используется базовая модель Llama 3.1 8B. Сброс через <strong>{timeRemaining}</strong> (00:00 UTC).</span>
+                      <span>⚡ Дневной лимит вопросов повышенной точности исчерпан. Используется базовая модель Gemini Flash. Сброс через <strong>{timeRemaining}</strong> (00:00 UTC).</span>
                       <button 
                         type="button"
                         onClick={() => { setIsOpen(false); navigate('/pricing'); }} 
@@ -922,14 +903,14 @@ ${planCourseInstruction}`;
                     <input
                       type="text"
                       placeholder={plan === 'ULTRA' ? "Задайте вопрос или составьте бриф..." : "Задайте вопрос ментору..."}
-                      disabled={generating || courseGenerating}
+                      disabled={generating}
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       className="flex-1 bg-surface-container border border-outline-variant rounded-xl px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-indigo-500 transition-colors"
                     />
                     <button
                       type="submit"
-                      disabled={generating || courseGenerating || !input.trim()}
+                      disabled={generating || !input.trim()}
                       className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-on-surface hover:opacity-80 disabled:opacity-50 disabled:bg-surface-container disabled:text-on-surface-variant text-surface flex items-center justify-center transition-colors shrink-0"
                     >
                       <Send className="w-5 h-5 sm:w-6 sm:h-6" />

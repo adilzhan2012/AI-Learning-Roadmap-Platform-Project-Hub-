@@ -5,7 +5,7 @@
  */
 
 const { BASE_PROMPT } = require('./basePrompt.js');
-const { getGlobalPrompt } = require('./modes/globalPrompt.js');
+const { getGlobalPrompt, GLOBAL_MENTOR_TOOLS } = require('./modes/globalPrompt.js');
 const { getLessonPrompt } = require('./modes/lessonPrompt.js');
 const { getHomeworkPrompt } = require('./modes/homeworkPrompt.js');
 const { stripActionBlocks } = require('./stripActionBlocks.js');
@@ -99,15 +99,22 @@ function assembleSystemPrompt(mentorContext, userQuery = '') {
     messages.push({ role: 'user', content: userQuery });
   }
 
+  let tools = undefined;
+  if (mode === 'global' && (plan === 'PRO' || plan === 'ULTRA')) {
+    tools = GLOBAL_MENTOR_TOOLS;
+  }
+
   return {
     systemPrompt,
     historyMessages,
-    messages
+    messages,
+    tools
   };
 }
 
 module.exports = {
   assembleSystemPrompt,
   HISTORY_DEPTH,
-  getHistoryDepth
+  getHistoryDepth,
+  GLOBAL_MENTOR_TOOLS
 };

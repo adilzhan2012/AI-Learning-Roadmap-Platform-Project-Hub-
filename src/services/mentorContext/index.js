@@ -31,9 +31,10 @@ async function resolveDb(customDb) {
  * buildMentorContext
  *
  * Consolidates context assembly for all 3 mentor modes:
- * - 'global': floating widget (Free local / Pro/Ultra Firestore mentorSessions)
- * - 'lesson': contextual panel (in-memory history, 3000-char lessonContent, lessonUsage counter)
- * - 'homework': Socratic homework mentor (chatHistory in homeworkSubmissions)
+ * - 'global': floating widget & /mentor page. Persists PRO/ULTRA sessions in Firestore `users/{userId}/mentorSessions/{sessionId}`
+ *   with standardized schema fields (`mode: 'global'`, `contextId: null`), and FREE sessions in localStorage (48h TTL).
+ * - 'lesson': contextual panel. Deliberately preserved as in-memory history per lesson session (3000-char lessonContent, lessonUsage counter in Firestore).
+ * - 'homework': Socratic homework mentor (ULTRA-exclusive). Deliberately preserved as `chatHistory` inside `users/{userId}/homeworkSubmissions/{courseId}_{nodeId}` to maintain direct association with homework rubrics and grading attempts.
  *
  * Supports both signature styles:
  * buildMentorContext(userId, mode, contextId, options)
@@ -102,11 +103,15 @@ export async function buildMentorContext(userIdOrParams, modeParam, contextIdPar
   return {
     userId,
     mode,
+    contextId,
     plan,
     usage,
     recentHistory,
     lessonContent,
-    homeworkTask
+    homeworkTask,
+    userProfile: options.userProfile || null,
+    courseLanguage: options.courseLanguage || 'ru',
+    lessonTitle: options.lessonTitle || null
   };
 }
 

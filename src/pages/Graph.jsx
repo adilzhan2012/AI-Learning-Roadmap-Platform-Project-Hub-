@@ -330,11 +330,26 @@ export default function Graph() {
         topic: location.state.topic,
         level: location.state.level,
         preferences: location.state.preferences,
-        userUid: location.state.userUid
+        userUid: location.state.userUid,
+        withGroup: location.state.withGroup
       };
     }
     return null;
   });
+
+  // Sync state when navigating to /graph with new isGenerating state while component is already mounted
+  useEffect(() => {
+    if (location.state?.isGenerating && location.state?.topic) {
+      hasTriggeredGenRef.current = false;
+      setGeneratingCourseState({
+        topic: location.state.topic,
+        level: location.state.level,
+        preferences: location.state.preferences,
+        userUid: location.state.userUid,
+        withGroup: location.state.withGroup
+      });
+    }
+  }, [location.state]);
 
   const [generatedNodes, setGeneratedNodes] = useState(null);
   const [generatedCourseResult, setGeneratedCourseResult] = useState(null);
@@ -427,13 +442,13 @@ export default function Graph() {
 
   // Safety fallback: if course is generated but overlay is still up after 3s, force close overlay
   useEffect(() => {
-    if (generatedCourseResult && generatingCourseState) {
+    if (generatedCourseResult && generatingCourseState && !generationError) {
       const fallbackTimer = setTimeout(() => {
         handleGenerationAnimationComplete();
       }, 3000);
       return () => clearTimeout(fallbackTimer);
     }
-  }, [generatedCourseResult, generatingCourseState]);
+  }, [generatedCourseResult, generatingCourseState, generationError]);
 
   // Draggable node states
   const [draggedOffsets, setDraggedOffsets] = useState({});
@@ -1718,22 +1733,41 @@ Respond in Russian. Keep your reply concise and professional.`;
               preferences={generatingCourseState.preferences}
               nodes={generatedNodes}
               isGenerating={!generatedCourseResult && !generationError}
-              onComplete={handleGenerationAnimationComplete}
+              error={generationError}
+              onComplete={generatedCourseResult ? handleGenerationAnimationComplete : null}
               isLightTheme={isLightTheme}
             />
             {generationError && (
-              <div className="mt-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold text-center w-full max-w-md relative z-30">
-                {generationError}
-                <button 
-                  onClick={() => {
-                    setGeneratingCourseState(null);
-                    setGenerationError('');
-                    navigate('/graph', { replace: true, state: {} });
-                  }}
-                  className="block mx-auto mt-3 px-4 py-2 rounded-xl bg-red-500/20 text-red-300 font-bold hover:bg-red-500/30 transition-all text-xs"
-                >
-                  Вернуться к графам
-                </button>
+              <div className="mt-4 p-5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm font-medium text-center w-full max-w-lg relative z-30 shadow-2xl backdrop-blur-md">
+                <div className="flex items-center justify-center gap-2 mb-2 text-rose-400 font-bold text-base">
+                  <span>⚠️</span>
+                  <span>Ошибка создания курса</span>
+                </div>
+                <p className="leading-relaxed mb-4 text-xs opacity-90">{generationError}</p>
+                <div className="flex items-center justify-center gap-3">
+                  <button 
+                    onClick={() => {
+                      setGeneratingCourseState(null);
+                      setGenerationError('');
+                      navigate('/graph', { replace: true, state: {} });
+                    }}
+                    className="px-4 py-2 rounded-xl bg-white/10 text-white font-semibold hover:bg-white/20 transition-all text-xs"
+                  >
+                    Вернуться к графам
+                  </button>
+                  {generationError.includes('PRO') || generationError.includes('лимит') ? (
+                    <button
+                      onClick={() => {
+                        setGeneratingCourseState(null);
+                        setGenerationError('');
+                        navigate('/pricing');
+                      }}
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold hover:brightness-110 transition-all text-xs"
+                    >
+                      Перейти на ULTRA ✨
+                    </button>
+                  ) : null}
+                </div>
               </div>
             )}
           </motion.div>

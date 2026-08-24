@@ -399,3 +399,77 @@ describe('processUsageLimitAndCounter - FieldValue modular increment unit tests 
     assert.ok(storedLesson.lastUsedAt);
   });
 });
+
+describe('processUsageLimitAndCounter - Plan resolution invariant across any usageType', () => {
+  const userId = 'ultra_invariant_user';
+  const subDocPath = `users/${userId}/subscription/details`;
+  const todayStr = '2026-08-25';
+  const monthStr = '2026-08';
+  const bareAdminMock = {};
+
+  const testCases = [
+    { usageType: 'ai_chat', desc: 'ai_chat (Socratic homework mentor chat)' },
+    { usageType: undefined, desc: 'undefined usageType' },
+    { usageType: null, desc: 'null usageType' },
+    { usageType: 'topic_moderation', desc: 'topic_moderation' },
+    { usageType: 'unknown_custom_mode_xyz', desc: 'unknown custom usageType' },
+    { usageType: 'mentor_message', desc: 'mentor_message' },
+    { usageType: 'ai_question', desc: 'ai_question' },
+    { usageType: 'homework_review', desc: 'homework_review' }
+  ];
+
+  for (const tc of testCases) {
+    test(`ULTRA invariant: returns plan="ULTRA" for ${tc.desc}`, async () => {
+      const mockDb = createTransactionalMockDb({
+        [subDocPath]: {
+          plan: 'ULTRA',
+          lastMentorDate: todayStr,
+          ultraTokensUsed: 1500
+        }
+      });
+
+      const result = await processUsageLimitAndCounter(
+        mockDb,
+        bareAdminMock,
+        userId,
+        tc.usageType,
+        todayStr,
+        monthStr
+      );
+
+      assert.equal(result.plan, 'ULTRA', `Expected plan to be ULTRA for usageType: ${tc.usageType}`);
+    });
+  }
+
+  test('Sequential calls: two consecutive ai_chat requests for ULTRA user both return plan="ULTRA"', async () => {
+    const mockDb = createTransactionalMockDb({
+      [subDocPath]: {
+        plan: 'ULTRA',
+        lastMentorDate: todayStr,
+        ultraTokensUsed: 500
+      }
+    });
+
+    // 1st request
+    const firstResult = await processUsageLimitAndCounter(
+      mockDb,
+      bareAdminMock,
+      userId,
+      'ai_chat',
+      todayStr,
+      monthStr
+    );
+    assert.equal(firstResult.plan, 'ULTRA');
+
+    // 2nd request
+    const secondResult = await processUsageLimitAndCounter(
+      mockDb,
+      bareAdminMock,
+      userId,
+      'ai_chat',
+      todayStr,
+      monthStr
+    );
+    assert.equal(secondResult.plan, 'ULTRA');
+  });
+});

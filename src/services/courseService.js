@@ -80,12 +80,11 @@ export async function callGeminiWithRetry(apiKey, prompt, usageType, modelName, 
       Object.assign(payload, extraOptions);
     }
     
-    const knownUsageTypes = ['roadmap', 'ai_question', 'mentor_message', 'homework_review'];
     if (usageType) {
-      if (knownUsageTypes.includes(usageType)) {
-        payload.usageType = usageType;
-      } else {
+      if (typeof usageType === 'string' && (usageType.startsWith('gemini') || usageType.startsWith('google/'))) {
         payload.modelName = usageType;
+      } else {
+        payload.usageType = usageType;
       }
     }
     if (modelName) {
@@ -93,7 +92,7 @@ export async function callGeminiWithRetry(apiKey, prompt, usageType, modelName, 
     }
     
     const response = await aiProxy(payload);
-    if (!response || !response.data || !response.data.result) {
+    if (!response || !response.data || (response.data.result === undefined && !response.data.toolCall)) {
       throw new Error('Empty response from AI Proxy');
     }
 
@@ -106,7 +105,14 @@ export async function callGeminiWithRetry(apiKey, prompt, usageType, modelName, 
       }));
     }
 
-    return response.data.result;
+    if (extraOptions && extraOptions.returnFullResponse) {
+      return {
+        result: response.data.result || '',
+        toolCall: response.data.toolCall || null
+      };
+    }
+
+    return response.data.result || '';
   } catch (error) {
     console.error("AI Proxy Error:", error);
     if (error.code === 'resource-exhausted') {

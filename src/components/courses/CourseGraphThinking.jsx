@@ -141,6 +141,7 @@ export default function CourseGraphThinking({
   preferences = null,
   nodes = null,
   isGenerating = false,
+  error = null,
   onComplete = null,
   showReplay = false,
   isLightTheme = false,
@@ -236,16 +237,16 @@ export default function CourseGraphThinking({
 
   const hasCompletedRef = useRef(false);
 
-  // Handle completion: when isGenerating becomes false (AI generation finished), complete immediately!
+  // Handle completion: when isGenerating becomes false (AI generation finished successfully), complete immediately!
   useEffect(() => {
     if (!onComplete || hasCompletedRef.current) return;
 
-    if (!isGenerating) {
+    if (!isGenerating && !error) {
       hasCompletedRef.current = true;
       setPhase("done");
       onComplete();
     }
-  }, [isGenerating, onComplete]);
+  }, [isGenerating, error, onComplete]);
 
   const phaseIndex = ["prompt", "branching", "converging", "cards", "done"].indexOf(phase);
 

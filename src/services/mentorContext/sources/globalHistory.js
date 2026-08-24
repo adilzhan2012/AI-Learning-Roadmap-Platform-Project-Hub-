@@ -3,7 +3,7 @@
  * @description Reads global mentor history from localStorage (FREE) or Firestore mentorSessions (PRO/ULTRA).
  */
 
-import { doc, getDoc, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { normalizeMessage } from '../normalizeMessage.js';
 
 const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
@@ -64,12 +64,32 @@ async function getLatestSessionMessages(db, userId) {
     const q = query(sessionsCol, orderBy('createdAt', 'desc'), limit(1));
     const snap = await getDocs(q);
     if (snap && !snap.empty) {
-      return snap.docs[0].data()?.messages || [];
+      const sessionData = snap.docs[0].data();
+      return sessionData?.messages || [];
     }
   } catch (err) {
     console.warn('[globalHistory] Failed to load latest mentorSession:', err);
   }
   return [];
+}
+
+/**
+ * Saves a global mentor session to Firestore with formal unified fields.
+ *
+ * @param {any} db - Firestore DB instance
+ * @param {string} userId - User UID
+ * @param {string} sessionId - Session document ID
+ * @param {object} sessionPayload - Session data (messages, title, etc.)
+ */
+export async function saveGlobalSession(db, userId, sessionId, sessionPayload = {}) {
+  if (!db || !userId || !sessionId) return;
+  const docRef = doc(db, 'users', userId, 'mentorSessions', sessionId);
+  const dataToSave = {
+    ...sessionPayload,
+    mode: sessionPayload.mode || 'global',
+    contextId: sessionPayload.contextId ?? null
+  };
+  await setDoc(docRef, dataToSave, { merge: true });
 }
 
 /**

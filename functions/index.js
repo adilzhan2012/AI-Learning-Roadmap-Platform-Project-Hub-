@@ -5,6 +5,8 @@ const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 const Sentry = require("@sentry/google-cloud-serverless");
 const { GoogleAuth } = require("google-auth-library");
 const { assembleSystemPrompt } = require("./services/promptAssembler/index.js");
+const { resolveMode } = require("./services/modeResolver/index.js");
+const { evaluatePlanLimits } = require("./services/planLimits/index.js");
 
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
@@ -112,15 +114,28 @@ const calculateLevel = (xp) => {
 };
 
 /**
- * Helper: Uniformly handles plan limit checking and atomic counter increments
- * across all usageTypes within a single Firestore transaction (runTransaction).
- * Fixes race conditions across parallel calls for all usageTypes.
+ * Unified limit checker & atomic usage counter updater within a Firestore transaction.
+ * Delegates evaluation logic to evaluatePlanLimits for consistency across all modes.
  */
-async function processUsageLimitAndCounter(db, admin, userId, usageType, todayStr, monthStr, lessonId = null) {
-  if (!usageType) return { plan: 'FREE', updatedUsageCount: 0 };
-
+async function processUsageLimitAndCounter(db, admin, userId, usageType, todayStr, monthStr, lessonId = null, userQuery = '') {
   const subRef = db.collection('users').doc(userId).collection('subscription').doc('details');
   const lessonUsageRef = lessonId ? db.collection('users').doc(userId).collection('lessonUsage').doc(String(lessonId)) : null;
+
+  let daysSinceReg = 999;
+  if (usageType === 'mentor_message') {
+    try {
+      if (admin && typeof admin.auth === 'function') {
+        const userRecord = await admin.auth().getUser(userId);
+        if (userRecord && userRecord.metadata && userRecord.metadata.creationTime) {
+          const regTime = new Date(userRecord.metadata.creationTime).getTime();
+          daysSinceReg = (Date.now() - regTime) / (1000 * 60 * 60 * 24);
+        }
+      }
+    } catch (authErr) {
+      console.warn('[aiProxy] Could not fetch user creationTime from auth, defaulting daysSinceReg=999:', authErr?.message || authErr);
+      daysSinceReg = 999;
+    }
+  }
 
   try {
     return await db.runTransaction(async (txn) => {
@@ -128,110 +143,75 @@ async function processUsageLimitAndCounter(db, admin, userId, usageType, todaySt
       const data = subSnap.exists ? subSnap.data() : {};
       const plan = data.plan || 'FREE';
 
-      const currentRoadmaps = data.roadmapsGenerated || 0;
-      const currentRoadmapsMonth = data.roadmapsMonthStart || monthStr;
-      const currentRoadmapsThisMonth = currentRoadmapsMonth === monthStr ? (data.roadmapsGeneratedThisMonth || 0) : 0;
+      let lessonMessagesUsed = 0;
+      if (lessonUsageRef) {
+        const lessonSnap = await txn.get(lessonUsageRef);
+        if (lessonSnap.exists) {
+          lessonMessagesUsed = lessonSnap.data()?.messagesUsed || 0;
+        }
+      }
 
-      const currentAiQ = data.lastQuestionDate === todayStr ? (data.aiQuestionsUsed || 0) : 0;
+      // Normalization of date-dependent usage values
       const currentMentor = data.lastMentorDate === todayStr ? (data.mentorMessagesUsed || 0) : 0;
+      const currentAiQ = data.lastQuestionDate === todayStr ? (data.aiQuestionsUsed || 0) : 0;
       const currentHwMonth = data.homeworkMonthStart || monthStr;
       const currentHwReviews = currentHwMonth === monthStr ? (data.homeworkReviewsUsed || 0) : 0;
+      const currentRoadmapsMonth = data.roadmapsMonthStart || monthStr;
+      const currentRoadmapsThisMonth = currentRoadmapsMonth === monthStr ? (data.roadmapsGeneratedThisMonth || 0) : 0;
       const currentUltraTokens = data.lastMentorDate === todayStr ? (data.ultraTokensUsed || 0) : 0;
 
-      // Handle contextual mentor per lesson for FREE plan
-      if (usageType === 'contextual_mentor_message' && lessonUsageRef) {
-        const lessonSnap = await txn.get(lessonUsageRef);
-        const lessonData = lessonSnap.exists ? lessonSnap.data() : {};
-        const lessonMessagesUsed = lessonData.messagesUsed || 0;
+      const usageSnapshot = {
+        ...data,
+        mentorMessagesUsed: currentMentor,
+        aiQuestionsUsed: currentAiQ,
+        homeworkReviewsUsed: currentHwReviews,
+        roadmapsGeneratedThisMonth: currentRoadmapsThisMonth,
+        ultraTokensUsed: currentUltraTokens
+      };
 
-        if (plan === 'FREE' && lessonMessagesUsed >= 3) {
-          throw new HttpsError('failed-precondition', 'LESSON_MENTOR_LIMIT_EXCEEDED');
-        }
+      // 1. Centralized plan limit and soft-cap evaluation
+      const evalResult = evaluatePlanLimits({
+        plan,
+        usageType,
+        usage: usageSnapshot,
+        daysSinceReg,
+        lessonMessagesUsed,
+        userQuery
+      });
 
-        txn.set(lessonUsageRef, {
-          messagesUsed: FieldValue.increment(1),
-          lastUsedAt: FieldValue.serverTimestamp()
-        }, { merge: true });
-
-        return { plan, updatedUsageCount: lessonMessagesUsed + 1, remainingLessonMessages: Math.max(0, 3 - (lessonMessagesUsed + 1)) };
+      if (!evalResult.allowed) {
+        throw new HttpsError('failed-precondition', evalResult.reason || 'PLAN_LIMIT_EXCEEDED');
       }
 
-      // Skip limit check for topic_moderation
-      if (usageType === 'topic_moderation') {
-        return { plan, updatedUsageCount: 0 };
-      }
-
-      // Check plan limits
-      if (plan === 'FREE') {
-        if (usageType === 'roadmap' && currentRoadmaps >= 1) {
-          throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
-        }
-        if (usageType === 'ai_question' && currentAiQ >= 5) {
-          throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
-        }
-        if (usageType === 'mentor_message') {
-          const userRecord = await admin.auth().getUser(userId);
-          const regTime = new Date(userRecord.metadata.creationTime).getTime();
-          const daysSinceReg = (Date.now() - regTime) / (1000 * 60 * 60 * 24);
-          const limitVal = daysSinceReg <= 7 ? 20 : 5;
-          const isOverLimit = daysSinceReg <= 7
-            ? currentMentor >= limitVal
-            : (data.lastMentorDate === todayStr && currentMentor >= limitVal);
-          if (isOverLimit) {
-            throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
-          }
-        }
-        if (usageType === 'homework_review' && currentHwReviews >= 2) {
-          throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
-        }
-      }
-
-      if (plan === 'PRO') {
-        if (usageType === 'roadmap' && currentRoadmapsThisMonth >= 2) {
-          throw new HttpsError('failed-precondition', 'PRO_ROADMAP_LIMIT_EXCEEDED');
-        }
-        if (usageType === 'homework_review' && currentHwReviews >= 30) {
-          throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
-        }
-      }
-
-      if (plan === 'ULTRA') {
-        if (usageType === 'mentor_message' && currentUltraTokens >= 300000) {
-          throw new HttpsError('failed-precondition', 'PLAN_LIMIT_EXCEEDED');
-        }
-      }
-
-      // Atomic counter updates & calculation of server usage count
-      // Note: 'roadmap' counters are NOT incremented here; they are incremented atomically via consumeRoadmapQuota on successful course creation or cache hit.
+      // 2. Atomic counter updates
       const updates = {};
-      let updatedUsageCount = 0;
 
-      // Ensure ULTRA daily tokens are reset on any request on a new day
       if (plan === 'ULTRA' && data.lastMentorDate !== todayStr) {
         updates.ultraTokensUsed = 0;
         updates.lastMentorDate = todayStr;
       }
 
-      if (usageType === 'roadmap') {
-        updatedUsageCount = currentRoadmaps;
+      if (usageType === 'contextual_mentor_message' && lessonUsageRef) {
+        txn.set(lessonUsageRef, {
+          messagesUsed: FieldValue.increment(1),
+          lastUsedAt: FieldValue.serverTimestamp()
+        }, { merge: true });
+        return {
+          plan,
+          isProSoftCapped: evalResult.isProSoftCapped,
+          model: evalResult.model,
+          updatedUsageCount: evalResult.updatedUsageCount,
+          remainingLessonMessages: Math.max(0, 3 - evalResult.updatedUsageCount)
+        };
       } else if (usageType === 'ai_question') {
-        updatedUsageCount = data.lastQuestionDate === todayStr ? currentAiQ + 1 : 1;
-        updates.aiQuestionsUsed = data.lastQuestionDate === todayStr
-          ? FieldValue.increment(1)
-          : 1;
+        updates.aiQuestionsUsed = data.lastQuestionDate === todayStr ? FieldValue.increment(1) : 1;
         updates.lastQuestionDate = todayStr;
       } else if (usageType === 'mentor_message') {
-        updatedUsageCount = data.lastMentorDate === todayStr ? currentMentor + 1 : 1;
-        updates.mentorMessagesUsed = data.lastMentorDate === todayStr
-          ? FieldValue.increment(1)
-          : 1;
+        updates.mentorMessagesUsed = data.lastMentorDate === todayStr ? FieldValue.increment(1) : 1;
         updates.lastMentorDate = todayStr;
         updates.mentorMonthStart = monthStr;
       } else if (usageType === 'homework_review') {
-        updatedUsageCount = currentHwMonth === monthStr ? currentHwReviews + 1 : 1;
-        updates.homeworkReviewsUsed = currentHwMonth === monthStr
-          ? FieldValue.increment(1)
-          : 1;
+        updates.homeworkReviewsUsed = currentHwMonth === monthStr ? FieldValue.increment(1) : 1;
         updates.homeworkMonthStart = monthStr;
       }
 
@@ -239,11 +219,16 @@ async function processUsageLimitAndCounter(db, admin, userId, usageType, todaySt
         txn.set(subRef, updates, { merge: true });
       }
 
-      return { plan, updatedUsageCount };
+      return {
+        plan,
+        isProSoftCapped: evalResult.isProSoftCapped,
+        model: evalResult.model,
+        updatedUsageCount: evalResult.updatedUsageCount
+      };
     });
   } catch (txnErr) {
     if (txnErr instanceof HttpsError) throw txnErr;
-    console.error('[aiProxy] processUsageLimitAndCounter transaction failed:', txnErr);
+    console.error('[aiProxy] processUsageLimitAndCounter transaction failed:', txnErr?.stack || txnErr);
     throw new HttpsError('internal', 'Usage limit check failed. Please try again.');
   }
 }
@@ -291,30 +276,42 @@ exports.youtubeProxy = onCall(
   }
 );
 
-// Map old Groq models to Gemini models for backwards compatibility
 function mapModelName(model) {
-  if (!model) return 'google/gemini-2.5-flash';
-  const m = model.toLowerCase();
-  if (m.startsWith('google/')) return model;
-  if (m.startsWith('gemini-')) return 'google/' + model;
-  if (m.includes('70b') || m.includes('mixtral') || m.includes('pro')) {
-    return 'google/gemini-2.5-pro';
+  if (model && (model.includes("llama-3.1-8b") || model.includes("gemini-2.5-flash") || model.includes("gemini-1.5-flash"))) {
+    return "google/gemini-2.5-flash";
   }
-  return 'google/gemini-2.5-flash';
+  return "google/gemini-2.5-pro";
 }
 
 function resolveGeminiMessages(requestData, userId, transactionResult) {
   const { prompt, messages: clientMessages, usageType, mentorContext, userQuery } = requestData || {};
-  let geminiMessages;
+  let geminiMessages = [];
   let promptAssemblySource = 'legacy';
+  let tools = undefined;
 
   if (mentorContext && typeof mentorContext === 'object') {
     try {
+      const queryText = typeof userQuery === 'string' && userQuery.trim().length > 0
+        ? userQuery
+        : (typeof prompt === 'string' ? prompt : '');
+
+      const resolved = resolveMode(
+        queryText,
+        mentorContext.mode || 'global',
+        mentorContext.contextId || null,
+        mentorContext.userProfile || null
+      );
+
       const serverMentorContext = {
         ...mentorContext,
+        mode: resolved.mode,
+        contextId: resolved.contextId,
+        lessonTitle: resolved.lessonTitle || mentorContext.lessonTitle,
+        lessonContent: resolved.lessonContent || mentorContext.lessonContent,
         userId,
         plan: transactionResult?.plan || 'FREE',
         usage: {
+          ...(mentorContext.usage || {}),
           isProSoftCapped: Boolean(transactionResult?.isProSoftCapped),
           mentorMessagesUsed: transactionResult?.updatedUsageCount || 0
         }
@@ -324,15 +321,12 @@ function resolveGeminiMessages(requestData, userId, transactionResult) {
         throw new HttpsError('permission-denied', 'HOMEWORK_MENTOR_REQUIRES_ULTRA_PLAN');
       }
 
-      const queryText = typeof userQuery === 'string' && userQuery.trim().length > 0
-        ? userQuery
-        : (typeof prompt === 'string' ? prompt : '');
-
       const assembled = assembleSystemPrompt(serverMentorContext, queryText);
       geminiMessages = assembled.messages;
+      tools = assembled.tools;
       promptAssemblySource = 'orchestrator';
 
-      console.log(`[aiProxy] Prompt assembled via ORCHESTRATOR: mode=${serverMentorContext.mode}, plan=${serverMentorContext.plan}, historyLen=${assembled.historyMessages.length}`);
+      console.log(`[aiProxy] Prompt assembled via ORCHESTRATOR: mode=${serverMentorContext.mode}, plan=${serverMentorContext.plan}, historyLen=${assembled.historyMessages.length}, toolsCount=${tools?.length || 0}`);
     } catch (asmErr) {
       if (asmErr instanceof HttpsError) {
         throw asmErr;
@@ -349,47 +343,101 @@ function resolveGeminiMessages(requestData, userId, transactionResult) {
         );
       }
     }
+  } else if (clientMessages && Array.isArray(clientMessages) && clientMessages.length > 0) {
+    geminiMessages = clientMessages;
   } else {
-    geminiMessages = clientMessages && clientMessages.length > 0
-      ? clientMessages
-      : [{ role: "user", content: prompt }];
-
+    geminiMessages = [{ role: "user", content: prompt }];
     console.log(`[aiProxy] Prompt assembled via LEGACY: usageType=${usageType || 'default'}, hasClientMessages=${Boolean(clientMessages && clientMessages.length > 0)}`);
   }
 
-  return { geminiMessages, promptAssemblySource };
+  return { geminiMessages, promptAssemblySource, tools };
 }
 
 exports.aiProxy = onCall(
   {
-    enforceAppCheck: true,
+    cors: true,
     maxInstances: 10,
     timeoutSeconds: 120,
   },
   async (request) => {
-    if (!request.auth) {
+    const auth = request.auth;
+    if (!auth || !auth.uid) {
       throw new HttpsError(
         "unauthenticated",
         "The function must be called while authenticated."
       );
     }
 
-    const { prompt, messages: clientMessages, usageType, modelName, lessonId, mentorContext, userQuery } = request.data || {};
+    const { prompt, messages: clientMessages, usageType: rawUsageType, modelName, lessonId: rawLessonId, mentorContext: rawMentorContext, userQuery } = request.data || {};
     // fix/critical-round1: поддерживаем messages[] для разделения system/user ролей, а также mentorContext для оркестратора
-    if (!prompt && (!clientMessages || !Array.isArray(clientMessages) || clientMessages.length === 0) && !mentorContext) {
+    if (!prompt && (!clientMessages || !Array.isArray(clientMessages) || clientMessages.length === 0) && !rawMentorContext) {
       throw new HttpsError(
         "invalid-argument",
         "The function must be called with either a 'prompt', 'messages', or 'mentorContext' argument."
       );
     }
 
-    const userId = request.auth.uid;
-    const todayStr = new Date().toISOString().split('T')[0];
-    const monthStr = todayStr.substring(0, 7);
+    const userId = auth.uid;
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+    const monthStr = now.toISOString().slice(0, 7);
 
-    const transactionResult = await processUsageLimitAndCounter(db, admin, userId, usageType, todayStr, monthStr, lessonId);
+    // 1. Resolve Mode & Query Text BEFORE transaction so limits are calculated for the REAL effective mode
+    const queryText = typeof userQuery === 'string' && userQuery.trim().length > 0
+      ? userQuery
+      : (typeof prompt === 'string' ? prompt : '');
 
-    const { geminiMessages } = resolveGeminiMessages(request.data, userId, transactionResult);
+    let effectiveMode = rawMentorContext?.mode || 'global';
+    let effectiveContextId = rawMentorContext?.contextId || rawLessonId || null;
+    let resolvedLessonTitle = rawMentorContext?.lessonTitle || null;
+    let resolvedLessonContent = rawMentorContext?.lessonContent || null;
+
+    if (rawMentorContext && typeof rawMentorContext === 'object') {
+      const resolved = resolveMode(
+        queryText,
+        rawMentorContext.mode || 'global',
+        rawMentorContext.contextId || null,
+        rawMentorContext.userProfile || null
+      );
+      effectiveMode = resolved.mode;
+      effectiveContextId = resolved.contextId;
+      resolvedLessonTitle = resolved.lessonTitle || rawMentorContext.lessonTitle;
+      resolvedLessonContent = resolved.lessonContent || rawMentorContext.lessonContent;
+    }
+
+    // 2. Map effective usageType and target lessonId
+    let effectiveUsageType = rawUsageType;
+    let effectiveLessonId = rawLessonId;
+    if (rawMentorContext) {
+      if (effectiveMode === 'lesson') {
+        effectiveUsageType = 'contextual_mentor_message';
+        effectiveLessonId = effectiveContextId;
+      } else if (effectiveMode === 'homework') {
+        effectiveUsageType = 'ai_chat';
+      } else {
+        effectiveUsageType = rawUsageType || 'mentor_message';
+      }
+    }
+
+    // 3. Process usage limit transaction using evaluatePlanLimits with effectiveUsageType and effectiveLessonId
+    const transactionResult = await processUsageLimitAndCounter(
+      db, admin, userId, effectiveUsageType, todayStr, monthStr, effectiveLessonId, queryText
+    );
+
+    // 4. Pass resolved data to resolveGeminiMessages
+    const resolvedMentorContext = rawMentorContext ? {
+      ...rawMentorContext,
+      mode: effectiveMode,
+      contextId: effectiveContextId,
+      lessonTitle: resolvedLessonTitle,
+      lessonContent: resolvedLessonContent
+    } : null;
+
+    const { geminiMessages, tools } = resolveGeminiMessages(
+      { ...request.data, mentorContext: resolvedMentorContext, usageType: effectiveUsageType },
+      userId,
+      transactionResult
+    );
 
     let token, projectId;
     try {
@@ -420,28 +468,31 @@ exports.aiProxy = onCall(
     const mappedRequestedModel = mapModelName(requestedModel);
     const modelsToTry = Array.from(new Set([
       mappedRequestedModel,
-      "google/gemini-2.5-flash",
-      "google/gemini-2.5-pro",
-      "google/gemini-1.5-flash",
-      "google/gemini-1.5-pro"
+      "google/gemini-2.5-flash"
     ]));
 
-    const maxRetries = 5;
+    const maxRetries = 2;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       for (const modelNameStr of modelsToTry) {
         try {
+          const requestBody = {
+            model: modelNameStr,
+            messages: geminiMessages,
+            temperature: 0.2,
+          };
+          if (Array.isArray(tools) && tools.length > 0) {
+            requestBody.tools = tools;
+          }
+
           const response = await fetch(vertexUrl, {
             method: "POST",
             headers: {
               "Authorization": `Bearer ${token}`,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-              model: modelNameStr,
-              messages: geminiMessages,
-              temperature: 0.2,
-            }),
+            body: JSON.stringify(requestBody),
+            signal: AbortSignal.timeout(25000),
           });
 
           if (!response.ok) {
@@ -450,17 +501,36 @@ exports.aiProxy = onCall(
           }
 
           const data = await response.json();
-          const assistantReply = data.choices[0].message.content;
+          const choiceMessage = data.choices?.[0]?.message;
+          const assistantReply = choiceMessage?.content || '';
+          let toolCall = null;
+
+          if (Array.isArray(choiceMessage?.tool_calls) && choiceMessage.tool_calls.length > 0) {
+            const rawTool = choiceMessage.tool_calls[0]?.function;
+            if (rawTool?.name) {
+              let args = {};
+              try {
+                args = typeof rawTool.arguments === 'string' ? JSON.parse(rawTool.arguments) : (rawTool.arguments || {});
+              } catch (e) {
+                console.warn('[aiProxy] Failed to parse tool arguments:', e);
+              }
+              toolCall = {
+                name: rawTool.name,
+                args
+              };
+            }
+          }
           
           // fix/critical-round1: счётчик использования теперь атомарно инкрементируется
           // в pre-API транзакции. Здесь остаётся только ULTRA token accounting,
           // т.к. зависит от фактической длины ответа (известна только post-API).
-          if (usageType === 'mentor_message' && transactionResult?.plan === 'ULTRA') {
+          if (effectiveUsageType === 'mentor_message' && transactionResult?.plan === 'ULTRA') {
             try {
               const subRef = db.collection('users').doc(userId).collection('subscription').doc('details');
               const msgLen = geminiMessages.reduce((acc, m) => acc + (m.content || '').length, 0);
               const promptTokens = Math.ceil(msgLen / 4);
-              const replyTokens = Math.ceil(assistantReply.length / 4);
+              const replyLen = assistantReply.length + (toolCall ? JSON.stringify(toolCall).length : 0);
+              const replyTokens = Math.ceil(replyLen / 4);
               await subRef.set({
                 ultraTokensUsed: FieldValue.increment(promptTokens + replyTokens)
               }, { merge: true });
@@ -472,7 +542,8 @@ exports.aiProxy = onCall(
 
           return { 
             result: assistantReply,
-            usageType: usageType || null,
+            toolCall,
+            usageType: effectiveUsageType || null,
             updatedUsageCount: transactionResult?.updatedUsageCount || 0
           };
         } catch (err) {
@@ -501,7 +572,8 @@ exports.aiProxy = onCall(
           }
 
           if (errMsg.includes("Invalid API Key") || errMsg.includes("401") || errMsg.includes("403") || errMsg.includes("Permission denied")) {
-            throw new HttpsError("permission-denied", `Vertex AI permissions issue: ${errMsg}`);
+            console.error('[aiProxy] Vertex AI authentication issue:', errMsg);
+            throw new HttpsError("permission-denied", "Vertex AI authentication failed.");
           }
           
           break;
@@ -527,13 +599,16 @@ exports.aiProxy = onCall(
     }
 
     Sentry.captureException(lastError);
-    throw new HttpsError("internal", `Vertex AI Gemini API error: ${finalErrMsg}`);
+    console.error('[aiProxy] Vertex AI Gemini API error:', finalErrMsg);
+    throw new HttpsError("internal", "Failed to generate AI response. Please try again.");
   }
 );
 
 exports.calculateLevel = calculateLevel;
 exports.processUsageLimitAndCounter = processUsageLimitAndCounter;
 exports.resolveGeminiMessages = resolveGeminiMessages;
+exports.resolveMode = resolveMode;
+exports.evaluatePlanLimits = evaluatePlanLimits;
 
 // ----------------------------------------------------
 // Secure awardXP Cloud Function (Transaction Enabled)
