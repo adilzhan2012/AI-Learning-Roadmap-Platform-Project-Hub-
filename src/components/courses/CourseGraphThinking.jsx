@@ -1,18 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Sparkles, Brain, Check, Lock, Loader2, ArrowDown } from "lucide-react";
+import { useLocale } from "../../i18n.js";
 
 /**
  * CourseGraphThinking
  * -------------------------------------------------------------
  * Premium AI Neural Network animation during course graph generation.
  * Full-width & full-height canvas on the /graph page.
- *
- * Flow:
- *  1. prompt      — User topic prompt at top origin (Y=70)
- *  2. branching   — 9 thin, sleek organic neural threads branch outwards with node dots & labels anchored at nodes
- *  3. converging  — All 9 neural threads converge into ONE central glowing orb at Y=320
- *  4. cards       — Laser Y-axis line extends downwards, cards materialize 1-by-1 with auto-scrolling (supports 4 to 15+ cards)
- *  5. done        — Completed state, seamless transition to interactive vis-network graph
  */
 
 const VB_W = 900;
@@ -34,7 +28,7 @@ const CARD_STAGGER = 320;
 const BRANCH_MS = (THREAD_COUNT - 1) * THREAD_STAGGER + 2 * SEG_DUR + BRANCH_HOLD;
 const CONVERGE_MS = MERGE_DUR + SPINE_DUR + CONVERGE_HOLD;
 
-const STATUS = {
+const STATUS_RU = {
   prompt: "Инициализация нейросети и анализ запроса…",
   branching: "Выстраивание логических связей и цепочек тем…",
   converging: "Сведение мыслей в единое ядро знаний…",
@@ -42,17 +36,33 @@ const STATUS = {
   done: "Граф курса успешно сформирован!",
 };
 
+const STATUS_EN = {
+  prompt: "Initializing neural network & analyzing request...",
+  branching: "Building logical pathways and topic chains...",
+  converging: "Synthesizing thoughts into core knowledge graph...",
+  cards: "Generating learning modules and checkpoints...",
+  done: "Course graph generated successfully!",
+};
+
 const THREAD_COLORS = [
   "#38BDF8", "#818CF8", "#C084FC", "#4ADE80", 
   "#F43F5E", "#FBBF24", "#60A5FA", "#A78BFA", "#34D399"
 ];
 
-const BASE_THOUGHT_POOL = [
+const BASE_THOUGHT_POOL_RU = [
   "Уровень сложности", "Анализ синтаксиса", "Базовые понятия", 
   "Простое → сложное", "Примеры и теория", "Логика программы", 
   "Практика на коде", "Модули курса", "Интервалы повторений", 
   "Тестирование знаний", "Реальный проект", "Фреймворки и стек", 
   "Паттерны проектирования", "Оптимизация кода", "Итоговый экзамен"
+];
+
+const BASE_THOUGHT_POOL_EN = [
+  "Difficulty Level", "Syntax Analysis", "Core Concepts", 
+  "Simple → Advanced", "Examples & Theory", "Logic & Architecture", 
+  "Hands-on Coding", "Course Modules", "Spaced Repetition", 
+  "Quiz & Assessment", "Real-world Project", "Frameworks & Stack", 
+  "Design Patterns", "Code Optimization", "Final Exam"
 ];
 
 function seededRandom(seed) {
@@ -72,15 +82,16 @@ function shuffled(arr, rnd) {
   return a;
 }
 
-function buildThoughtPool(topic) {
-  if (!topic) return BASE_THOUGHT_POOL;
+function buildThoughtPool(topic, locale = 'ru') {
+  const basePool = locale === 'en' ? BASE_THOUGHT_POOL_EN : BASE_THOUGHT_POOL_RU;
+  if (!topic) return basePool;
   const words = topic
     .replace(/[^\w\u0400-\u04FF\s]/gi, '')
     .split(/\s+/)
     .filter((w) => w.length > 3);
   
   const topicThoughts = words.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-  return [...new Set([...topicThoughts, ...BASE_THOUGHT_POOL])];
+  return [...new Set([...topicThoughts, ...basePool])];
 }
 
 function buildNeuralThreads(seed, thoughtPool) {
@@ -107,8 +118,8 @@ function buildNeuralThreads(seed, thoughtPool) {
   return threads;
 }
 
-function generateFallbackModules(topic, level, preferences) {
-  const clean = topic ? topic.replace(/^(курс|курс по)\s+/i, '').trim() : "Темы";
+function generateFallbackModules(topic, level, preferences, locale = 'ru') {
+  const clean = topic ? topic.replace(/^(курс|курс по|course on|course)\s+/i, '').trim() : (locale === 'en' ? "Topics" : "Темы");
   const cap = clean.charAt(0).toUpperCase() + clean.slice(1);
   const dur = preferences?.duration || 'Standard';
 
@@ -117,7 +128,7 @@ function generateFallbackModules(topic, level, preferences) {
   else if (dur === 'Deep Dive' || dur === 'Masterclass') count = 12;
   else count = 8;
 
-  const list = [
+  const listRu = [
     `1. Введение и базовый контекст ${cap}`,
     `2. Фундаментальные понятия и синтаксис`,
     `3. Архитектура и структуры данных ${cap}`,
@@ -132,6 +143,24 @@ function generateFallbackModules(topic, level, preferences) {
     `12. Итоговый проект и сертификация`,
     `13. Тестирование и ревью кода`,
   ];
+
+  const listEn = [
+    `1. Introduction & Core Concepts of ${cap}`,
+    `2. Fundamental Principles and Syntax`,
+    `3. Architecture and Data Structures of ${cap}`,
+    `4. Error Handling and Debugging`,
+    `5. Practical Hands-on Workshop`,
+    `6. Milestone Project: Real-World Build`,
+    `7. Performance & Optimization`,
+    `8. Advanced Patterns & Techniques`,
+    `9. Security and Scalability`,
+    `10. Integrations & External APIs`,
+    `11. Production Readiness & Workflow`,
+    `12. Final Capstone Project & Certification`,
+    `13. Testing and Code Review`,
+  ];
+
+  const list = locale === 'en' ? listEn : listRu;
   return list.slice(0, count);
 }
 
@@ -145,7 +174,9 @@ export default function CourseGraphThinking({
   showReplay = false,
   isLightTheme = false,
 }) {
+  const locale = useLocale();
   const isLight = isLightTheme || (typeof document !== 'undefined' && document.documentElement.classList.contains('light'));
+  const statusDict = locale === 'en' ? STATUS_EN : STATUS_RU;
 
   const [phase, setPhase] = useState("prompt");
   const [cycle, setCycle] = useState(0);
@@ -153,15 +184,15 @@ export default function CourseGraphThinking({
   const cardsContainerRef = useRef(null);
   const activeCardRef = useRef(null);
 
-  const thoughtPool = useMemo(() => buildThoughtPool(topic), [topic]);
+  const thoughtPool = useMemo(() => buildThoughtPool(topic, locale), [topic, locale]);
   const threads = useMemo(() => buildNeuralThreads(cycle * 97 + 13, thoughtPool), [cycle, thoughtPool]);
 
   // Dynamic course nodes: uses exact AI nodes when available, or fallback preview list matching exact target mode
   const courseNodes = useMemo(() => {
     if (Array.isArray(nodes) && nodes.length > 0) {
       return nodes.map((n, i) => {
-        const title = n.label || n.title || `Модуль ${i + 1}`;
-        const isCheckpoint = title.toLowerCase().includes('checkpoint') || title.toLowerCase().includes('проект');
+        const title = n.label || n.title || (locale === 'en' ? `Module ${i + 1}` : `Модуль ${i + 1}`);
+        const isCheckpoint = title.toLowerCase().includes('checkpoint') || title.toLowerCase().includes('project') || title.toLowerCase().includes('проект');
         return {
           id: n.id || `node-${i}`,
           title: title,
@@ -171,9 +202,9 @@ export default function CourseGraphThinking({
         };
       });
     }
-    const fallbacks = generateFallbackModules(topic, level, preferences);
+    const fallbacks = generateFallbackModules(topic, level, preferences, locale);
     return fallbacks.map((t, i) => {
-      const isCheckpoint = t.toLowerCase().includes('проект') || i === fallbacks.length - 1;
+      const isCheckpoint = t.toLowerCase().includes('project') || t.toLowerCase().includes('проект') || i === fallbacks.length - 1;
       return {
         id: `fallback-${i}`,
         title: t,
@@ -182,14 +213,18 @@ export default function CourseGraphThinking({
         isLocked: i > 0,
       };
     });
-  }, [nodes, topic, level, preferences]);
+  }, [nodes, topic, level, preferences, locale]);
 
   const promptText = useMemo(() => {
-    if (!topic) return "✨ «Индивидуальный курс обучения»";
+    if (!topic) return locale === 'en' ? "✨ \"Personalized Learning Path\"" : "✨ «Индивидуальный курс обучения»";
     const clean = topic.trim();
+    if (locale === 'en') {
+      if (clean.toLowerCase().startsWith("course")) return `✨ "${clean}"`;
+      return `✨ "Course on ${clean}"`;
+    }
     if (clean.toLowerCase().startsWith("курс")) return `✨ «${clean}»`;
     return `✨ «Курс по ${clean}»`;
-  }, [topic]);
+  }, [topic, locale]);
 
   const calcHeight = Math.max(1050, DEST_Y + 120 + courseNodes.length * 95);
 
@@ -477,11 +512,11 @@ export default function CourseGraphThinking({
                     {node.active ? (
                       <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${isCheckpoint ? 'bg-amber-400/20 text-amber-300 border-amber-400/40' : 'bg-black/10 text-black border-black/30'}`}>
                         <Sparkles className="w-3 h-3 fill-current" />
-                        Старт
+                        {locale === 'en' ? 'Start' : 'Старт'}
                       </span>
                     ) : isCheckpoint ? (
                       <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-amber-400 bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 rounded-full">
-                        ★ Проект
+                        ★ {locale === 'en' ? 'Project' : 'Проект'}
                       </span>
                     ) : (
                       <div className="p-1 rounded-md bg-black/10 text-black">
@@ -503,13 +538,15 @@ export default function CourseGraphThinking({
         <div className="flex items-center gap-3">
           <div className={`w-3 h-3 rounded-full ${phase !== 'done' || isGenerating ? 'bg-blue-500 animate-ping' : 'bg-emerald-500'}`} />
           <span className={`text-xs sm:text-sm font-bold ${isLight ? 'text-zinc-900' : 'text-slate-200'} font-clash tracking-wide`}>
-            {isGenerating && phase === 'done' ? 'ИИ завершает формирование модулей…' : STATUS[phase]}
+            {isGenerating && phase === 'done' 
+              ? (locale === 'en' ? 'AI is finalizing course modules…' : 'ИИ завершает формирование модулей…') 
+              : statusDict[phase]}
           </span>
         </div>
 
         {phase === "branching" && (
           <div className="text-xs font-semibold text-sky-500 bg-sky-500/10 border border-sky-500/20 px-3 py-1 rounded-full">
-            Нейросеть: поток {Math.min(chainStep, THREAD_COUNT)} / {THREAD_COUNT}
+            {locale === 'en' ? `Neural thread: ${Math.min(chainStep, THREAD_COUNT)} / ${THREAD_COUNT}` : `Нейросеть: поток ${Math.min(chainStep, THREAD_COUNT)} / ${THREAD_COUNT}`}
           </div>
         )}
 
@@ -520,7 +557,7 @@ export default function CourseGraphThinking({
             ) : (
               <Check className="w-3.5 h-3.5 text-emerald-500" />
             )}
-            <span>{isGenerating ? 'Сохранение курса…' : 'Переходим к графу…'}</span>
+            <span>{isGenerating ? (locale === 'en' ? 'Saving course…' : 'Сохранение курса…') : (locale === 'en' ? 'Opening graph…' : 'Переходим к графу…')}</span>
           </div>
         )}
       </div>

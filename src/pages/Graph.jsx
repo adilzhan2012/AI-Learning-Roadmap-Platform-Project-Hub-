@@ -9,7 +9,7 @@ import { auth, db } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { getUserCourses, callGeminiWithRetry, requestCourseCertificate, getCourseCertificate, generateCourseAndSave, getCourseById } from '../services/courseService.js';
-import { t } from '../i18n.js';
+import { t, useLocale } from '../i18n.js';
 import LessonPanel from '../components/lessons/LessonPanel.jsx';
 import MasteryBlock from '../components/shared/MasteryBlock.jsx';
 import { calculateMastery } from '../hooks/useMastery.js';
@@ -315,6 +315,7 @@ const CourseSelectorDropdown = ({ courses, selectedCourse, onSelectCourse, isLig
 export default function Graph() {
   const navigate = useNavigate();
   const location = useLocation();
+  const locale = useLocale();
   const { plan, incrementUsage } = usePlanLimits();
   const { userLevelData, addXP } = useXP();
   
@@ -398,7 +399,6 @@ export default function Graph() {
     runGeneration();
     return () => { 
       isMounted = false; 
-      hasTriggeredGenRef.current = false;
     };
   }, [generatingCourseState]);
 
@@ -450,6 +450,51 @@ export default function Graph() {
   const [quizResults, setQuizResults] = useState({});
   const [isStudying, setIsStudying] = useState(false);
   const [isZenMode, setIsZenMode] = useState(false);
+
+  const handleToggleZenMode = () => {
+    const nextState = !isZenMode;
+    setIsZenMode(nextState);
+
+    const topbar = document.getElementById('topbar-container');
+    if (topbar) {
+      topbar.style.display = nextState ? 'none' : '';
+    }
+
+    if (nextState) {
+      document.documentElement.classList.add('zen-fullscreen');
+      document.body.classList.add('zen-fullscreen');
+      if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+    } else {
+      document.documentElement.classList.remove('zen-fullscreen');
+      document.body.classList.remove('zen-fullscreen');
+      if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isDocFullscreen = Boolean(document.fullscreenElement);
+      if (!isDocFullscreen && isZenMode) {
+        setIsZenMode(false);
+        document.documentElement.classList.remove('zen-fullscreen');
+        document.body.classList.remove('zen-fullscreen');
+        const topbar = document.getElementById('topbar-container');
+        if (topbar) topbar.style.display = '';
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.documentElement.classList.remove('zen-fullscreen');
+      document.body.classList.remove('zen-fullscreen');
+      const topbar = document.getElementById('topbar-container');
+      if (topbar) topbar.style.display = '';
+    };
+  }, [isZenMode]);
   const [quizRefreshTrigger, setQuizRefreshTrigger] = useState(0);
   const [isLightTheme, setIsLightTheme] = useState(document.documentElement.classList.contains('light'));
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
@@ -1020,7 +1065,7 @@ Respond in Russian. Keep your reply concise and professional.`;
           {selectedCourse && (
             <div className="flex items-center gap-3 flex-1 max-w-md w-full">
               <span className={`text-[10px] font-bold uppercase tracking-wider hidden sm:block ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>
-                Прогресс {courseProgressPct}%
+                {locale === 'en' ? 'Progress' : 'Прогресс'} {courseProgressPct}%
               </span>
               <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${isLightTheme ? 'bg-zinc-200' : 'bg-zinc-800'}`}>
                 <div 
@@ -1034,11 +1079,11 @@ Respond in Russian. Keep your reply concise and professional.`;
                 certLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
                 ) : certData ? (
-                   <a href={certData.fileUrl || `#/verify/${certData.certId}`} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 rounded-lg transition-colors" title="Сертификат">
+                   <a href={certData.fileUrl || `#/verify/${certData.certId}`} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 rounded-lg transition-colors" title={locale === 'en' ? 'Certificate' : 'Сертификат'}>
                      <Award className="w-4 h-4" />
                    </a>
                 ) : (
-                  <button onClick={handleGetCertificate} className="p-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-lg transition-colors" title="Получить сертификат">
+                  <button onClick={handleGetCertificate} className="p-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-lg transition-colors" title={locale === 'en' ? 'Get Certificate' : 'Получить сертификат'}>
                     <Award className="w-4 h-4" />
                   </button>
                 )
@@ -1051,9 +1096,9 @@ Respond in Russian. Keep your reply concise and professional.`;
           {/* Legend Inline */}
           <div className="flex items-center gap-2 mr-2">
             {[
-              { bgClass: 'bg-[#ffe100] border-black', label: 'Темы' },
-              { bgClass: 'bg-[#1a1a1a] border-zinc-700', label: 'Практика' },
-              { bgClass: isLightTheme ? 'bg-[#f4f4f5] border-zinc-300' : 'bg-[#27272a] border-zinc-800', label: 'Блок' }
+              { bgClass: 'bg-[#ffe100] border-black', label: locale === 'en' ? 'Topics' : 'Темы' },
+              { bgClass: 'bg-[#1a1a1a] border-zinc-700', label: locale === 'en' ? 'Practice' : 'Практика' },
+              { bgClass: isLightTheme ? 'bg-[#f4f4f5] border-zinc-300' : 'bg-[#27272a] border-zinc-800', label: locale === 'en' ? 'Locked' : 'Блок' }
             ].map(({ bgClass, label }) => (
               <div key={label} className="flex items-center gap-1" title={label}>
                 <div className={`w-2.5 h-2.5 rounded-sm border ${bgClass}`} />
@@ -1074,7 +1119,7 @@ Respond in Russian. Keep your reply concise and professional.`;
             }`}
           >
             <Clock className="w-3.5 h-3.5 text-violet-400" />
-            <span className="hidden sm:inline">История</span>
+            <span className="hidden sm:inline">{locale === 'en' ? 'History' : 'История'}</span>
           </button>
         </div>
       </div>
@@ -1326,7 +1371,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                   
                   {/* Description */}
                   <p className={`text-xs mt-2 leading-relaxed line-clamp-4 ${isLightTheme ? 'text-zinc-600' : 'text-zinc-400'}`}>
-                    {t(selectedNode.desc || selectedNode.description) || 'Нажми «Начать урок» чтобы сгенерировать материал'}
+                    {t(selectedNode.desc || selectedNode.description) || (locale === 'en' ? 'Click "Start Lesson" to generate material' : 'Нажми «Начать урок» чтобы сгенерировать материал')}
                   </p>
                 </div>
 
@@ -1335,11 +1380,11 @@ Respond in Russian. Keep your reply concise and professional.`;
                   {/* Meta stats */}
                   <div className="flex gap-2">
                     <div className={`flex-1 border rounded-[12px] p-2.5 ${isLightTheme ? 'bg-white shadow-sm border-zinc-200' : 'bg-zinc-950/40 border-white/5'}`}>
-                      <p className={`text-[10px] mb-0.5 font-sans ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>⏱ Время</p>
-                      <p className={`text-xs font-bold font-mono ${isLightTheme ? 'text-zinc-900' : 'text-zinc-100'}`}>~{selectedNode.hours || selectedNode.estimatedTime || '2'} ч</p>
+                      <p className={`text-[10px] mb-0.5 font-sans ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>⏱ {locale === 'en' ? 'Time' : 'Время'}</p>
+                      <p className={`text-xs font-bold font-mono ${isLightTheme ? 'text-zinc-900' : 'text-zinc-100'}`}>~{selectedNode.hours || selectedNode.estimatedTime || '2'} {locale === 'en' ? 'h' : 'ч'}</p>
                     </div>
                     <div className={`flex-1 border rounded-[12px] p-2.5 ${isLightTheme ? 'bg-white shadow-sm border-zinc-200' : 'bg-zinc-950/40 border-white/5'}`}>
-                      <p className={`text-[10px] mb-0.5 font-sans ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>📄 Уроков</p>
+                      <p className={`text-[10px] mb-0.5 font-sans ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>📄 {locale === 'en' ? 'Lessons' : 'Уроков'}</p>
                       <p className={`text-xs font-bold font-mono ${isLightTheme ? 'text-zinc-900' : 'text-zinc-100'}`}>{selectedNode.lessons || selectedNode.lessonsCount || '1'}</p>
                     </div>
                   </div>
@@ -1363,7 +1408,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                   {/* Prerequisites */}
                   {selectedCourse && selectedCourse.edges.filter(e => String(e.to) === String(selectedNode.id)).length > 0 && (
                     <div>
-                      <p className={`text-[10px] mb-1.5 font-sans font-semibold ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>Требует завершить</p>
+                      <p className={`text-[10px] mb-1.5 font-sans font-semibold ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>{locale === 'en' ? 'Prerequisites' : 'Требует завершить'}</p>
                       {selectedCourse.edges.filter(e => String(e.to) === String(selectedNode.id)).map(e => {
                         const preId = e.from;
                         const preNode = selectedCourse.nodes.find(n => String(n.id) === String(preId));
@@ -1385,7 +1430,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                   {/* Opens items */}
                   {selectedCourse && selectedCourse.edges.filter(e => String(e.from) === String(selectedNode.id)).length > 0 && (
                     <div>
-                      <p className={`text-[10px] mb-1.5 font-sans font-semibold ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>Открывает доступ к</p>
+                      <p className={`text-[10px] mb-1.5 font-sans font-semibold ${isLightTheme ? 'text-zinc-500' : 'text-zinc-400'}`}>{locale === 'en' ? 'Unlocks access to' : 'Открывает доступ к'}</p>
                       {selectedCourse.edges.filter(e => String(e.from) === String(selectedNode.id)).map(e => {
                         const nextId = e.to;
                         const nextNode = selectedCourse.nodes.find(n => String(n.id) === String(nextId));
@@ -1407,7 +1452,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                   <button
                     onClick={() => setIsStudying(true)}
                     disabled={selectedNode.status === 'locked'}
-                    className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-[12px] text-xs font-bold transition-all transform active:scale-95 duration-150 font-sans ${
+                    className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-[12px] text-xs font-bold transition-all transform active:scale-95 duration-150 font-sans cursor-pointer ${
                       selectedNode.status === 'locked'
                         ? (isLightTheme ? 'bg-zinc-100 border border-zinc-300 text-zinc-500 cursor-not-allowed shadow-sm' : 'bg-zinc-800/40 border border-white/5 text-zinc-500 cursor-not-allowed')
                         : selectedNode.status === 'completed'
@@ -1416,11 +1461,10 @@ Respond in Russian. Keep your reply concise and professional.`;
                     }`}
                   >
                     {selectedNode.status === 'locked' && <Lock className="w-3.5 h-3.5" />}
-                    {selectedNode.status === 'locked' && 'Заблокировано'}
-                    {selectedNode.status !== 'locked' && selectedNode.status === 'completed' && 'Повторить урок'}
-                    {selectedNode.status !== 'locked' && selectedNode.status !== 'completed' && 'Начать урок'}
+                    {selectedNode.status === 'locked' && (locale === 'en' ? 'Locked' : 'Заблокировано')}
+                    {selectedNode.status !== 'locked' && selectedNode.status === 'completed' && (locale === 'en' ? 'Review Lesson' : 'Повторить урок')}
+                    {selectedNode.status !== 'locked' && selectedNode.status !== 'completed' && (locale === 'en' ? 'Start Lesson' : 'Начать урок')}
                   </button>
-
                 </div>
               </motion.div>
             ) : (
@@ -1432,9 +1476,7 @@ Respond in Russian. Keep your reply concise and professional.`;
                 <div className={`w-16 h-16 border rounded-[16px] flex items-center justify-center mb-6 ${isLightTheme ? 'bg-zinc-100 border-zinc-200' : 'bg-zinc-950/40 border-white/5'}`}>
                   <Pointer className="w-6 h-6 opacity-40" strokeWidth={1.5} />
                 </div>
-                <p className="text-sm font-semibold">{t('graph.details.placeholder') || 'Выберите тему на карте, чтобы увидеть детали'}</p>
-                
-
+                <p className="text-sm font-semibold">{t('graph.details.placeholder') || (locale === 'en' ? 'Select a topic on the map to view details' : 'Выберите тему на карте, чтобы увидеть детали')}</p>
 
                 {/* AI Mock Interview (ULTRA feature) */}
                 {plan === 'ULTRA' && (
@@ -1450,15 +1492,17 @@ Respond in Russian. Keep your reply concise and professional.`;
                       <span className={`text-[8px] px-1.5 py-0.5 rounded font-black tracking-wide leading-none ${isLightTheme ? 'bg-purple-600 text-white' : 'bg-purple-500 text-white'}`}>ULTRA</span>
                     </div>
                     <p className={`text-[10px] leading-normal ${isLightTheme ? 'text-zinc-600' : 'text-zinc-300'}`}>
-                      Готовы к собеседованию? Пройдите симуляцию технического или HR интервью по теме "{selectedCourse?.title}".
+                      {locale === 'en'
+                        ? `Ready for an interview? Take a simulated technical or HR mock interview on "${selectedCourse?.title}".`
+                        : `Готовы к собеседованию? Пройдите симуляцию технического или HR интервью по теме "${selectedCourse?.title}".`}
                     </p>
                     <button
                       onClick={() => {
                         setMockInterviewOpen(true);
                       }}
-                      className="w-full py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-[10px] font-bold rounded-[8px] transition-all flex items-center justify-center gap-1 shadow-[0_4px_12px_rgba(139,92,246,0.2)]"
+                      className="w-full py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-[10px] font-bold rounded-[8px] transition-all flex items-center justify-center gap-1 shadow-[0_4px_12px_rgba(139,92,246,0.2)] cursor-pointer"
                     >
-                      Запустить собеседование
+                      {locale === 'en' ? 'Start Mock Interview' : 'Запустить собеседование'}
                     </button>
                   </div>
                 )}
@@ -1643,14 +1687,28 @@ Respond in Russian. Keep your reply concise and professional.`;
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="absolute inset-0 z-50 bg-background flex flex-col transition-all duration-500 ease-in-out"
+            className={`bg-background flex flex-col transition-all duration-300 ease-in-out ${
+              isZenMode ? 'fixed inset-0 z-[99999] w-full h-full overflow-hidden' : 'absolute inset-0 z-50'
+            }`}
           >
             <LessonPanel 
               selectedCourse={selectedCourse}
               selectedNode={selectedNode}
-              onClose={() => setIsStudying(false)}
+              onClose={() => {
+                setIsStudying(false);
+                if (isZenMode) {
+                  setIsZenMode(false);
+                  document.documentElement.classList.remove('zen-fullscreen');
+                  document.body.classList.remove('zen-fullscreen');
+                  const topbar = document.getElementById('topbar-container');
+                  if (topbar) topbar.style.display = '';
+                  if (document.fullscreenElement && document.exitFullscreen) {
+                    document.exitFullscreen().catch(() => {});
+                  }
+                }
+              }}
               isZenMode={isZenMode}
-              toggleZenMode={() => setIsZenMode(!isZenMode)}
+              toggleZenMode={handleToggleZenMode}
               isGroupChatOpen={isGroupPanelOpen}
               onQuizComplete={() => setQuizRefreshTrigger(prev => prev + 1)}
               onNodeUpdated={(updatedNode, updatedCourse) => {

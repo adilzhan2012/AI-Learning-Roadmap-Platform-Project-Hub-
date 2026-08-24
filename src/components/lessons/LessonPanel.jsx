@@ -33,10 +33,15 @@ import ContextualMentor from './ContextualMentor.jsx';
 import HomeworkSection from './HomeworkSection.jsx';
 import { markdownToSlides } from '../../services/courseService.js';
 import SlideViewer from './SlideViewer.jsx';
-import DynamicImage from './DynamicImage.jsx';
 import SelectionPopover from '../shared/SelectionPopover.jsx';
 import { useTextSelection } from '../../hooks/useTextSelection.js';
 import MotivationalWidget from '../shared/MotivationalWidget.jsx';
+import { extractFlashcardsFromMarkdown } from '../../services/ai/lessonSchema.js';
+import LessonToolsDropdown from './modals/LessonToolsDropdown.jsx';
+import ExportLessonModal from './modals/ExportLessonModal.jsx';
+import FlashcardsModal from './modals/FlashcardsModal.jsx';
+import InsightModal from './modals/InsightModal.jsx';
+import ELI5Modal from './modals/ELI5Modal.jsx';
 
 const isLessonContentValid = (c) => {
   if (!c || typeof c !== 'string') return false;
@@ -96,8 +101,10 @@ export default function LessonPanel({
   const [practiceAssignment, setPracticeAssignment] = useState('');
   const [reviewingCode, setReviewingCode] = useState(false);
   const [codeReviewResult, setCodeReviewResult] = useState('');
-  const [generatingAssignment, setGeneratingAssignment] = useState(false);
-  const [showPractice, setShowPractice] = useState(false);
+  const [isExportModalOpen, setExportModalOpen] = useState(false);
+  const [isFlashcardsModalOpen, setFlashcardsModalOpen] = useState(false);
+  const [isInsightModalOpen, setInsightModalOpen] = useState(false);
+  const [isELI5ModalOpen, setELI5ModalOpen] = useState(false);
   const [isUpgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [isMentorOpen, setIsMentorOpen] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -167,6 +174,19 @@ export default function LessonPanel({
       scheduleNextLessonPrefetch(selectedCourse, selectedNode.id);
     }
   }, [selectedCourse, selectedNode]);
+
+  // Background pre-fetch for Real-World Insight so "Зачем мне это?" is ready instantly
+  useEffect(() => {
+    const existing = selectedNode?.insight || selectedNode?.lessonData?.realWorldApplication || selectedNode?.lessonData?.insight;
+    if (existing) {
+      setInsight(existing);
+    } else if (selectedNode && (selectedNode.content || selectedNode.lessonData)) {
+      const timer = setTimeout(() => {
+        handleRealWorldInsight(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedNode?.id, selectedNode?.content]);
 
   const handleOpenQuiz = async (forceFresh = false, customFailedConcepts = null) => {
     if (!selectedNode?.content) return;
@@ -385,24 +405,15 @@ Provide a code boilerplate template at the end.`;
     document.body.removeChild(link);
   };
 
-  const handleELI5Toggle = async () => {
-    if (!selectedNode?.content) return;
-    if (isELI5) {
-      setIsELI5(false);
-      return;
-    }
-    if (selectedNode.eli5Content) {
-      setIsELI5(true);
-      return;
-    }
+  const handleGenerateELI5 = async () => {
+    if (!displayContent) return;
     setEli5Generating(true);
     try {
       const rawNodeId = selectedNode.rawNodeId || selectedNode.id;
       const courseLang = selectedCourse?.language || 'ru';
-      const simplified = await generateELI5Content(selectedNode.content, selectedCourse?.courseTemplateId, rawNodeId, courseLang);
+      const simplified = await generateELI5Content(displayContent, selectedCourse?.courseTemplateId, rawNodeId, courseLang);
       const updatedNode = { ...selectedNode, eli5Content: simplified };
       onNodeUpdated(updatedNode);
-      setIsELI5(true);
       await updateNodeFields(selectedCourse.id, selectedNode.id, { eli5Content: simplified });
     } catch (e) {
       console.error(e);
@@ -412,25 +423,30 @@ Provide a code boilerplate template at the end.`;
     }
   };
 
-  const handleRealWorldInsight = async () => {
-    if (!selectedNode?.content) return;
-    if (selectedNode.insight) {
-      setInsight(selectedNode.insight);
+  const handleRealWorldInsight = async (silent = false) => {
+    const existing = selectedNode?.insight || selectedNode?.lessonData?.realWorldApplication || selectedNode?.lessonData?.insight;
+    if (existing) {
+      setInsight(existing);
       return;
     }
-    setInsightGenerating(true);
+    if (!displayContent && !selectedNode?.desc && !selectedNode?.label) return;
+    if (!silent) setInsightGenerating(true);
     try {
       const courseLang = selectedCourse?.language || 'ru';
       const generatedInsight = await generateRealWorldExample(selectedNode.label, selectedNode.desc, courseLang);
-      const updatedNode = { ...selectedNode, insight: generatedInsight };
-      onNodeUpdated(updatedNode);
-      setInsight(generatedInsight);
-      await updateNodeFields(selectedCourse.id, selectedNode.id, { insight: generatedInsight });
+      if (generatedInsight) {
+        const updatedNode = { ...selectedNode, insight: generatedInsight };
+        onNodeUpdated(updatedNode);
+        setInsight(generatedInsight);
+        await updateNodeFields(selectedCourse.id, selectedNode.id, { insight: generatedInsight });
+      }
     } catch (e) {
-      console.error(e);
-      setGenError(selectedCourse?.language === 'en' ? 'Failed to generate real-world example.' : 'Не удалось сгенерировать пример.');
+      console.error("Failed to generate real-world example:", e);
+      if (!silent) {
+        setGenError(selectedCourse?.language === 'en' ? 'Failed to generate real-world example.' : 'Не удалось сгенерировать пример.');
+      }
     } finally {
-      setInsightGenerating(false);
+      if (!silent) setInsightGenerating(false);
     }
   };
 
@@ -463,23 +479,17 @@ Provide a code boilerplate template at the end.`;
       displayContent += `\n\n\`\`\`mermaid\n${mermaidDiagram}\n\`\`\``;
     }
   }
-  const flashcards = [];
+
+  let flashcards = [];
   if (selectedNode.lessonData && Array.isArray(selectedNode.lessonData.flashcards) && selectedNode.lessonData.flashcards.length > 0) {
     selectedNode.lessonData.flashcards.forEach(fc => {
       if (fc.term && fc.definition) {
         flashcards.push({ term: fc.term, definition: fc.definition });
       }
     });
-  } else {
-    const flashcardRegex = /---FLASHCARD---\s*(?:Term|Термин)\s*:\s*(.*?)\s*(?:Def|Definition|Определение|Объяснение)\s*:\s*(.*?)(?=\s*---FLASHCARD---|\s*---|\s*##|\s*$)/gi;
-    let match;
-    while ((match = flashcardRegex.exec(displayContent)) !== null) {
-      const term = match[1].replace(/---+$/, '').trim();
-      const definition = match[2].replace(/---+$/, '').trim();
-      if (term && definition) {
-        flashcards.push({ term, definition });
-      }
-    }
+  }
+  if (flashcards.length === 0) {
+    flashcards = extractFlashcardsFromMarkdown(displayContent, selectedNode.label || selectedNode.title, courseLanguage || locale);
   }
 
   // Parse Images
@@ -512,7 +522,7 @@ Provide a code boilerplate template at the end.`;
 
   return (
     <div className="flex w-full h-full bg-background overflow-hidden">
-      <div className="flex-1 border-l border-white/10 shadow-2xl flex flex-col relative h-full text-zinc-300 min-w-0 min-h-0 overflow-hidden">
+      <div className={`flex-1 ${isZenMode ? 'border-none' : 'border-l border-white/10 shadow-2xl'} flex flex-col relative h-full text-zinc-300 min-w-0 min-h-0 overflow-hidden`}>
         {/* Header */}
       <div className="flex items-center justify-between p-4 md:p-6 border-b border-white/10 bg-background flex-shrink-0">
         <div>
@@ -522,70 +532,24 @@ Provide a code boilerplate template at the end.`;
           <h2 className="text-xl md:text-2xl font-bold text-zinc-900 dark:text-zinc-100 line-clamp-1">{t(selectedNode.label)}</h2>
         </div>
         <div className="flex items-center gap-2">
-          {selectedNode.content && (
-            <>
-              {/* Notion/Anki Export */}
-              {plan === 'ULTRA' && (
-                <div className="relative group flex-shrink-0">
-                  <button 
-                    className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-indigo-500/10 text-indigo-400 border border-indigo-500/25 rounded-full transition-colors font-medium text-sm"
-                    title={locale === 'en' ? "Export lesson" : "Экспорт урока"}
-                  >
-                    <span>{locale === 'en' ? "📥 Export" : "📥 Экспорт"}</span>
-                  </button>
-                  <div className="absolute right-0 mt-2 w-48 bg-surface border border-white/10 rounded-xl py-1.5 shadow-xl hidden group-hover:block z-50 text-left">
-                    <button 
-                      onClick={handleExportNotion}
-                      className="w-full text-left px-4 py-2 hover:bg-zinc-100 dark:bg-zinc-800 text-xs text-zinc-200 transition-colors"
-                    >
-                      {locale === 'en' ? "📓 Export Notes (.md)" : "📓 Экспорт конспекта (.md)"}
-                    </button>
-                    <button 
-                      onClick={handleExportHomework}
-                      className="w-full text-left px-4 py-2 hover:bg-zinc-100 dark:bg-zinc-800 text-xs text-emerald-400 font-bold transition-colors"
-                    >
-                      {locale === 'en' ? "💻 Download Homework (.md)" : "💻 Скачать ДЗ (.md)"}
-                    </button>
-                    {flashcards.length > 0 && (
-                      <button 
-                        onClick={handleExportAnki}
-                        className="w-full text-left px-4 py-2 hover:bg-zinc-100 dark:bg-zinc-800 text-xs text-zinc-200 transition-colors"
-                      >
-                        {locale === 'en' ? "📇 Flashcards for Anki (.csv)" : "📇 Карточки в Anki (.csv)"}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <button 
-                onClick={handleRealWorldInsight}
-                disabled={insightGenerating}
-                className="flex items-center gap-2 px-3 py-1.5 hover:bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 rounded-full transition-colors font-medium text-sm border border-yellow-500/20 disabled:opacity-50"
-                title={locale === 'en' ? "Why do I need this?" : "Зачем мне это знать?"}
-              >
-                {insightGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lightbulb className="w-4 h-4" />}
-                <span className="hidden md:inline">{locale === 'en' ? "Why learn this?" : "Зачем мне это?"}</span>
-              </button>
-
-              <button 
-                onClick={() => alert(locale === 'en' ? 'Under development! "Explain Like I\'m 5" option will be added soon.' : 'В разработке! Опция "Просто о сложном" скоро будет добавлена.')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors font-medium text-sm border opacity-70 hover:bg-primary/10 text-primary border-primary/20`}
-                title={locale === 'en' ? "Explain Like I'm 5 (Coming Soon)" : "Объясни как 5-летнему (В разработке)"}
-              >
-                <Baby className="w-4 h-4" />
-                <span className="hidden md:inline">{locale === 'en' ? "ELI5 (Soon)" : "Просто о сложном (Скоро)"}</span>
-              </button>
-
-              <button 
-                onClick={() => alert(locale === 'en' ? 'Under development! Slides view will be added soon.' : 'В разработке! Слайды скоро будут добавлены.')}
-                className="flex items-center gap-2 px-3 py-1.5 hover:bg-zinc-100 dark:bg-zinc-800 rounded-full transition-colors font-medium text-sm border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 opacity-70"
-                title={locale === 'en' ? "Slides (Coming Soon)" : "Слайды (В разработке)"}
-              >
-                <PlayCircle className="w-4 h-4" />
-                <span className="hidden md:inline">{locale === 'en' ? "Slides (Soon)" : "Слайды (Скоро)"}</span>
-              </button>
-            </>
+          {Boolean(isLessonContentValid(displayContent)) && (
+            <LessonToolsDropdown 
+              onOpenFlashcards={() => setFlashcardsModalOpen(true)}
+              onOpenExport={() => setExportModalOpen(true)}
+              onOpenInsight={() => {
+                setInsightModalOpen(true);
+                if (!insight && !selectedNode.insight) handleRealWorldInsight();
+              }}
+              onOpenELI5={() => {
+                setELI5ModalOpen(true);
+                if (!selectedNode.eli5Content) handleGenerateELI5();
+              }}
+              onOpenSlides={handleOpenSlides}
+              flashcardsCount={flashcards.length}
+              hasInsight={Boolean(insight || selectedNode.insight)}
+              hasELI5={Boolean(selectedNode.eli5Content)}
+              hasSlides={Boolean(selectedNode.slides && selectedNode.slides.length > 0)}
+            />
           )}
 
           {toggleZenMode && (
@@ -982,10 +946,51 @@ Provide a code boilerplate template at the end.`;
         onUpgrade={() => navigate('/pricing')} 
       />
 
+      {/* Export Lesson Modal */}
+      <ExportLessonModal 
+        isOpen={isExportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        topic={selectedNode.label || selectedNode.title || 'Урок'}
+        lessonContent={displayContent}
+        homework={selectedNode.homework || selectedNode.lessonData?.homework}
+        flashcards={flashcards}
+      />
+
+      {/* Interactive Flashcards Modal */}
+      <FlashcardsModal 
+        isOpen={isFlashcardsModalOpen}
+        onClose={() => setFlashcardsModalOpen(false)}
+        topic={selectedNode.label || selectedNode.title || 'Термины урока'}
+        flashcards={flashcards}
+        lessonContent={displayContent}
+      />
+
+      {/* Real-World Insight Modal */}
+      <InsightModal 
+        isOpen={isInsightModalOpen}
+        onClose={() => setInsightModalOpen(false)}
+        topic={selectedNode.label || selectedNode.title || 'Урок'}
+        content={insight || selectedNode.insight}
+        loading={insightGenerating}
+        onGenerate={handleRealWorldInsight}
+      />
+
+      {/* ELI5 Modal */}
+      <ELI5Modal 
+        isOpen={isELI5ModalOpen}
+        onClose={() => setELI5ModalOpen(false)}
+        topic={selectedNode.label || selectedNode.title || 'Урок'}
+        content={selectedNode.eli5Content}
+        loading={eli5Generating}
+        onGenerate={handleGenerateELI5}
+      />
+
       {/* Slide Viewer Overlay */}
       {showSlides && (
         <SlideViewer
-          slides={selectedNode.slides || markdownToSlides(selectedNode.content || '')}
+          slides={selectedNode.slides || markdownToSlides(displayContent || '')}
+          topic={selectedNode.label || selectedNode.title || 'Презентация урока'}
+          nodeId={selectedNode.id}
           onClose={() => setShowSlides(false)}
         />
       )}

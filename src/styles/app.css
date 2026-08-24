@@ -12,7 +12,17 @@ html {
   scroll-behavior: smooth;
 }
 
+html.zen-fullscreen,
+body.zen-fullscreen {
+  overflow: hidden !important;
+  scrollbar-gutter: auto !important;
+  background-color: #000000 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
 #page-content {
+  overflow-y: scroll;
   scrollbar-gutter: stable;
 }
 

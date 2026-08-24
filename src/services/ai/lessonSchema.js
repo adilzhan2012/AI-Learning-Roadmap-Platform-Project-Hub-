@@ -7,6 +7,7 @@ export const LESSON_JSON_SCHEMA = {
     title: { type: "string", description: "Engaging main lesson title (H1)" },
     summary: { type: "string", description: "Short 2-3 sentence executive summary of the lesson" },
     contentMarkdown: { type: "string", description: "Deep, step-by-step lesson body in rich Markdown with explanations, examples, tables, analogies, and bolding." },
+    realWorldApplication: { type: "string", description: "Engaging, practical explanation of how this concept is applied in industry, career, and daily life." },
     mermaidDiagram: { type: "string", description: "Valid Mermaid diagram code without backticks wrapper or null if not applicable." },
     imageQuery: { type: "string", description: "1-3 concise English keywords for Unsplash/Wikipedia illustration search." },
     flashcards: {
@@ -19,7 +20,7 @@ export const LESSON_JSON_SCHEMA = {
         },
         required: ["term", "definition"]
       },
-      description: "Array of 3-5 key flashcards for concept retention"
+      description: "Array of 5-7 key flashcards for concept retention"
     },
     homework: {
       type: "object",
@@ -32,7 +33,7 @@ export const LESSON_JSON_SCHEMA = {
       description: "Practical homework/exercise for the user"
     }
   },
-  required: ["title", "summary", "contentMarkdown", "flashcards", "homework"]
+  required: ["title", "summary", "contentMarkdown", "realWorldApplication", "flashcards", "homework"]
 };
 
 /**
@@ -162,11 +163,15 @@ export function parseAndValidateLessonJson(rawResponse, language = 'ru') {
     });
   }
 
+  const realWorldApplication = parsed.realWorldApplication || parsed.insight || '';
+
   return {
     lessonData: {
       title,
       summary,
       contentMarkdown,
+      realWorldApplication,
+      insight: realWorldApplication,
       mermaidDiagram,
       imageQuery,
       flashcards,
@@ -174,4 +179,77 @@ export function parseAndValidateLessonJson(rawResponse, language = 'ru') {
     },
     compiledContent: compiledMarkdown.trim()
   };
+}
+
+/**
+ * Robust fallback extractor that extracts 5-7 key flashcards from any lesson markdown text
+ * by analyzing terms, bold definitions, bullet points, and section headings.
+ */
+export function extractFlashcardsFromMarkdown(markdownText, fallbackTopic = 'Тема', language = 'ru') {
+  const cards = [];
+  if (!markdownText || typeof markdownText !== 'string') {
+    return [{
+      term: fallbackTopic || (language === 'en' ? 'Topic Overview' : 'Обзор темы'),
+      definition: language === 'en'
+        ? 'Key concept and subject of study for this lesson. Generate and study the theoretical material for deeper insights.'
+        : 'Ключевая концепция и предмет изучения данного урока. Изучите теоретический материал урока для более подробного понимания.'
+    }];
+  }
+
+  // 1. Check explicit ---FLASHCARD--- format
+  const fcRegex = /---FLASHCARD---\s*(?:Term|Термин)\s*:\s*(.*?)\s*(?:Def|Definition|Определение|Объяснение)\s*:\s*(.*?)(?=\s*---FLASHCARD---|\s*---|\s*##|\s*$)/gi;
+  let match;
+  while ((match = fcRegex.exec(markdownText)) !== null) {
+    const term = match[1].replace(/---+$/, '').trim();
+    const definition = match[2].replace(/---+$/, '').trim();
+    if (term && definition) {
+      cards.push({ term, definition });
+    }
+  }
+  if (cards.length >= 4) return cards.slice(0, 7);
+
+  // 2. Extract bullet points with bold terms: - **Термин** — Описание
+  const bulletRegex = /[-*]\s+\*\*([^*]+)\*\*\s*[:—–-]\s*([^\n]+)/g;
+  let bMatch;
+  while ((bMatch = bulletRegex.exec(markdownText)) !== null) {
+    const term = bMatch[1].trim();
+    const definition = bMatch[2].trim();
+    if (term.length > 2 && term.length < 60 && definition.length > 8) {
+      if (!cards.some(c => c.term.toLowerCase() === term.toLowerCase())) {
+        cards.push({ term, definition });
+      }
+    }
+  }
+  if (cards.length >= 5) return cards.slice(0, 7);
+
+  // 3. Extract Headings and first sentences: ## Заголовок\nТекст
+  const sections = markdownText.split(/(?=\n##\s+)/);
+  for (const sec of sections) {
+    const hMatch = sec.match(/^##\s+([^\n]+)\n+([\s\S]+?)(?=\n##|$)/);
+    if (hMatch) {
+      const heading = hMatch[1].replace(/^[\d.)\s]+/, '').replace(/[:*#]/g, '').trim();
+      const body = hMatch[2].replace(/[-*#]/g, '').trim();
+      const firstSentence = body.split(/[.!?]\s+/)[0];
+      if (heading.length > 3 && heading.length < 60 && firstSentence && firstSentence.length > 15) {
+        if (!cards.some(c => c.term.toLowerCase() === heading.toLowerCase())) {
+          cards.push({ 
+            term: heading, 
+            definition: firstSentence.length > 180 ? firstSentence.slice(0, 180) + '...' : firstSentence + '.'
+          });
+        }
+      }
+    }
+  }
+
+  // 4. If still less than 1, add topic overview card
+  if (cards.length === 0) {
+    cards.push({
+      term: fallbackTopic || (language === 'en' ? 'Topic Overview' : 'Обзор темы'),
+      definition: language === 'en'
+        ? 'Key concept and subject of study for this lesson. Generate and study the theoretical material for deeper insights.'
+        : 'Ключевая концепция и предмет изучения данного урока. Изучите теоретический материал урока для более подробного понимания.'
+    });
+  }
+
+  return cards.slice(0, 7);
 }

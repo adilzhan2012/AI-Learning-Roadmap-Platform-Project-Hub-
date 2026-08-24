@@ -18,12 +18,13 @@ export default function ContextualMentor({
   onClose
 }) {
   const courseLanguage = selectedCourse?.language || 'ru';
+  const nodeTitle = selectedNode?.label || selectedNode?.title || (courseLanguage === 'en' ? 'this lesson' : 'этот урок');
   const getInitialWelcome = () => ({
     id: 'welcome',
     role: 'assistant',
     content: courseLanguage === 'en'
-      ? `Hello! I'm your AI Mentor for **${selectedNode.label}**. \nWhat concepts would you like to clarify? Ask me anything!`
-      : `Привет! Я AI-ментор по уроку **${selectedNode.label}**. \nЧто осталось непонятным в этом материале? Задавай любые вопросы!`
+      ? `Hello! I'm your AI Mentor for **${nodeTitle}**.\n\nWhat concepts would you like to clarify? Ask me anything!`
+      : `Привет! Я AI-ментор по уроку **${nodeTitle}**.\n\nЧто осталось непонятным в этом материале? Задавай любые вопросы!`
   });
 
   const [messages, setMessages] = useState([getInitialWelcome()]);
@@ -205,32 +206,32 @@ INSTRUCTIONS:
         <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 custom-scrollbar">
           {messages.map((msg) => (
             <div key={msg.id} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-              <div className={`max-w-[90%] rounded-2xl p-3 text-xs leading-relaxed ${
+              <div className={`max-w-[90%] rounded-2xl p-3.5 text-xs leading-relaxed ${
                 msg.role === 'user'
                   ? 'bg-indigo-600 text-white rounded-br-none shadow-md'
-                  : 'bg-white dark:bg-[#07080a] border border-white/5 text-zinc-200 rounded-bl-none'
+                  : 'bg-zinc-100 dark:bg-[#07080a] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-zinc-100 rounded-bl-none shadow-sm'
               }`}>
-                <div className="prose prose-invert prose-xs text-left">
+                <div className="prose dark:prose-invert prose-xs text-zinc-900 dark:text-zinc-100 text-left max-w-none">
                   <ReactMarkdown>{msg.content}</ReactMarkdown>
                 </div>
                 {msg.role === 'assistant' && msg.id !== 'welcome' && (
-                  <div className="flex items-center gap-2 mt-2 pt-1 border-t border-white/10">
+                  <div className="flex items-center gap-2 mt-2 pt-1.5 border-t border-zinc-200 dark:border-white/10">
                     <button
                       onClick={() => handleFeedback(msg.id, msg.content, 1)}
-                      className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${feedbacks[msg.id] === 1 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-bold' : 'border-white/10 text-zinc-400 hover:text-emerald-400'}`}
+                      className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${feedbacks[msg.id] === 1 ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-bold' : 'border-zinc-300 dark:border-white/10 text-zinc-500 hover:text-emerald-500'}`}
                       title={t('mentor.helpful') || 'Helpful response'}
                     >
                       👍
                     </button>
                     <button
                       onClick={() => handleFeedback(msg.id, msg.content, -1)}
-                      className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${feedbacks[msg.id] === -1 ? 'bg-rose-500/20 text-rose-400 border-rose-500/30 font-bold' : 'border-white/10 text-zinc-400 hover:text-rose-400'}`}
+                      className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${feedbacks[msg.id] === -1 ? 'bg-rose-500/20 text-rose-600 dark:text-rose-400 border-rose-500/30 font-bold' : 'border-zinc-300 dark:border-white/10 text-zinc-500 hover:text-rose-500'}`}
                       title={t('mentor.unclear') || 'Unclear response'}
                     >
                       👎
                     </button>
                     {feedbacks[msg.id] && (
-                      <span className="text-[9px] text-indigo-400 animate-in fade-in">{t('mentor.thanks') || 'Thanks!'}</span>
+                      <span className="text-[9px] text-indigo-500 dark:text-indigo-400 font-bold animate-in fade-in">{t('mentor.thanks') || 'Thanks!'}</span>
                     )}
                   </div>
                 )}
@@ -239,8 +240,8 @@ INSTRUCTIONS:
           ))}
 
           {generating && (
-            <div className="flex items-center gap-2 text-zinc-400 text-[10px] bg-white dark:bg-[#07080a] border border-white/5 w-fit rounded-xl px-3 py-2">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+            <div className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400 text-[10px] bg-zinc-100 dark:bg-[#07080a] border border-zinc-200 dark:border-white/10 w-fit rounded-xl px-3 py-2 shadow-sm">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-500" />
               <span>{t('mentor.readingLesson') || 'Reading lesson and thinking...'}</span>
             </div>
           )}

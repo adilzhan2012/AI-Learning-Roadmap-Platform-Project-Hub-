@@ -34,10 +34,11 @@ import { AIParsingError } from '../../utils/aiResponseParser.js';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-import { t } from '../../i18n.js';
+import { t, useLocale } from '../../i18n.js';
 
 export default function HomeworkSection({ courseId, nodeId, lessonContent, topicLabel, topicDesc, courseLanguage = 'ru' }) {
   const navigate = useNavigate();
+  const locale = useLocale();
   const { addXP } = useXP();
   const { plan, usage, checkLimit, incrementUsage, setUpgradeModalOpen, isUpgradeModalOpen } = usePlanLimits();
 
@@ -257,22 +258,24 @@ CRITICAL INSTRUCTION: You MUST act as a Socratic mentor. Do NOT solve the homewo
   }
 
   return (
-    <div className="bg-surface/80 border border-white/10 rounded-3xl p-5 md:p-7 my-8 shadow-xl relative overflow-hidden transition-all duration-300">
+    <div className="bg-zinc-50 dark:bg-surface/80 border border-zinc-200 dark:border-white/10 rounded-3xl p-5 md:p-7 my-8 shadow-xl relative overflow-hidden transition-all duration-300">
       {/* Header (Clickable Toggle) */}
       <button 
         onClick={() => setIsHomeworkOpen(!isHomeworkOpen)}
-        className="w-full text-left flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10 mb-5 hover:bg-white/5 p-3 rounded-2xl transition-colors -m-3"
+        className="w-full text-left flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-zinc-200 dark:border-white/10 mb-5 hover:bg-zinc-100/70 dark:hover:bg-white/5 p-3 rounded-2xl transition-colors -m-3 cursor-pointer"
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+          <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
             <FileText className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-extrabold text-base text-on-surface flex items-center gap-2">
-              Интерактивная Домашка
+            <h3 className="font-extrabold text-base text-zinc-900 dark:text-on-surface flex items-center gap-2">
+              {locale === 'en' ? 'Interactive Homework' : 'Интерактивная Домашка'}
               {isHomeworkOpen ? <ChevronUp className="w-4 h-4 text-zinc-500" /> : <ChevronDown className="w-4 h-4 text-zinc-500" />}
             </h3>
-            <p className="text-xs text-on-surface-variant">Проверка ИИ-ревьюером по критериям</p>
+            <p className="text-xs text-zinc-500 dark:text-on-surface-variant">
+              {locale === 'en' ? 'AI Reviewer verification against criteria' : 'Проверка ИИ-ревьюером по критериям'}
+            </p>
           </div>
         </div>
 
@@ -281,30 +284,30 @@ CRITICAL INSTRUCTION: You MUST act as a Socratic mentor. Do NOT solve the homewo
           {monthlyLimit !== Infinity && (
             <div className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 ${
               isLimitReached 
-                ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' 
-                : 'bg-white/5 text-zinc-300 border-white/10'
+                ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30' 
+                : 'bg-zinc-100 dark:bg-white/5 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-white/10'
             }`}>
-              <Zap className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Проверок в этом месяце: {reviewsUsed} из {monthlyLimit}</span>
+              <Zap className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+              <span>{locale === 'en' ? `Reviews this month: ${reviewsUsed} of ${monthlyLimit}` : `Проверок в этом месяце: ${reviewsUsed} из ${monthlyLimit}`}</span>
             </div>
           )}
 
           {/* Status Badge */}
           {reviewResult?.score === 100 ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Домашка сдана на отлично ⭐
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+              <CheckCircle2 className="w-3.5 h-3.5" /> {locale === 'en' ? 'Homework Passed with Excellence ⭐' : 'Домашка сдана на отлично ⭐'}
             </span>
           ) : reviewResult?.passed ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Домашка сдана ✓
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+              <CheckCircle2 className="w-3.5 h-3.5" /> {locale === 'en' ? 'Homework Passed ✓' : 'Домашка сдана ✓'}
             </span>
           ) : status === 'submitted' ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-amber-500/20 text-amber-400 border border-amber-500/30">
-              <RotateCcw className="w-3.5 h-3.5" /> Требуется доработка
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+              <RotateCcw className="w-3.5 h-3.5" /> {locale === 'en' ? 'Revision Needed' : 'Требуется доработка'}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-white/5 text-zinc-400 border border-white/10">
-              Не сдано
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-zinc-200/70 dark:bg-white/5 text-zinc-600 dark:text-zinc-400 border border-zinc-300 dark:border-white/10">
+              {locale === 'en' ? 'Not submitted' : 'Не сдано'}
             </span>
           )}
         </div>
@@ -314,8 +317,8 @@ CRITICAL INSTRUCTION: You MUST act as a Socratic mentor. Do NOT solve the homewo
         <div className="mt-5 animate-in fade-in slide-in-from-top-4 duration-300">
           {/* Assignment Task Prompt */}
           {promptData?.prompt && (
-        <div className="bg-zinc-100 dark:bg-black/30 rounded-2xl p-4 mb-5 border border-zinc-200 dark:border-white/5 text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
-          <p className="font-bold text-xs uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2">📌 Задание</p>
+        <div className="bg-white dark:bg-black/30 rounded-2xl p-4 mb-5 border border-zinc-200 dark:border-white/5 text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 shadow-sm">
+          <p className="font-bold text-xs uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2">📌 {locale === 'en' ? 'Assignment Task' : 'Задание'}</p>
           <div className="prose prose-sm dark:prose-invert prose-indigo max-w-none prose-p:leading-relaxed">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{promptData.prompt}</ReactMarkdown>
           </div>
@@ -330,9 +333,15 @@ CRITICAL INSTRUCTION: You MUST act as a Socratic mentor. Do NOT solve the homewo
               <AlertCircle className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs font-extrabold text-white">Месячный лимит проверок исчерпан ({reviewsUsed}/{monthlyLimit})</p>
+              <p className="text-xs font-extrabold text-white">
+                {locale === 'en' 
+                  ? `Monthly review limit reached (${reviewsUsed}/${monthlyLimit})` 
+                  : `Месячный лимит проверок исчерпан (${reviewsUsed}/${monthlyLimit})`}
+              </p>
               <p className="text-[11px] text-zinc-300 mt-0.5">
-                Перейдите на более высокий тариф, чтобы получать неограниченный ИИ-аудит домашних заданий.
+                {locale === 'en'
+                  ? 'Upgrade your plan to receive unlimited AI-driven homework grading.'
+                  : 'Перейдите на более высокий тариф, чтобы получать неограниченный ИИ-аудит домашних заданий.'}
               </p>
             </div>
           </div>
@@ -340,7 +349,7 @@ CRITICAL INSTRUCTION: You MUST act as a Socratic mentor. Do NOT solve the homewo
             onClick={() => setUpgradeModalOpen(true)}
             className="px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-zinc-950 font-black text-xs rounded-xl shadow-md transition-all shrink-0 cursor-pointer whitespace-nowrap"
           >
-            Увеличить лимит
+            {locale === 'en' ? 'Increase Limit' : 'Увеличить лимит'}
           </button>
         </div>
       )}
@@ -348,33 +357,35 @@ CRITICAL INSTRUCTION: You MUST act as a Socratic mentor. Do NOT solve the homewo
       {/* Student Submission Text Area */}
       <div className="space-y-3 mb-5">
         <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-400 uppercase tracking-wider">
-          Ваше решение / Ответ
+          {locale === 'en' ? 'Your Solution / Answer' : 'Ваше решение / Ответ'}
         </label>
         <textarea
           rows={5}
           value={submission}
           onChange={(e) => setSubmission(e.target.value)}
-          placeholder="Напишите ваш ответ, код или разбор решения здесь..."
-          className="w-full bg-white dark:bg-zinc-900/60 border border-zinc-300 dark:border-zinc-700/50 focus:border-indigo-500 rounded-2xl p-4 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:placeholder:text-zinc-600 focus:outline-none transition-all resize-y font-mono shadow-inner"
+          placeholder={locale === 'en' ? "Write your answer, code, or solution breakdown here..." : "Напишите ваш ответ, код или разбор решения здесь..."}
+          className="w-full bg-white dark:bg-zinc-900/60 border border-zinc-300 dark:border-zinc-700/50 focus:border-indigo-500 rounded-2xl p-4 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:outline-none transition-all resize-y font-mono shadow-inner"
         />
 
         {error && (
-          <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl p-4 mb-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-rose-300">
+          <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl p-4 mb-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-rose-600 dark:text-rose-300">
             <span>{error}</span>
             <button
               onClick={handleSubmit}
               disabled={reviewing}
-              className="px-3.5 py-2 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 rounded-xl font-bold text-rose-200 shrink-0 flex items-center gap-1.5 cursor-pointer transition-all"
+              className="px-3.5 py-2 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 rounded-xl font-bold text-rose-700 dark:text-rose-200 shrink-0 flex items-center gap-1.5 cursor-pointer transition-all"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              Попробовать снова
+              {locale === 'en' ? 'Try Again' : 'Попробовать снова'}
             </button>
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-1">
-          <p className="text-[11px] text-zinc-400">
-            💡 Оценка выставляется ИИ по критериям урока. Награды: 60-79% (+5 XP), 80-99% (+10 XP), 100% (+15 XP).
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1">
+          <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+            {locale === 'en'
+              ? '💡 Graded by AI based on lesson criteria. Rewards: 60-79% (+5 XP), 80-99% (+10 XP), 100% (+15 XP).'
+              : '💡 Оценка выставляется ИИ по критериям урока. Награды: 60-79% (+5 XP), 80-99% (+10 XP), 100% (+15 XP).'}
           </p>
 
           <button
@@ -385,12 +396,14 @@ CRITICAL INSTRUCTION: You MUST act as a Socratic mentor. Do NOT solve the homewo
             {reviewing ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                ИИ проверяет...
+                {locale === 'en' ? 'AI is evaluating...' : 'ИИ проверяет...'}
               </>
             ) : (
               <>
                 <Send className="w-4 h-4" />
-                {reviewResult ? 'Пересдать на проверку' : 'Сдать на проверку'}
+                {reviewResult 
+                  ? (locale === 'en' ? 'Resubmit for Review' : 'Пересдать на проверку') 
+                  : (locale === 'en' ? 'Submit for Review' : 'Сдать на проверку')}
               </>
             )}
           </button>
@@ -409,48 +422,52 @@ CRITICAL INSTRUCTION: You MUST act as a Socratic mentor. Do NOT solve the homewo
                 : 'bg-amber-500/10 border-amber-500/30'
             }`}
           >
-            <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/10">
+            <div className="flex items-center justify-between mb-3 pb-3 border-b border-zinc-200 dark:border-white/10">
               <div className="flex items-center gap-2">
                 {reviewResult.passed ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400 shrink-0" />
                 ) : (
-                  <XCircle className="w-5 h-5 text-amber-400 shrink-0" />
+                  <XCircle className="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0" />
                 )}
-                <span className="font-extrabold text-sm text-on-surface">
-                  {reviewResult.score === 100 ? 'Идеальный результат (100%) ⭐' : reviewResult.passed ? 'Результат: Сдано успешно!' : 'Результат: Нужна доработка'}
+                <span className="font-extrabold text-sm text-zinc-900 dark:text-on-surface">
+                  {reviewResult.score === 100 
+                    ? (locale === 'en' ? 'Perfect Score (100%) ⭐' : 'Идеальный результат (100%) ⭐') 
+                    : reviewResult.passed 
+                    ? (locale === 'en' ? 'Result: Passed successfully!' : 'Результат: Сдано успешно!') 
+                    : (locale === 'en' ? 'Result: Revision needed' : 'Результат: Нужна доработка')}
                 </span>
               </div>
               <span className={`text-base font-black px-3 py-1 rounded-xl ${
-                reviewResult.score >= 80 ? 'bg-emerald-500/20 text-emerald-400' :
-                reviewResult.score >= 60 ? 'bg-amber-500/20 text-amber-400' : 'bg-rose-500/20 text-rose-400'
+                reviewResult.score >= 80 ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' :
+                reviewResult.score >= 60 ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400' : 'bg-rose-500/20 text-rose-600 dark:text-rose-400'
               }`}>
-                {reviewResult.score} / 100 б.
+                {reviewResult.score} / 100 {locale === 'en' ? 'pts' : 'б.'}
               </span>
             </div>
 
             {reviewResult.overallComment && (
-              <p className="text-xs text-zinc-300 leading-relaxed mb-4 italic bg-black/20 p-3 rounded-xl">
+              <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed mb-4 italic bg-white dark:bg-black/20 p-3 rounded-xl border border-zinc-200 dark:border-transparent">
                 "{reviewResult.overallComment}"
               </p>
             )}
 
             {/* Criteria Breakdown */}
             <div className="space-y-2 mb-3">
-              <p className="text-xs font-bold text-on-surface uppercase tracking-wider mb-2">
-                Разбор по критериям:
+              <p className="text-xs font-bold text-zinc-900 dark:text-on-surface uppercase tracking-wider mb-2">
+                {locale === 'en' ? 'Criteria Evaluation:' : 'Разбор по критериям:'}
               </p>
               {(reviewResult.feedback || []).map((item, idx) => (
-                <div key={idx} className="bg-surface/60 rounded-xl p-3 border border-white/5 flex items-start gap-2.5">
+                <div key={idx} className="bg-white dark:bg-surface/60 rounded-xl p-3 border border-zinc-200 dark:border-white/5 flex items-start gap-2.5 shadow-sm">
                   {item.met ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 dark:text-emerald-400 shrink-0 mt-0.5" />
                   ) : (
-                    <XCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                    <XCircle className="w-4 h-4 text-rose-500 dark:text-rose-400 shrink-0 mt-0.5" />
                   )}
                   <div className="text-xs">
-                    <p className={`font-bold ${item.met ? 'text-emerald-300' : 'text-rose-300'}`}>
-                      {item.criterion}: {item.met ? 'Выполнено' : 'Не выполнено'}
+                    <p className={`font-bold ${item.met ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'}`}>
+                      {item.criterion}: {item.met ? (locale === 'en' ? 'Passed' : 'Выполнено') : (locale === 'en' ? 'Not met' : 'Не выполнено')}
                     </p>
-                    <p className="text-zinc-300 mt-1 leading-normal">{item.comment}</p>
+                    <p className="text-zinc-600 dark:text-zinc-300 mt-1 leading-normal">{item.comment}</p>
                   </div>
                 </div>
               ))}
@@ -461,19 +478,19 @@ CRITICAL INSTRUCTION: You MUST act as a Socratic mentor. Do NOT solve the homewo
               <div className="pt-2">
                 <button
                   onClick={() => setShowHistory(prev => !prev)}
-                  className="text-xs font-bold text-indigo-400 hover:underline flex items-center gap-1"
+                  className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   {showHistory ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                  История попыток ({reviewResult.attempts.length})
+                  {locale === 'en' ? `Attempts History (${reviewResult.attempts.length})` : `История попыток (${reviewResult.attempts.length})`}
                 </button>
 
                 {showHistory && (
-                  <div className="mt-3 space-y-2 max-h-40 overflow-y-auto pr-1">
+                  <div className="mt-3 space-y-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
                     {reviewResult.attempts.map((att, i) => (
-                      <div key={i} className="text-[11px] bg-black/40 p-2.5 rounded-lg border border-white/5 flex justify-between items-center">
-                        <span className="text-zinc-400">Попытка #{i + 1} ({new Date(att.timestamp).toLocaleDateString()})</span>
-                        <span className={`font-bold ${att.passed ? 'text-emerald-400' : 'text-rose-400'}`}>
-                          {att.score} баллов
+                      <div key={i} className="text-[11px] bg-white dark:bg-black/40 p-2.5 rounded-lg border border-zinc-200 dark:border-white/5 flex justify-between items-center shadow-sm">
+                        <span className="text-zinc-600 dark:text-zinc-400">{locale === 'en' ? 'Attempt' : 'Попытка'} #{i + 1} ({new Date(att.timestamp).toLocaleDateString()})</span>
+                        <span className={`font-bold ${att.passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                          {att.score} {locale === 'en' ? 'pts' : 'баллов'}
                         </span>
                       </div>
                     ))}
@@ -492,11 +509,11 @@ CRITICAL INSTRUCTION: You MUST act as a Socratic mentor. Do NOT solve the homewo
         <div className="mt-6 border-t border-zinc-200 dark:border-zinc-800 pt-5">
           <h4 className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider mb-3 flex items-center gap-2">
             <Users className="w-4 h-4 text-indigo-500" />
-            <span>Работы участников вашей группы ({peerSubmissions.length})</span>
+            <span>{locale === 'en' ? `Group Member Submissions (${peerSubmissions.length})` : `Работы участников вашей группы (${peerSubmissions.length})`}</span>
           </h4>
           <div className="space-y-3">
             {peerSubmissions.map(({ peer, submission: peerSub, score, passed, feedback }) => (
-              <div key={peer.userId} className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 space-y-2">
+              <div key={peer.userId} className="p-4 rounded-2xl bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 space-y-2 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <div
@@ -508,13 +525,13 @@ CRITICAL INSTRUCTION: You MUST act as a Socratic mentor. Do NOT solve the homewo
                     <span className="text-xs font-bold text-zinc-900 dark:text-white">{peer.displayName}</span>
                   </div>
                   {typeof score === 'number' && (
-                    <span className={`text-xs font-bold font-mono px-2 py-0.5 rounded-full border ${passed ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'}`}>
-                      {score}% ({passed ? 'Сдано' : 'Не сдано'})
+                    <span className={`text-xs font-bold font-mono px-2 py-0.5 rounded-full border ${passed ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 dark:text-amber-500 border-amber-500/20'}`}>
+                      {score}% ({passed ? (locale === 'en' ? 'Passed' : 'Сдано') : (locale === 'en' ? 'Not passed' : 'Не сдано')})
                     </span>
                   )}
                 </div>
                 {peerSub && (
-                  <div className="p-3 rounded-xl bg-white dark:bg-black/40 border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 max-h-32 overflow-y-auto whitespace-pre-wrap">
+                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-black/40 border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 max-h-32 overflow-y-auto whitespace-pre-wrap">
                     {peerSub}
                   </div>
                 )}
