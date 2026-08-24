@@ -474,8 +474,7 @@ exports.aiProxy = onCall(
       : Array.from(new Set([mappedRequestedModel, "google/gemini-2.5-flash", "google/gemini-1.5-flash"]));
 
     // Prepare generationConfig & responseSchema for Vertex AI Structured Output
-    const genConfig = { ...(request.data.generationConfig || request.data.clientGenConfig || {}) };
-    const { responseSchema, responseFormat } = request.data || {};
+    const genConfig = { ...(request.data?.generationConfig || clientGenConfig || {}) };
     if (responseSchema) {
       genConfig.responseMimeType = "application/json";
       genConfig.responseSchema = responseSchema;
