@@ -146,58 +146,6 @@ export default function Support() {
     return () => unsubscribe();
   }, [user]);
 
-  // Фоновая очистка старых закрытых тикетов (старше 24 часов) на стороне клиента
-  useEffect(() => {
-    if (!user) return;
-    const cleanupOldTickets = async () => {
-      try {
-        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        // Получаем тикеты пользователя
-        const q = query(
-          collection(db, 'support_tickets'),
-          where('userId', '==', user.uid)
-        );
-        
-        const snap = await getDocs(q);
-        
-        for (const ticketDoc of snap.docs) {
-          const data = ticketDoc.data();
-          const updatedAt = data.updatedAt?.toMillis ? data.updatedAt.toMillis() : 0;
-          
-          // Если тикет закрыт и обновлялся больше 24 часов назад
-          if (data.status === 'closed' && updatedAt > 0 && updatedAt < twentyFourHoursAgo.getTime()) {
-            const batch = writeBatch(db);
-            
-            // Удаляем сообщения и вложения
-            const msgQ = query(collection(db, 'support_tickets', ticketDoc.id, 'messages'));
-            const msgSnap = await getDocs(msgQ);
-            
-            for (const msgDoc of msgSnap.docs) {
-              const msgData = msgDoc.data();
-              if (msgData.attachmentUrl) {
-                try {
-                  const fileRef = storageRef(storage, msgData.attachmentUrl);
-                  await deleteObject(fileRef);
-                } catch (e) {
-                  // Игнорируем ошибку удаления файла (мог быть удален ранее)
-                }
-              }
-              batch.delete(msgDoc.ref);
-            }
-            
-            // Удаляем сам тикет
-            batch.delete(ticketDoc.ref);
-            await batch.commit();
-          }
-        }
-      } catch (error) {
-        console.error("Ошибка при фоновой очистке:", error);
-      }
-    };
-
-    cleanupOldTickets();
-  }, []);
-
   return (
     <div className="max-w-5xl mx-auto w-full flex flex-col h-[calc(100vh-8rem)]">
       {/* Header */}

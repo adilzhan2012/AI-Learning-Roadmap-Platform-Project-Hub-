@@ -1,4 +1,5 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
@@ -2463,5 +2464,56 @@ exports.resetQuizConsecutiveFails = onCall(async (request) => {
   const quizRef = db.collection("users").doc(userId).collection("quizResults").doc(String(validNodeId));
   await quizRef.set({ consecutiveFails: 0 }, { merge: true });
   return { success: true };
+});
+
+// ----------------------------------------------------
+// Scheduled Support Ticket Cleanup (Daily)
+// ----------------------------------------------------
+exports.cleanupOldTickets = onSchedule("every 24 hours", async (event) => {
+  try {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const snap = await db.collection("support_tickets")
+      .where("status", "==", "closed")
+      .where("updatedAt", "<", twentyFourHoursAgo)
+      .get();
+
+    console.log(`[cleanupOldTickets] Found ${snap.docs.length} closed tickets to clean up.`);
+
+    const bucket = admin.storage().bucket();
+    let cleanedCount = 0;
+
+    for (const ticketDoc of snap.docs) {
+      const batch = db.batch();
+
+      // Delete message subcollection documents and attachments
+      const msgSnap = await ticketDoc.ref.collection("messages").get();
+      for (const msgDoc of msgSnap.docs) {
+        const msgData = msgDoc.data();
+        if (msgData.attachmentUrl) {
+          try {
+            const match = msgData.attachmentUrl.match(/\/o\/([^?]+)/);
+            if (match && match[1]) {
+              const filePath = decodeURIComponent(match[1]);
+              await bucket.file(filePath).delete().catch(() => {});
+            }
+          } catch (e) {
+            console.warn("[cleanupOldTickets] Could not delete attachment:", e);
+          }
+        }
+        batch.delete(msgDoc.ref);
+      }
+
+      batch.delete(ticketDoc.ref);
+      await batch.commit();
+      cleanedCount++;
+    }
+
+    console.log(`[cleanupOldTickets] Successfully deleted ${cleanedCount} closed tickets.`);
+    return { success: true, cleanedCount };
+  } catch (error) {
+    Sentry.captureException(error);
+    console.error("[cleanupOldTickets] Error cleaning up old tickets:", error);
+    throw error;
+  }
 });
 

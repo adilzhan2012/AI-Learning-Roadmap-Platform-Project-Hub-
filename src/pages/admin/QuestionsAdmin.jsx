@@ -89,54 +89,6 @@ export default function QuestionsAdmin() {
     return () => unsubscribe();
   }, []); // Пустой массив зависимостей предотвращает бесконечный цикл!
 
-  // Фоновая очистка старых закрытых тикетов (старше 24 часов)
-  useEffect(() => {
-    const cleanupOldTickets = async () => {
-      try {
-        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        const q = query(
-          collection(db, 'support_tickets'),
-          where('updatedAt', '<', twentyFourHoursAgo)
-        );
-        
-        const snap = await getDocs(q);
-        
-        for (const ticketDoc of snap.docs) {
-          const data = ticketDoc.data();
-          
-          if (data.status === 'closed') {
-            const batch = writeBatch(db);
-            
-            // Получаем все сообщения, чтобы удалить вложения
-            const msgQ = query(collection(db, 'support_tickets', ticketDoc.id, 'messages'));
-            const msgSnap = await getDocs(msgQ);
-            
-            for (const msgDoc of msgSnap.docs) {
-              const msgData = msgDoc.data();
-              if (msgData.attachmentUrl) {
-                try {
-                  const fileRef = storageRef(storage, msgData.attachmentUrl);
-                  await deleteObject(fileRef);
-                } catch (e) {
-                  console.error("Ошибка удаления вложения:", e);
-                }
-              }
-              batch.delete(msgDoc.ref);
-            }
-            
-            // Удаляем сам тикет
-            batch.delete(ticketDoc.ref);
-            await batch.commit();
-          }
-        }
-      } catch (error) {
-        console.error("Ошибка при фоновой очистке тикетов:", error);
-      }
-    };
-
-    cleanupOldTickets();
-  }, []);
-
   // Fetch messages for active ticket
   useEffect(() => {
     if (!activeTicket) return;
