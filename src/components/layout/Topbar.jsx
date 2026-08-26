@@ -144,11 +144,36 @@ export default function Topbar() {
 
   const handleSignOut = async () => {
     try {
+      // Clear user-specific cache from localStorage & sessionStorage
+      localStorage.removeItem('cached_profile');
+      localStorage.removeItem('cached_stats');
+      localStorage.removeItem('free_mentor_messages');
+      localStorage.removeItem('free_mentor_timestamp');
+      localStorage.removeItem('yourway_notifications');
+      localStorage.removeItem('selected_course_id');
+      localStorage.removeItem('selected_node_id');
+      
+      try {
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('contextual_msg_') || key.startsWith('motivational_quote_')) {
+            localStorage.removeItem(key);
+          }
+        });
+      } catch (storageErr) {
+        console.warn('Could not clear dynamic localStorage keys:', storageErr);
+      }
+
+      try {
+        sessionStorage.clear();
+      } catch (sessionErr) {
+        console.warn('Could not clear sessionStorage:', sessionErr);
+      }
+
       await signOut(auth);
       setShowProfileMenu(false);
       navigate('/login');
     } catch (e) {
-      console.error(e);
+      console.error('Error signing out:', e);
     }
   };
 
