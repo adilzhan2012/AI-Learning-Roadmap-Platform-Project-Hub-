@@ -11,7 +11,8 @@ import {
   Terminal,
   LogOut,
   Sparkles,
-  Mail
+  Mail,
+  Star
 } from 'lucide-react';
 import { auth } from '../../firebase.js';
 import { signOut } from 'firebase/auth';
@@ -24,6 +25,7 @@ export default function Sidebar({ onLogoClick }) {
     { name: 'Payments', path: '/admin/payments', icon: CreditCard },
     { name: 'Promocodes', path: '/admin/promocodes', icon: Ticket },
     { name: 'Поддержка (Тикеты)', path: '/admin/questions', icon: MessageSquare },
+    { name: 'Отзывы', path: '/admin/reviews', icon: Star },
     { name: 'Newsletters', path: '/admin/newsletters', icon: Mail },
     { name: 'Errors (Sentry)', path: '/admin/errors', icon: AlertTriangle },
     { name: 'Logs', path: '/admin/logs', icon: Terminal },

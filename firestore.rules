@@ -213,6 +213,28 @@ service cloud.firestore {
         && request.resource.data.senderId == request.auth.uid;
     }
 
+    // --- Reviews ---
+    match /reviews/{reviewId} {
+      // Public can read published reviews; users can read their own; admins can read all
+      allow read: if resource.data.status == 'published' || (isAuth() && (resource.data.userId == request.auth.uid || isAdmin()));
+      
+      // Authenticated user can submit a new review for moderation
+      allow create: if isAuth()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'new'
+        && request.resource.data.rating is number
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && request.resource.data.text is string
+        && request.resource.data.text.size() >= 10;
+        
+      // Only admins can update review status (e.g. publish or hide)
+      allow update: if isAdmin();
+      
+      // User can delete their own review only after moderation (status != 'new'); admin can delete any review
+      allow delete: if isAuth() && ((resource.data.userId == request.auth.uid && resource.data.status != 'new') || isAdmin());
+    }
+
     // Deny everything else by default
     match /{document=**} {
       allow read, write: if false;

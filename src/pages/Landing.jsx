@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Sparkles, ArrowRight, Activity, Moon, CheckCircle2, Zap, Layers, Terminal } from 'lucide-react';
+import { Sparkles, ArrowRight, Activity, Moon, CheckCircle2, Zap, Layers, Terminal, Star, Quote } from 'lucide-react';
 import Logo from '../components/shared/Logo.jsx';
 import LaunchCountdown from '../components/shared/LaunchCountdown.jsx';
-import { auth } from '../firebase.js';
+import UserAvatar from '../components/shared/UserAvatar.jsx';
+import { auth, db } from '../firebase.js';
+import { collection, query, where, limit, getDocs } from 'firebase/firestore';
 import { t, useLocale, setLocale } from '../i18n.js';
 import { toggleTheme } from '../theme.js';
 
@@ -41,10 +43,46 @@ const staggerContainer = {
 export default function Landing() {
   const isLoggedIn = !!auth.currentUser;
   const locale = useLocale();
+  const [publishedReviews, setPublishedReviews] = useState([]);
+  
   const toggleLocale = () => {
     const nextLocale = locale === 'ru' ? 'en' : 'ru';
     setLocale(nextLocale);
   };
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchReviews = async () => {
+      try {
+        const q = query(
+          collection(db, 'reviews'),
+          where('status', '==', 'published'),
+          limit(9)
+        );
+        const snap = await getDocs(q);
+        const list = [];
+        snap.forEach(docSnap => list.push({ id: docSnap.id, ...docSnap.data() }));
+
+        // Client-side sorting by publishedAt/createdAt desc to prevent index errors
+        list.sort((a, b) => {
+          const timeA = a.publishedAt?.toMillis ? a.publishedAt.toMillis() : (a.createdAt?.toMillis ? a.createdAt.toMillis() : 0);
+          const timeB = b.publishedAt?.toMillis ? b.publishedAt.toMillis() : (b.createdAt?.toMillis ? b.createdAt.toMillis() : 0);
+          return timeB - timeA;
+        });
+
+        if (isMounted) {
+          setPublishedReviews(list);
+        }
+      } catch (err) {
+        console.warn("Could not load landing reviews:", err);
+      }
+    };
+
+    fetchReviews();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-background text-on-background font-sans overflow-x-hidden selection:bg-primary-container w-full relative">
@@ -400,6 +438,91 @@ export default function Landing() {
               </motion.div>
             ))}
           </div>
+          
+          {/* Student Reviews Section (Renders only if published reviews exist) */}
+          {publishedReviews.length > 0 && (
+            <div className="mt-8 md:mt-12 text-center px-2">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="mb-8 md:mb-12"
+              >
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs font-semibold mb-3">
+                  <Star className="w-3.5 h-3.5 fill-current" />
+                  <span>{t('landing.reviews.title')}</span>
+                </div>
+                <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-on-surface mb-3">
+                  {t('landing.reviews.title')}
+                </h2>
+                <p className="text-on-surface-variant text-sm md:text-base max-w-2xl mx-auto">
+                  {t('landing.reviews.subtitle')}
+                </p>
+              </motion.div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 w-full text-left">
+                {publishedReviews.map((review, idx) => (
+                  <motion.div
+                    key={review.id}
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: idx * 0.08 }}
+                    whileHover={{ y: -5, scale: 1.01 }}
+                    className="group relative overflow-hidden rounded-[1.5rem] md:rounded-[2rem] bg-surface-container backdrop-blur-xl border border-outline-variant hover:border-primary/40 p-6 md:p-8 flex flex-col justify-between transition-all duration-300 shadow-xl"
+                  >
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-all pointer-events-none" />
+                    
+                    <div>
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-3">
+                          <UserAvatar
+                            photoURL={review.photoURL}
+                            firstName={review.userName}
+                            avatarColor={review.userAvatarColor}
+                            className="w-10 h-10 text-xs border border-outline-variant shadow-sm"
+                          />
+                          <div>
+                            <h4 className="font-semibold text-sm text-on-surface line-clamp-1">
+                              {review.userName || (locale === 'en' ? 'Learner' : 'Ученик')}
+                            </h4>
+                            <span className="text-[11px] text-on-surface-variant">
+                              {review.publishedAt || review.createdAt
+                                ? new Date(
+                                    (review.publishedAt || review.createdAt).toDate 
+                                      ? (review.publishedAt || review.createdAt).toDate() 
+                                      : (review.publishedAt || review.createdAt)
+                                  ).toLocaleDateString(locale === 'en' ? 'en-US' : 'ru-RU', { month: 'short', day: 'numeric', year: 'numeric' })
+                                : ''}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Rating stars */}
+                      <div className="flex items-center gap-1 mb-3">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star
+                            key={s}
+                            className={`w-4 h-4 ${
+                              s <= (review.rating || 5)
+                                ? 'text-amber-400 fill-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.3)]'
+                                : 'text-on-surface-variant/20 fill-transparent'
+                            }`}
+                          />
+                        ))}
+                      </div>
+
+                      {/* Review Text */}
+                      <p className="text-sm md:text-base text-on-surface-variant leading-relaxed line-clamp-4 font-light">
+                        "{review.text}"
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
           
           {/* Founders Section */}
           <div className="mt-8 md:mt-12 text-center px-2">

@@ -8,12 +8,14 @@ import {
   Plus, 
   X, 
   Send, 
-  Paperclip,
-  ChevronLeft,
-  Clock,
-  CheckCircle2,
-  AlertCircle,
-  MessageSquare
+  Paperclip, 
+  ChevronLeft, 
+  Clock, 
+  CheckCircle2, 
+  AlertCircle, 
+  MessageSquare,
+  Star,
+  Trash2
 } from 'lucide-react';
 import { 
   collection, 
@@ -25,13 +27,16 @@ import {
   onSnapshot,
   doc,
   updateDoc,
+  deleteDoc,
   limit,
   writeBatch,
   getDocs
 } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage, auth } from '../firebase.js';
 import { t, useLocale } from '../i18n.js';
+import ReviewModal from '../components/reviews/ReviewModal.jsx';
 
 const getCategories = (locale) => [
   { id: 'bug', label: locale === 'en' ? 'Bug' : 'Баг', icon: Bug, color: 'text-rose-500', bg: 'bg-rose-500/10' },
@@ -49,17 +54,37 @@ const getStatusLabels = (locale) => ({
 
 export default function Support() {
   const locale = useLocale();
+  const [user, setUser] = useState(auth.currentUser);
+  const [activeTab, setActiveTab] = useState('tickets'); // 'tickets' | 'reviews'
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTicket, setActiveTicket] = useState(null);
   const [showNewTicketModal, setShowNewTicketModal] = useState(false);
 
+  // Reviews state
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+
+  // Listen to auth state
   useEffect(() => {
-    if (!auth.currentUser) return;
+    const unsubAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubAuth();
+  }, []);
+
+  // Fetch support tickets
+  useEffect(() => {
+    if (!user) {
+      setTickets([]);
+      setLoading(false);
+      return;
+    }
     
     const q = query(
       collection(db, 'support_tickets'),
-      where('userId', '==', auth.currentUser.uid),
+      where('userId', '==', user.uid),
       limit(20)
     );
 
@@ -86,18 +111,51 @@ export default function Support() {
     });
 
     return () => unsubscribe();
-  }, []); // Пустой массив зависимостей предотвращает бесконечный цикл!
+  }, [user]);
+
+  // Fetch user reviews
+  useEffect(() => {
+    if (!user) {
+      setReviews([]);
+      setReviewsLoading(false);
+      return;
+    }
+
+    const q = query(
+      collection(db, 'reviews'),
+      where('userId', '==', user.uid)
+    );
+
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const data = [];
+      snap.forEach(docSnap => data.push({ id: docSnap.id, ...docSnap.data() }));
+
+      data.sort((a, b) => {
+        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+        return timeB - timeA;
+      });
+
+      setReviews(data);
+      setReviewsLoading(false);
+    }, (err) => {
+      console.error("Error fetching user reviews:", err);
+      setReviewsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   // Фоновая очистка старых закрытых тикетов (старше 24 часов) на стороне клиента
   useEffect(() => {
-    if (!auth.currentUser) return;
+    if (!user) return;
     const cleanupOldTickets = async () => {
       try {
         const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
         // Получаем тикеты пользователя
         const q = query(
           collection(db, 'support_tickets'),
-          where('userId', '==', auth.currentUser.uid)
+          where('userId', '==', user.uid)
         );
         
         const snap = await getDocs(q);
@@ -142,49 +200,112 @@ export default function Support() {
 
   return (
     <div className="max-w-5xl mx-auto w-full flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex items-center justify-between mb-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold font-clash text-on-background tracking-tight">
-            {locale === 'en' ? 'Support & Feedback' : 'Поддержка'}
+            {t('support.title')}
           </h1>
           <p className="text-sm text-on-surface-variant mt-1">
-            {locale === 'en' 
-              ? 'Ask questions, report issues, or propose product features directly to the team.'
-              : 'Здесь вы можете задать вопрос, сообщить об ошибке или предложить идею.'}
+            {t('support.subtitle')}
           </p>
         </div>
-        {!activeTicket && (
+
+        {/* Action Button */}
+        {activeTab === 'tickets' ? (
+          !activeTicket && (
+            <button 
+              onClick={() => setShowNewTicketModal(true)}
+              className="flex items-center gap-2 bg-primary text-on-primary px-4 py-2 rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 self-start sm:self-auto"
+            >
+              <Plus className="w-4 h-4" />
+              <span>
+                {locale === 'en' ? 'New Ticket' : 'Новое обращение'}
+              </span>
+            </button>
+          )
+        ) : (
           <button 
-            onClick={() => setShowNewTicketModal(true)}
-            className="flex items-center gap-2 bg-primary text-on-primary px-4 py-2 rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+            onClick={() => setShowReviewModal(true)}
+            className="flex items-center gap-2 bg-primary text-on-primary px-4 py-2 rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 self-start sm:self-auto"
           >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">
-              {locale === 'en' ? 'New Ticket' : 'Новое обращение'}
+            <Star className="w-4 h-4 fill-current" />
+            <span>
+              {t('reviews.leaveReview')}
             </span>
           </button>
         )}
       </div>
 
+      {/* Pill Segment Tab Control */}
+      {!activeTicket && (
+        <div className="mb-4">
+          <div className="inline-flex items-center gap-1 p-1 bg-surface-container-high/60 border border-outline-variant/50 rounded-2xl shadow-inner">
+            <button
+              onClick={() => setActiveTab('tickets')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                activeTab === 'tickets'
+                  ? 'bg-surface text-on-surface shadow-sm'
+                  : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span>{t('support.tabs.tickets')}</span>
+              {tickets.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.2 text-[10px] rounded-full bg-surface-container-highest text-on-surface-variant">
+                  {tickets.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('reviews')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                activeTab === 'reviews'
+                  ? 'bg-surface text-on-surface shadow-sm'
+                  : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              <Star className="w-4 h-4" />
+              <span>{t('support.tabs.reviews')}</span>
+              {reviews.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.2 text-[10px] rounded-full bg-surface-container-highest text-on-surface-variant">
+                  {reviews.length}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Main Container */}
       <div className="flex-1 bg-surface-container border border-outline-variant rounded-2xl overflow-hidden flex shadow-sm relative">
-        <AnimatePresence mode="wait">
-          {activeTicket ? (
-            <TicketChat 
-              key="chat" 
-              ticket={activeTicket} 
-              onBack={() => setActiveTicket(null)} 
-            />
-          ) : (
-            <TicketList 
-              key="list" 
-              tickets={tickets} 
-              loading={loading} 
-              onSelect={setActiveTicket} 
-            />
-          )}
-        </AnimatePresence>
+        {activeTab === 'tickets' ? (
+          <AnimatePresence mode="wait">
+            {activeTicket ? (
+              <TicketChat 
+                key="chat" 
+                ticket={activeTicket} 
+                onBack={() => setActiveTicket(null)} 
+              />
+            ) : (
+              <TicketList 
+                key="list" 
+                tickets={tickets} 
+                loading={loading} 
+                onSelect={setActiveTicket} 
+              />
+            )}
+          </AnimatePresence>
+        ) : (
+          <UserReviewsList
+            reviews={reviews}
+            loading={reviewsLoading}
+            onOpenReviewModal={() => setShowReviewModal(true)}
+          />
+        )}
       </div>
 
+      {/* Modals */}
       <AnimatePresence>
         {showNewTicketModal && (
           <NewTicketModal 
@@ -196,6 +317,130 @@ export default function Support() {
           />
         )}
       </AnimatePresence>
+
+      <ReviewModal
+        isOpen={showReviewModal}
+        onClose={() => setShowReviewModal(false)}
+        onCreated={() => {
+          setShowReviewModal(false);
+        }}
+      />
+    </div>
+  );
+}
+
+function UserReviewsList({ reviews, loading, onOpenReviewModal }) {
+  const locale = useLocale();
+  const [deletingId, setDeletingId] = useState(null);
+
+  const handleDeleteReview = async (reviewId) => {
+    if (!window.confirm(t('reviews.confirmDelete') || 'Вы уверены, что хотите удалить этот отзыв?')) {
+      return;
+    }
+    setDeletingId(reviewId);
+    try {
+      await deleteDoc(doc(db, 'reviews', reviewId));
+    } catch (err) {
+      console.error("Error deleting review:", err);
+      alert(locale === 'en' ? "Failed to delete review: " + err.message : "Не удалось удалить отзыв: " + err.message);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="w-full flex items-center justify-center p-12 my-auto">
+        <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (reviews.length === 0) {
+    return (
+      <div className="w-full flex flex-col items-center justify-center p-8 text-center my-auto">
+        <div className="w-16 h-16 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center mb-4 text-on-surface-variant/50">
+          <Star className="w-8 h-8" />
+        </div>
+        <h3 className="text-lg font-bold text-on-surface mb-1">
+          {t('reviews.noReviews')}
+        </h3>
+        <p className="text-sm text-on-surface-variant max-w-sm mb-6">
+          {t('reviews.noReviewsDesc')}
+        </p>
+        <button
+          onClick={onOpenReviewModal}
+          className="flex items-center gap-2 bg-primary text-on-primary px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+        >
+          <Star className="w-4 h-4 fill-current" />
+          <span>{t('reviews.leaveReview')}</span>
+        </button>
+      </div>
+    );
+  }
+
+  const REVIEW_STATUS_LABELS = {
+    new: { text: t('reviews.status.new'), color: 'text-amber-400', bg: 'bg-amber-400/10' },
+    published: { text: t('reviews.status.published'), color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
+    hidden: { text: t('reviews.status.hidden'), color: 'text-zinc-400', bg: 'bg-zinc-400/10' }
+  };
+
+  return (
+    <div className="w-full overflow-y-auto p-4 sm:p-6 space-y-4">
+      {reviews.map(review => {
+        const stat = REVIEW_STATUS_LABELS[review.status] || REVIEW_STATUS_LABELS.new;
+        const isDeleting = deletingId === review.id;
+        const canDelete = review.status !== 'new';
+
+        return (
+          <div 
+            key={review.id}
+            className="p-5 rounded-2xl bg-surface-container-high/40 border border-outline-variant hover:border-outline transition-all space-y-3"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <Star
+                    key={s}
+                    className={`w-4 h-4 ${
+                      s <= (review.rating || 5)
+                        ? 'text-amber-400 fill-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.3)]'
+                        : 'text-on-surface-variant/20 fill-transparent'
+                    }`}
+                  />
+                ))}
+                <span className="text-xs font-bold text-on-surface ml-1.5">
+                  {review.rating || 5} / 5
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${stat.bg} ${stat.color}`}>
+                  {stat.text}
+                </span>
+                <span className="text-xs text-on-surface-variant flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5" />
+                  {review.createdAt 
+                    ? new Date(review.createdAt.toDate ? review.createdAt.toDate() : review.createdAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'ru-RU', { day: 'numeric', month: 'short', year: 'numeric' }) 
+                    : (locale === 'en' ? 'Just now' : 'Только что')}
+                </span>
+                {canDelete && (
+                  <button
+                    onClick={() => handleDeleteReview(review.id)}
+                    disabled={isDeleting}
+                    className="p-1 rounded-lg text-on-surface-variant hover:text-red-500 hover:bg-red-500/10 transition-colors ml-1 disabled:opacity-50"
+                    title={t('reviews.delete')}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+            <p className="text-sm text-on-surface whitespace-pre-wrap leading-relaxed">
+              {review.text}
+            </p>
+          </div>
+        );
+      })}
     </div>
   );
 }

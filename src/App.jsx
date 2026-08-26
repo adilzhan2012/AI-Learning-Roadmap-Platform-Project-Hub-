@@ -31,6 +31,7 @@ import AnalyticsAdmin from './pages/admin/AnalyticsAdmin.jsx';
 import PaymentsAdmin from './pages/admin/PaymentsAdmin.jsx';
 import PromocodesAdmin from './pages/admin/PromocodesAdmin.jsx';
 import QuestionsAdmin from './pages/admin/QuestionsAdmin.jsx';
+import ReviewsAdmin from './pages/admin/ReviewsAdmin.jsx';
 import ErrorsAdmin from './pages/admin/ErrorsAdmin.jsx';
 import LogsAdmin from './pages/admin/LogsAdmin.jsx';
 import PoliciesAdmin from './pages/admin/PoliciesAdmin.jsx';
@@ -86,6 +87,7 @@ function AppRoutes() {
           <Route path="payments" element={<PaymentsAdmin />} />
           <Route path="promocodes" element={<PromocodesAdmin />} />
           <Route path="questions" element={<QuestionsAdmin />} />
+          <Route path="reviews" element={<ReviewsAdmin />} />
           <Route path="newsletters" element={<NewslettersAdmin />} />
           <Route path="errors" element={<ErrorsAdmin />} />
           <Route path="logs" element={<LogsAdmin />} />
