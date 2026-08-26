@@ -278,36 +278,18 @@ describe('aiProxy prompt branching (Orchestrator vs Legacy)', () => {
     assert.deepEqual(geminiMessages, [{ role: 'user', content: 'Explain quantum computing' }]);
   });
 
-  test('Fallback on invalid mode: falls back to legacy prompt if prompt string exists', () => {
-    const requestData = {
-      mentorContext: {
-        mode: 'invalid_mode_xyz' // will cause assembleSystemPrompt to throw
-      },
-      prompt: 'Fallback legacy prompt'
-    };
-
-    const { geminiMessages, promptAssemblySource } = resolveGeminiMessages(
-      requestData,
-      userId,
-      mockTransactionResult
-    );
-
-    assert.equal(promptAssemblySource, 'legacy');
-    assert.deepEqual(geminiMessages, [{ role: 'user', content: 'Fallback legacy prompt' }]);
-  });
-
-  test('Fallback on invalid mode without legacy fallback: throws informative HttpsError', () => {
+  test('Security: invalid mode with mentorContext throws HttpsError instead of unsafe legacy fallback', () => {
     const requestData = {
       mentorContext: {
         mode: 'invalid_mode_xyz'
-      }
-      // No prompt or clientMessages
+      },
+      prompt: 'Attempted prompt bypass'
     };
 
     assert.throws(
       () => resolveGeminiMessages(requestData, userId, mockTransactionResult),
       (err) => {
-        return err.message && err.message.includes('Failed to assemble mentor prompt');
+        return err.message && err.message.includes('Failed to assemble mentor prompt safely');
       }
     );
   });

@@ -331,17 +331,11 @@ function resolveGeminiMessages(requestData, userId, transactionResult) {
       if (asmErr instanceof HttpsError) {
         throw asmErr;
       }
-      console.error('[aiProxy] Orchestrator prompt assembly failed, falling back to legacy:', asmErr);
-      if (clientMessages && Array.isArray(clientMessages) && clientMessages.length > 0) {
-        geminiMessages = clientMessages;
-      } else if (typeof prompt === 'string' && prompt.length > 0) {
-        geminiMessages = [{ role: "user", content: prompt }];
-      } else {
-        throw new HttpsError(
-          "internal",
-          `Failed to assemble mentor prompt: ${asmErr.message}`
-        );
-      }
+      console.error('[aiProxy] Orchestrator prompt assembly failed:', asmErr);
+      throw new HttpsError(
+        "internal",
+        `Failed to assemble mentor prompt safely: ${asmErr.message}`
+      );
     }
   } else if (clientMessages && Array.isArray(clientMessages) && clientMessages.length > 0) {
     geminiMessages = clientMessages;
