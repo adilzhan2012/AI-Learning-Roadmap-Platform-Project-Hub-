@@ -72,8 +72,8 @@ export default function Layout() {
       if (docSnap.exists()) {
         const data = docSnap.data();
         setIsBanned(data.isBanned === true);
-        // User profile is considered complete if it has a username (set in step 2 or 4 of wizard)
-        setHasProfile(!!data.username);
+        // User profile is complete if it has username, firstName, or displayName
+        setHasProfile(!!data.username || !!data.firstName || !!data.displayName || !!user.displayName);
       } else {
         setHasProfile(false);
       }
@@ -110,8 +110,9 @@ export default function Layout() {
   // Wait for profile data before deciding on protected routes
   if (currentUser && !isPublicRoute && !isProfileLoaded) {
     return (
-      <div className="flex items-center justify-center h-screen w-full bg-background text-on-background">
+      <div className="flex flex-col items-center justify-center h-screen w-full bg-background text-on-background gap-3">
         <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-xs text-zinc-400">Загрузка профиля...</p>
       </div>
     );
   }
@@ -120,9 +121,9 @@ export default function Layout() {
     return <Navigate to="/login" replace />;
   }
 
-  // Force users without a complete profile back to login to finish the wizard
+  // If user is authenticated on a protected route but has no complete profile, redirect to register wizard
   if (currentUser && !isPublicRoute && !hasProfile) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/register" replace />;
   }
 
   if (isPublicRoute && location.pathname !== '/dashboard') {
