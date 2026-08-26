@@ -630,6 +630,35 @@ exports.resolveGeminiMessages = resolveGeminiMessages;
 exports.resolveMode = resolveMode;
 exports.evaluatePlanLimits = evaluatePlanLimits;
 
+function validateNodeId(nodeId) {
+  if (!nodeId || typeof nodeId !== "string" || !nodeId.trim() || nodeId.trim().length > 128) {
+    throw new HttpsError("invalid-argument", "Invalid or missing nodeId");
+  }
+  return nodeId.trim();
+}
+
+function checkActivityRateLimit(xpHistory, activityPrefix, maxDaily, minCooldownSec = 0) {
+  const now = Date.now();
+  const oneDayAgo = now - 24 * 60 * 60 * 1000;
+  
+  const matchingHistory = (xpHistory || [])
+    .filter(h => h && typeof h.reason === "string" && h.reason.startsWith(activityPrefix))
+    .map(h => ({ ...h, time: new Date(h.timestamp).getTime() }))
+    .filter(h => !isNaN(h.time));
+
+  const dailyCount = matchingHistory.filter(h => h.time >= oneDayAgo).length;
+  if (dailyCount >= maxDaily) {
+    throw new HttpsError("resource-exhausted", `Daily limit for this activity reached (${maxDaily}/day)`);
+  }
+
+  if (minCooldownSec > 0 && matchingHistory.length > 0) {
+    const latestTime = Math.max(...matchingHistory.map(h => h.time));
+    if (now - latestTime < minCooldownSec * 1000) {
+      throw new HttpsError("resource-exhausted", "Please wait before requesting XP for this activity again");
+    }
+  }
+}
+
 // ----------------------------------------------------
 // Secure awardXP Cloud Function (Transaction Enabled)
 // ----------------------------------------------------
@@ -721,50 +750,50 @@ exports.awardXP = onCall(async (request) => {
       activityColor = "text-amber-500";
 
     } else if (activityType === "selection_ask") {
-      const { nodeId } = details;
-      if (!nodeId) throw new HttpsError("invalid-argument", "Missing nodeId");
+      const validNodeId = validateNodeId(details.nodeId);
+      checkActivityRateLimit(xpHistory, "selection_ask_", 5, 10);
 
-      reasonKey = `selection_ask_${nodeId}`;
+      reasonKey = `selection_ask_${validNodeId}`;
       amount = 10;
       activityTitle = locale === "ru" ? "ИИ-помощник использован" : "AI Assistant used";
       activityIcon = "auto_awesome";
       activityColor = "text-purple-500";
 
     } else if (activityType === "slide_completed") {
-      const { nodeId } = details;
-      if (!nodeId) throw new HttpsError("invalid-argument", "Missing nodeId");
+      const validNodeId = validateNodeId(details.nodeId);
+      checkActivityRateLimit(xpHistory, "slide_completed_", 30, 10);
 
-      reasonKey = `slide_completed_${nodeId}`;
+      reasonKey = `slide_completed_${validNodeId}`;
       amount = 5;
       activityTitle = locale === "ru" ? "Слайды прочитаны" : "Slides completed";
       activityIcon = "slideshow";
       activityColor = "text-emerald-500";
 
     } else if (activityType === "code_review_passed") {
-      const { nodeId } = details;
-      if (!nodeId) throw new HttpsError("invalid-argument", "Missing nodeId");
+      const validNodeId = validateNodeId(details.nodeId);
+      checkActivityRateLimit(xpHistory, "code_review_passed_", 5, 30);
 
-      reasonKey = `code_review_passed_${nodeId}`;
+      reasonKey = `code_review_passed_${validNodeId}`;
       amount = 40;
       activityTitle = locale === "ru" ? "AI Code Review пройден" : "AI Code Review passed";
       activityIcon = "code";
       activityColor = "text-blue-500";
 
     } else if (activityType === "project_verified") {
-      const { nodeId } = details;
-      if (!nodeId) throw new HttpsError("invalid-argument", "Missing nodeId");
+      const validNodeId = validateNodeId(details.nodeId);
+      checkActivityRateLimit(xpHistory, "project_verified_", 5, 30);
 
-      reasonKey = `project_verified_${nodeId}`;
+      reasonKey = `project_verified_${validNodeId}`;
       amount = 50;
       activityTitle = locale === "ru" ? "AI Проверка проекта пройдена" : "AI Project Verification passed";
       activityIcon = "verified";
       activityColor = "text-sky-500";
 
     } else if (activityType === "mock_interview_completed") {
-      const { nodeId } = details;
-      if (!nodeId) throw new HttpsError("invalid-argument", "Missing nodeId");
+      const validNodeId = validateNodeId(details.nodeId);
+      checkActivityRateLimit(xpHistory, "mock_interview_completed_", 3, 60);
 
-      reasonKey = `mock_interview_completed_${nodeId}`;
+      reasonKey = `mock_interview_completed_${validNodeId}`;
       amount = 100;
       activityTitle = locale === "ru" ? "AI Mock Interview завершено" : "AI Mock Interview completed";
       activityIcon = "record_voice_over";
