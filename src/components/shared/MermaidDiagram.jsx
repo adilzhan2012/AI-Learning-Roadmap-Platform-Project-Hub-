@@ -5,7 +5,7 @@ try {
   mermaid.initialize({
     startOnLoad: false,
     theme: 'dark',
-    securityLevel: 'loose',
+    securityLevel: 'strict',
     suppressErrorRendering: true
   });
 } catch (e) {
