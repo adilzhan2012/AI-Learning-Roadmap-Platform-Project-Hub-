@@ -36,6 +36,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 import { t, useLocale } from '../../i18n.js';
+import { sanitizeUserInput } from '../../utils/sanitizeUserInput.js';
 
 export default function HomeworkSection({ courseId, nodeId, lessonContent, topicLabel, topicDesc, courseLanguage = 'ru' }) {
   const navigate = useNavigate();
@@ -134,7 +135,7 @@ export default function HomeworkSection({ courseId, nodeId, lessonContent, topic
     e.preventDefault();
     if (!chatInput.trim() || chatLoading) return;
     
-    const userMessage = chatInput.trim();
+    const userMessage = sanitizeUserInput(chatInput.trim(), 2000);
     setChatInput('');
     const newHistory = [...chatHistory, { role: 'user', content: userMessage }];
     setChatHistory(newHistory);

@@ -18,11 +18,17 @@ export const MAX_CODE_LENGTH  = 8000;
  * спецсимволы, которые могут путать парсер (< | >).
  */
 const INJECTION_PATTERNS = [
-  // Классические injection triggers
+  // Классические injection triggers (EN)
   /ignore\s+(all\s+)?(previous|above|prior)\s+(instructions?|prompts?|context)/gi,
   /disregard\s+(all\s+)?(previous|above|prior)\s+(instructions?|prompts?)/gi,
   /forget\s+(all\s+)?(previous|above|prior)\s+(instructions?|prompts?)/gi,
   /override\s+(the\s+)?(system|previous)\s+(prompt|instructions?)/gi,
+
+  // Классические injection triggers (RU)
+  /игнорируй\s+(все\s+)?(предыдущие|прошлые|вышеуказанные)?\s*(инструкции|указания|промпты|правила)/gi,
+  /забудь\s+(все\s+)?(предыдущие|прошлые|вышеуказанные)?\s*(инструкции|указания|промпты|правила)/gi,
+  /отмени\s+(все\s+)?(предыдущие|прошлые)?\s*(инструкции|указания|промпты|правила)/gi,
+  /переопредели\s+(системный|системные)?\s*(промпт|инструкции|правила)/gi,
 
   // Ролевые переключатели
   /you\s+are\s+now\s+(a|an)\s+/gi,
@@ -32,17 +38,29 @@ const INJECTION_PATTERNS = [
   /switch\s+(to\s+)?(developer|jailbreak|DAN)\s+mode/gi,
   /DAN\s+mode/gi,
   /jailbreak/gi,
+  /ты\s+теперь\s+/gi,
+  /действуй\s+как\s+/gi,
+  /притворись\s+/gi,
+  /режим\s+(разработчика|джейлбрейк|DAN)/gi,
 
   // Маркеры структуры промпта
   /^SYSTEM\s*:/gim,
   /^CRITICAL\s+INSTRUCTION\s*:/gim,
   /^IMPORTANT\s*:/gim,
+  /^СИСТЕМА\s*:/gim,
+  /^КРИТИЧЕСКАЯ\s+ИНСТРУКЦИЯ\s*:/gim,
 
-  // LLM special tokens — используем new RegExp чтобы избежать проблем парсера
+  // LLM special tokens
   new RegExp('\\[INST\\]', 'gi'),
   new RegExp('<<SYS>>', 'gi'),
   new RegExp('<\\|system\\|>', 'gi'),
   new RegExp('<\\|im_start\\|>', 'gi'),
+  new RegExp('<\\|user\\|>', 'gi'),
+  new RegExp('<\\|assistant\\|>', 'gi'),
+
+  // Delimiter tags prevention
+  new RegExp('<student_submission>', 'gi'),
+  new RegExp('</student_submission>', 'gi'),
 
   // Избыточные переносы строк (> 4 пустых строк подряд) — маскируют структуру промпта
   /(\n\s*){5,}/g,
