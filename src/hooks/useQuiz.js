@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
 import { callGeminiWithRetry, withTimeout } from '../services/courseService.js';
 import { t, getLocale } from '../i18n.js';
-import { db, auth } from '../firebase.js';
+import { db, auth, functions } from '../firebase.js';
+import { httpsCallable } from 'firebase/functions';
 import { doc, setDoc, getDoc, serverTimestamp, increment } from 'firebase/firestore';
 import { parseAIJson, AIParsingError } from '../utils/aiResponseParser.js';
 
@@ -157,80 +158,38 @@ Return ONLY a valid JSON object:
     }
   }, []);
 
-  const saveQuizResult = useCallback(async (roadmapId, nodeId, score, total, passed, failedDetails = []) => {
-    if (!auth.currentUser) return;
+  const saveQuizResult = useCallback(async (roadmapId, nodeId, score, total, passed, failedDetails = [], questions = [], userAnswers = {}) => {
+    if (!auth.currentUser) return null;
     try {
-      const userId = auth.currentUser.uid;
-      const docRef = doc(db, 'users', userId, 'quizResults', String(nodeId));
-      
-      const snap = await getDoc(docRef);
-      let attempts = [];
-      let consecutiveFails = 0;
-      let failedConceptsSummary = {};
-
-      if (snap.exists()) {
-        const data = snap.data();
-        attempts = data.attempts || [];
-        consecutiveFails = data.consecutiveFails || 0;
-        failedConceptsSummary = data.failedConceptsSummary || {};
-      }
-
-      if (passed) {
-        consecutiveFails = 0;
-      } else {
-        consecutiveFails += 1;
-        failedDetails.forEach(detail => {
-          const conceptKey = detail.sectionHeading || detail.questionText.substring(0, 40);
-          failedConceptsSummary[conceptKey] = (failedConceptsSummary[conceptKey] || 0) + 1;
-        });
-      }
-
-      const scorePercentage = total > 0 ? Math.round((score / total) * 100) : 100;
-      const nowIso = new Date().toISOString();
-
-      attempts.push({
-        score: scorePercentage,
-        rawScore: score,
-        total,
-        passed,
-        failedConcepts: failedDetails.map(d => d.sectionHeading || d.questionText),
-        date: nowIso,
-        timestamp: nowIso
+      const submitFn = httpsCallable(functions, 'submitQuizResult');
+      const response = await submitFn({
+        roadmapId: roadmapId || '',
+        nodeId: String(nodeId),
+        questions: questions || [],
+        userAnswers: userAnswers || {}
       });
 
-      const dataToSave = {
-        userId,
-        roadmapId,
-        nodeId: String(nodeId),
-        score: scorePercentage,
-        rawScore: score,
-        total,
-        attempts,
-        attemptsCount: attempts.length,
-        consecutiveFails,
-        failedConceptsSummary,
-        lastAttemptAt: serverTimestamp(),
-        passed
-      };
-
-      await setDoc(docRef, dataToSave, { merge: true });
+      const serverData = response.data || {};
+      const consecutiveFails = serverData.consecutiveFails || 0;
+      const failedConceptsSummary = serverData.failedConceptsSummary || {};
 
       // Signal graph rebuild if user is stuck (e.g. 4+ consecutive failures)
       if (consecutiveFails >= 4) {
         console.warn(`Node ${nodeId} has ${consecutiveFails} consecutive fails. Signal candidate for rebuildGraphForFailedNode.`);
       }
 
-      return { consecutiveFails, failedConceptsSummary };
+      return { consecutiveFails, failedConceptsSummary, ...serverData };
     } catch (e) {
-      console.error('Failed to save quiz result:', e);
+      console.error('Failed to save quiz result via Cloud Function:', e);
+      throw e;
     }
   }, []);
 
   const resetConsecutiveFails = useCallback(async (nodeId) => {
     if (!auth.currentUser) return;
     try {
-      const docRef = doc(db, 'users', auth.currentUser.uid, 'quizResults', String(nodeId));
-      await setDoc(docRef, { consecutiveFails: 0 }, { merge: true });
+      const resetFn = httpsCallable(functions, 'resetQuizConsecutiveFails');
+      await resetFn({ nodeId: String(nodeId) });
     } catch (e) {
       console.warn("Failed to reset consecutive fails counter:", e);
     }

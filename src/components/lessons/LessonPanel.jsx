@@ -211,10 +211,19 @@ export default function LessonPanel({
     }
   };
 
-  const handleQuizComplete = async (score, total, passed, failedDetails = []) => {
+  const handleQuizComplete = async (score, total, passed, failedDetails = [], questionsList = null, answersMap = null) => {
     setQuizOpen(false);
     
-    const saveRes = await saveQuizResult(selectedCourse.id, selectedNode.id, score, total, passed, failedDetails);
+    const saveRes = await saveQuizResult(
+      selectedCourse.id, 
+      selectedNode.id, 
+      score, 
+      total, 
+      passed, 
+      failedDetails, 
+      questionsList || quizData, 
+      answersMap
+    );
     
     if (saveRes) {
       setConsecutiveFailsCount(saveRes.consecutiveFails || 0);

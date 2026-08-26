@@ -2328,3 +2328,140 @@ exports.checkGroupInvitationsTTL = onCall(async () => {
   return { success: true, expiredCount, warningCount };
 });
 
+// ----------------------------------------------------
+// Secure Quiz Evaluation Cloud Functions
+// ----------------------------------------------------
+exports.submitQuizResult = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Must be authenticated");
+  }
+
+  const userId = request.auth.uid;
+  const { roadmapId, nodeId, questions = [], userAnswers = {} } = request.data || {};
+
+  if (!nodeId) {
+    throw new HttpsError("invalid-argument", "Missing nodeId");
+  }
+
+  const validNodeId = validateNodeId(nodeId);
+
+  // Compute score on the server from questions & userAnswers
+  let rawScore = 0;
+  const total = Array.isArray(questions) ? questions.length : 0;
+  const failedDetails = [];
+  const failedConceptsSummary = {};
+
+  if (total > 0) {
+    questions.forEach((q, i) => {
+      const correctIdx = typeof q.correctIndex === "number"
+        ? q.correctIndex
+        : (typeof q.correctAnswer === "number" ? q.correctAnswer : 0);
+
+      const userAns = Array.isArray(userAnswers) ? userAnswers[i] : userAnswers[i];
+      const isCorrect = userAns !== undefined && Number(userAns) === correctIdx;
+
+      if (isCorrect) {
+        rawScore++;
+      } else {
+        const qText = q.question || q.questionText || q.prompt || q.title || `Question ${i + 1}`;
+        const correctOption = Array.isArray(q.options) ? (q.options[correctIdx] || "") : "";
+        const userOption = (Array.isArray(q.options) && userAns !== undefined) ? (q.options[userAns] || "no answer") : "no answer";
+        const sectionHeading = q.sectionHeading || "";
+
+        failedDetails.push({
+          questionText: qText,
+          userAnswer: userOption,
+          correctAnswer: correctOption,
+          sectionHeading
+        });
+
+        const conceptKey = sectionHeading || qText.substring(0, 40);
+        failedConceptsSummary[conceptKey] = (failedConceptsSummary[conceptKey] || 0) + 1;
+      }
+    });
+  }
+
+  const scorePercentage = total > 0 ? Math.round((rawScore / total) * 100) : 0;
+  const passed = total > 0 ? (rawScore / total) >= 0.6 : false;
+
+  const userRef = db.collection("users").doc(userId);
+  const quizRef = userRef.collection("quizResults").doc(String(validNodeId));
+
+  return db.runTransaction(async (transaction) => {
+    const snap = await transaction.get(quizRef);
+    let attempts = [];
+    let consecutiveFails = 0;
+    let existingConceptsSummary = {};
+
+    if (snap.exists) {
+      const data = snap.data();
+      attempts = data.attempts || [];
+      consecutiveFails = data.consecutiveFails || 0;
+      existingConceptsSummary = data.failedConceptsSummary || {};
+    }
+
+    if (passed) {
+      consecutiveFails = 0;
+    } else {
+      consecutiveFails += 1;
+      Object.entries(failedConceptsSummary).forEach(([k, v]) => {
+        existingConceptsSummary[k] = (existingConceptsSummary[k] || 0) + v;
+      });
+    }
+
+    const nowIso = new Date().toISOString();
+    attempts.push({
+      score: scorePercentage,
+      rawScore,
+      total,
+      passed,
+      failedConcepts: failedDetails.map(d => d.sectionHeading || d.questionText),
+      date: nowIso,
+      timestamp: nowIso
+    });
+
+    const dataToSave = {
+      userId,
+      roadmapId: roadmapId || "",
+      nodeId: String(validNodeId),
+      score: scorePercentage,
+      rawScore,
+      total,
+      attempts,
+      attemptsCount: attempts.length,
+      consecutiveFails,
+      failedConceptsSummary: existingConceptsSummary,
+      lastAttemptAt: FieldValue.serverTimestamp(),
+      passed
+    };
+
+    transaction.set(quizRef, dataToSave, { merge: true });
+
+    return {
+      success: true,
+      score: rawScore,
+      total,
+      scorePercentage,
+      passed,
+      consecutiveFails,
+      failedConceptsSummary: existingConceptsSummary,
+      failedDetails
+    };
+  });
+});
+
+exports.resetQuizConsecutiveFails = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Must be authenticated");
+  }
+  const userId = request.auth.uid;
+  const { nodeId } = request.data || {};
+  if (!nodeId) {
+    throw new HttpsError("invalid-argument", "Missing nodeId");
+  }
+  const validNodeId = validateNodeId(nodeId);
+  const quizRef = db.collection("users").doc(userId).collection("quizResults").doc(String(validNodeId));
+  await quizRef.set({ consecutiveFails: 0 }, { merge: true });
+  return { success: true };
+});
+

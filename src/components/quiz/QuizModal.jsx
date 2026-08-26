@@ -64,13 +64,13 @@ export default function QuizModal({
 
   const handleRetry = () => {
     if (results) {
-      onComplete(results.score, results.total, results.passed, results.failedDetails);
+      onComplete(results.score, results.total, results.passed, results.failedDetails, questions, answers);
     }
   };
 
   const handleForceRetry = () => {
     if (results) {
-      onComplete(results.score, results.total, results.passed, results.failedDetails);
+      onComplete(results.score, results.total, results.passed, results.failedDetails, questions, answers);
     }
     if (onForceRetry) {
       onClose();
@@ -237,7 +237,7 @@ export default function QuizModal({
                 explanations={results.explanations}
                 onRetry={handleRetry}
                 onForceRetry={handleForceRetry}
-                onContinue={() => onComplete(results.score, results.total, results.passed, results.failedDetails)}
+                onContinue={() => onComplete(results.score, results.total, results.passed, results.failedDetails, questions, answers)}
                 onAskMentor={onAskMentor}
                 onReviewSection={(headingText) => {
                   if (onReviewSection) {
