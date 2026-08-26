@@ -244,6 +244,8 @@ export default function Auth({ type }) {
     if (e) e.preventDefault();
     setError('');
     
+    if (isLogin) {
+      setLoading(true);
       try {
         await signInWithEmailAndPassword(auth, email, password);
         navigate('/dashboard');
