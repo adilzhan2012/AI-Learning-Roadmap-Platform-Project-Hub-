@@ -11,10 +11,14 @@ import MaintenancePage from '../shared/MaintenancePage.jsx';
 import BannedModal from '../shared/BannedModal.jsx';
 import Footer from '../shared/Footer.jsx';
 
+const APP_VERSION = (typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__)
+  ? (String(__APP_VERSION__).startsWith('v') ? __APP_VERSION__ : `v${__APP_VERSION__}`)
+  : (import.meta.env?.VITE_APP_VERSION || 'v1.1.0');
+
 const VersionBadge = () => (
   <div className="fixed bottom-2 left-2 z-[9999] pointer-events-none">
     <span className="text-[10px] font-mono font-bold text-on-surface-variant/50 select-none bg-surface-container/50 px-1.5 py-0.5 rounded backdrop-blur-md border border-outline/20">
-      alpha/v1.1.0
+      {APP_VERSION}
     </span>
   </div>
 );

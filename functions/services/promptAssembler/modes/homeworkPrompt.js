@@ -21,9 +21,9 @@ function getHomeworkPrompt(mentorContext) {
   const hwPromptText = hwTask.prompt || '(No specific homework prompt provided)';
 
   let rubricBlock = '';
-  if (Array.isArray(hwTask.rubric) && hwTask.rubric.length > 0) {
-    const formattedCriteria = hwTask.rubric
-      .map((r, i) => `${i + 1}. ${typeof r === 'object' ? (r.criterion || r.title || JSON.stringify(r)) : r}`)
+  if (Array.isArray(hwTask?.rubric) && hwTask.rubric.length > 0) {
+    const formattedCriteria = (hwTask?.rubric || [])
+      .map((r, i) => `${i + 1}. ${typeof r === 'object' && r ? (r.criterion || r.title || JSON.stringify(r)) : r}`)
       .join('\n');
     rubricBlock = `\n\nEVALUATION CRITERIA:\n${formattedCriteria}`;
   }

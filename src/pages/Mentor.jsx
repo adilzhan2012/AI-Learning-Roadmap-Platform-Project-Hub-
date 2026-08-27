@@ -145,12 +145,6 @@ export default function Mentor() {
     setGenerating(true);
 
     try {
-      const apiKey = null;
-      if (false) {
-        setApiKeyError(true);
-        throw new Error('MISSING_API_KEY');
-      }
-
       // Smart model routing: use Gemini 2.5 Flash for short queries, Gemini 2.5 Pro for complex/deep responses
       const isProSoftCapped = plan === 'PRO' && (usage.mentorMessagesUsed || 0) >= PLAN_LIMITS.PRO.aiMentorPerDay;
       const isComplexQuery = text.length > 200 || text.toLowerCase().includes('объясни') || text.toLowerCase().includes('почему') || text.toLowerCase().includes('ошибка');
