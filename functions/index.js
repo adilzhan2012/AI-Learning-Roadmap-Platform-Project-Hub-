@@ -299,10 +299,10 @@ exports.youtubeProxy = onCall(
 );
 
 function mapModelName(model) {
-  if (model && (model.includes("llama-3.1-8b") || model.includes("gemini-2.5-flash") || model.includes("gemini-1.5-flash"))) {
-    return "google/gemini-2.5-flash";
+  if (model && (model.includes("pro") || model.includes("gemini-2.5-pro") || model.includes("gemini-1.5-pro"))) {
+    return "google/gemini-2.5-pro";
   }
-  return "google/gemini-2.5-pro";
+  return "google/gemini-2.5-flash";
 }
 
 function resolveGeminiMessages(requestData, userId, transactionResult) {
