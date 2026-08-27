@@ -16,7 +16,7 @@ export default defineConfig({
     outDir: 'dist'
   },
   define: {
-    __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '1.1.0')
+    __APP_VERSION__: JSON.stringify('v1.1.0')
   },
   esbuild: {
     pure: ['console.log', 'console.warn', 'console.debug']
