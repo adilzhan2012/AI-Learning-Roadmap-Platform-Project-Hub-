@@ -847,30 +847,13 @@ Return ONLY a valid JSON object:
   ]
 }`;
 
-  const userMessage = `Student Submission:\n${sanitizedSubmission}`;
-
-  // fix/critical-round1: usageType изменён на 'homework_review' (отдельный серверный лимит, Фикс 4)
-  const textResponse = await withTimeout(
-    callGeminiWithRetry(null, null, 'homework_review', null, [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userMessage }
-    ]),
-    120000,
-    'Превышено время ожидания проверки задания (120 сек). Пожалуйста, попробуйте еще раз.'
-  );
-  if (!textResponse) throw new Error('Empty response from Gemini API');
-
-  const reviewResult = parseAIJson(textResponse);
-
-  // Soft Rate-Limit: max 3 reviews per hour per node
+  // Fast client-side pre-check for immediate UX feedback (server enforces final limit based on Firestore)
   const hwRef = doc(db, 'users', userId, 'homeworkSubmissions', `${courseId}_${nodeId}`);
   const hwSnap = await getDoc(hwRef);
-
   let attempts = [];
   if (hwSnap.exists()) {
     attempts = hwSnap.data().attempts || [];
   }
-
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
   const recentHourlyAttempts = attempts.filter(a => new Date(a.timestamp) > oneHourAgo);
   if (recentHourlyAttempts.length >= 3) {
@@ -878,6 +861,19 @@ Return ONLY a valid JSON object:
     error.userMessage = "Вы достигли лимита проверок для этого задания за час.";
     throw error;
   }
+
+  // fix/critical-round1: usageType изменён на 'homework_review' (отдельный серверный лимит, Фикс 4)
+  const textResponse = await withTimeout(
+    callGeminiWithRetry(null, null, 'homework_review', null, [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMessage }
+    ], { courseId, nodeId: String(nodeId) }),
+    120000,
+    'Превышено время ожидания проверки задания (120 сек). Пожалуйста, попробуйте еще раз.'
+  );
+  if (!textResponse) throw new Error('Empty response from Gemini API');
+
+  const reviewResult = parseAIJson(textResponse);
 
   // fix/critical-round1 (ФИКС 4): клиентский инкремент homeworkReviewsUsed удалён.
   // aiProxy теперь атомарно инкрементирует счётчик в runTransaction ДО вызова Gemini API.

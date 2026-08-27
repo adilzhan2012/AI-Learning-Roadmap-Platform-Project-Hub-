@@ -117,7 +117,7 @@ const calculateLevel = (xp) => {
  * Unified limit checker & atomic usage counter updater within a Firestore transaction.
  * Delegates evaluation logic to evaluatePlanLimits for consistency across all modes.
  */
-async function processUsageLimitAndCounter(db, admin, userId, usageType, todayStr, monthStr, lessonId = null, userQuery = '') {
+async function processUsageLimitAndCounter(db, admin, userId, usageType, todayStr, monthStr, lessonId = null, userQuery = '', extraOptions = {}) {
   const subRef = db.collection('users').doc(userId).collection('subscription').doc('details');
   const lessonUsageRef = lessonId ? db.collection('users').doc(userId).collection('lessonUsage').doc(String(lessonId)) : null;
 
@@ -142,6 +142,27 @@ async function processUsageLimitAndCounter(db, admin, userId, usageType, todaySt
       const subSnap = await txn.get(subRef);
       const data = subSnap.exists ? subSnap.data() : {};
       const plan = data.plan || 'FREE';
+
+      // Server-side check for homework_review hourly rate limiting (max 3 reviews per hour per node)
+      if (usageType === 'homework_review') {
+        const courseId = extraOptions.courseId;
+        const nodeId = extraOptions.nodeId || lessonId;
+        if (courseId && nodeId) {
+          const hwDocRef = db.collection('users').doc(userId).collection('homeworkSubmissions').doc(`${courseId}_${nodeId}`);
+          const hwSnap = await txn.get(hwDocRef);
+          if (hwSnap.exists) {
+            const attempts = hwSnap.data()?.attempts || [];
+            const oneHourAgo = Date.now() - 60 * 60 * 1000;
+            const recentHourlyAttempts = attempts.filter(a => {
+              const t = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+              return t > oneHourAgo;
+            });
+            if (recentHourlyAttempts.length >= 3) {
+              throw new HttpsError('resource-exhausted', 'Вы достигли лимита проверок для этого задания за час.');
+            }
+          }
+        }
+      }
 
       let lessonMessagesUsed = 0;
       if (lessonUsageRef) {
@@ -421,7 +442,7 @@ exports.aiProxy = onCall(
 
     // 3. Process usage limit transaction using evaluatePlanLimits with effectiveUsageType and effectiveLessonId
     const transactionResult = await processUsageLimitAndCounter(
-      db, admin, userId, effectiveUsageType, todayStr, monthStr, effectiveLessonId, queryText
+      db, admin, userId, effectiveUsageType, todayStr, monthStr, effectiveLessonId, queryText, request.data || {}
     );
 
     // 4. Pass resolved data to resolveGeminiMessages
