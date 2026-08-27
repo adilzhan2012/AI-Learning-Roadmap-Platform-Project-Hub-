@@ -1031,6 +1031,23 @@ exports.updateSubscription = onCall(async (request) => {
     throw new HttpsError("permission-denied", "Email must be verified to change your subscription.");
   }
 
+  // Server-side verification of referral status & discount eligibility
+  let referralDiscount = 0;
+  if (!isDowngradeToFree) {
+    try {
+      const userDoc = await db.collection("users").doc(userId).get();
+      const userData = userDoc.exists ? userDoc.data() : {};
+      const hasReferredBy = !!userData.referredBy;
+      const refSnap = await db.collection("users").where("referredBy", "==", userId).limit(1).get();
+      const hasReferrals = !refSnap.empty;
+      if (hasReferredBy || hasReferrals) {
+        referralDiscount = 20; // 20% referral discount
+      }
+    } catch (refErr) {
+      console.warn("[updateSubscription] Could not verify referral discount on server:", refErr);
+    }
+  }
+
   const provider = isDowngradeToFree ? null : (request.data.paymentProvider || 'stripe');
   const subRef = db.collection("users").doc(userId).collection("subscription").doc("details");
   await subRef.set({
@@ -1038,7 +1055,8 @@ exports.updateSubscription = onCall(async (request) => {
     updatedAt: FieldValue.serverTimestamp(),
     paymentVerified: !isDowngradeToFree,
     paymentProvider: provider,
-    appliedPromoCode: request.data.promoCode || null
+    appliedPromoCode: request.data.promoCode || null,
+    referralDiscountApplied: referralDiscount > 0 ? referralDiscount : null
   }, { merge: true });
 
   const userRef = db.collection("users").doc(userId);
@@ -1047,8 +1065,31 @@ exports.updateSubscription = onCall(async (request) => {
     subscriptionPlan: isDowngradeToFree ? null : plan
   });
 
-  console.log(`[updateSubscription] uid=${userId} plan changed to ${plan}`);
-  return { success: true };
+  console.log(`[updateSubscription] uid=${userId} plan changed to ${plan}, referralDiscount=${referralDiscount}%`);
+  return { success: true, referralDiscountApplied: referralDiscount };
+});
+
+// ----------------------------------------------------
+// Referral Discount Status Verification Cloud Function
+// ----------------------------------------------------
+exports.getReferralDiscountStatus = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Must be authenticated");
+  }
+  const userId = request.auth.uid;
+  const userDoc = await db.collection("users").doc(userId).get();
+  const userData = userDoc.exists ? userDoc.data() : {};
+  const hasReferredBy = !!userData.referredBy;
+  const refSnap = await db.collection("users").where("referredBy", "==", userId).limit(1).get();
+  const hasReferrals = !refSnap.empty;
+  const isEligible = hasReferredBy || hasReferrals;
+
+  return {
+    isEligible,
+    discountPercent: isEligible ? 20 : 0,
+    hasReferredBy,
+    hasReferrals
+  };
 });
 
 // ----------------------------------------------------

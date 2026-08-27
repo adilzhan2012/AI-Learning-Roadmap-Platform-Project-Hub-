@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Crown, CheckCircle2, Copy, Share2, Check } from 'lucide-react';
-import { auth } from '../../firebase.js';
+import { httpsCallable } from 'firebase/functions';
+import { auth, functions } from '../../firebase.js';
 import { getUserStats, getReferralsCount } from '../../services/courseService.js';
 import { useLocale, t } from '../../i18n.js';
 import { useNavigate } from 'react-router-dom';
@@ -22,6 +23,19 @@ export default function UpgradeModal({ isOpen, onClose }) {
     const checkReferralStatus = async () => {
       try {
         const uid = auth.currentUser.uid;
+        
+        // 1. Primary: Server-side check
+        try {
+          const getStatusFn = httpsCallable(functions, 'getReferralDiscountStatus');
+          const res = await getStatusFn();
+          if (res && res.data) {
+            setDiscountActive(res.data.isEligible === true);
+          }
+        } catch (fnErr) {
+          console.warn('[UpgradeModal] Server check fallback:', fnErr);
+        }
+
+        // 2. Fetch stats for link construction and fallback
         const [stats, count] = await Promise.all([
           getUserStats(uid),
           getReferralsCount(uid)
