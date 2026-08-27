@@ -30,6 +30,23 @@ export default function QuizHistoryModal({
     setFilterNodeId(initialNodeId || 'all');
   }, [initialNodeId, isOpen]);
 
+  // Handle ESC and safe body scroll lock
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen || !selectedCourse) return null;
 
   // Map of nodes for easy label retrieval
@@ -112,6 +129,11 @@ export default function QuizHistoryModal({
   const trendChart = useMemo(() => {
     if (filterNodeId === 'all' || filteredAttempts.length < 2) return null;
 
+    // Limit to latest 15 attempts to prevent SVG point & label crowding
+    const chartAttempts = filteredAttempts.length > 15
+      ? filteredAttempts.slice(-15)
+      : filteredAttempts;
+
     const width = 500;
     const height = 150;
     const paddingX = 40;
@@ -123,8 +145,8 @@ export default function QuizHistoryModal({
     const maxY = height - paddingY;
 
     // Distribute X evenly
-    const pts = filteredAttempts.map((att, i) => {
-      const x = minX + (i / (filteredAttempts.length - 1)) * (maxX - minX);
+    const pts = chartAttempts.map((att, i) => {
+      const x = minX + (i / (chartAttempts.length - 1)) * (maxX - minX);
       const y = maxY - (att.score / 100) * (maxY - minY);
       return { x, y, score: att.score, attemptIndex: att.attemptIndex };
     });

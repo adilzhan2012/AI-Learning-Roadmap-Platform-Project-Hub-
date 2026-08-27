@@ -3,6 +3,7 @@ import { X, Loader2 } from 'lucide-react';
 import { t, useLocale } from '../../i18n.js';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../firebase.js';
+import { callGeminiWithRetry } from '../../services/courseService.js';
 
 const PROMPTS = {
   explain: (ctx, sel) =>
@@ -12,8 +13,6 @@ const PROMPTS = {
   analogy: (ctx, sel) =>
     `Тема курса: "${ctx.topic}". Выделенный текст: "${sel}". Придумай одну запоминающуюся аналогию. 1-2 предложения.`,
 };
-
-import { callGeminiWithRetry } from '../../services/courseService.js';
 
 async function askGeminiSimulatedStream(prompt, onChunk) {
   const fullResponse = await callGeminiWithRetry(null, prompt, 'ai_question');

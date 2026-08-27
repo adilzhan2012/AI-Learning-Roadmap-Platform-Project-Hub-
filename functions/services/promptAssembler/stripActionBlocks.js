@@ -17,9 +17,13 @@ function stripActionBlocks(content) {
 
   let cleaned = content;
 
-  // 1. Strip ```json { ... "action": ... } ``` blocks
-  const codeBlockRegex = /```json\s*\{[\s\S]*?"action"\s*:[\s\S]*?\}\s*```/g;
-  cleaned = cleaned.replace(codeBlockRegex, '');
+  // 1. Strip ```json ... ``` blocks containing action payloads without catastrophic backtracking
+  cleaned = cleaned.replace(/```(?:json)?\s*([\s\S]*?)```/gi, (match, inner) => {
+    if (inner.includes('"action"') && (inner.includes('"propose_course"') || inner.includes('"generate_course"'))) {
+      return '';
+    }
+    return match;
+  });
 
   // 2. Strip standalone inline JSON action blocks { "action": ... }
   const firstBrace = cleaned.indexOf('{');

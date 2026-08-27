@@ -18,25 +18,35 @@ export default function MentorBubble({
     }
 
     const checkAndShowBubble = (triggerType, message, actionText = 'Спросить') => {
-      const now = Date.now();
-      const lastTime = parseInt(sessionStorage.getItem('last_mentor_bubble_time') || '0', 10);
-      const FIVE_MINUTES = 5 * 60 * 1000;
+      try {
+        const now = Date.now();
+        const lastTime = parseInt(sessionStorage.getItem('last_mentor_bubble_time') || '0', 10);
+        const FIVE_MINUTES = 5 * 60 * 1000;
 
-      if (now - lastTime < FIVE_MINUTES) return false;
+        if (now - lastTime < FIVE_MINUTES) return false;
 
-      const shownTriggers = JSON.parse(sessionStorage.getItem('shown_mentor_bubbles') || '[]');
-      if (shownTriggers.includes(triggerType)) return false;
+        let shownTriggers = [];
+        try {
+          shownTriggers = JSON.parse(sessionStorage.getItem('shown_mentor_bubbles') || '[]');
+        } catch {
+          shownTriggers = [];
+        }
+        if (Array.isArray(shownTriggers) && shownTriggers.includes(triggerType)) return false;
 
-      setActiveBubble({ type: triggerType, message, actionText });
-      sessionStorage.setItem('last_mentor_bubble_time', now.toString());
-      sessionStorage.setItem('shown_mentor_bubbles', JSON.stringify([...shownTriggers, triggerType]));
+        setActiveBubble({ type: triggerType, message, actionText });
+        sessionStorage.setItem('last_mentor_bubble_time', now.toString());
+        sessionStorage.setItem('shown_mentor_bubbles', JSON.stringify([...(Array.isArray(shownTriggers) ? shownTriggers : []), triggerType]));
 
-      // Auto dismiss bubble after 8 seconds
-      setTimeout(() => {
-        setActiveBubble(prev => prev?.type === triggerType ? null : prev);
-      }, 8000);
+        // Auto dismiss bubble after 8 seconds
+        setTimeout(() => {
+          setActiveBubble(prev => prev?.type === triggerType ? null : prev);
+        }, 8000);
 
-      return true;
+        return true;
+      } catch (err) {
+        console.warn('[MentorBubble] Storage access failed:', err);
+        return false;
+      }
     };
 
     // Priority 1: Streak risk (after 18:00 local time and streak > 0)

@@ -314,6 +314,7 @@ export async function getResourceRatings(resourceId) {
     }
   } catch (e) {
     // Graceful fallback: fail silently if collection is uncreated or rules are pending deployment
+    console.warn('[ResourceService] Failed to parse supplementary data:', e);
   }
   return { total: 0, utilityPercentage: null, likes: 0, dislikes: 0 };
 }
