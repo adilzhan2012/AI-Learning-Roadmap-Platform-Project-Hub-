@@ -258,6 +258,9 @@ export default function Pricing() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('stripe'); // 'stripe' | 'kaspi'
   const [promoCode, setPromoCode] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoMessage, setPromoMessage] = useState(null);
   const [checkoutStage, setCheckoutStage] = useState('input'); // 'input' | 'processing' | 'success'
   const [checkoutError, setCheckoutError] = useState('');
 
