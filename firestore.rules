@@ -17,8 +17,8 @@ service cloud.firestore {
       return isAuth() && request.auth.token.admin == true;
     }
     
-    // Helper: allowed fields on user document for client create/update
-    function allowedUserFields() {
+    // Helper: allowed fields on user document creation (registration)
+    function allowedUserCreateFields() {
       return [
         'firstName', 'lastName', 'username', 'displayName', 'email',
         'photoURL', 'avatarUrl', 'avatarColor', 'bio', 'occupation', 'location',
@@ -26,7 +26,20 @@ service cloud.firestore {
         'notificationSettings', 'targetHoursPerWeek', 'activeCoursesCount',
         'hoursLearned', 'certificatesCount', 'streakDays', 'lastActiveDate',
         'createdAt', 'referralCode', 'referredBy', 'selectedCourseId', 'selectedNodeId',
-        'courses', 'settings'
+        'settings'
+      ];
+    }
+
+    // Helper: allowed fields on user document update (Settings / Profile edit)
+    // Progress fields (streakDays, hoursLearned, certificatesCount, activeCoursesCount)
+    // and immutable fields (createdAt, referralCode, referredBy) are excluded from client updates.
+    function allowedUserUpdateFields() {
+      return [
+        'firstName', 'lastName', 'username', 'displayName', 'email',
+        'photoURL', 'avatarUrl', 'avatarColor', 'bio', 'occupation', 'location',
+        'githubUrl', 'linkedinUrl', 'telegramUrl', 'websiteUrl', 'locale', 'theme',
+        'notificationSettings', 'targetHoursPerWeek', 'selectedCourseId', 'selectedNodeId',
+        'settings', 'lastActiveDate'
       ];
     }
 
@@ -35,13 +48,13 @@ service cloud.firestore {
       // User can read own profile; admins can read any; referrer can read referred users
       allow read: if isOwner(userId) || isAdmin() || (isAuth() && resource.data.referredBy == request.auth.uid);
       
-      // User can update own profile ONLY for whitelisted fields
+      // User can update own profile ONLY for whitelisted profile/settings fields
       allow update: if isOwner(userId)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedUserFields());
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedUserUpdateFields());
       
-      // User doc creation only for whitelisted fields
+      // User doc creation only for whitelisted initial registration fields
       allow create: if isOwner(userId)
-        && request.resource.data.keys().hasOnly(allowedUserFields());
+        && request.resource.data.keys().hasOnly(allowedUserCreateFields());
       
       // Delete only by admin or through Cloud Function
       allow delete: if isAdmin();
