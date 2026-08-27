@@ -28,4 +28,28 @@ describe('Frontend resolveMode unit tests', () => {
     assert.equal(res.mode, 'global');
     assert.equal(res.contextId, 'sess_1');
   });
+
+  test('preserves programming language characters C++ and C# in lesson matching', () => {
+    const techProfile = {
+      firstName: 'Даниил',
+      enrolledCourses: [
+        {
+          id: 'course_cpp',
+          title: 'C++ Advanced',
+          nodes: [
+            { id: 'node_cpp_templates', label: 'Шаблоны в C++', content: 'Материал по C++...' },
+            { id: 'node_csharp_async', label: 'Асинхронность в C#', content: 'Материал по C#...' }
+          ]
+        }
+      ]
+    };
+
+    const resCpp = resolveMode('Объясни мне тему Шаблоны в C++!', 'global', null, techProfile);
+    assert.equal(resCpp.mode, 'lesson');
+    assert.equal(resCpp.contextId, 'node_cpp_templates');
+
+    const resCs = resolveMode('Помоги с уроком Асинхронность в C#', 'global', null, techProfile);
+    assert.equal(resCs.mode, 'lesson');
+    assert.equal(resCs.contextId, 'node_csharp_async');
+  });
 });

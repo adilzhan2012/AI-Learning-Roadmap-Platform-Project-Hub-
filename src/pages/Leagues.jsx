@@ -4,7 +4,7 @@ import { Lock, Trophy, ShieldAlert, ArrowRight, Loader2 } from 'lucide-react';
 import { auth, db, functions } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { getUserStats, updateUserProfile } from '../services/courseService.js';
 import { usePlanLimits } from '../hooks/usePlanLimits.js';
 import { useGamification } from '../context/GamificationContext.jsx';
@@ -150,10 +150,15 @@ export default function Leagues({ embedded = false }) {
             console.warn("Cloud function getLeaderboard failed, falling back to direct Firestore fetch:", cfErr);
           }
 
-          // Fallback: Direct Firestore collection fetch if Cloud Function yielded no users or failed
+          // Fallback: Direct Firestore collection fetch with limit(50) and orderBy('xp', 'desc')
           if (uList.length === 0) {
             try {
-              const snap = await getDocs(collection(db, 'users'));
+              const q = query(
+                collection(db, 'users'),
+                orderBy('xp', 'desc'),
+                limit(50)
+              );
+              const snap = await getDocs(q);
               snap.forEach(docSnap => {
                 if (docSnap.id !== currentUser.uid) {
                   const u = docSnap.data();

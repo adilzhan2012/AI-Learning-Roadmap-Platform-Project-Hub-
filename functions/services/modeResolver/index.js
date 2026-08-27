@@ -9,7 +9,8 @@ function normalizeText(text) {
   if (!text || typeof text !== 'string') return '';
   return text
     .toLowerCase()
-    .replace(/[«»""''.,!?:;()\-–—]/g, ' ')
+    .replace(/[«»""''!?:;()\[\]{}~*&^%$@/\\|\-–—]/g, ' ')
+    .replace(/(^|\s)\.+|\.+(\s|$)/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }

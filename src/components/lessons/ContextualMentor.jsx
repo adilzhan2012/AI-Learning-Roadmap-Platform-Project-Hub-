@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Sparkles, Lock, Crown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import DOMPurify from 'dompurify';
 import { sanitizeUserInput } from '../../utils/sanitizeUserInput.js';
 import { callGeminiWithRetry } from '../../services/courseService.js';
 import { PLAN_LIMITS } from '../../constants/planLimits.js';
@@ -206,7 +207,7 @@ export default function ContextualMentor({
                   : 'bg-zinc-100 dark:bg-[#07080a] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-zinc-100 rounded-bl-none shadow-sm'
               }`}>
                 <div className="prose dark:prose-invert prose-xs text-zinc-900 dark:text-zinc-100 text-left max-w-none">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{DOMPurify.sanitize(msg.content)}</ReactMarkdown>
                 </div>
                 {msg.role === 'assistant' && msg.id !== 'welcome' && (
                   <div className="flex items-center gap-2 mt-2 pt-1.5 border-t border-zinc-200 dark:border-white/10">

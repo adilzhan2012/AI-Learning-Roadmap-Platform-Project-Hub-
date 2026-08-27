@@ -92,6 +92,9 @@ export default function Topbar() {
         } catch (e) {
           console.error("Error loading user stats in Topbar:", e);
         }
+      } else {
+        setProfile({ firstName: 'User' });
+        localStorage.removeItem('cached_profile');
       }
     });
     
@@ -119,14 +122,11 @@ export default function Topbar() {
       collection(db, 'support_tickets'),
       where('userId', '==', user.uid)
     );
-    const unsubscribe = onSnapshot(q, (snap) => {
-      let unread = false;
-      snap.forEach(doc => {
-        if (doc.data().unreadUser) unread = true;
-      });
-      setHasUnreadTickets(unread);
-    }, (err) => {
-      // Catch transient permission error gracefully
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const hasUnread = snapshot.docs.some(doc => doc.data().unreadUser === true);
+      setHasUnreadTickets(hasUnread);
+    }, (error) => {
+      console.error("Error listening to support tickets:", error);
     });
     return () => unsubscribe();
   }, [user]);
@@ -144,7 +144,13 @@ export default function Topbar() {
 
   const handleSignOut = async () => {
     try {
-      // Clear user-specific cache from localStorage & sessionStorage
+      // 1. Immediately reset component state to avoid lingering data
+      setProfile({ firstName: 'User' });
+      setUser(null);
+      setShowProfileMenu(false);
+      setShowMobileMenu(false);
+
+      // 2. Clear user-specific cache from localStorage & sessionStorage
       localStorage.removeItem('cached_profile');
       localStorage.removeItem('cached_stats');
       localStorage.removeItem('free_mentor_messages');
@@ -170,7 +176,6 @@ export default function Topbar() {
       }
 
       await signOut(auth);
-      setShowProfileMenu(false);
       navigate('/login');
     } catch (e) {
       console.error('Error signing out:', e);
