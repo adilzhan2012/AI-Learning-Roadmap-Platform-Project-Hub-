@@ -87,7 +87,7 @@ export default function QuestionsAdmin() {
       });
     });
     return () => unsubscribe();
-  }, []); // Пустой массив зависимостей предотвращает бесконечный цикл!
+  }, [ticketLimit]);
 
   // Fetch messages for active ticket
   useEffect(() => {

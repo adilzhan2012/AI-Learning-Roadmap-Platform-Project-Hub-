@@ -66,6 +66,7 @@ export default function Layout() {
       setIsProfileLoaded(true);
       return;
     }
+    setIsProfileLoaded(false);
     const docRef = doc(db, 'users', user.uid);
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       setIsProfileLoaded(true);
