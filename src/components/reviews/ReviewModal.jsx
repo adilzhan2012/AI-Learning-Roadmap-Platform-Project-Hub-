@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Star, X, AlertCircle, Sparkles } from 'lucide-react';
-import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
-import { db, auth } from '../../firebase.js';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { db, auth, functions } from '../../firebase.js';
 import { t, useLocale } from '../../i18n.js';
 import { getUserStats } from '../../services/courseService.js';
 
@@ -93,28 +94,29 @@ export default function ReviewModal({ isOpen, onClose, onCreated }) {
         console.warn("Could not load user stats for review, using auth defaults:", err);
       }
 
-      const docRef = await addDoc(collection(db, 'reviews'), {
-        userId: auth.currentUser.uid,
-        userName: userName,
-        userAvatarColor: userAvatarColor,
-        photoURL: photoURL,
+      const submitReviewFn = httpsCallable(functions, 'submitReview');
+      const res = await submitReviewFn({
         rating: Number(rating),
         text: text.trim(),
-        status: 'new',
-        createdAt: serverTimestamp(),
-        publishedAt: null
+        userName,
+        userAvatarColor,
+        photoURL
       });
 
       setText('');
       setRating(5);
 
-      if (onCreated) {
-        onCreated(docRef.id);
+      if (onCreated && res.data?.reviewId) {
+        onCreated(res.data.reviewId);
       }
       onClose();
     } catch (err) {
       console.error("Error submitting review:", err);
-      setErrorMsg(t('reviews.error'));
+      if (err.message && err.message.includes('лимита')) {
+        setErrorMsg(err.message);
+      } else {
+        setErrorMsg(t('reviews.error') || 'Error submitting review');
+      }
     } finally {
       setIsSubmitting(false);
     }

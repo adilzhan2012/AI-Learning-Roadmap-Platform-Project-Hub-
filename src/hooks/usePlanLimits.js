@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db, auth } from '../firebase.js';
+import { doc, getDoc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { db, auth, functions } from '../firebase.js';
 import { PLAN_LIMITS } from '../constants/planLimits.js';
 import { onAuthStateChanged } from 'firebase/auth';
 
 export const usePlanLimits = () => {
   const [plan, setPlan] = useState('FREE');
+  const [daysSinceReg, setDaysSinceReg] = useState(999);
+  const [isFreeOnboarding, setIsFreeOnboarding] = useState(false);
   const [usage, setUsage] = useState({ 
     roadmapsGenerated: 0, 
     aiQuestionsUsed: 0, 
@@ -40,6 +43,27 @@ export const usePlanLimits = () => {
         };
 
         try {
+          // 1. Primary path: Fetch authoritative server-calculated limits & creation age
+          const getPlanLimitsFn = httpsCallable(functions, 'getUserPlanLimits');
+          const res = await getPlanLimitsFn();
+          if (res && res.data) {
+            const data = res.data;
+            setPlan(data.plan || 'FREE');
+            setDbBillingPeriod(data.billingPeriod || 'monthly');
+            setDaysSinceReg(typeof data.daysSinceReg === 'number' ? data.daysSinceReg : 999);
+            setIsFreeOnboarding(data.isFreeOnboarding === true);
+            if (data.usage) {
+              setUsage(data.usage);
+            }
+            setLoading(false);
+            return;
+          }
+        } catch (fnErr) {
+          console.warn('[usePlanLimits] Cloud Function getUserPlanLimits failed, using Firestore fallback:', fnErr?.message || fnErr);
+        }
+
+        try {
+          // 2. Fallback path: Direct Firestore read
           const ref = doc(db, 'users', user.uid, 'subscription', 'details');
           const snap = await getDoc(ref);
           
@@ -57,12 +81,13 @@ export const usePlanLimits = () => {
             let newMentorMessagesUsed = data.mentorMessagesUsed || 0;
             let newUltraTokensUsed = data.ultraTokensUsed || 0;
 
+            const regTime = new Date(user.metadata.creationTime || new Date()).getTime();
+            const fallbackDays = Math.max(0, (Date.now() - regTime) / (1000 * 60 * 60 * 24));
+            setDaysSinceReg(fallbackDays);
+            setIsFreeOnboarding(fallbackDays <= 7);
+
             if (currentPlan === 'FREE') {
-              const regTime = new Date(user.metadata.creationTime || new Date()).getTime();
-              const nowTime = new Date().getTime();
-              const daysSinceReg = (nowTime - regTime) / (1000 * 60 * 60 * 24);
-              
-              if (daysSinceReg > 7) {
+              if (fallbackDays > 7) {
                 if (data.lastMentorDate !== todayStr) {
                   newMentorMessagesUsed = 0;
                 }
@@ -90,37 +115,34 @@ export const usePlanLimits = () => {
               newRoadmapsGeneratedThisMonth = 0;
             }
 
-          setUsage({ 
-            roadmapsGenerated: data.roadmapsGenerated || 0, 
-            roadmapsGeneratedThisMonth: newRoadmapsGeneratedThisMonth,
-            roadmapsMonthStart: monthStr,
-            aiQuestionsUsed: newAiQuestionsUsed,
-            lastQuestionDate: todayStr,
-            mentorMessagesUsed: newMentorMessagesUsed,
-            ultraTokensUsed: newUltraTokensUsed,
-            homeworkReviewsUsed: newHomeworkReviewsUsed,
-            homeworkMonthStart: monthStr,
-            groupLessonsUsed: newGroupLessonsUsed,
-            groupLessonsMonthStart: monthStr,
-            lastMentorDate: data.lastMentorDate || todayStr,
-            mentorMonthStart: data.mentorMonthStart || monthStr
-          });
-        } else {
-          // Document doesn't exist yet, which means user is on FREE plan by default.
-          // DO NOT write to Firestore here because security rules block client writes to /subscription.
+            setUsage({ 
+              roadmapsGenerated: data.roadmapsGenerated || 0, 
+              roadmapsGeneratedThisMonth: newRoadmapsGeneratedThisMonth,
+              roadmapsMonthStart: monthStr,
+              aiQuestionsUsed: newAiQuestionsUsed,
+              lastQuestionDate: todayStr,
+              mentorMessagesUsed: newMentorMessagesUsed,
+              ultraTokensUsed: newUltraTokensUsed,
+              homeworkReviewsUsed: newHomeworkReviewsUsed,
+              homeworkMonthStart: monthStr,
+              groupLessonsUsed: newGroupLessonsUsed,
+              groupLessonsMonthStart: monthStr,
+              lastMentorDate: data.lastMentorDate || todayStr,
+              mentorMonthStart: data.mentorMonthStart || monthStr
+            });
+          } else {
+            setPlan('FREE');
+            setDbBillingPeriod('monthly');
+            setUsage(initData);
+          }
+        } catch (error) {
+          if (error.code !== 'permission-denied') {
+            console.error("Failed to load plan limits fallback:", error);
+          }
           setPlan('FREE');
           setDbBillingPeriod('monthly');
           setUsage(initData);
         }
-      } catch (error) {
-        if (error.code !== 'permission-denied') {
-          console.error("Failed to load plan limits:", error);
-        }
-        // Fallback to FREE plan logic so app doesn't break
-        setPlan('FREE');
-        setDbBillingPeriod('monthly');
-        setUsage(initData);
-      }
       } else {
         setPlan('FREE');
       }
@@ -132,11 +154,7 @@ export const usePlanLimits = () => {
   const checkLimit = useCallback((type) => {
     if (type === 'mentor_message') {
       if (plan === 'FREE') {
-        const regTime = new Date(auth.currentUser?.metadata?.creationTime || new Date()).getTime();
-        const nowTime = new Date().getTime();
-        const daysSinceReg = (nowTime - regTime) / (1000 * 60 * 60 * 24);
-        
-        const limitVal = daysSinceReg <= 7 
+        const limitVal = isFreeOnboarding 
           ? PLAN_LIMITS.FREE.onboardingMessagesTotal 
           : PLAN_LIMITS.FREE.aiMentorPerDay;
           
@@ -254,6 +272,8 @@ export const usePlanLimits = () => {
   return { 
     plan, 
     usage, 
+    daysSinceReg,
+    isFreeOnboarding,
     checkLimit, 
     incrementUsage, 
     isUpgradeModalOpen, 

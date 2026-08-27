@@ -118,7 +118,7 @@ const calculateLevel = (xp) => {
  * Unified limit checker & atomic usage counter updater within a Firestore transaction.
  * Delegates evaluation logic to evaluatePlanLimits for consistency across all modes.
  */
-async function processUsageLimitAndCounter(db, admin, userId, usageType, todayStr, monthStr, lessonId = null, userQuery = '') {
+async function processUsageLimitAndCounter(db, admin, userId, usageType, todayStr, monthStr, lessonId = null, userQuery = '', extraOptions = {}) {
   const subRef = db.collection('users').doc(userId).collection('subscription').doc('details');
   const lessonUsageRef = lessonId ? db.collection('users').doc(userId).collection('lessonUsage').doc(String(lessonId)) : null;
 
@@ -143,6 +143,27 @@ async function processUsageLimitAndCounter(db, admin, userId, usageType, todaySt
       const subSnap = await txn.get(subRef);
       const data = subSnap.exists ? subSnap.data() : {};
       const plan = data.plan || 'FREE';
+
+      // Server-side check for homework_review hourly rate limiting (max 3 reviews per hour per node)
+      if (usageType === 'homework_review') {
+        const courseId = extraOptions.courseId;
+        const nodeId = extraOptions.nodeId || lessonId;
+        if (courseId && nodeId) {
+          const hwDocRef = db.collection('users').doc(userId).collection('homeworkSubmissions').doc(`${courseId}_${nodeId}`);
+          const hwSnap = await txn.get(hwDocRef);
+          if (hwSnap.exists) {
+            const attempts = hwSnap.data()?.attempts || [];
+            const oneHourAgo = Date.now() - 60 * 60 * 1000;
+            const recentHourlyAttempts = attempts.filter(a => {
+              const t = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+              return t > oneHourAgo;
+            });
+            if (recentHourlyAttempts.length >= 3) {
+              throw new HttpsError('resource-exhausted', 'Вы достигли лимита проверок для этого задания за час.');
+            }
+          }
+        }
+      }
 
       let lessonMessagesUsed = 0;
       if (lessonUsageRef) {
@@ -416,7 +437,7 @@ exports.aiProxy = onCall(
 
     // 3. Process usage limit transaction using evaluatePlanLimits with effectiveUsageType and effectiveLessonId
     const transactionResult = await processUsageLimitAndCounter(
-      db, admin, userId, effectiveUsageType, todayStr, monthStr, effectiveLessonId, queryText
+      db, admin, userId, effectiveUsageType, todayStr, monthStr, effectiveLessonId, queryText, request.data || {}
     );
 
     // 4. Pass resolved data to resolveGeminiMessages
@@ -1034,6 +1055,23 @@ exports.updateSubscription = onCall(async (request) => {
     throw new HttpsError("permission-denied", "Email must be verified to change your subscription.");
   }
 
+  // Server-side verification of referral status & discount eligibility
+  let referralDiscount = 0;
+  if (!isDowngradeToFree) {
+    try {
+      const userDoc = await db.collection("users").doc(userId).get();
+      const userData = userDoc.exists ? userDoc.data() : {};
+      const hasReferredBy = !!userData.referredBy;
+      const refSnap = await db.collection("users").where("referredBy", "==", userId).limit(1).get();
+      const hasReferrals = !refSnap.empty;
+      if (hasReferredBy || hasReferrals) {
+        referralDiscount = 20; // 20% referral discount
+      }
+    } catch (refErr) {
+      console.warn("[updateSubscription] Could not verify referral discount on server:", refErr);
+    }
+  }
+
   const provider = isDowngradeToFree ? null : (request.data.paymentProvider || 'stripe');
   const subRef = db.collection("users").doc(userId).collection("subscription").doc("details");
   await subRef.set({
@@ -1041,7 +1079,8 @@ exports.updateSubscription = onCall(async (request) => {
     updatedAt: FieldValue.serverTimestamp(),
     paymentVerified: !isDowngradeToFree,
     paymentProvider: provider,
-    appliedPromoCode: request.data.promoCode || null
+    appliedPromoCode: request.data.promoCode || null,
+    referralDiscountApplied: referralDiscount > 0 ? referralDiscount : null
   }, { merge: true });
 
   const userRef = db.collection("users").doc(userId);
@@ -1050,8 +1089,31 @@ exports.updateSubscription = onCall(async (request) => {
     subscriptionPlan: isDowngradeToFree ? null : plan
   });
 
-  console.log(`[updateSubscription] uid=${userId} plan changed to ${plan}`);
-  return { success: true };
+  console.log(`[updateSubscription] uid=${userId} plan changed to ${plan}, referralDiscount=${referralDiscount}%`);
+  return { success: true, referralDiscountApplied: referralDiscount };
+});
+
+// ----------------------------------------------------
+// Referral Discount Status Verification Cloud Function
+// ----------------------------------------------------
+exports.getReferralDiscountStatus = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Must be authenticated");
+  }
+  const userId = request.auth.uid;
+  const userDoc = await db.collection("users").doc(userId).get();
+  const userData = userDoc.exists ? userDoc.data() : {};
+  const hasReferredBy = !!userData.referredBy;
+  const refSnap = await db.collection("users").where("referredBy", "==", userId).limit(1).get();
+  const hasReferrals = !refSnap.empty;
+  const isEligible = hasReferredBy || hasReferrals;
+
+  return {
+    isEligible,
+    discountPercent: isEligible ? 20 : 0,
+    hasReferredBy,
+    hasReferrals
+  };
 });
 
 // ----------------------------------------------------
@@ -2330,6 +2392,7 @@ exports.checkGroupInvitationsTTL = onCall(async () => {
 });
 
 // ----------------------------------------------------
+// ----------------------------------------------------
 // Secure Quiz Evaluation Cloud Functions
 // ----------------------------------------------------
 exports.submitQuizResult = onCall(async (request) => {
@@ -2471,53 +2534,139 @@ exports.resetQuizConsecutiveFails = onCall(async (request) => {
 });
 
 // ----------------------------------------------------
-// Scheduled Support Ticket Cleanup (Daily)
+// Server-Side Plan Limits and Registration Age Provider
 // ----------------------------------------------------
-exports.cleanupOldTickets = onSchedule("every 24 hours", async (event) => {
-  try {
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const snap = await db.collection("support_tickets")
-      .where("status", "==", "closed")
-      .where("updatedAt", "<", twentyFourHoursAgo)
-      .get();
-
-    console.log(`[cleanupOldTickets] Found ${snap.docs.length} closed tickets to clean up.`);
-
-    const bucket = admin.storage().bucket();
-    let cleanedCount = 0;
-
-    for (const ticketDoc of snap.docs) {
-      const batch = db.batch();
-
-      // Delete message subcollection documents and attachments
-      const msgSnap = await ticketDoc.ref.collection("messages").get();
-      for (const msgDoc of msgSnap.docs) {
-        const msgData = msgDoc.data();
-        if (msgData.attachmentUrl) {
-          try {
-            const match = msgData.attachmentUrl.match(/\/o\/([^?]+)/);
-            if (match && match[1]) {
-              const filePath = decodeURIComponent(match[1]);
-              await bucket.file(filePath).delete().catch(() => {});
-            }
-          } catch (e) {
-            console.warn("[cleanupOldTickets] Could not delete attachment:", e);
-          }
-        }
-        batch.delete(msgDoc.ref);
-      }
-
-      batch.delete(ticketDoc.ref);
-      await batch.commit();
-      cleanedCount++;
-    }
-
-    console.log(`[cleanupOldTickets] Successfully deleted ${cleanedCount} closed tickets.`);
-    return { success: true, cleanedCount };
-  } catch (error) {
-    Sentry.captureException(error);
-    console.error("[cleanupOldTickets] Error cleaning up old tickets:", error);
-    throw error;
+exports.getUserPlanLimits = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Must be authenticated");
   }
+  const userId = request.auth.uid;
+
+  let regTime = Date.now();
+  try {
+    const userRecord = await admin.auth().getUser(userId);
+    if (userRecord && userRecord.metadata && userRecord.metadata.creationTime) {
+      regTime = new Date(userRecord.metadata.creationTime).getTime();
+    }
+  } catch (authErr) {
+    console.warn("[getUserPlanLimits] Could not fetch user creationTime from auth:", authErr?.message || authErr);
+  }
+
+  const serverNow = Date.now();
+  const daysSinceReg = Math.max(0, (serverNow - regTime) / (1000 * 60 * 60 * 24));
+  const isFreeOnboarding = daysSinceReg <= 7;
+
+  const todayStr = new Date(serverNow).toISOString().split("T")[0];
+  const monthStr = todayStr.substring(0, 7);
+
+  const subSnap = await db.collection("users").doc(userId).collection("subscription").doc("details").get();
+  const data = subSnap.exists ? subSnap.data() : {};
+  const plan = data.plan || "FREE";
+  const billingPeriod = data.billingPeriod || "monthly";
+
+  let newAiQuestionsUsed = data.lastQuestionDate === todayStr ? (data.aiQuestionsUsed || 0) : 0;
+  let newMentorMessagesUsed = data.mentorMessagesUsed || 0;
+  let newUltraTokensUsed = data.lastMentorDate === todayStr ? (data.ultraTokensUsed || 0) : 0;
+
+  if (plan === "FREE") {
+    if (!isFreeOnboarding && data.lastMentorDate !== todayStr) {
+      newMentorMessagesUsed = 0;
+    }
+  } else {
+    if (data.lastMentorDate !== todayStr) {
+      newMentorMessagesUsed = 0;
+      newUltraTokensUsed = 0;
+    }
+  }
+
+  const newHomeworkReviewsUsed = data.homeworkMonthStart === monthStr ? (data.homeworkReviewsUsed || 0) : 0;
+  const newGroupLessonsUsed = data.groupLessonsMonthStart === monthStr ? (data.groupLessonsUsed || 0) : 0;
+  const newRoadmapsGeneratedThisMonth = data.roadmapsMonthStart === monthStr ? (data.roadmapsGeneratedThisMonth || 0) : 0;
+
+  return {
+    plan,
+    billingPeriod,
+    daysSinceReg,
+    isFreeOnboarding,
+    serverTimestamp: serverNow,
+    usage: {
+      roadmapsGenerated: data.roadmapsGenerated || 0,
+      roadmapsGeneratedThisMonth: newRoadmapsGeneratedThisMonth,
+      roadmapsMonthStart: monthStr,
+      aiQuestionsUsed: newAiQuestionsUsed,
+      lastQuestionDate: todayStr,
+      mentorMessagesUsed: newMentorMessagesUsed,
+      ultraTokensUsed: newUltraTokensUsed,
+      homeworkReviewsUsed: newHomeworkReviewsUsed,
+      homeworkMonthStart: monthStr,
+      groupLessonsUsed: newGroupLessonsUsed,
+      groupLessonsMonthStart: monthStr,
+      lastMentorDate: data.lastMentorDate || todayStr,
+      mentorMonthStart: data.mentorMonthStart || monthStr
+    }
+  };
+});
+
+// ----------------------------------------------------
+// Submit Review Cloud Function (Server Rate-Limited)
+// ----------------------------------------------------
+exports.submitReview = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Must be authenticated");
+  }
+  const userId = request.auth.uid;
+  const { rating, text, userName, userAvatarColor, photoURL } = request.data || {};
+
+  const numRating = Number(rating);
+  if (!numRating || numRating < 1 || numRating > 5) {
+    throw new HttpsError("invalid-argument", "Rating must be between 1 and 5");
+  }
+
+  const trimmedText = typeof text === "string" ? text.trim() : "";
+  if (trimmedText.length < 10) {
+    throw new HttpsError("invalid-argument", "Review text must be at least 10 characters");
+  }
+
+  const serverNow = Date.now();
+  const thirtyDaysAgo = new Date(serverNow - 30 * 24 * 60 * 60 * 1000);
+
+  // Server-side check of reviews submitted by this user in the last 30 days
+  const userReviewsSnap = await db.collection("reviews")
+    .where("userId", "==", userId)
+    .get();
+
+  let count = 0;
+  userReviewsSnap.forEach(docSnap => {
+    const data = docSnap.data();
+    const createdAt = data.createdAt?.toMillis 
+      ? data.createdAt.toMillis() 
+      : (data.createdAt?.seconds ? data.createdAt.seconds * 1000 : (data.createdAt ? new Date(data.createdAt).getTime() : 0));
+    if (createdAt >= thirtyDaysAgo.getTime()) {
+      count++;
+    }
+  });
+
+  if (count >= 5) {
+    throw new HttpsError("resource-exhausted", "Вы достигли лимита (максимум 5 отзывов за 30 дней).");
+  }
+
+  // Create new review document
+  const newReviewRef = await db.collection("reviews").add({
+    userId,
+    userName: userName || "Learner",
+    userAvatarColor: userAvatarColor || null,
+    photoURL: photoURL || null,
+    rating: numRating,
+    text: trimmedText,
+    status: "new",
+    createdAt: FieldValue.serverTimestamp(),
+    publishedAt: null
+  });
+
+  return {
+    success: true,
+    reviewId: newReviewRef.id,
+    monthlyCount: count + 1
+  };
 });
 
