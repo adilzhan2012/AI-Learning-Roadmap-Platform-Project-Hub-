@@ -50,7 +50,14 @@ function runTests() {
     assert(parsed.result === "ok", "JSON surrounded by text before and after parsing");
   }
 
-  // Test 5: Empty / non-string input
+  // Test 5: Conversational preamble with ```json ... ``` code fence
+  {
+    const input = "Here are your flashcards:\n```json\n[\n  {\"term\": \"Closure\", \"definition\": \"A function bundled with its lexical environment\"}\n]\n```\nHope this helps with your studies!";
+    const parsed = parseAIJson(input);
+    assert(Array.isArray(parsed) && parsed[0].term === "Closure", "Conversational preamble with ```json code fence parsing");
+  }
+
+  // Test 6: Empty / non-string input
   {
     let caught = null;
     try {

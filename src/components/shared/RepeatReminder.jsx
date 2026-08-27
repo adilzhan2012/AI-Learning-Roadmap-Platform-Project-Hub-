@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db, auth } from '../../firebase.js';
 import { calculateMastery } from '../../hooks/useMastery.js';
 import { AlertCircle, ArrowRight } from 'lucide-react';
@@ -14,7 +14,12 @@ export default function RepeatReminder() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) return;
       try {
-        const snap = await getDocs(collection(db, 'users', user.uid, 'quizResults'));
+        const q = query(
+          collection(db, 'users', user.uid, 'quizResults'),
+          orderBy('lastAttemptAt', 'desc'),
+          limit(50)
+        );
+        const snap = await getDocs(q);
         const resultsMap = {};
         
         snap.forEach(doc => {

@@ -6,6 +6,7 @@ import Logo from '../components/shared/Logo.jsx';
 import LaunchCountdown from '../components/shared/LaunchCountdown.jsx';
 import UserAvatar from '../components/shared/UserAvatar.jsx';
 import { auth, db } from '../firebase.js';
+import { onAuthStateChanged } from 'firebase/auth';
 import { collection, query, where, limit, getDocs } from 'firebase/firestore';
 import { t, useLocale, setLocale } from '../i18n.js';
 import { toggleTheme } from '../theme.js';
@@ -41,9 +42,16 @@ const staggerContainer = {
 };
 
 export default function Landing() {
-  const isLoggedIn = !!auth.currentUser;
+  const [isLoggedIn, setIsLoggedIn] = useState(!!auth.currentUser);
   const locale = useLocale();
   const [publishedReviews, setPublishedReviews] = useState([]);
+  
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setIsLoggedIn(!!user);
+    });
+    return () => unsubscribe();
+  }, []);
   
   const toggleLocale = () => {
     const nextLocale = locale === 'ru' ? 'en' : 'ru';

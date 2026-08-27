@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AreaChart, List, Calendar, ChevronRight, AlertCircle, CheckCircle } from 'lucide-react';
 
 const MasteryBlock = ({ masteryScore, attempts = [], onViewHistory }) => {
@@ -38,23 +38,27 @@ const MasteryBlock = ({ masteryScore, attempts = [], onViewHistory }) => {
   const minY = 25;
   const maxY = 95;
 
-  const points = (attempts || []).map((a, i) => {
-    const scoreVal = normalizeAttemptScore(a);
-    const dateVal = getAttemptDate(a);
-    const x = attempts.length === 1 
-      ? 150 
-      : minX + (i * (maxX - minX)) / (attempts.length - 1);
-    const y = maxY - (scoreVal * (maxY - minY)) / 100;
-    return { x, y, score: scoreVal, date: dateVal };
-  });
+  const { points, pathD, areaD } = useMemo(() => {
+    const pts = (attempts || []).map((a, i) => {
+      const scoreVal = normalizeAttemptScore(a);
+      const dateVal = getAttemptDate(a);
+      const x = attempts.length === 1 
+        ? 150 
+        : minX + (i * (maxX - minX)) / (attempts.length - 1);
+      const y = maxY - (scoreVal * (maxY - minY)) / 100;
+      return { x, y, score: scoreVal, date: dateVal };
+    });
 
-  const pathD = points.reduce((acc, p, i) => {
-    return i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`;
-  }, '');
+    const pD = pts.reduce((acc, p, i) => {
+      return i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`;
+    }, '');
 
-  const areaD = points.length > 0
-    ? `${pathD} L ${points[points.length - 1].x} ${maxY} L ${points[0].x} ${maxY} Z`
-    : '';
+    const aD = pts.length > 0
+      ? `${pD} L ${pts[pts.length - 1].x} ${maxY} L ${pts[0].x} ${maxY} Z`
+      : '';
+
+    return { points: pts, pathD: pD, areaD: aD };
+  }, [attempts]);
 
   const passingY = maxY - (60 * (maxY - minY)) / 100;
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, 
@@ -731,51 +731,54 @@ export default function Courses() {
     );
   };
 
-  // Filter logic
-  const filteredCourses = userCourses.filter(course => {
-    const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (course.subject || '').toLowerCase().includes(searchQuery.toLowerCase());
-    
-    let matchesStatus = true;
-    if (statusTab === 'active') matchesStatus = (course.progress || 0) < 100;
-    else if (statusTab === 'completed') matchesStatus = (course.progress || 0) === 100;
+  // Filter & Sorting logic (optimized with useMemo)
+  const { filteredCourses, sortedFilteredCourses } = useMemo(() => {
+    const filtered = userCourses.filter(course => {
+      const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            (course.subject || '').toLowerCase().includes(searchQuery.toLowerCase());
+      
+      let matchesStatus = true;
+      if (statusTab === 'active') matchesStatus = (course.progress || 0) < 100;
+      else if (statusTab === 'completed') matchesStatus = (course.progress || 0) === 100;
 
-    // OR logic inside subject group
-    const matchesSubject = selectedSubjects.length === 0 || selectedSubjects.includes(course.subject);
+      // OR logic inside subject group
+      const matchesSubject = selectedSubjects.length === 0 || selectedSubjects.includes(course.subject);
 
-    // OR logic inside level group
-    const normalizedCourseLevel = course.level ? (course.level.charAt(0).toUpperCase() + course.level.slice(1).toLowerCase()) : 'Beginner';
-    const matchesLevel = selectedLevels.length === 0 || selectedLevels.includes(normalizedCourseLevel);
+      // OR logic inside level group
+      const normalizedCourseLevel = course.level ? (course.level.charAt(0).toUpperCase() + course.level.slice(1).toLowerCase()) : 'Beginner';
+      const matchesLevel = selectedLevels.length === 0 || selectedLevels.includes(normalizedCourseLevel);
 
-    // AND logic between groups
-    return matchesSearch && matchesStatus && matchesSubject && matchesLevel;
-  });
+      // AND logic between groups
+      return matchesSearch && matchesStatus && matchesSubject && matchesLevel;
+    });
 
-  // Sorting logic (pinned always on top)
-  const sortedFilteredCourses = [...filteredCourses].sort((a, b) => {
-    if (a.isPinned && !b.isPinned) return -1;
-    if (!a.isPinned && b.isPinned) return 1;
+    const sorted = [...filtered].sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
 
-    if (sortBy === 'date_desc') {
-      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-    }
-    if (sortBy === 'date_asc') {
-      return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
-    }
-    if (sortBy === 'title_asc') {
-      return (a.title || '').localeCompare(b.title || '');
-    }
-    if (sortBy === 'title_desc') {
-      return (b.title || '').localeCompare(a.title || '');
-    }
-    if (sortBy === 'progress_desc') {
-      return (b.progress || 0) - (a.progress || 0);
-    }
-    if (sortBy === 'progress_asc') {
-      return (a.progress || 0) - (b.progress || 0);
-    }
-    return 0;
-  });
+      if (sortBy === 'date_desc') {
+        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+      }
+      if (sortBy === 'date_asc') {
+        return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+      }
+      if (sortBy === 'title_asc') {
+        return (a.title || '').localeCompare(b.title || '');
+      }
+      if (sortBy === 'title_desc') {
+        return (b.title || '').localeCompare(a.title || '');
+      }
+      if (sortBy === 'progress_desc') {
+        return (b.progress || 0) - (a.progress || 0);
+      }
+      if (sortBy === 'progress_asc') {
+        return (a.progress || 0) - (b.progress || 0);
+      }
+      return 0;
+    });
+
+    return { filteredCourses: filtered, sortedFilteredCourses: sorted };
+  }, [userCourses, searchQuery, statusTab, selectedSubjects, selectedLevels, sortBy]);
 
   const selectedList = userCourses.filter(c => selectedCourseIds.has(c.id));
   const allSelectedArePinned = selectedList.length > 0 && selectedList.every(c => c.isPinned);
