@@ -2326,3 +2326,77 @@ exports.checkGroupInvitationsTTL = onCall(async () => {
   return { success: true, expiredCount, warningCount };
 });
 
+// ----------------------------------------------------
+// Server-Side Plan Limits and Registration Age Provider
+// ----------------------------------------------------
+exports.getUserPlanLimits = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Must be authenticated");
+  }
+  const userId = request.auth.uid;
+
+  let regTime = Date.now();
+  try {
+    const userRecord = await admin.auth().getUser(userId);
+    if (userRecord && userRecord.metadata && userRecord.metadata.creationTime) {
+      regTime = new Date(userRecord.metadata.creationTime).getTime();
+    }
+  } catch (authErr) {
+    console.warn("[getUserPlanLimits] Could not fetch user creationTime from auth:", authErr?.message || authErr);
+  }
+
+  const serverNow = Date.now();
+  const daysSinceReg = Math.max(0, (serverNow - regTime) / (1000 * 60 * 60 * 24));
+  const isFreeOnboarding = daysSinceReg <= 7;
+
+  const todayStr = new Date(serverNow).toISOString().split("T")[0];
+  const monthStr = todayStr.substring(0, 7);
+
+  const subSnap = await db.collection("users").doc(userId).collection("subscription").doc("details").get();
+  const data = subSnap.exists ? subSnap.data() : {};
+  const plan = data.plan || "FREE";
+  const billingPeriod = data.billingPeriod || "monthly";
+
+  let newAiQuestionsUsed = data.lastQuestionDate === todayStr ? (data.aiQuestionsUsed || 0) : 0;
+  let newMentorMessagesUsed = data.mentorMessagesUsed || 0;
+  let newUltraTokensUsed = data.lastMentorDate === todayStr ? (data.ultraTokensUsed || 0) : 0;
+
+  if (plan === "FREE") {
+    if (!isFreeOnboarding && data.lastMentorDate !== todayStr) {
+      newMentorMessagesUsed = 0;
+    }
+  } else {
+    if (data.lastMentorDate !== todayStr) {
+      newMentorMessagesUsed = 0;
+      newUltraTokensUsed = 0;
+    }
+  }
+
+  const newHomeworkReviewsUsed = data.homeworkMonthStart === monthStr ? (data.homeworkReviewsUsed || 0) : 0;
+  const newGroupLessonsUsed = data.groupLessonsMonthStart === monthStr ? (data.groupLessonsUsed || 0) : 0;
+  const newRoadmapsGeneratedThisMonth = data.roadmapsMonthStart === monthStr ? (data.roadmapsGeneratedThisMonth || 0) : 0;
+
+  return {
+    plan,
+    billingPeriod,
+    daysSinceReg,
+    isFreeOnboarding,
+    serverTimestamp: serverNow,
+    usage: {
+      roadmapsGenerated: data.roadmapsGenerated || 0,
+      roadmapsGeneratedThisMonth: newRoadmapsGeneratedThisMonth,
+      roadmapsMonthStart: monthStr,
+      aiQuestionsUsed: newAiQuestionsUsed,
+      lastQuestionDate: todayStr,
+      mentorMessagesUsed: newMentorMessagesUsed,
+      ultraTokensUsed: newUltraTokensUsed,
+      homeworkReviewsUsed: newHomeworkReviewsUsed,
+      homeworkMonthStart: monthStr,
+      groupLessonsUsed: newGroupLessonsUsed,
+      groupLessonsMonthStart: monthStr,
+      lastMentorDate: data.lastMentorDate || todayStr,
+      mentorMonthStart: data.mentorMonthStart || monthStr
+    }
+  };
+});
+
