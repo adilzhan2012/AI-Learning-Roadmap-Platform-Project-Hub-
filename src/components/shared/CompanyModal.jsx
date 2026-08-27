@@ -1,10 +1,27 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Target, Users, Code, PenTool, BrainCircuit, Rocket } from 'lucide-react';
 import { useLocale } from '../../i18n.js';
 
 export default function CompanyModal({ isOpen, onClose }) {
   const locale = useLocale();
+
+  // Handle ESC and safe body scroll lock
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -53,15 +70,16 @@ export default function CompanyModal({ isOpen, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="absolute inset-0 bg-black/85 backdrop-blur-md"
-      />
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {/* Backdrop */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        />
 
       {/* Modal Dialog */}
       <motion.div
@@ -145,5 +163,6 @@ export default function CompanyModal({ isOpen, onClose }) {
         </div>
       </motion.div>
     </div>
+  </AnimatePresence>
   );
 }

@@ -53,6 +53,23 @@ export default function UpgradeModal({ isOpen, onClose }) {
     checkReferralStatus();
   }, [isOpen]);
 
+  // Handle ESC and safe body scroll lock
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen, onClose]);
+
   const handleCopy = () => {
     navigator.clipboard.writeText(referralLink);
     setCopied(true);
@@ -68,13 +85,13 @@ export default function UpgradeModal({ isOpen, onClose }) {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
         <motion.div 
           initial={{ opacity: 0 }} 
           animate={{ opacity: 1 }} 
           exit={{ opacity: 0 }} 
           onClick={onClose}
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
+          className="absolute inset-0 bg-black/70 backdrop-blur-sm" 
         />
         
         <motion.div 

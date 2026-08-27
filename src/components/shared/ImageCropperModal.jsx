@@ -79,10 +79,18 @@ async function getCroppedImg(
     pixelCrop.height
   );
 
-  return new Promise((resolve) => {
-    croppedCanvas.toBlob((file) => {
-      resolve(file);
-    }, 'image/jpeg', 0.9);
+  return new Promise((resolve, reject) => {
+    try {
+      croppedCanvas.toBlob((file) => {
+        if (!file) {
+          reject(new Error("Canvas toBlob failed or canvas is tainted"));
+          return;
+        }
+        resolve(file);
+      }, 'image/jpeg', 0.9);
+    } catch (err) {
+      reject(err);
+    }
   });
 }
 
@@ -92,6 +100,23 @@ export default function ImageCropperModal({ isOpen, onClose, imageSrc, onCropCom
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Handle ESC and safe body scroll lock
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen, onClose]);
 
   const onCropCompleteInternal = useCallback((croppedArea, croppedAreaPixels) => {
     setCroppedAreaPixels(croppedAreaPixels);
@@ -103,7 +128,7 @@ export default function ImageCropperModal({ isOpen, onClose, imageSrc, onCropCom
       const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels, 0);
       onCropComplete(croppedBlob);
     } catch (e) {
-      console.error(e);
+      console.error("Failed to crop image:", e);
     } finally {
       setIsProcessing(false);
     }
@@ -113,12 +138,13 @@ export default function ImageCropperModal({ isOpen, onClose, imageSrc, onCropCom
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[500] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/90 backdrop-blur-sm"
+          onClick={onClose}
+          className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         />
 
         <motion.div

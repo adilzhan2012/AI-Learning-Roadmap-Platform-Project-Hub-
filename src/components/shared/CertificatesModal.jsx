@@ -25,6 +25,23 @@ export default function CertificatesModal({ isOpen, onClose }) {
     return () => { mounted = false; };
   }, [isOpen]);
 
+  // Handle ESC and safe body scroll lock
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const content = locale === 'ru' ? {
@@ -45,7 +62,7 @@ export default function CertificatesModal({ isOpen, onClose }) {
 
   const handleCertificateClick = async (cert) => {
     if (cert.fileUrl) {
-      window.open(cert.fileUrl, '_blank');
+      window.open(cert.fileUrl, '_blank', 'noopener,noreferrer');
       return;
     }
 
@@ -55,7 +72,7 @@ export default function CertificatesModal({ isOpen, onClose }) {
     try {
       const result = await requestCourseCertificate(cert.courseId);
       if (result && result.fileUrl) {
-        window.open(result.fileUrl, '_blank');
+        window.open(result.fileUrl, '_blank', 'noopener,noreferrer');
         // Update local state to include the new URL
         setCertificates(prev => prev.map(c => 
           c.id === cert.id ? { ...c, fileUrl: result.fileUrl } : c
@@ -65,7 +82,6 @@ export default function CertificatesModal({ isOpen, onClose }) {
       }
     } catch (error) {
       console.error("Failed to generate PDF:", error);
-      alert(locale === 'ru' ? 'Ошибка генерации PDF (попробуйте позже)' : 'Failed to generate PDF (try again later)');
     } finally {
       setGeneratingId(null);
     }
@@ -80,7 +96,7 @@ export default function CertificatesModal({ isOpen, onClose }) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+          className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         />
 
         {/* Modal */}

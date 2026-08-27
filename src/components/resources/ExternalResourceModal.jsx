@@ -1,10 +1,27 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ExternalLink, PlayCircle, GitBranch, Sparkles, RefreshCw, Lock, Star, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function ExternalResourceModal({ resource, externalData, loading, onClose, userPlan = 'FREE', onRefreshAlternative }) {
   const navigate = useNavigate();
+
+  // Handle ESC and safe body scroll lock
+  useEffect(() => {
+    if (!resource) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [resource, onClose]);
 
   if (!resource) return null;
 
@@ -13,14 +30,15 @@ export default function ExternalResourceModal({ resource, externalData, loading,
   const isPersonalized = externalData?.isPersonalized || false;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6">
-      <motion.div 
-        initial={{ opacity: 0 }} 
-        animate={{ opacity: 1 }} 
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-      />
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6">
+        <motion.div 
+          initial={{ opacity: 0 }} 
+          animate={{ opacity: 1 }} 
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        />
 
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -163,7 +181,7 @@ export default function ExternalResourceModal({ resource, externalData, loading,
                   <a 
                     href={item.url}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     className="w-full md:w-auto px-5 py-2.5 bg-surface-container-high hover:bg-on-surface hover:text-inverse-on-surface text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 border border-outline shrink-0"
                   >
                     <span>{isVideo ? 'Смотреть' : 'Открыть код'}</span>
@@ -176,5 +194,6 @@ export default function ExternalResourceModal({ resource, externalData, loading,
         </div>
       </motion.div>
     </div>
+  </AnimatePresence>
   );
 }
