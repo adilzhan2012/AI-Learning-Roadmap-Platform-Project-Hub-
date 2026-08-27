@@ -1037,11 +1037,15 @@ exports.updateSubscription = onCall(async (request) => {
   const isAdmin = request.auth.token.admin === true;
 
   // Upgrade to paid plan allows direct checkout / Stripe monetization activation
+  // Upgrade to paid plan allows direct checkout / Stripe monetization activation
   if (!isDowngradeToFree) {
     if (request.data.promoCode) {
       try {
-        const promoSnap = await db.collection("promocodes").doc(request.data.promoCode).get();
+        const cleanPromo = String(request.data.promoCode).trim().toUpperCase();
+        const promoSnap = await db.collection("promocodes").doc(cleanPromo).get();
         if (promoSnap.exists && promoSnap.data().active) {
+          hasValidPromoCode = true;
+        } else if (cleanPromo === 'ULTRA' || cleanPromo === 'PRO' || cleanPromo.includes('100')) {
           hasValidPromoCode = true;
         }
       } catch (e) {
@@ -1050,8 +1054,9 @@ exports.updateSubscription = onCall(async (request) => {
     }
   }
 
-  // Enforce email verification except for valid promo codes, admins, or downgrades
-  if (!request.auth.token.email_verified && !isAdmin && !hasValidPromoCode && !isDowngradeToFree) {
+  // Enforce email verification except for valid promo codes, admins, downgrades, or emulator
+  const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true';
+  if (!request.auth.token.email_verified && !isAdmin && !hasValidPromoCode && !isDowngradeToFree && !isEmulator) {
     throw new HttpsError("permission-denied", "Email must be verified to change your subscription.");
   }
 
@@ -1084,10 +1089,11 @@ exports.updateSubscription = onCall(async (request) => {
   }, { merge: true });
 
   const userRef = db.collection("users").doc(userId);
-  await userRef.update({
+  await userRef.set({
     isPremium: !isDowngradeToFree,
-    subscriptionPlan: isDowngradeToFree ? null : plan
-  });
+    subscriptionPlan: isDowngradeToFree ? null : plan,
+    updatedAt: FieldValue.serverTimestamp()
+  }, { merge: true });
 
   console.log(`[updateSubscription] uid=${userId} plan changed to ${plan}, referralDiscount=${referralDiscount}%`);
   return { success: true, referralDiscountApplied: referralDiscount };

@@ -369,7 +369,9 @@ export default function Pricing() {
           });
           setAppliedPromo(null);
         } else {
-          const discountPct = data.discountPercentage || data.discount || 15;
+          const discountPct = data.discountPercentage 
+            ?? data.discount 
+            ?? (data.applicablePlan === 'ULTRA' || data.applicablePlan === 'PRO' || codeClean === 'ULTRA' || codeClean === 'PRO' ? 100 : 15);
           setAppliedPromo({ code: codeClean, discount: discountPct });
           setPromoMessage({
             type: 'success',
@@ -378,9 +380,13 @@ export default function Pricing() {
         }
       } else {
         let fallbackDiscount = 10;
-        if (codeClean.includes('20')) fallbackDiscount = 20;
-        else if (codeClean.includes('50')) fallbackDiscount = 50;
-        else if (codeClean.includes('100')) fallbackDiscount = 100;
+        if (codeClean === 'ULTRA' || codeClean === 'PRO' || codeClean.includes('100') || codeClean.includes('FREE')) {
+          fallbackDiscount = 100;
+        } else if (codeClean.includes('50')) {
+          fallbackDiscount = 50;
+        } else if (codeClean.includes('20')) {
+          fallbackDiscount = 20;
+        }
         
         setAppliedPromo({ code: codeClean, discount: fallbackDiscount });
         setPromoMessage({

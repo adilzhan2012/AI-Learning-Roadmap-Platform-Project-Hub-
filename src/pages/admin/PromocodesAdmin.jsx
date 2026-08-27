@@ -14,6 +14,7 @@ export default function PromocodesAdmin() {
   const [newCode, setNewCode] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newPlan, setNewPlan] = useState('ALL'); // ALL, PRO, ULTRA
+  const [newDiscountPercentage, setNewDiscountPercentage] = useState(100);
   const [newActive, setNewActive] = useState(true);
   const [error, setError] = useState('');
 
@@ -45,6 +46,7 @@ export default function PromocodesAdmin() {
       await setDoc(doc(db, 'promocodes', codeId), {
         description: newDescription.trim(),
         applicablePlan: newPlan,
+        discountPercentage: Number(newDiscountPercentage) || 100,
         active: newActive,
         createdAt: serverTimestamp()
       });
@@ -52,6 +54,7 @@ export default function PromocodesAdmin() {
       setNewCode('');
       setNewDescription('');
       setNewPlan('ALL');
+      setNewDiscountPercentage(100);
       setNewActive(true);
       setError('');
     } catch (e) {
@@ -122,6 +125,7 @@ export default function PromocodesAdmin() {
               <tr>
                 <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">Промокод</th>
                 <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">Тариф</th>
+                <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">Скидка</th>
                 <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">Описание</th>
                 <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">Статус</th>
                 <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider text-right">Действия</th>
@@ -140,6 +144,11 @@ export default function PromocodesAdmin() {
                       'bg-zinc-800 text-zinc-300 border border-zinc-700'
                     }`}>
                       {promo.applicablePlan || 'ALL'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="font-mono text-amber-400 font-bold">
+                      {promo.discountPercentage || promo.discount || (promo.applicablePlan === 'ULTRA' || promo.applicablePlan === 'PRO' ? 100 : 15)}%
                     </span>
                   </td>
                   <td className="px-6 py-4 text-zinc-400">
@@ -216,6 +225,18 @@ export default function PromocodesAdmin() {
                   <option value="PRO">Только PRO</option>
                   <option value="ULTRA">Только ULTRA</option>
                 </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-zinc-400 mb-1 uppercase tracking-wider">Скидка (%)</label>
+                <input 
+                  type="number" 
+                  min="1" 
+                  max="100"
+                  value={newDiscountPercentage}
+                  onChange={e => setNewDiscountPercentage(e.target.value)}
+                  placeholder="100"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white font-mono outline-none focus:border-indigo-500 transition-colors"
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-zinc-400 mb-1 uppercase tracking-wider">Описание (опционально)</label>
