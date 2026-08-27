@@ -457,11 +457,20 @@ exports.aiProxy = onCall(
 
     let token, projectId;
     try {
+      const fallbackProjectId = process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || 'ai-learning-roadmap-platform';
       const authClient = new GoogleAuth({
-        scopes: 'https://www.googleapis.com/auth/cloud-platform'
+        scopes: 'https://www.googleapis.com/auth/cloud-platform',
+        projectId: fallbackProjectId
       });
       token = await authClient.getAccessToken();
-      projectId = await authClient.getProjectId();
+      try {
+        projectId = await authClient.getProjectId();
+      } catch (_) {
+        projectId = fallbackProjectId;
+      }
+      if (!projectId) {
+        projectId = fallbackProjectId;
+      }
     } catch (authErr) {
       throw new HttpsError(
         "internal",
