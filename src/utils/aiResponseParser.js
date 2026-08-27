@@ -15,13 +15,18 @@ export function parseAIJson(text) {
 
   let clean = text.trim();
 
-  // Strip markdown code fences if present
-  const fenceJsonStart = new RegExp("^```json\\s*", "i");
-  const fenceStart = new RegExp("^```\\s*", "i");
-  const fenceEnd = new RegExp("```\\s*$", "i");
+  // Extract from markdown code block ```json ... ``` or ``` ... ``` if present anywhere
+  const fenceMatch = clean.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fenceMatch && fenceMatch[1]) {
+    clean = fenceMatch[1].trim();
+  }
 
-  clean = clean.replace(fenceJsonStart, "").replace(fenceEnd, "").trim();
-  clean = clean.replace(fenceStart, "").replace(fenceEnd, "").trim();
+  // Strip leading/trailing code fences if still present
+  clean = clean
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```\s*$/i, "")
+    .trim();
 
   // Find outer JSON boundaries: object { ... } or array [ ... ]
   const firstBrace = clean.indexOf("{");

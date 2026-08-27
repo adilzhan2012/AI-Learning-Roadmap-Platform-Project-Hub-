@@ -22,7 +22,7 @@ import { useGamification } from '../../context/GamificationContext.jsx';
 import { toggleTheme } from '../../theme.js';
 import { auth, signOut, db } from '../../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, limit, onSnapshot } from 'firebase/firestore';
 import { getUserStats } from '../../services/courseService.js';
 import Logo from '../shared/Logo.jsx';
 import { LeagueIcon } from '../../pages/Leagues.jsx';
@@ -120,7 +120,9 @@ export default function Topbar() {
     }
     const q = query(
       collection(db, 'support_tickets'),
-      where('userId', '==', user.uid)
+      where('userId', '==', user.uid),
+      where('status', 'in', ['open', 'in_progress']),
+      limit(10)
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const hasUnread = snapshot.docs.some(doc => doc.data().unreadUser === true);
