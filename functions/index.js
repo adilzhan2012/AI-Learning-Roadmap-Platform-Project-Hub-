@@ -2400,3 +2400,66 @@ exports.getUserPlanLimits = onCall(async (request) => {
   };
 });
 
+// ----------------------------------------------------
+// Submit Review Cloud Function (Server Rate-Limited)
+// ----------------------------------------------------
+exports.submitReview = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Must be authenticated");
+  }
+  const userId = request.auth.uid;
+  const { rating, text, userName, userAvatarColor, photoURL } = request.data || {};
+
+  const numRating = Number(rating);
+  if (!numRating || numRating < 1 || numRating > 5) {
+    throw new HttpsError("invalid-argument", "Rating must be between 1 and 5");
+  }
+
+  const trimmedText = typeof text === "string" ? text.trim() : "";
+  if (trimmedText.length < 10) {
+    throw new HttpsError("invalid-argument", "Review text must be at least 10 characters");
+  }
+
+  const serverNow = Date.now();
+  const thirtyDaysAgo = new Date(serverNow - 30 * 24 * 60 * 60 * 1000);
+
+  // Server-side check of reviews submitted by this user in the last 30 days
+  const userReviewsSnap = await db.collection("reviews")
+    .where("userId", "==", userId)
+    .get();
+
+  let count = 0;
+  userReviewsSnap.forEach(docSnap => {
+    const data = docSnap.data();
+    const createdAt = data.createdAt?.toMillis 
+      ? data.createdAt.toMillis() 
+      : (data.createdAt?.seconds ? data.createdAt.seconds * 1000 : (data.createdAt ? new Date(data.createdAt).getTime() : 0));
+    if (createdAt >= thirtyDaysAgo.getTime()) {
+      count++;
+    }
+  });
+
+  if (count >= 5) {
+    throw new HttpsError("resource-exhausted", "Вы достигли лимита (максимум 5 отзывов за 30 дней).");
+  }
+
+  // Create new review document
+  const newReviewRef = await db.collection("reviews").add({
+    userId,
+    userName: userName || "Learner",
+    userAvatarColor: userAvatarColor || null,
+    photoURL: photoURL || null,
+    rating: numRating,
+    text: trimmedText,
+    status: "new",
+    createdAt: FieldValue.serverTimestamp(),
+    publishedAt: null
+  });
+
+  return {
+    success: true,
+    reviewId: newReviewRef.id,
+    monthlyCount: count + 1
+  };
+});
+
