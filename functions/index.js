@@ -746,7 +746,7 @@ exports.awardXP = onCall(async (request) => {
 
     } else if (activityType === "selection_ask") {
       const validNodeId = validateNodeId(details.nodeId);
-      checkActivityRateLimit(xpHistory, "selection_ask_", 5, 10);
+      checkActivityRateLimit(xpHistory, "selection_ask_", 30, 3);
 
       reasonKey = `selection_ask_${validNodeId}`;
       amount = 10;
@@ -756,7 +756,7 @@ exports.awardXP = onCall(async (request) => {
 
     } else if (activityType === "slide_completed") {
       const validNodeId = validateNodeId(details.nodeId);
-      checkActivityRateLimit(xpHistory, "slide_completed_", 30, 10);
+      checkActivityRateLimit(xpHistory, "slide_completed_", 100, 3);
 
       reasonKey = `slide_completed_${validNodeId}`;
       amount = 5;
@@ -766,7 +766,7 @@ exports.awardXP = onCall(async (request) => {
 
     } else if (activityType === "code_review_passed") {
       const validNodeId = validateNodeId(details.nodeId);
-      checkActivityRateLimit(xpHistory, "code_review_passed_", 5, 30);
+      checkActivityRateLimit(xpHistory, "code_review_passed_", 30, 10);
 
       reasonKey = `code_review_passed_${validNodeId}`;
       amount = 40;
@@ -776,7 +776,7 @@ exports.awardXP = onCall(async (request) => {
 
     } else if (activityType === "project_verified") {
       const validNodeId = validateNodeId(details.nodeId);
-      checkActivityRateLimit(xpHistory, "project_verified_", 5, 30);
+      checkActivityRateLimit(xpHistory, "project_verified_", 20, 10);
 
       reasonKey = `project_verified_${validNodeId}`;
       amount = 50;
@@ -786,7 +786,7 @@ exports.awardXP = onCall(async (request) => {
 
     } else if (activityType === "mock_interview_completed") {
       const validNodeId = validateNodeId(details.nodeId);
-      checkActivityRateLimit(xpHistory, "mock_interview_completed_", 3, 60);
+      checkActivityRateLimit(xpHistory, "mock_interview_completed_", 10, 30);
 
       reasonKey = `mock_interview_completed_${validNodeId}`;
       amount = 100;
@@ -2358,15 +2358,19 @@ exports.submitQuizResult = onCall(async (request) => {
         ? q.correctIndex
         : (typeof q.correctAnswer === "number" ? q.correctAnswer : 0);
 
-      const userAns = Array.isArray(userAnswers) ? userAnswers[i] : userAnswers[i];
-      const isCorrect = userAns !== undefined && Number(userAns) === correctIdx;
+      const userAns = userAnswers != null
+        ? (userAnswers[i] !== undefined ? userAnswers[i] : userAnswers[String(i)])
+        : undefined;
+      const isCorrect = userAns !== undefined && userAns !== null && Number(userAns) === correctIdx;
 
       if (isCorrect) {
         rawScore++;
       } else {
         const qText = q.question || q.questionText || q.prompt || q.title || `Question ${i + 1}`;
         const correctOption = Array.isArray(q.options) ? (q.options[correctIdx] || "") : "";
-        const userOption = (Array.isArray(q.options) && userAns !== undefined) ? (q.options[userAns] || "no answer") : "no answer";
+        const userOption = (Array.isArray(q.options) && userAns !== undefined && userAns !== null && q.options[Number(userAns)] !== undefined)
+          ? q.options[Number(userAns)]
+          : "no answer";
         const sectionHeading = q.sectionHeading || "";
 
         failedDetails.push({

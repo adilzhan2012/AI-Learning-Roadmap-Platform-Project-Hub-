@@ -103,22 +103,40 @@ export default function Auth({ type }) {
   const [resetSuccess, setResetSuccess] = useState(false);
 
   useEffect(() => {
-    // Only auto-redirect if they are not in the middle of Google Registration
+    // Auto-redirect or setup wizard for authenticated users
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser && !loading && !showRegSuccess && authMethod === 'email') {
-        // Double check if user actually has a profile (to prevent redirecting new google users who refreshed)
+      if (currentUser && !loading && !showRegSuccess) {
         try {
           const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
           if (userDoc.exists()) {
-            navigate('/dashboard');
+            const data = userDoc.data();
+            if (data.username || data.firstName || data.displayName || currentUser.displayName) {
+              navigate('/dashboard');
+            }
+          } else {
+            // User is authenticated in Firebase Auth, but has no Firestore profile document yet
+            if (isLogin) {
+              // Redirect to register wizard to complete profile setup
+              navigate('/register');
+            } else {
+              // Populate initial fields from currentUser on register page
+              if (currentUser.email && !email) setEmail(currentUser.email);
+              if (currentUser.displayName && !firstName) {
+                const parts = currentUser.displayName.split(' ');
+                setFirstName(parts[0] || '');
+                setLastName(parts.slice(1).join(' ') || '');
+              }
+              setProviderUser(currentUser);
+              setAuthMethod(currentUser.providerData?.[0]?.providerId || 'email');
+            }
           }
         } catch(e) {
-          console.error(e);
+          console.error('[Auth] Error checking user profile:', e);
         }
       }
     });
     return () => unsubscribe();
-  }, [loading, showRegSuccess, authMethod, navigate]);
+  }, [loading, showRegSuccess, authMethod, navigate, isLogin]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
