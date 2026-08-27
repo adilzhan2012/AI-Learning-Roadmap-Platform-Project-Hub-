@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Brain, Sparkles, Loader2, X, ChevronRight, ChevronLeft, 
@@ -19,6 +19,23 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
 
   const [genError, setGenError] = useState('');
   const [generating, setGenerating] = useState(false);
+
+  // Handle ESC and safe body scroll lock
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen, onClose]);
 
   // Step 1: Topic & RAG
   const [generationMode, setGenerationMode] = useState('topic'); // 'topic' | 'rag'
@@ -406,8 +423,8 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
     <>
       <AnimatePresence>
         {isOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             
             <motion.div 
               initial={{ scale: 0.95, y: 20, opacity: 0 }}
@@ -485,8 +502,8 @@ export default function CourseGeneratorModal({ isOpen, onClose, userUid }) {
       {/* Upgrade Modal */}
       <AnimatePresence>
         {isUpgradeModalOpen && (
-          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setUpgradeModalOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setUpgradeModalOpen(false)} className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="relative bg-surface-container border border-outline w-full max-w-sm rounded-[2rem] p-6 shadow-2xl z-10 text-center">
               <div className="w-12 h-12 bg-on-surface/5 border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Lock className="w-5 h-5 text-on-surface" />

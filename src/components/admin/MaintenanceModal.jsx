@@ -7,11 +7,28 @@ import { Wrench, X, Clock, Play, Square, Loader2 } from 'lucide-react';
 export default function MaintenanceModal({ onClose }) {
   const [maintenance, setMaintenance] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
   
   // Form state
   const [durationValue, setDurationValue] = useState(30);
   const [durationType, setDurationType] = useState('minutes');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Handle ESC and safe body scroll lock
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [onClose]);
 
   useEffect(() => {
     const docRef = doc(db, 'settings', 'maintenance');
@@ -28,6 +45,7 @@ export default function MaintenanceModal({ onClose }) {
 
   const handleStart = async () => {
     setIsSaving(true);
+    setErrorMessage('');
     try {
       // Calculate end time
       const multiplier = durationType === 'minutes' ? 60 * 1000 : 60 * 60 * 1000;
@@ -41,7 +59,7 @@ export default function MaintenanceModal({ onClose }) {
       });
     } catch (error) {
       console.error("Error starting maintenance", error);
-      alert("Не удалось включить технические работы: " + error.message);
+      setErrorMessage("Не удалось включить технические работы: " + (error.message || 'Ошибка'));
     } finally {
       setIsSaving(false);
     }
@@ -49,6 +67,7 @@ export default function MaintenanceModal({ onClose }) {
 
   const handleStop = async () => {
     setIsSaving(true);
+    setErrorMessage('');
     try {
       const adminSetMaintenanceFn = httpsCallable(functions, 'adminSetMaintenance');
       await adminSetMaintenanceFn({
@@ -56,7 +75,7 @@ export default function MaintenanceModal({ onClose }) {
       });
     } catch (error) {
       console.error("Error stopping maintenance", error);
-      alert("Не удалось выключить технические работы: " + error.message);
+      setErrorMessage("Не удалось выключить технические работы: " + (error.message || 'Ошибка'));
     } finally {
       setIsSaving(false);
     }
@@ -78,7 +97,7 @@ export default function MaintenanceModal({ onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
       <div className="w-full max-w-md bg-[#09090B] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col relative">
         
         {/* Header */}
@@ -96,6 +115,15 @@ export default function MaintenanceModal({ onClose }) {
 
         {/* Content */}
         <div className="p-6">
+          {errorMessage && (
+            <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex justify-between items-center">
+              <span>{errorMessage}</span>
+              <button onClick={() => setErrorMessage('')} className="hover:text-rose-200">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           {loading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />

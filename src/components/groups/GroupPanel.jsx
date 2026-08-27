@@ -17,11 +17,20 @@ export default function GroupPanel({
   const locale = useLocale();
   const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'activity'
   const [inputText, setInputText] = useState('');
+  const [reportNotice, setReportNotice] = useState(false);
+  const chatContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    if (activeTab === 'chat') {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (activeTab === 'chat' && chatContainerRef.current) {
+      const el = chatContainerRef.current;
+      const isNearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 100;
+      const lastMsg = messages[messages.length - 1];
+      const isSelf = lastMsg?.senderId === auth.currentUser?.uid;
+
+      if (isNearBottom || isSelf) {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }
     }
   }, [messages, activeTab]);
 
@@ -108,7 +117,10 @@ export default function GroupPanel({
                   <button
                     className="p-1.5 rounded-lg text-red-500 hover:bg-red-500/10 transition-colors"
                     title={locale === 'en' ? "Report an issue" : "Сообщить о проблеме"}
-                    onClick={() => alert(locale === 'en' ? 'Report forms will be available in the upcoming update!' : 'Форма жалоб и отправки репортов будет доступна в следующем обновлении!')}
+                    onClick={() => {
+                      setReportNotice(true);
+                      setTimeout(() => setReportNotice(false), 3500);
+                    }}
                   >
                     <AlertTriangle className="w-4 h-4" />
                   </button>
@@ -122,6 +134,15 @@ export default function GroupPanel({
                 </button>
               </div>
             </div>
+
+            {reportNotice && (
+              <div className="p-3 bg-amber-500/10 border-b border-amber-500/20 text-amber-400 text-xs flex items-center justify-between">
+                <span>{locale === 'en' ? 'Report forms will be available in the upcoming update!' : 'Форма жалоб и отправки репортов будет доступна в следующем обновлении!'}</span>
+                <button onClick={() => setReportNotice(false)} className="hover:text-amber-200">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
 
             {!hasAcceptedRules ? (
               <div className="flex-1 overflow-y-auto p-5 flex flex-col text-center">
@@ -243,7 +264,7 @@ export default function GroupPanel({
             </div>
 
             {/* Tab Contents */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3">
               {activeTab === 'chat' && (
                 <div className="space-y-3">
                   {messages.length === 0 ? (

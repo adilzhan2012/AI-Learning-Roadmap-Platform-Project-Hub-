@@ -35,35 +35,38 @@ export default function AdminHeader({ title, description, children }) {
     return () => unsubscribe();
   }, []);
 
-  // Fetch notifications
+  // Real-time admin notifications listener
   useEffect(() => {
-    async function fetchNotifications() {
-      try {
-        const q = query(collection(db, 'admin_notifications'), orderBy('createdAt', 'desc'), limit(5));
-        const snap = await getDocs(q);
-        const notifs = [];
-        snap.forEach(doc => {
-          notifs.push({ id: doc.id, ...doc.data() });
-        });
-        setNotifications(notifs);
-      } catch (e) {
-        console.error('Error fetching admin notifications:', e);
-      }
-    }
-    fetchNotifications();
+    const q = query(
+      collection(db, 'admin_notifications'), 
+      orderBy('createdAt', 'desc'), 
+      limit(20)
+    );
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const notifs = [];
+      snap.forEach(doc => {
+        notifs.push({ id: doc.id, ...doc.data() });
+      });
+      setNotifications(notifs);
+    }, (e) => {
+      console.error('Error listening to admin notifications:', e);
+    });
+    return () => unsubscribe();
   }, []);
 
-  // Cmd+K Shortcut Listener
+  // Cmd+K and ESC Shortcut Listener
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setIsSearchOpen(true);
+      } else if (e.key === 'Escape' && isSearchOpen) {
+        setIsSearchOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [isSearchOpen]);
 
   // Close dropdowns on outside click
   useEffect(() => {
