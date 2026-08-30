@@ -5,10 +5,12 @@ import { calculateMastery } from '../../hooks/useMastery.js';
 import { AlertCircle, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
+import { t, useLocale } from '../../i18n.js';
 
 export default function RepeatReminder() {
   const [nodesToRepeat, setNodesToRepeat] = useState(0);
   const navigate = useNavigate();
+  const locale = useLocale();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -56,9 +58,11 @@ export default function RepeatReminder() {
           <AlertCircle className="w-6 h-6 text-on-surface" strokeWidth={1.5} />
         </div>
         <div>
-          <h3 className="font-bold text-on-background">Время повторения!</h3>
+          <h3 className="font-bold text-on-background">{t('repeatReminder.title')}</h3>
           <p className="text-sm text-on-surface-variant">
-            {nodesToRepeat} {nodesToRepeat === 1 ? 'урок требует' : 'уроков требуют'} повторения, так как уровень владения снизился.
+            {nodesToRepeat === 1 
+              ? t('repeatReminder.descOne') 
+              : t('repeatReminder.descMany', { count: nodesToRepeat })}
           </p>
         </div>
       </div>
@@ -66,7 +70,7 @@ export default function RepeatReminder() {
         onClick={() => navigate('/graph')}
         className="bg-on-surface hover:bg-surface-container text-inverse-on-surface px-5 py-2.5 rounded-[12px] font-bold flex items-center gap-2 transition-all text-sm"
       >
-        Перейти к графу
+        {t('repeatReminder.goToGraph')}
         <ArrowRight className="w-4 h-4 text-inverse-on-surface" strokeWidth={1.5} />
       </button>
     </div>

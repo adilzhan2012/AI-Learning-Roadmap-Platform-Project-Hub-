@@ -620,5 +620,12 @@
   "maintenance.hours": "Часов",
   "maintenance.minutes": "Минут",
   "maintenance.seconds": "Секунд",
-  "tooltip.reorder": "Изменить порядок"
+  "tooltip.reorder": "Изменить порядок",
+  "dashboard.archivedFree": "АРХИВИРОВАНО (FREE)",
+  "dashboard.upgradeToUnlock": "Перейдите на PRO, чтобы разблокировать этот курс",
+  "dashboard.createNewCourse": "Создать новый курс",
+  "repeatReminder.title": "Время повторения!",
+  "repeatReminder.descOne": "1 урок требует повторения, так как уровень владения снизился.",
+  "repeatReminder.descMany": "{{count}} уроков требуют повторения, так как уровень владения снизился.",
+  "repeatReminder.goToGraph": "Перейти к графу"
 }

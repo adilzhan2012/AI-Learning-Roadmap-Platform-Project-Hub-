@@ -36,7 +36,7 @@ import { t, useLocale } from '../i18n.js';
 import { LeagueIcon } from './Leagues.jsx';
 import MotivationalWidget from '../components/shared/MotivationalWidget.jsx';
 import HeroBackground from '../components/shared/HeroBackground.jsx';
-import { getSubjectTheme } from '../utils/courseSubjectClassifier.js';
+import { getSubjectTheme, classifyCourseSubject, getSubjectLabel } from '../utils/courseSubjectClassifier.js';
 
 const staggerContainer = {
   hidden: { opacity: 0 },
@@ -446,8 +446,11 @@ export default function Dashboard() {
         ) : (
           <div className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-none">
             {courses.map((course, idx) => {
-              const theme = getSubjectTheme(course.subject, course.topic, course.title, course.nodes);
+              const detectedSubject = classifyCourseSubject(course.topic, course.title, course.nodes);
+              const effectiveSubject = (detectedSubject && detectedSubject !== 'Общее') ? detectedSubject : (course.subject || 'Общее');
+              const theme = getSubjectTheme(effectiveSubject, course.topic, course.title, course.nodes);
               const SubjectIcon = theme.icon;
+              const subjectLabel = getSubjectLabel(effectiveSubject, locale);
 
               return (
                 <motion.div 
@@ -467,8 +470,12 @@ export default function Dashboard() {
                   {plan === 'FREE' && idx > 0 && (
                     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/75 backdrop-blur-[2px] p-6 text-center select-none text-white">
                       <Lock className="w-6 h-6 text-white mb-2" strokeWidth={1.5} />
-                      <span className="text-[11px] font-bold uppercase tracking-wider mb-1">Архивировано (FREE)</span>
-                      <p className="text-[10px] text-zinc-300 leading-tight">Перейдите на PRO, чтобы разблокировать этот курс</p>
+                      <span className="text-[11px] font-bold uppercase tracking-wider mb-1">
+                        {t('dashboard.archivedFree')}
+                      </span>
+                      <p className="text-[10px] text-zinc-300 leading-tight">
+                        {t('dashboard.upgradeToUnlock')}
+                      </p>
                     </div>
                   )}
 
@@ -476,19 +483,21 @@ export default function Dashboard() {
                   <div className="p-4 border-b border-zinc-100 dark:border-white/5 bg-zinc-50/50 dark:bg-white/[0.02] flex items-center justify-between gap-2">
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border shadow-2xs ${theme.bgBadgeClass}`}>
                       <SubjectIcon className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
-                      <span className="truncate max-w-[140px]">{theme.subject}</span>
+                      <span className="truncate max-w-[140px]">{subjectLabel}</span>
                     </span>
                     <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 bg-white dark:bg-white/5 border border-zinc-200 dark:border-white/10 px-2 py-0.5 rounded-full">
-                      {course.level || 'Beginner'}
+                      {course.level || (locale === 'en' ? 'Beginner' : 'Начальный')}
                     </span>
                   </div>
 
                   <div className="p-5">
                     <h3 className="text-base font-bold text-zinc-900 dark:text-white mt-0.5 mb-1 line-clamp-1 font-clash">{t(course.title)}</h3>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-5 font-sans line-clamp-2">{course.description || 'Интерактивная дорожная карта знания.'}</p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-5 font-sans line-clamp-2">
+                      {course.description || (locale === 'en' ? 'Interactive knowledge roadmap.' : 'Интерактивная дорожная карта знания.')}
+                    </p>
                     
                     <div className="flex justify-between text-[11px] font-mono mb-2">
-                      <span className="text-zinc-500 dark:text-zinc-400 font-sans">Прогресс</span>
+                      <span className="text-zinc-500 dark:text-zinc-400 font-sans">{t('dashboard.progress')}</span>
                       <span className="text-zinc-900 dark:text-white font-bold font-mono">{course.progress || 0}%</span>
                     </div>
                     <div className="w-full h-[3px] bg-zinc-100 dark:bg-white/5 rounded-full overflow-hidden">
@@ -511,7 +520,9 @@ export default function Dashboard() {
                 className="min-w-[300px] max-w-[300px] flex-shrink-0 bg-transparent border-2 border-dashed border-zinc-300 dark:border-white/15 hover:border-indigo-400 rounded-[20px] flex flex-col items-center justify-center h-[208px] transition-colors cursor-pointer group"
               >
                 <span className="text-3xl text-zinc-400 group-hover:text-indigo-500 transition-colors font-sans mb-1 font-light">+</span>
-                <span className="text-xs text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors font-sans font-medium">Создать новый курс</span>
+                <span className="text-xs text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors font-sans font-medium">
+                  {t('dashboard.createNewCourse')}
+                </span>
               </div>
             )}
           </div>

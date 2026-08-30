@@ -620,5 +620,12 @@
   "maintenance.hours": "Hours",
   "maintenance.minutes": "Minutes",
   "maintenance.seconds": "Seconds",
-  "tooltip.reorder": "Reorder"
+  "tooltip.reorder": "Reorder",
+  "dashboard.archivedFree": "ARCHIVED (FREE)",
+  "dashboard.upgradeToUnlock": "Upgrade to PRO to unlock this course",
+  "dashboard.createNewCourse": "Create New Course",
+  "repeatReminder.title": "Review Time!",
+  "repeatReminder.descOne": "1 lesson needs review as mastery level has decayed.",
+  "repeatReminder.descMany": "{{count}} lessons need review as mastery level has decayed.",
+  "repeatReminder.goToGraph": "Go to Knowledge Graph"
 }
