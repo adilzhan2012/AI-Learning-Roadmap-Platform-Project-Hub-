@@ -586,7 +586,7 @@ export default function Landing() {
                   </div>
                   <div>
                     <h3 className="text-2xl sm:text-3xl font-bold text-on-surface mb-1">{locale === 'ru' ? 'Дутпаев Адильжан' : 'Dutpayev Adilzhan'}</h3>
-                    <p className="text-purple-500 font-mono tracking-widest uppercase text-xs sm:text-sm font-semibold">{locale === 'ru' ? 'Сооснователь & CTO' : 'Co-Founder & CTO'}</p>
+                    <p className="text-purple-500 font-mono tracking-widest uppercase text-xs sm:text-sm font-semibold">{locale === 'ru' ? 'Co-Founder & CTO' : 'Co-Founder & CTO'}</p>
                   </div>
                 </div>
                 <div className="relative z-10 sm:text-right text-center">
