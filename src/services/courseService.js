@@ -626,7 +626,7 @@ export async function generateLessonContent(courseId, nodeId, courseTitle, topic
       callAiProxy({
         prompt: userPrompt,
         systemInstruction,
-        usageType: 'ai_question',
+        usageType: 'lesson_generation',
         modelName: 'google/gemini-2.5-flash',
         responseSchema: LESSON_JSON_SCHEMA
       }),
@@ -742,19 +742,68 @@ Return ONLY a valid JSON object:
   ]
 }`;
 
-  const textResponse = await withTimeout(
-    callGeminiWithRetry(null, prompt, 'ai_question'),
-    120000,
-    courseLanguage === 'en' 
-      ? 'Timeout generating homework assignment (120s). Please try again.' 
-      : 'Превышено время ожидания генерации задания (120 сек). Пожалуйста, попробуйте еще раз.'
-  );
-  if (!textResponse) throw new Error('Empty response from Gemini API');
+  const HOMEWORK_JSON_SCHEMA = {
+    type: 'OBJECT',
+    properties: {
+      prompt: { type: 'STRING', description: 'Detailed hands-on homework assignment instructions in markdown.' },
+      rubric: {
+        type: 'ARRAY',
+        description: '3 to 5 evaluation criteria',
+        items: {
+          type: 'OBJECT',
+          properties: {
+            id: { type: 'STRING' },
+            criterion: { type: 'STRING' },
+            description: { type: 'STRING' },
+            weight: { type: 'NUMBER' }
+          },
+          required: ['id', 'criterion', 'description', 'weight']
+        }
+      }
+    },
+    required: ['prompt', 'rubric']
+  };
 
-  const parsed = parseAIJson(textResponse);
+  let parsed = null;
+  try {
+    const rawResponse = await withTimeout(
+      callAiProxy({
+        prompt,
+        systemInstruction: `You are an expert educational curriculum designer. Respond strictly in ${languageName}.`,
+        usageType: 'lesson_generation',
+        modelName: 'google/gemini-2.5-flash',
+        responseSchema: HOMEWORK_JSON_SCHEMA
+      }),
+      120000,
+      courseLanguage === 'en' 
+        ? 'Timeout generating homework assignment (120s). Please try again.' 
+        : 'Превышено время ожидания генерации задания (120 сек). Пожалуйста, попробуйте еще раз.'
+    );
+
+    if (rawResponse) {
+      if (typeof rawResponse === 'object' && rawResponse.prompt) {
+        parsed = rawResponse;
+      } else {
+        parsed = parseAIJson(String(rawResponse));
+      }
+    }
+  } catch (hwGenErr) {
+    console.warn("Primary structured homework generation failed, falling back to text generation:", hwGenErr);
+    try {
+      const textResponse = await callGeminiWithRetry(null, prompt, 'lesson_generation');
+      if (textResponse) {
+        parsed = parseAIJson(textResponse);
+      }
+    } catch (fallbackErr) {
+      console.warn("Fallback homework generation failed, using robust default rubric:", fallbackErr);
+    }
+  }
+
   const result = {
-    prompt: parsed.prompt || (courseLanguage === 'en' ? `Practical assignment for "${topicLabel}".` : `Практическое задание по теме "${topicLabel}".`),
-    rubric: parsed.rubric || [
+    prompt: parsed?.prompt || (courseLanguage === 'en' 
+      ? `### Practical Assignment: ${topicLabel}\n\nApply the knowledge from this lesson by writing a concise solution and explanation demonstrating your understanding.` 
+      : `### Практическое задание: ${topicLabel}\n\nПримените знания, полученные в этом уроке: составьте решение и дайте краткое пояснение к вашему ответу.`),
+    rubric: (Array.isArray(parsed?.rubric) && parsed.rubric.length > 0) ? parsed.rubric : [
       { 
         id: 'crit_1', 
         criterion: courseLanguage === 'en' ? 'Concept Understanding' : 'Понимание концепции', 

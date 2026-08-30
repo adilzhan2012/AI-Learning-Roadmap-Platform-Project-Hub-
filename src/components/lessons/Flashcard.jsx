@@ -125,7 +125,7 @@ export default function Flashcard({ term, definition, onRated, forceFlipped = nu
 
         {/* Back Face */}
         <div 
-          className="bg-gradient-to-br from-indigo-50/90 via-white to-purple-50/90 dark:from-indigo-950/50 dark:via-surface-container-high dark:to-purple-950/50 border-2 border-indigo-300 dark:border-indigo-500/50 text-zinc-900 dark:text-on-surface rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col justify-between text-center relative overflow-hidden w-full min-h-[22rem] sm:min-h-[24rem]"
+          className="bg-gradient-to-br from-indigo-50/95 via-white to-purple-50/95 dark:from-[#1c1b2f] dark:via-[#161622] dark:to-[#1a172e] border-2 border-indigo-200 dark:border-indigo-500/40 text-zinc-900 dark:text-zinc-100 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col justify-between text-center relative overflow-hidden w-full min-h-[22rem] sm:min-h-[24rem]"
           style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', gridArea: '1 / 1' }}
         >
           {/* Decorative ambient background */}
@@ -133,36 +133,36 @@ export default function Flashcard({ term, definition, onRated, forceFlipped = nu
           <div className="absolute -bottom-24 -right-24 w-56 h-56 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
 
           {/* Top Status Header */}
-          <div className="w-full flex items-center justify-between relative z-10 pb-2 border-b border-zinc-200 dark:border-outline-variant/30">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+          <div className="w-full flex items-center justify-between relative z-10 pb-2 border-b border-zinc-200 dark:border-white/10">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
               💡 {locale === 'en' ? 'Definition & Rationale' : 'Объяснение и суть'}
             </span>
-            <span className="text-xs text-zinc-500 dark:text-on-surface-variant font-medium">{locale === 'en' ? 'Rate difficulty ↓' : 'Оцените сложность ↓'}</span>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">{locale === 'en' ? 'Rate difficulty ↓' : 'Оцените сложность ↓'}</span>
           </div>
 
           {/* Center Content: Definition */}
           <div className="overflow-y-auto custom-scrollbar flex-1 flex items-center justify-center my-4 px-2 max-h-[12rem] sm:max-h-[14rem] relative z-10">
-            <p className="text-base sm:text-lg font-medium text-zinc-900 dark:text-on-surface/95 leading-relaxed">
+            <p className="text-base sm:text-lg font-semibold text-zinc-800 dark:text-zinc-100 leading-relaxed drop-shadow-xs">
               {definition || (locale === 'en' ? "Explanation not provided." : "Объяснение отсутствует.")}
             </p>
           </div>
           
           {/* Bottom Anki Rating Bar */}
           <div 
-            className="relative z-10 pt-4 border-t border-zinc-200 dark:border-outline-variant/30 w-full mt-auto"
+            className="relative z-10 pt-4 border-t border-zinc-200 dark:border-white/10 w-full mt-auto"
             onClick={(e) => e.stopPropagation()} // Prevent card flip when clicking rating buttons
           >
             {saving ? (
-              <div className="flex justify-center items-center py-3 bg-zinc-100 dark:bg-surface/50 rounded-2xl border border-zinc-200 dark:border-white/5">
+              <div className="flex justify-center items-center py-3 bg-zinc-100 dark:bg-white/5 rounded-2xl border border-zinc-200 dark:border-white/10">
                 <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
-                <span className="ml-2 text-xs font-bold text-zinc-600 dark:text-on-surface-variant">{locale === 'en' ? 'Saving...' : 'Сохранение...'}</span>
+                <span className="ml-2 text-xs font-bold text-zinc-600 dark:text-zinc-300">{locale === 'en' ? 'Saving...' : 'Сохранение...'}</span>
               </div>
             ) : (
               <div className="grid grid-cols-4 gap-2 sm:gap-3">
                 <button 
                   type="button"
                   onClick={(e) => handleRate(e, 1)}
-                  className="bg-red-50 hover:bg-red-500 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:text-white border border-red-200 dark:border-red-500/30 font-extrabold py-2.5 px-1 sm:px-2 rounded-xl text-xs transition-all flex flex-col items-center justify-center gap-0.5 shadow-sm active:scale-95 cursor-pointer"
+                  className="bg-red-500/10 hover:bg-red-500 text-red-600 dark:text-red-400 hover:text-white dark:hover:text-white border border-red-500/30 font-extrabold py-2.5 px-1 sm:px-2 rounded-xl text-xs transition-all flex flex-col items-center justify-center gap-0.5 shadow-sm active:scale-95 cursor-pointer"
                   title={locale === 'en' ? 'Again (Reset interval)' : 'Снова (Сброс интервала)'}
                 >
                   <span>{locale === 'en' ? 'Again' : 'Снова'}</span>
@@ -171,7 +171,7 @@ export default function Flashcard({ term, definition, onRated, forceFlipped = nu
                 <button 
                   type="button"
                   onClick={(e) => handleRate(e, 2)}
-                  className="bg-amber-50 hover:bg-amber-500 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:text-white border border-amber-200 dark:border-amber-500/30 font-extrabold py-2.5 px-1 sm:px-2 rounded-xl text-xs transition-all flex flex-col items-center justify-center gap-0.5 shadow-sm active:scale-95 cursor-pointer"
+                  className="bg-amber-500/10 hover:bg-amber-500 text-amber-600 dark:text-amber-400 hover:text-white dark:hover:text-white border border-amber-500/30 font-extrabold py-2.5 px-1 sm:px-2 rounded-xl text-xs transition-all flex flex-col items-center justify-center gap-0.5 shadow-sm active:scale-95 cursor-pointer"
                   title={locale === 'en' ? 'Hard (Review in 1 day)' : 'Трудно (1 день)'}
                 >
                   <span>{locale === 'en' ? 'Hard' : 'Трудно'}</span>
@@ -180,7 +180,7 @@ export default function Flashcard({ term, definition, onRated, forceFlipped = nu
                 <button 
                   type="button"
                   onClick={(e) => handleRate(e, 3)}
-                  className="bg-blue-50 hover:bg-blue-500 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:text-white border border-blue-200 dark:border-blue-500/30 font-extrabold py-2.5 px-1 sm:px-2 rounded-xl text-xs transition-all flex flex-col items-center justify-center gap-0.5 shadow-sm active:scale-95 cursor-pointer"
+                  className="bg-blue-500/10 hover:bg-blue-500 text-blue-600 dark:text-blue-400 hover:text-white dark:hover:text-white border border-blue-500/30 font-extrabold py-2.5 px-1 sm:px-2 rounded-xl text-xs transition-all flex flex-col items-center justify-center gap-0.5 shadow-sm active:scale-95 cursor-pointer"
                   title={locale === 'en' ? 'Good (Review in 3 days)' : 'Хорошо (3 дня)'}
                 >
                   <span>{locale === 'en' ? 'Good' : 'Хорошо'}</span>
@@ -189,7 +189,7 @@ export default function Flashcard({ term, definition, onRated, forceFlipped = nu
                 <button 
                   type="button"
                   onClick={(e) => handleRate(e, 4)}
-                  className="bg-emerald-50 hover:bg-emerald-500 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:text-white border border-emerald-200 dark:border-emerald-500/30 font-extrabold py-2.5 px-1 sm:px-2 rounded-xl text-xs transition-all flex flex-col items-center justify-center gap-0.5 shadow-sm active:scale-95 cursor-pointer"
+                  className="bg-emerald-500/10 hover:bg-emerald-500 text-emerald-600 dark:text-emerald-400 hover:text-white dark:hover:text-white border border-emerald-500/30 font-extrabold py-2.5 px-1 sm:px-2 rounded-xl text-xs transition-all flex flex-col items-center justify-center gap-0.5 shadow-sm active:scale-95 cursor-pointer"
                   title={locale === 'en' ? 'Easy (Review in 7 days)' : 'Легко (7 дней)'}
                 >
                   <span>{locale === 'en' ? 'Easy' : 'Легко'}</span>

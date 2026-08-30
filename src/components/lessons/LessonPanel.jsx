@@ -14,7 +14,7 @@ import {
   Lightbulb,
   Clock
 } from 'lucide-react';
-import { t, useLocale } from '../../i18n.js';
+import { t, useLocale, getCourseLocale } from '../../i18n.js';
 import { useNavigate } from 'react-router-dom';
 import { useXP } from '../../hooks/useXP.js';
 import { useQuiz } from '../../hooks/useQuiz.js';
@@ -73,6 +73,7 @@ export default function LessonPanel({
 }) {
   const navigate = useNavigate();
   const locale = useLocale();
+  const courseLanguage = getCourseLocale(selectedCourse) || locale;
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState('');
   const { addXP } = useXP();

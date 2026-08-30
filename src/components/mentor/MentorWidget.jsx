@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BrainCircuit } from 'lucide-react';
+import { BrainCircuit, EyeOff } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { auth, db, functions } from '../../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -547,47 +547,134 @@ export default function MentorWidget() {
 
   const remainingPercent = Math.max(0, Math.min(100, ((totalLimit - currentUsed) / totalLimit) * 100));
 
+  const [isMinimized, setIsMinimized] = useState(() => {
+    try {
+      return localStorage.getItem('mentor_widget_minimized') === 'true';
+    } catch (_) {
+      return false;
+    }
+  });
+
+  const toggleMinimized = (e) => {
+    e.stopPropagation();
+    setIsMinimized(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('mentor_widget_minimized', String(next));
+      } catch (_) {}
+      return next;
+    });
+  };
+
+  const isDraggingRef = useRef(false);
+
   return (
     <>
       {/* Mentor Bubble Component */}
-      <MentorBubble 
-        isOpen={isOpen} 
-        onOpenMentor={() => setIsOpen(true)} 
-        streakDays={profile?.streakDays || 0}
-      />
+      {!isMinimized && (
+        <MentorBubble 
+          isOpen={isOpen} 
+          onOpenMentor={() => setIsOpen(true)} 
+          streakDays={profile?.streakDays || 0}
+        />
+      )}
 
-      {/* Floating Action Button */}
+      {/* Floating Action Button or Compact Restore Pill */}
       <AnimatePresence>
         {!isOpen && (
-          <motion.button
-            initial={{ scale: 0, opacity: 0, y: 50 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0, opacity: 0, y: 50 }}
-            onClick={() => setIsOpen(true)}
-            className="fixed bottom-[90px] right-4 md:bottom-8 md:left-8 md:right-auto z-[90] h-14 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 border border-indigo-400/30 flex items-center justify-center text-white shadow-[0_8px_30px_rgb(99,102,241,0.4)] hover:scale-105 active:scale-95 transition-all select-none group px-4 gap-2.5"
-          >
-            {/* SVG Progress Ring */}
-            <div className="relative w-7 h-7 flex items-center justify-center">
-              <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 36 36">
-                <circle cx="18" cy="18" r="15.5" stroke="currentColor" strokeWidth="2.5" className="text-white/20" fill="transparent" />
-                <circle
-                  cx="18" cy="18" r="15.5"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  className="text-indigo-300 transition-all duration-500"
-                  fill="transparent"
-                  strokeDasharray={97.39}
-                  strokeDashoffset={97.39 - (97.39 * remainingPercent) / 100}
-                  strokeLinecap="round"
-                />
-              </svg>
-              <BrainCircuit className="w-4 h-4 text-white animate-pulse group-hover:scale-110 transition-transform relative z-10" />
-            </div>
+          isMinimized ? (
+            <motion.button
+              key="minimized-pill"
+              drag
+              dragMomentum={false}
+              dragElastic={0}
+              onDragStart={() => {
+                isDraggingRef.current = true;
+              }}
+              onDragEnd={() => {
+                setTimeout(() => {
+                  isDraggingRef.current = false;
+                }, 120);
+              }}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              whileHover={{ scale: 1.1 }}
+              whileDrag={{ scale: 1.15, cursor: 'grabbing' }}
+              onClick={(e) => {
+                if (isDraggingRef.current) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  return;
+                }
+                toggleMinimized(e);
+              }}
+              className="fixed bottom-20 right-3 md:bottom-8 md:left-8 md:right-auto z-[90] w-10 h-10 rounded-full bg-zinc-900/90 dark:bg-zinc-800/90 border border-indigo-500/40 hover:border-indigo-400 text-indigo-400 hover:text-white flex items-center justify-center shadow-xl backdrop-blur-md transition-colors cursor-grab active:cursor-grabbing select-none group touch-none"
+              title={locale === 'en' ? 'Show AI Mentor widget' : 'Развернуть AI Наставника'}
+            >
+              <BrainCircuit className="w-5 h-5 text-indigo-400 group-hover:text-white group-hover:scale-110 transition-transform pointer-events-none" />
+            </motion.button>
+          ) : (
+            <motion.div
+              key="full-button-container"
+              drag
+              dragMomentum={false}
+              dragElastic={0}
+              onDragStart={() => {
+                isDraggingRef.current = true;
+              }}
+              onDragEnd={() => {
+                setTimeout(() => {
+                  isDraggingRef.current = false;
+                }, 120);
+              }}
+              whileDrag={{ scale: 1.05, cursor: 'grabbing' }}
+              initial={{ scale: 0, opacity: 0, y: 50 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0, opacity: 0, y: 50 }}
+              onClick={(e) => {
+                if (isDraggingRef.current) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  return;
+                }
+                setIsOpen(true);
+              }}
+              className="fixed bottom-[90px] right-4 md:bottom-8 md:left-8 md:right-auto z-[90] h-14 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 border border-indigo-400/30 flex items-center justify-center text-white shadow-[0_8px_30px_rgb(99,102,241,0.4)] hover:scale-105 active:scale-95 select-none group px-3.5 gap-2 cursor-grab touch-none"
+            >
+              {/* SVG Progress Ring */}
+              <div className="relative w-7 h-7 flex items-center justify-center pointer-events-none">
+                <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 36 36">
+                  <circle cx="18" cy="18" r="15.5" stroke="currentColor" strokeWidth="2.5" className="text-white/20" fill="transparent" />
+                  <circle
+                    cx="18" cy="18" r="15.5"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    className="text-indigo-300 transition-all duration-500"
+                    fill="transparent"
+                    strokeDasharray={97.39}
+                    strokeDashoffset={97.39 - (97.39 * remainingPercent) / 100}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <BrainCircuit className="w-4 h-4 text-white animate-pulse group-hover:scale-110 transition-transform relative z-10" />
+              </div>
 
-            <span className="hidden sm:inline-block text-xs font-bold tracking-wide text-white">
-              {locale === 'en' ? 'AI Mentor' : 'AI Наставник'}
-            </span>
-          </motion.button>
+              <span className="hidden sm:inline-block text-xs font-bold tracking-wide text-white pointer-events-none">
+                {locale === 'en' ? 'AI Mentor' : 'AI Наставник'}
+              </span>
+
+              {/* Hide / Minimize Button */}
+              <button
+                type="button"
+                onClick={toggleMinimized}
+                className="w-5 h-5 rounded-full bg-black/20 hover:bg-black/40 text-white/80 hover:text-white flex items-center justify-center ml-1 opacity-60 group-hover:opacity-100 transition-all cursor-pointer"
+                title={locale === 'en' ? 'Hide AI Mentor' : 'Скрыть AI Наставника'}
+              >
+                <EyeOff className="w-3 h-3" />
+              </button>
+            </motion.div>
+          )
         )}
       </AnimatePresence>
 

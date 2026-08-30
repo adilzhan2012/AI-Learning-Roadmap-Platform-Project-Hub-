@@ -53,8 +53,8 @@ function evaluatePlanLimits({
   let isProSoftCapped = false;
   let updatedUsageCount = 0;
 
-  // 1. Non-metered / bypass types
-  if (usageType === 'topic_moderation' || usageType === 'ai_chat' || !usageType) {
+  // 1. Non-metered / bypass types (Lesson generation for courses, moderation, internal chat)
+  if (usageType === 'topic_moderation' || usageType === 'ai_chat' || usageType === 'lesson_generation' || !usageType) {
     return {
       allowed: true,
       isProSoftCapped: false,

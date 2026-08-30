@@ -15,20 +15,26 @@ export function parseAIJson(text) {
 
   let clean = text.trim();
 
-  // Extract from markdown code block ```json ... ``` or ``` ... ``` if present anywhere
+  // 1. If already valid JSON string, parse directly
+  try {
+    return JSON.parse(clean);
+  } catch (_) {
+    // Continue with extraction
+  }
+
+  // 2. Extract from markdown code block ```json ... ``` or ``` ... ``` if present anywhere
   const fenceMatch = clean.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
   if (fenceMatch && fenceMatch[1]) {
     clean = fenceMatch[1].trim();
+  } else {
+    // Strip partial or unclosed code fences
+    clean = clean
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
   }
 
-  // Strip leading/trailing code fences if still present
-  clean = clean
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/```\s*$/i, "")
-    .trim();
-
-  // Find outer JSON boundaries: object { ... } or array [ ... ]
+  // 3. Find outer JSON boundaries: object { ... } or array [ ... ]
   const firstBrace = clean.indexOf("{");
   const firstBracket = clean.indexOf("[");
 
@@ -47,7 +53,14 @@ export function parseAIJson(text) {
     clean = clean.substring(start, end + 1);
   }
 
-  // Sanitize unescaped control characters (like newlines) inside JSON string values
+  // Quick try after trimming boundaries
+  try {
+    return JSON.parse(clean);
+  } catch (_) {
+    // Proceed to robust string sanitizer
+  }
+
+  // 4. Sanitize unescaped control characters (like newlines) inside JSON string values
   let inString = false;
   let isEscaped = false;
   let sanitized = '';
@@ -84,11 +97,32 @@ export function parseAIJson(text) {
       sanitized += char;
     }
   }
-  clean = sanitized;
+
+  // If string ended unclosed, close it and add closing brace
+  if (inString) {
+    sanitized += '"';
+  }
 
   try {
-    return JSON.parse(clean);
-  } catch (cause) {
-    throw new AIParsingError("Не удалось распарсить JSON из ответа ИИ", text, cause);
+    return JSON.parse(sanitized);
+  } catch (_) {
+    // Try auto-closing braces/brackets
+    let balanced = sanitized;
+    const openBraces = (balanced.match(/\{/g) || []).length;
+    const closeBraces = (balanced.match(/\}/g) || []).length;
+    if (openBraces > closeBraces) {
+      balanced += '}'.repeat(openBraces - closeBraces);
+    }
+    const openBrackets = (balanced.match(/\[/g) || []).length;
+    const closeBrackets = (balanced.match(/\]/g) || []).length;
+    if (openBrackets > closeBrackets) {
+      balanced += ']'.repeat(openBrackets - closeBrackets);
+    }
+
+    try {
+      return JSON.parse(balanced);
+    } catch (cause) {
+      throw new AIParsingError("Не удалось распарсить JSON из ответа ИИ", text, cause);
+    }
   }
 }

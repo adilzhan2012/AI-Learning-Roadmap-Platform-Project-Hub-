@@ -273,7 +273,7 @@ export default function HomeworkSection({ courseId, nodeId, lessonContent, topic
   }
 
   return (
-    <div className="bg-zinc-50 dark:bg-surface/80 border border-zinc-200 dark:border-white/10 rounded-3xl p-5 md:p-7 my-8 shadow-xl relative overflow-hidden transition-all duration-300">
+    <div className="bg-zinc-50 dark:bg-[#1A1A1C] border border-zinc-200 dark:border-white/10 rounded-3xl p-5 md:p-7 my-8 shadow-xl relative overflow-hidden transition-all duration-300">
       {/* Header (Clickable Toggle) */}
       <button 
         onClick={() => setIsHomeworkOpen(!isHomeworkOpen)}
