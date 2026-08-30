@@ -216,9 +216,9 @@ export default function QuestionsAdmin() {
     <div className="flex flex-col h-[calc(100vh-120px)]">
       <AdminHeader title="Поддержка (Тикеты)" description="Обработка обращений пользователей, баг-репортов и вопросов." />
       
-      <div className="flex-1 flex gap-6 min-h-0 overflow-hidden">
+      <div className="flex-1 flex gap-6 min-h-0 overflow-hidden relative">
         {/* Left Sidebar: Ticket List */}
-        <div className="w-1/3 bg-[#18181B] border border-white/5 rounded-2xl flex flex-col flex-shrink-0">
+        <div className={`w-full md:w-1/3 bg-[#18181B] border border-white/5 rounded-2xl flex flex-col flex-shrink-0 ${activeTicket ? 'hidden md:flex' : 'flex'}`}>
           <div className="p-4 border-b border-white/5 space-y-4 flex-shrink-0">
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
@@ -309,33 +309,42 @@ export default function QuestionsAdmin() {
         </div>
 
         {/* Right Content: Ticket Details & Chat */}
-        <div className="flex-1 bg-[#18181B] border border-white/5 rounded-2xl flex flex-col overflow-hidden">
+        <div className={`w-full md:flex-1 bg-[#18181B] border border-white/5 rounded-2xl flex flex-col overflow-hidden ${!activeTicket ? 'hidden md:flex' : 'flex'}`}>
           {activeTicket ? (
             <>
               {/* Ticket Header */}
-              <div className="p-5 border-b border-white/5 flex-shrink-0 flex items-start justify-between bg-white/[0.01]">
-                <div>
-                  <h2 className="text-xl font-bold text-white mb-2">{activeTicket.subject}</h2>
-                  <div className="flex items-center gap-4 text-xs text-zinc-400">
-                    <span className="flex items-center gap-1">
-                      <User className="w-3.5 h-3.5" />
-                      {activeTicket.userName} ({activeTicket.userEmail})
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" />
-                      {activeTicket.createdAt ? new Date(activeTicket.createdAt.toDate()).toLocaleString('ru-RU') : ''}
-                    </span>
-                  </div>
-                  {activeTicket.metadata?.userAgent && (
-                    <div className="mt-2 text-[10px] text-zinc-500 font-mono flex gap-2">
-                      <span className="px-1.5 py-0.5 bg-[#09090B] rounded border border-white/5">Browser: {activeTicket.metadata.userAgent.split(' ')[0]}</span>
-                      {activeTicket.metadata.url && (
-                        <a href={activeTicket.metadata.url} target="_blank" rel="noreferrer" className="px-1.5 py-0.5 bg-[#09090B] rounded border border-white/5 hover:text-indigo-400 transition-colors">
-                          URL
-                        </a>
-                      )}
+              <div className="p-4 sm:p-5 border-b border-white/5 flex-shrink-0 flex items-start justify-between bg-white/[0.01] gap-3">
+                <div className="flex items-start gap-3">
+                  <button 
+                    onClick={() => setActiveTicket(null)}
+                    className="p-1.5 -ml-1 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg md:hidden flex-shrink-0"
+                    title="Назад к списку"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                  </button>
+                  <div>
+                    <h2 className="text-base sm:text-xl font-bold text-white mb-1 line-clamp-1">{activeTicket.subject}</h2>
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-zinc-400">
+                      <span className="flex items-center gap-1">
+                        <User className="w-3.5 h-3.5" />
+                        <span className="truncate max-w-[120px] sm:max-w-none">{activeTicket.userName}</span>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" />
+                        {activeTicket.createdAt ? new Date(activeTicket.createdAt.toDate()).toLocaleString('ru-RU') : ''}
+                      </span>
                     </div>
-                  )}
+                    {activeTicket.metadata?.userAgent && (
+                      <div className="mt-2 text-[10px] text-zinc-500 font-mono flex gap-2">
+                        <span className="px-1.5 py-0.5 bg-[#09090B] rounded border border-white/5">Browser: {activeTicket.metadata.userAgent.split(' ')[0]}</span>
+                        {activeTicket.metadata.url && (
+                          <a href={activeTicket.metadata.url} target="_blank" rel="noreferrer" className="px-1.5 py-0.5 bg-[#09090B] rounded border border-white/5 hover:text-indigo-400 transition-colors">
+                            URL
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <select 

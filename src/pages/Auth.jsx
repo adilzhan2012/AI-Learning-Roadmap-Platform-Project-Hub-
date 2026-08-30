@@ -21,6 +21,8 @@ import { t, useLocale } from '../i18n.js';
 import LegalDocModal from '../components/shared/LegalDocModal.jsx';
 import UserAvatar from '../components/shared/UserAvatar.jsx';
 import ImageCropperModal from '../components/shared/ImageCropperModal.jsx';
+import PasswordStrengthMeter from '../components/auth/PasswordStrengthMeter.jsx';
+import { validateNistPassword, checkPwnedPassword } from '../utils/passwordValidator.js';
 
 const AVATAR_COLORS = [
   'bg-gradient-to-br from-indigo-500 to-purple-600',
@@ -94,6 +96,8 @@ export default function Auth({ type }) {
   const [agreed, setAgreed] = useState(false);
   const [activeModal, setActiveModal] = useState(null); // 'terms' | 'privacy' | 'cookie' | null
   const [showRegSuccess, setShowRegSuccess] = useState(false);
+  const [isCheckingBreach, setIsCheckingBreach] = useState(false);
+  const [breachFound, setBreachFound] = useState(false);
 
   // Password Reset States
   const [showResetModal, setShowResetModal] = useState(false);
@@ -152,7 +156,36 @@ export default function Auth({ type }) {
   const altLink = isLogin ? '/register' : '/login';
   const altLinkText = isLogin ? t('auth.signUp') : t('auth.signIn');
 
-  const handleNextStep = () => {
+  // Debounced breach checking for real-time indicator
+  useEffect(() => {
+    if (!password || password.length < 12 || isLogin) {
+      setBreachFound(false);
+      setIsCheckingBreach(false);
+      return;
+    }
+
+    let isMounted = true;
+    const timer = setTimeout(async () => {
+      setIsCheckingBreach(true);
+      try {
+        const count = await checkPwnedPassword(password);
+        if (isMounted) {
+          setBreachFound(count > 0);
+        }
+      } catch (_) {
+        if (isMounted) setBreachFound(false);
+      } finally {
+        if (isMounted) setIsCheckingBreach(false);
+      }
+    }, 450);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [password, isLogin]);
+
+  const handleNextStep = async () => {
     setError('');
     if (step === 1) {
       if (!firstName.trim() || !lastName.trim()) {
@@ -172,17 +205,28 @@ export default function Auth({ type }) {
       setStep(3);
     } else if (step === 3) {
       if (!password) {
-        setError(locale === 'ru' ? 'Введите пароль' : 'Enter password');
+        setError(t('auth.passwordRules.required'));
         return;
       }
       if (password !== confirmPassword) {
         setError(locale === 'ru' ? 'Пароли не совпадают' : 'Passwords do not match');
         return;
       }
-      if (password.length < 6) {
-        setError(locale === 'ru' ? 'Пароль должен содержать минимум 6 символов' : 'Password must be at least 6 characters');
+
+      // NIST SP 800-63B Full Validation
+      const nistResult = await validateNistPassword(password, {
+        email,
+        username,
+        firstName,
+        lastName
+      }, { checkBreach: true });
+
+      if (!nistResult.valid) {
+        const firstErrorKey = nistResult.errors[0];
+        setError(t(firstErrorKey) || (locale === 'ru' ? 'Пароль не соответствует требованиям безопасности' : 'Password does not meet security requirements'));
         return;
       }
+
       if (!agreed) {
         setError(locale === 'ru' ? 'Вы должны согласиться с политиками' : 'You must agree to the policies');
         return;
@@ -485,16 +529,20 @@ export default function Auth({ type }) {
                 <div className="relative">
                   <input 
                     type={showPassword ? "text" : "password"}
-                    id="password" required 
+                    id="password" 
+                    name="password"
+                    autoComplete="current-password"
+                    required 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all pr-12"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all pr-12 text-base tracking-normal"
                     placeholder="••••••••" 
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1"
+                    title={showPassword ? (locale === 'ru' ? 'Скрыть пароль' : 'Hide password') : (locale === 'ru' ? 'Показать пароль' : 'Show password')}
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -676,21 +724,41 @@ export default function Auth({ type }) {
               {step === 3 && (
                 <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="space-y-4">
                   <div>
-                    <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('auth.passwordLabel')}</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('auth.passwordLabel')}</label>
+                      <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                        {t('auth.passwordRules.unicodeSupported')}
+                      </span>
+                    </div>
                     <div className="relative">
                       <input 
                         type={showPassword ? "text" : "password"}
                         id="password" 
+                        name="new-password"
+                        autoComplete="new-password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all pr-12"
-                        placeholder="••••••••" 
+                        className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all pr-12 text-base tracking-normal"
+                        placeholder={locale === 'ru' ? 'Введите надёжный пароль или фразу (от 12 симв.)' : 'Enter strong password or phrase (12+ chars)'} 
                         autoFocus
                       />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                      <button 
+                        type="button" 
+                        onClick={() => setShowPassword(!showPassword)} 
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1"
+                        title={showPassword ? (locale === 'ru' ? 'Скрыть пароль' : 'Hide password') : (locale === 'ru' ? 'Показать пароль' : 'Show password')}
+                      >
                         {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
                     </div>
+
+                    {/* NIST Password Strength Meter & Real-time Checklist */}
+                    <PasswordStrengthMeter 
+                      password={password}
+                      context={{ email, username, firstName, lastName }}
+                      isCheckingBreach={isCheckingBreach}
+                      breachFound={breachFound}
+                    />
                   </div>
                   <div>
                     <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{locale === 'ru' ? 'Повторите пароль' : 'Confirm Password'}</label>
@@ -698,13 +766,20 @@ export default function Auth({ type }) {
                       <input 
                         type={showConfirmPassword ? "text" : "password"}
                         id="confirmPassword" 
+                        name="confirm-password"
+                        autoComplete="new-password"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all pr-12"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-on-surface dark:bg-black text-gray-900 dark:text-on-surface focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all pr-12 text-base tracking-normal"
                         placeholder="••••••••" 
                         onKeyDown={(e) => e.key === 'Enter' && handleNextStep()}
                       />
-                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                      <button 
+                        type="button" 
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)} 
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1"
+                        title={showConfirmPassword ? (locale === 'ru' ? 'Скрыть пароль' : 'Hide password') : (locale === 'ru' ? 'Показать пароль' : 'Show password')}
+                      >
                         {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
                     </div>

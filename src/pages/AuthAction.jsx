@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, CheckCircle2, XCircle, ArrowLeft, Lock } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, ArrowLeft, Lock, Eye, EyeOff } from 'lucide-react';
 import { auth } from '../firebase.js';
 import { confirmPasswordReset, applyActionCode, verifyPasswordResetCode } from 'firebase/auth';
 import Logo from '../components/shared/Logo.jsx';
-import { useLocale } from '../i18n.js';
+import { t, useLocale } from '../i18n.js';
+import PasswordStrengthMeter from '../components/auth/PasswordStrengthMeter.jsx';
+import { validateNistPassword, checkPwnedPassword } from '../utils/passwordValidator.js';
 
 export default function AuthAction() {
   const [searchParams] = useSearchParams();
@@ -23,8 +25,40 @@ export default function AuthAction() {
   
   // Password Reset States
   const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userEmail, setUserEmail] = useState('');
+  const [isCheckingBreach, setIsCheckingBreach] = useState(false);
+  const [breachFound, setBreachFound] = useState(false);
+
+  // Debounced breach checking for reset password form
+  useEffect(() => {
+    if (!newPassword || newPassword.length < 12) {
+      setBreachFound(false);
+      setIsCheckingBreach(false);
+      return;
+    }
+
+    let isMounted = true;
+    const timer = setTimeout(async () => {
+      setIsCheckingBreach(true);
+      try {
+        const count = await checkPwnedPassword(newPassword);
+        if (isMounted) setBreachFound(count > 0);
+      } catch (_) {
+        if (isMounted) setBreachFound(false);
+      } finally {
+        if (isMounted) setIsCheckingBreach(false);
+      }
+    }, 450);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [newPassword]);
 
   useEffect(() => {
     if (!mode || !actionCode) {
@@ -70,12 +104,24 @@ export default function AuthAction() {
 
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
-    if (newPassword.length < 6) {
-      setError(locale === 'ru' ? 'Пароль должен содержать минимум 6 символов.' : 'Password must be at least 6 characters.');
+    setError(null);
+
+    if (newPassword !== confirmPassword) {
+      setError(locale === 'ru' ? 'Пароли не совпадают.' : 'Passwords do not match.');
+      return;
+    }
+
+    // NIST SP 800-63B Full Validation
+    const nistResult = await validateNistPassword(newPassword, {
+      email: userEmail
+    }, { checkBreach: true });
+
+    if (!nistResult.valid) {
+      const firstErrorKey = nistResult.errors[0];
+      setError(t(firstErrorKey) || (locale === 'ru' ? 'Пароль не соответствует требованиям безопасности' : 'Password does not meet security requirements'));
       return;
     }
     
-    setError(null);
     setIsSubmitting(true);
     
     try {
@@ -174,27 +220,76 @@ export default function AuthAction() {
             
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
               {error && (
-                <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg border border-red-200 text-center">
+                <div className="bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-sm p-3 rounded-lg border border-red-200 dark:border-red-500/20 text-center">
                   {error}
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {locale === 'ru' ? 'Введите новый пароль' : 'Enter new password'}
-                </label>
-                <input 
-                  type="password" 
-                  required 
-                  minLength="6"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                  placeholder="••••••••" 
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {locale === 'ru' ? 'Введите новый пароль' : 'Enter new password'}
+                  </label>
+                  <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                    {t('auth.passwordRules.unicodeSupported')}
+                  </span>
+                </div>
+                <div className="relative">
+                  <input 
+                    type={showPassword ? "text" : "password"}
+                    required 
+                    autoComplete="new-password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all pr-12 text-base tracking-normal"
+                    placeholder={locale === 'ru' ? 'Минимум 12 символов или фраза' : '12+ characters or passphrase'} 
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1"
+                    title={showPassword ? (locale === 'ru' ? 'Скрыть пароль' : 'Hide password') : (locale === 'ru' ? 'Показать пароль' : 'Show password')}
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+
+                <PasswordStrengthMeter 
+                  password={newPassword}
+                  context={{ email: userEmail }}
+                  isCheckingBreach={isCheckingBreach}
+                  breachFound={breachFound}
                 />
               </div>
+
+              {/* Confirm password */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {locale === 'ru' ? 'Повторите новый пароль' : 'Confirm new password'}
+                </label>
+                <div className="relative">
+                  <input 
+                    type={showConfirmPassword ? "text" : "password"}
+                    required 
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all pr-12 text-base tracking-normal"
+                    placeholder="••••••••" 
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1"
+                    title={showConfirmPassword ? (locale === 'ru' ? 'Скрыть пароль' : 'Hide password') : (locale === 'ru' ? 'Показать пароль' : 'Show password')}
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
               <button 
                 type="submit" 
-                disabled={isSubmitting}
+                disabled={isSubmitting || !newPassword || !confirmPassword}
                 className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-lg flex justify-center items-center gap-2 disabled:opacity-70 transition-colors mt-2"
               >
                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : (locale === 'ru' ? 'Сохранить пароль' : 'Save Password')}

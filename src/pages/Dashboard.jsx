@@ -262,9 +262,14 @@ export default function Dashboard() {
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1 }}
-              className="text-3xl md:text-[52px] font-bold text-zinc-900 dark:text-white mb-4 tracking-tight leading-none font-clash"
+              className="text-3xl md:text-[52px] font-bold text-zinc-900 dark:text-white mb-4 tracking-tight leading-none font-clash flex flex-wrap items-center justify-center md:justify-start gap-3"
             >
-              {t(getGreetingKey(), { name: stats?.firstName || 'Learner', defaultValue: t('dashboard.welcome', { name: stats?.firstName || 'Learner' }) })}
+              <span>{t(getGreetingKey(), { name: stats?.firstName || 'Learner', defaultValue: t('dashboard.welcome', { name: stats?.firstName || 'Learner' }) })}</span>
+              {(stats?.role === 'admin' || stats?.isAdmin === true) && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-400 border border-indigo-500/40 shadow-[0_0_12px_rgba(99,102,241,0.3)] select-none">
+                  STAFF
+                </span>
+              )}
             </motion.h1>
             <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6 md:mb-8 leading-relaxed mx-auto md:mx-0 max-w-lg">
               {t('dashboard.streakDesc', { streak: stats?.streakDays || 1 })}

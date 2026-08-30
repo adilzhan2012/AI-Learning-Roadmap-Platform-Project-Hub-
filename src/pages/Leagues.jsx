@@ -142,6 +142,8 @@ export default function Leagues({ embedded = false }) {
                     avatarColor: u.avatarColor,
                     weeklyXP: xpVal,
                     currentLeague: determineLeagueFromXP(xpVal, u.currentLeague),
+                    isAdmin: u.isAdmin || u.role === 'admin',
+                    role: u.role,
                     isCurrentUser: false
                   };
                 });
@@ -171,6 +173,8 @@ export default function Leagues({ embedded = false }) {
                     avatarColor: u.avatarColor,
                     weeklyXP: xpVal,
                     currentLeague: determineLeagueFromXP(xpVal, u.currentLeague),
+                    isAdmin: u.isAdmin === true || u.role === 'admin',
+                    role: u.role,
                     isCurrentUser: false
                   });
                 }
@@ -269,6 +273,8 @@ export default function Leagues({ embedded = false }) {
         avatarColor: stats?.avatarColor,
         weeklyXP: stats?.weeklyXP || 0,
         currentLeague: activeUserLeague,
+        isAdmin: stats?.role === 'admin' || stats?.isAdmin === true,
+        role: stats?.role,
         isCurrentUser: true
       });
     }
@@ -407,11 +413,18 @@ export default function Leagues({ embedded = false }) {
                             />
 
                             {/* Name */}
-                            <span className={`text-xs ${
-                              item.isCurrentUser ? 'text-on-surface font-bold' : 'text-on-surface'
-                            }`}>
-                              {item.name} {item.isCurrentUser && (isRu ? ' (Вы)' : ' (You)')}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs ${
+                                item.isCurrentUser ? 'text-on-surface font-bold' : 'text-on-surface'
+                              }`}>
+                                {item.name} {item.isCurrentUser && (isRu ? ' (Вы)' : ' (You)')}
+                              </span>
+                              {(item.isAdmin || item.role === 'admin') && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-400 border border-indigo-500/40 shadow-[0_0_8px_rgba(99,102,241,0.25)] select-none">
+                                  STAFF
+                                </span>
+                              )}
+                            </div>
                           </div>
 
                           {/* XP (Tabular numbers) */}

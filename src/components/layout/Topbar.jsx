@@ -397,7 +397,14 @@ export default function Topbar() {
                 >
                   {/* Profile Info block */}
                   <div className="px-4 py-3 border-b border-outline">
-                    <p className="font-bold text-on-surface text-sm">{profile.firstName || 'User'}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-on-surface text-sm">{profile.firstName || 'User'}</p>
+                      {(profile.role === 'admin' || profile.isAdmin === true || (userEmail && ['daniilivakin30@gmail.com'].includes(userEmail.toLowerCase()))) && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-400 border border-indigo-500/40 shadow-[0_0_8px_rgba(99,102,241,0.25)] select-none">
+                          STAFF
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[10px] text-on-surface-variant truncate font-mono mt-0.5">{userEmail}</p>
                   </div>
 
@@ -462,17 +469,23 @@ export default function Topbar() {
                     <ChevronRight className="w-3.5 h-3.5 text-[#636366]" strokeWidth={1.5} />
                   </button>
 
-                  {/* Tariffs Page option */}
-                  <button 
-                    onClick={() => { setShowProfileMenu(false); navigate('/pricing'); }}
-                    className="flex items-center justify-between w-full px-4 py-2.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container/40 transition-colors text-left"
-                  >
-                    <span className="flex items-center gap-2">
-                      <CreditCard className="w-4 h-4" strokeWidth={1.5} />
-                      <span>{t('topbar.pricing')}</span>
-                    </span>
-                    <ChevronRight className="w-3.5 h-3.5 text-[#636366]" strokeWidth={1.5} />
-                  </button>
+                  {/* Admin Console option for Founders / CEO / CTO / Admins */}
+                  {(profile.role === 'admin' || profile.isAdmin === true || (userEmail && ['daniilivakin30@gmail.com'].includes(userEmail.toLowerCase()))) && (
+                    <button 
+                      onClick={() => { setShowProfileMenu(false); navigate('/admin/dashboard'); }}
+                      className="flex items-center justify-between w-full px-4 py-2.5 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 transition-colors text-left font-semibold"
+                    >
+                      <span className="flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/>
+                        </svg>
+                        <span>{locale === 'ru' ? 'Панель управления (Admin)' : 'Admin Console'}</span>
+                      </span>
+                      <span className="text-[9px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+                        STAFF
+                      </span>
+                    </button>
+                  )}
 
                   <div className="border-t border-outline my-1"></div>
 

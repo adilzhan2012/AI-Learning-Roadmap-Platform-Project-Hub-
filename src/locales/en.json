@@ -627,5 +627,21 @@
   "repeatReminder.title": "Review Time!",
   "repeatReminder.descOne": "1 lesson needs review as mastery level has decayed.",
   "repeatReminder.descMany": "{{count}} lessons need review as mastery level has decayed.",
-  "repeatReminder.goToGraph": "Go to Knowledge Graph"
+  "repeatReminder.goToGraph": "Go to Knowledge Graph",
+  "auth.passwordStrength.empty": "Password strength",
+  "auth.passwordStrength.veryWeak": "Very Weak",
+  "auth.passwordStrength.weak": "Weak",
+  "auth.passwordStrength.fair": "Fair",
+  "auth.passwordStrength.good": "Good",
+  "auth.passwordStrength.strong": "Strong",
+  "auth.passwordRules.title": "Security Requirements (NIST SP 800-63B):",
+  "auth.passwordRules.minLength": "At least 12 characters (passphrase recommended)",
+  "auth.passwordRules.minAdminLength": "At least 14 characters for administrators",
+  "auth.passwordRules.maxLength": "Maximum 128 characters",
+  "auth.passwordRules.noPersonalInfo": "Must not contain your name, email, or username",
+  "auth.passwordRules.noSequences": "No obvious sequences (1234, qwerty, password)",
+  "auth.passwordRules.compromised": "This password was found in compromised data breaches (Pwned Passwords). Please choose a different password.",
+  "auth.passwordRules.required": "Enter password",
+  "auth.passwordRules.unicodeSupported": "Supports all characters, spaces, and emojis",
+  "auth.passwordRules.pasteAllowed": "Pasting from password managers is fully supported"
 }

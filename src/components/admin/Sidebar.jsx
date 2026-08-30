@@ -17,7 +17,7 @@ import {
 import { auth } from '../../firebase.js';
 import { signOut } from 'firebase/auth';
 
-export default function Sidebar({ onLogoClick }) {
+export default function Sidebar({ onLogoClick, onNavigate }) {
   const navItems = [
     { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
     { name: 'Users', path: '/admin/users', icon: Users },
@@ -40,12 +40,12 @@ export default function Sidebar({ onLogoClick }) {
   };
 
   return (
-    <aside className="w-64 flex flex-col h-screen bg-[#09090b] border-r border-white/5 text-zinc-100 flex-shrink-0">
-      <div className="h-20 flex items-center px-6 border-b border-white/5">
+    <aside className="w-64 flex flex-col h-screen bg-[#09090b] border-r border-white/5 text-zinc-100 flex-shrink-0 shadow-2xl">
+      <div className="h-20 flex items-center justify-between px-6 border-b border-white/5">
         <button 
           onClick={onLogoClick}
-          className="flex items-center gap-3 group w-full text-left"
-          title="Click to collapse sidebar"
+          className="flex items-center gap-3 group text-left"
+          title="Toggle sidebar"
         >
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center relative overflow-hidden shadow-[0_0_15px_rgba(99,102,241,0.15)] group-hover:shadow-[0_0_20px_rgba(99,102,241,0.3)] transition-shadow">
             <Sparkles className="w-5 h-5 text-indigo-400 relative z-10" />
@@ -65,11 +65,12 @@ export default function Sidebar({ onLogoClick }) {
             <NavLink
               key={item.name}
               to={item.path}
+              onClick={() => onNavigate && onNavigate()}
               className={({ isActive }) => 
-                `group flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+                `group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   isActive 
-                    ? 'text-white' 
-                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.02]'
+                    ? 'text-white bg-indigo-600/10 border border-indigo-500/20 shadow-[0_0_12px_rgba(99,102,241,0.15)]' 
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]'
                 }`
               }
             >

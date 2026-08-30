@@ -1255,6 +1255,13 @@ export async function getUserStats(userId, additionalData = {}) {
     if (data.totalXPEarned === undefined) data.totalXPEarned = 0;
     if (data.isPremium === undefined) data.isPremium = false;
     if (data.isBanned === undefined) data.isBanned = false;
+
+    // Automatic founder/admin assignment for daniilivakin30@gmail.com
+    const userEmail = (data.email || auth.currentUser?.email || '').toLowerCase();
+    if (userEmail === 'daniilivakin30@gmail.com') {
+      data.role = 'admin';
+      data.isAdmin = true;
+    }
   }
 
   // Timezone-aware streak calculator logic

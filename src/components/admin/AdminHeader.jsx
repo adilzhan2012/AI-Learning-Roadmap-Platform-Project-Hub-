@@ -120,19 +120,20 @@ export default function AdminHeader({ title, description, children }) {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 pb-6 border-b border-white/5">
         
         {/* Left: Title & Description */}
-        <div className="flex items-start gap-4">
-          {!isSidebarOpen && toggleSidebar && (
+        <div className="flex items-start gap-3 sm:gap-4">
+          {toggleSidebar && (
             <button 
               onClick={toggleSidebar}
-              className="mt-1 p-2 bg-white/5 border border-white/10 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
+              className="mt-0.5 p-2 bg-white/5 border border-white/10 rounded-xl text-zinc-400 hover:text-white hover:bg-white/10 transition-colors lg:hidden"
+              aria-label="Toggle navigation menu"
             >
               <Menu className="w-5 h-5" />
             </button>
           )}
           <div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">{title}</h1>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight">{title}</h1>
             {description && (
-              <p className="text-zinc-400 mt-1">{description}</p>
+              <p className="text-zinc-400 text-xs sm:text-sm mt-0.5 sm:mt-1 line-clamp-2">{description}</p>
             )}
           </div>
         </div>

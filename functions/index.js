@@ -1174,8 +1174,16 @@ exports.deleteUserData = onCall(async (request) => {
 // ----------------------------------------------------
 
 function verifyAdminCustomClaim(request) {
-  if (!request.auth || request.auth.token?.admin !== true) {
-    throw new HttpsError("permission-denied", "Only users with admin Custom Claim can perform admin operations.");
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Authentication required.");
+  }
+  const FOUNDER_EMAILS = ['daniilivakin30@gmail.com'];
+  const userEmail = (request.auth.token?.email || '').toLowerCase();
+  const isFounder = FOUNDER_EMAILS.includes(userEmail);
+  const isAdminClaim = request.auth.token?.admin === true;
+
+  if (!isAdminClaim && !isFounder) {
+    throw new HttpsError("permission-denied", "Only users with admin privileges can perform admin operations.");
   }
 }
 
@@ -1195,9 +1203,13 @@ exports.setAdminClaim = onCall(async (request) => {
 
   const isExistingAdmin = request.auth.token?.admin === true;
   const isInternalAuth = internalToken && process.env.INTERNAL_ADMIN_TOKEN && internalToken === process.env.INTERNAL_ADMIN_TOKEN;
+  
+  // Founder / CTO / CEO bootstrap list for instant initial activation
+  const FOUNDER_EMAILS = ['daniilivakin30@gmail.com'];
+  const isFounderCaller = request.auth.token?.email && FOUNDER_EMAILS.includes(request.auth.token.email.toLowerCase());
 
-  if (!isExistingAdmin && !isInternalAuth) {
-    throw new HttpsError("permission-denied", "Only existing admins or internal service tokens can set admin claims.");
+  if (!isExistingAdmin && !isInternalAuth && !isFounderCaller) {
+    throw new HttpsError("permission-denied", "Only existing admins or founders can set admin claims.");
   }
 
   await admin.auth().setCustomUserClaims(targetUserId, { admin: !!isAdmin });
@@ -1227,7 +1239,7 @@ exports.adminUpdateUser = onCall(async (request) => {
   }
 
   const userRef = db.collection("users").doc(targetUserId);
-  await userRef.update(sanitizedUpdates);
+  await userRef.set(sanitizedUpdates, { merge: true });
 
   // If role is changing, update claims
   if (sanitizedUpdates.role !== undefined) {
@@ -1630,6 +1642,8 @@ exports.getLeaderboard = onCall(async (request) => {
         currentLeague: data.currentLeague || 'silicon',
         weeklyXP: data.weeklyXP || 0,
         totalXPEarned: data.totalXPEarned || 0,
+        role: data.role || (data.isAdmin ? 'admin' : 'user'),
+        isAdmin: data.role === 'admin' || data.isAdmin === true,
       });
     });
 
@@ -2684,4 +2698,30 @@ exports.submitReview = onCall(async (request) => {
     monthlyCount: count + 1
   };
 });
+
+const { validatePasswordNistServer } = require('./services/passwordValidator');
+
+/**
+ * Server-side NIST SP 800-63B password validation callable Cloud Function
+ */
+exports.validatePasswordSecurity = onCall(
+  async (request) => {
+    const { password, context = {}, isAdmin = false } = request.data || {};
+
+    if (!password || typeof password !== 'string') {
+      throw new HttpsError('invalid-argument', 'Password is required for validation');
+    }
+
+    const result = await validatePasswordNistServer({
+      password,
+      context,
+      isAdmin,
+      checkBreaches: true
+    });
+
+    return result;
+  }
+);
+
+
 

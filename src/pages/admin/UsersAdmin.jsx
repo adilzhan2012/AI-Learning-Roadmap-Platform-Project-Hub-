@@ -118,6 +118,31 @@ export default function UsersAdmin() {
     }
   };
 
+  const handleToggleAdmin = async (userId, currentIsAdmin) => {
+    if (isUpdating) return;
+    setIsUpdating(true);
+    try {
+      const adminUpdateUserFn = httpsCallable(functions, 'adminUpdateUser');
+      const newRole = currentIsAdmin ? 'user' : 'admin';
+      await adminUpdateUserFn({
+        targetUserId: userId,
+        updates: { role: newRole }
+      });
+
+      setUsers(users.map(u => u.id === userId ? { 
+        ...u, 
+        role: newRole,
+        isAdmin: newRole === 'admin'
+      } : u));
+    } catch (e) {
+      console.error("Error toggling admin role:", e);
+      alert(e.message || "Не удалось изменить права администратора");
+    } finally {
+      setIsUpdating(false);
+      setOpenDropdownId(null);
+    }
+  };
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -184,7 +209,14 @@ export default function UsersAdmin() {
                 <tr key={user.id} className="hover:bg-white/[0.02] transition-colors relative">
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
-                      <span className="text-white font-medium">{user.firstName} {user.lastName} {user.username ? `(@${user.username})` : ''}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-medium">{user.firstName} {user.lastName} {user.username ? `(@${user.username})` : ''}</span>
+                        {(user.role === 'admin' || user.isAdmin === true) && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-400 border border-indigo-500/40 shadow-[0_0_8px_rgba(99,102,241,0.25)] select-none">
+                            STAFF
+                          </span>
+                        )}
+                      </div>
                       <span className="text-zinc-500 text-xs">{user.email || 'Нет email'} • ID: <span className="font-mono">{user.id.substring(0,8)}...</span></span>
                     </div>
                   </td>
@@ -226,7 +258,21 @@ export default function UsersAdmin() {
                       </button>
 
                       {openDropdownId === user.id && (
-                        <div className="absolute right-0 mt-2 w-56 rounded-xl bg-[#09090B] border border-white/10 shadow-2xl z-50 overflow-hidden text-left py-1">
+                        <div className="absolute right-0 mt-2 w-60 rounded-xl bg-[#09090B] border border-white/10 shadow-2xl z-50 overflow-hidden text-left py-1">
+                          {/* Admin toggle */}
+                          <button 
+                            onClick={() => handleToggleAdmin(user.id, user.role === 'admin' || user.isAdmin === true)}
+                            disabled={isUpdating}
+                            className={`w-full px-4 py-2 text-sm text-left hover:bg-white/5 transition-colors flex items-center gap-2 disabled:opacity-50 ${
+                              user.role === 'admin' || user.isAdmin === true ? 'text-amber-400 hover:text-amber-300' : 'text-indigo-400 hover:text-indigo-300'
+                            }`}
+                          >
+                            <ShieldCheck className="w-4 h-4" />
+                            {user.role === 'admin' || user.isAdmin === true ? 'Снять права админа' : 'Назначить админом (STAFF)'}
+                          </button>
+
+                          <div className="h-px bg-white/5 my-1"></div>
+
                           {!user.isPremium ? (
                             <>
                               <button 

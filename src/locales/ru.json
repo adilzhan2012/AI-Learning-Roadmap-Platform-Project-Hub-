@@ -627,5 +627,21 @@
   "repeatReminder.title": "Время повторения!",
   "repeatReminder.descOne": "1 урок требует повторения, так как уровень владения снизился.",
   "repeatReminder.descMany": "{{count}} уроков требуют повторения, так как уровень владения снизился.",
-  "repeatReminder.goToGraph": "Перейти к графу"
+  "repeatReminder.goToGraph": "Перейти к графу",
+  "auth.passwordStrength.empty": "Сложность пароля",
+  "auth.passwordStrength.veryWeak": "Очень слабый",
+  "auth.passwordStrength.weak": "Слабый",
+  "auth.passwordStrength.fair": "Средний",
+  "auth.passwordStrength.good": "Хороший",
+  "auth.passwordStrength.strong": "Отличный",
+  "auth.passwordRules.title": "Требования безопасности (NIST SP 800-63B):",
+  "auth.passwordRules.minLength": "Минимум 12 символов (рекомендуется длинная фраза)",
+  "auth.passwordRules.minAdminLength": "Минимум 14 символов для администраторов",
+  "auth.passwordRules.maxLength": "Максимум 128 символов",
+  "auth.passwordRules.noPersonalInfo": "Не должен содержать ваше имя, email или никнейм",
+  "auth.passwordRules.noSequences": "Без простых последовательностей (1234, qwerty, password)",
+  "auth.passwordRules.compromised": "Этот пароль обнаружен в известных утечках баз данных (Pwned Passwords). Выберите другой безопасный пароль.",
+  "auth.passwordRules.required": "Введите пароль",
+  "auth.passwordRules.unicodeSupported": "Поддерживает любые символы, пробелы и эмодзи",
+  "auth.passwordRules.pasteAllowed": "Вставка из менеджеров паролей разрешена"
 }

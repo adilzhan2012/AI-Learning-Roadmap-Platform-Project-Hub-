@@ -5,13 +5,16 @@ import { auth, signOut, db, functions, storage } from '../firebase.js';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import UserAvatar from '../components/shared/UserAvatar.jsx';
 import ImageCropperModal from '../components/shared/ImageCropperModal.jsx';
-import { onAuthStateChanged, sendPasswordResetEmail } from 'firebase/auth';
+import { onAuthStateChanged, sendPasswordResetEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { doc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useNavigate } from 'react-router-dom';
 import { getUserStats, updateUserProfile } from '../services/courseService.js';
 import { t, useLocale, getAvailableLocales, setLocale } from '../i18n.js';
 import LegalDocModal from '../components/shared/LegalDocModal.jsx';
+import PasswordStrengthMeter from '../components/auth/PasswordStrengthMeter.jsx';
+import { validateNistPassword, checkPwnedPassword } from '../utils/passwordValidator.js';
+import { Eye, EyeOff, KeyRound } from 'lucide-react';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -50,6 +53,17 @@ export default function Settings() {
   const [groupProgressNotifications, setGroupProgressNotifications] = useState(() => localStorage.getItem('prefs_group_progress_notifications') !== 'false');
   const [activeSection, setActiveSection] = useState('account');
   const [activeModal, setActiveModal] = useState(null); // 'terms' | 'privacy' | 'cookie' | null
+
+  // Direct Password Change States
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [isCheckingBreach, setIsCheckingBreach] = useState(false);
+  const [breachFound, setBreachFound] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('prefs_notifications', notifications);
@@ -202,6 +216,97 @@ export default function Settings() {
     }
   };
 
+  // Debounced breach checking for new password in Settings
+  useEffect(() => {
+    if (!newPassword || newPassword.length < 12) {
+      setBreachFound(false);
+      setIsCheckingBreach(false);
+      return;
+    }
+
+    let isMounted = true;
+    const timer = setTimeout(async () => {
+      setIsCheckingBreach(true);
+      try {
+        const count = await checkPwnedPassword(newPassword);
+        if (isMounted) setBreachFound(count > 0);
+      } catch (_) {
+        if (isMounted) setBreachFound(false);
+      } finally {
+        if (isMounted) setIsCheckingBreach(false);
+      }
+    }, 450);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [newPassword]);
+
+  const handleDirectPasswordChange = async (e) => {
+    e.preventDefault();
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    if (!user || !user.email) return;
+
+    if (!currentPassword) {
+      setErrorMsg(locale === 'ru' ? 'Введите текущий пароль' : 'Enter current password');
+      return;
+    }
+
+    if (!newPassword) {
+      setErrorMsg(t('auth.passwordRules.required'));
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setErrorMsg(locale === 'ru' ? 'Новые пароли не совпадают' : 'New passwords do not match');
+      return;
+    }
+
+    // NIST Validation
+    const nistResult = await validateNistPassword(newPassword, {
+      email: user.email,
+      username,
+      firstName,
+      lastName
+    }, { checkBreach: true });
+
+    if (!nistResult.valid) {
+      const firstErrorKey = nistResult.errors[0];
+      setErrorMsg(t(firstErrorKey) || (locale === 'ru' ? 'Пароль не соответствует требованиям безопасности' : 'Password does not meet security requirements'));
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      // 1. Re-authenticate user with current password
+      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      await reauthenticateWithCredential(user, credential);
+
+      // 2. Update password
+      await updatePassword(user, newPassword);
+
+      setSuccessMsg(locale === 'ru' ? 'Пароль успешно обновлен!' : 'Password successfully updated!');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => setSuccessMsg(''), 5000);
+    } catch (err) {
+      console.error('Password change error:', err);
+      if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setErrorMsg(locale === 'ru' ? 'Неверный текущий пароль' : 'Incorrect current password');
+      } else if (err.code === 'auth/requires-recent-login') {
+        setErrorMsg(locale === 'ru' ? 'Сессия устарела. Пожалуйста, выйдите и войдите снова' : 'Session expired. Please log out and log in again');
+      } else {
+        setErrorMsg(err.message || (locale === 'ru' ? 'Не удалось изменить пароль' : 'Failed to change password'));
+      }
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   const handlePasswordReset = async () => {
     if (!user || !user.email) return;
     try {
@@ -295,7 +400,7 @@ export default function Settings() {
 
       {/* Main Content Area */}
       <div className="flex-1 w-full md:max-w-3xl min-w-0">
-        <form onSubmit={handleSaveChanges} className="bg-surface border border-outline-variant rounded-3xl shadow-sm overflow-hidden min-h-[440px] flex flex-col justify-between">
+        <div className="bg-surface border border-outline-variant rounded-3xl shadow-sm overflow-hidden min-h-[440px] flex flex-col justify-between">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeSection}
@@ -515,12 +620,131 @@ export default function Settings() {
                     <p className="text-on-surface-variant mt-1">{t('settings.security.subtitle') || 'Manage your password and review the privacy policy.'}</p>
                   </div>
                   <div className="p-4 sm:p-6 md:p-8 space-y-8">
-                    <div>
-                      <h3 className="text-sm font-semibold text-on-surface mb-2">{t('settings.security.changePass') || 'Change Password'}</h3>
-                      <p className="text-xs text-on-surface-variant mb-4">{t('settings.security.changePassDesc') || 'You will receive an email to reset your password.'}</p>
-                      <button type="button" onClick={handlePasswordReset} className="w-full md:w-auto text-center justify-center bg-surface-container border border-outline-variant text-on-surface px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-surface-container-high transition-colors">
-                        {t('settings.security.sendReset') || 'Send Reset Email'}
-                      </button>
+                    {/* In-app Direct Password Update Form with NIST standard */}
+                    <div className="bg-surface-container/60 border border-outline-variant/60 rounded-2xl p-5 md:p-6">
+                      <div className="flex items-center gap-2.5 mb-1.5">
+                        <KeyRound className="w-5 h-5 text-primary" />
+                        <h3 className="text-base font-bold text-on-surface">
+                          {locale === 'ru' ? 'Смена пароля' : 'Change Password'}
+                        </h3>
+                      </div>
+                      <p className="text-xs text-on-surface-variant mb-6">
+                        {locale === 'ru' 
+                          ? 'Введите текущий пароль и новый надежный пароль по стандартам NIST SP 800-63B.' 
+                          : 'Enter your current password and a new secure password adhering to NIST SP 800-63B.'}
+                      </p>
+
+                      <form onSubmit={handleDirectPasswordChange} className="space-y-4 max-w-xl">
+                        {/* Current password */}
+                        <div>
+                          <label className="block text-xs font-semibold text-on-surface mb-1.5">
+                            {locale === 'ru' ? 'Текущий пароль' : 'Current Password'}
+                          </label>
+                          <div className="relative">
+                            <input 
+                              type={showCurrentPass ? "text" : "password"}
+                              value={currentPassword}
+                              onChange={(e) => setCurrentPassword(e.target.value)}
+                              autoComplete="current-password"
+                              className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface text-on-surface focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all pr-10 text-sm"
+                              placeholder="••••••••"
+                              required
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowCurrentPass(!showCurrentPass)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface p-1"
+                              title={showCurrentPass ? (locale === 'ru' ? 'Скрыть' : 'Hide') : (locale === 'ru' ? 'Показать' : 'Show')}
+                            >
+                              {showCurrentPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* New password */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <label className="block text-xs font-semibold text-on-surface">
+                              {locale === 'ru' ? 'Новый пароль' : 'New Password'}
+                            </label>
+                            <span className="text-[11px] text-on-surface-variant">
+                              {t('auth.passwordRules.unicodeSupported')}
+                            </span>
+                          </div>
+                          <div className="relative">
+                            <input 
+                              type={showNewPass ? "text" : "password"}
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              autoComplete="new-password"
+                              className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface text-on-surface focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all pr-10 text-sm"
+                              placeholder={locale === 'ru' ? 'Минимум 12 символов или фраза' : '12+ characters or passphrase'}
+                              required
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowNewPass(!showNewPass)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface p-1"
+                              title={showNewPass ? (locale === 'ru' ? 'Скрыть' : 'Hide') : (locale === 'ru' ? 'Показать' : 'Show')}
+                            >
+                              {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+
+                          {/* NIST Strength Meter & Real-time Checklist */}
+                          <PasswordStrengthMeter 
+                            password={newPassword}
+                            context={{ email: user?.email, username, firstName, lastName }}
+                            isCheckingBreach={isCheckingBreach}
+                            breachFound={breachFound}
+                          />
+                        </div>
+
+                        {/* Confirm new password */}
+                        <div>
+                          <label className="block text-xs font-semibold text-on-surface mb-1.5">
+                            {locale === 'ru' ? 'Повторите новый пароль' : 'Confirm New Password'}
+                          </label>
+                          <div className="relative">
+                            <input 
+                              type={showConfirmPass ? "text" : "password"}
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              autoComplete="new-password"
+                              className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface text-on-surface focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all pr-10 text-sm"
+                              placeholder="••••••••"
+                              required
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowConfirmPass(!showConfirmPass)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface p-1"
+                              title={showConfirmPass ? (locale === 'ru' ? 'Скрыть' : 'Hide') : (locale === 'ru' ? 'Показать' : 'Show')}
+                            >
+                              {showConfirmPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="pt-2 flex flex-wrap items-center gap-3">
+                          <button
+                            type="submit"
+                            disabled={changingPassword || !newPassword || !currentPassword}
+                            className="bg-primary hover:bg-primary/90 text-on-primary font-bold px-5 py-2.5 rounded-xl text-xs transition-all disabled:opacity-50 flex items-center gap-2 shadow-md active:scale-[0.98]"
+                          >
+                            {changingPassword && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                            {locale === 'ru' ? 'Сохранить новый пароль' : 'Update Password'}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={handlePasswordReset}
+                            className="bg-surface-container border border-outline-variant text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high px-4 py-2.5 rounded-xl text-xs font-medium transition-colors"
+                          >
+                            {locale === 'ru' ? 'Сбросить через Email' : 'Reset via Email'}
+                          </button>
+                        </div>
+                      </form>
                     </div>
                     <div className="border-t border-outline-variant/30 pt-6">
                       <h3 className="text-lg font-bold text-on-surface mb-4">
@@ -647,7 +871,8 @@ export default function Settings() {
           {(activeSection === 'account' || activeSection === 'notifications') && (
             <div className="p-4 sm:p-6 md:p-8 pt-0 flex flex-col md:flex-row justify-end">
               <button 
-                type="submit"
+                type="button"
+                onClick={handleSaveChanges}
                 disabled={saving}
                 className="w-full md:w-auto justify-center bg-primary text-on-primary px-6 py-3 rounded-xl font-semibold shadow-lg shadow-primary/20 flex items-center gap-2 disabled:opacity-50"
               >
@@ -659,7 +884,7 @@ export default function Settings() {
               </button>
             </div>
           )}
-        </form>
+        </div>
       </div>
 
       <ImageCropperModal
