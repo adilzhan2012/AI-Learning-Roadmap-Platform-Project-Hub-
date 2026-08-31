@@ -340,32 +340,6 @@ export default function Landing() {
       {/* Overview & Vision Section */}
       <section className="relative py-16 md:py-24 px-4 sm:px-6 z-10 bg-surface-container-lowest border-t border-outline">
         <div className="max-w-7xl mx-auto flex flex-col gap-16 md:gap-24">
-          
-          {/* Beta Release Notification */}
-          <motion.div 
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
-            whileInView={{ opacity: 1, y: 0, scale: 1 }}
-            viewport={{ once: true }}
-            className="w-full max-w-3xl mx-auto relative group"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/30 via-purple-500/30 to-primary/30 rounded-3xl blur-xl group-hover:blur-2xl transition-all duration-500 opacity-50 group-hover:opacity-100" />
-            <div className="relative bg-surface-container/80 backdrop-blur-2xl border border-primary/30 p-6 md:p-8 rounded-3xl flex flex-col sm:flex-row items-center gap-6 shadow-[0_0_40px_rgba(var(--color-primary),0.2)]">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-3xl shadow-lg shadow-primary/20 flex-shrink-0">
-                🚀
-              </div>
-              <div className="text-center sm:text-left flex-1">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-wider mb-3">
-                  <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                  {t('landing.beta.badge')}
-                </div>
-                <h3 className="text-xl md:text-2xl font-bold text-on-surface mb-2">{t('landing.beta.title')}</h3>
-                <p className="text-on-surface-variant text-sm md:text-base leading-relaxed">
-                  {t('landing.beta.desc')}
-                </p>
-              </div>
-            </div>
-          </motion.div>
-
           <div className="text-center max-w-4xl mx-auto">
             <motion.h2 
               initial={{ opacity: 0, y: 20 }}
