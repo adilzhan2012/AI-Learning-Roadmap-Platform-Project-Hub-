@@ -40,20 +40,20 @@ export default function MaintenancePage({ endTime }) {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background w-full px-4 overflow-hidden relative">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background text-on-background w-full px-4 overflow-hidden relative transition-colors duration-200">
       {/* Top right language toggle */}
       <div className="absolute top-6 right-6 z-20">
         <button
           onClick={toggleLanguage}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 text-xs font-medium transition-colors"
+          className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-surface-container hover:bg-surface-container-high border border-outline-variant text-on-surface text-xs font-semibold shadow-sm transition-all active:scale-95"
         >
-          <Globe className="w-3.5 h-3.5" />
+          <Globe className="w-4 h-4 text-primary" />
           <span className="uppercase">{locale}</span>
         </button>
       </div>
 
       {/* Background decoration */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-amber-500/10 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] sm:w-[800px] h-[600px] sm:h-[800px] bg-amber-500/10 dark:bg-amber-500/15 blur-[120px] rounded-full pointer-events-none" />
 
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
@@ -61,49 +61,52 @@ export default function MaintenancePage({ endTime }) {
         transition={{ duration: 0.8, ease: "easeOut" }}
         className="relative z-10 flex flex-col items-center max-w-2xl text-center"
       >
-        <div className="w-24 h-24 mb-8 bg-amber-500/10 rounded-3xl flex items-center justify-center border border-amber-500/20 shadow-[0_0_30px_rgba(245,158,11,0.2)]">
-          <Wrench className="w-12 h-12 text-amber-500 animate-pulse" />
+        <div className="w-20 h-20 sm:w-24 sm:h-24 mb-6 sm:mb-8 bg-amber-500/10 rounded-3xl flex items-center justify-center border border-amber-500/30 shadow-[0_0_30px_rgba(245,158,11,0.2)]">
+          <Wrench className="w-10 h-10 sm:w-12 sm:h-12 text-amber-500 animate-pulse" />
         </div>
         
-        <h1 className="text-4xl md:text-6xl font-bold text-white tracking-tight mb-4 font-clash">
+        <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-on-surface tracking-tight mb-3 sm:mb-4 font-clash">
           {t('maintenance.title')}
         </h1>
-        <p className="text-lg text-zinc-400 mb-12 max-w-lg">
+        <p className="text-sm sm:text-base md:text-lg text-on-surface-variant mb-8 sm:mb-12 max-w-lg leading-relaxed">
           {t('maintenance.subtitle')}
         </p>
 
         {endTime && (
           <div className="flex flex-col items-center">
-            <p className="text-sm font-medium text-zinc-500 uppercase tracking-widest mb-4">
+            <p className="text-xs sm:text-sm font-bold text-on-surface-variant/80 uppercase tracking-widest mb-4">
               {t('maintenance.estimatedCompletion')}
             </p>
-            <div className="flex gap-4 md:gap-6">
+            <div className="flex items-center gap-2 sm:gap-4 md:gap-6">
+              {/* Hours */}
               <div className="flex flex-col items-center">
-                <div className="w-20 h-24 md:w-24 md:h-28 bg-[#18181B] border border-white/10 rounded-2xl flex items-center justify-center shadow-xl relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent"></div>
-                  <span className="text-4xl md:text-5xl font-mono font-bold text-white">{formatNum(remaining.hours)}</span>
+                <div className="w-18 sm:w-20 md:w-24 h-20 sm:h-24 md:h-28 bg-surface border border-outline-variant rounded-2xl flex items-center justify-center shadow-lg shadow-black/5 dark:shadow-black/40 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent"></div>
+                  <span className="text-3xl sm:text-4xl md:text-5xl font-mono font-bold text-on-surface">{formatNum(remaining.hours)}</span>
                 </div>
-                <span className="text-xs text-zinc-500 mt-3 uppercase tracking-wider font-medium">{t('maintenance.hours')}</span>
+                <span className="text-[10px] sm:text-xs text-on-surface-variant mt-2 sm:mt-3 uppercase tracking-wider font-semibold">{t('maintenance.hours')}</span>
               </div>
               
-              <div className="text-4xl md:text-5xl font-mono font-bold text-zinc-700 mt-6 md:mt-8">:</div>
+              <div className="text-3xl sm:text-4xl md:text-5xl font-mono font-bold text-outline-variant -mt-5">:</div>
 
+              {/* Minutes */}
               <div className="flex flex-col items-center">
-                <div className="w-20 h-24 md:w-24 md:h-28 bg-[#18181B] border border-white/10 rounded-2xl flex items-center justify-center shadow-xl relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent"></div>
-                  <span className="text-4xl md:text-5xl font-mono font-bold text-white">{formatNum(remaining.minutes)}</span>
+                <div className="w-18 sm:w-20 md:w-24 h-20 sm:h-24 md:h-28 bg-surface border border-outline-variant rounded-2xl flex items-center justify-center shadow-lg shadow-black/5 dark:shadow-black/40 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent"></div>
+                  <span className="text-3xl sm:text-4xl md:text-5xl font-mono font-bold text-on-surface">{formatNum(remaining.minutes)}</span>
                 </div>
-                <span className="text-xs text-zinc-500 mt-3 uppercase tracking-wider font-medium">{t('maintenance.minutes')}</span>
+                <span className="text-[10px] sm:text-xs text-on-surface-variant mt-2 sm:mt-3 uppercase tracking-wider font-semibold">{t('maintenance.minutes')}</span>
               </div>
               
-              <div className="text-4xl md:text-5xl font-mono font-bold text-zinc-700 mt-6 md:mt-8">:</div>
+              <div className="text-3xl sm:text-4xl md:text-5xl font-mono font-bold text-outline-variant -mt-5">:</div>
 
+              {/* Seconds */}
               <div className="flex flex-col items-center">
-                <div className="w-20 h-24 md:w-24 md:h-28 bg-[#18181B] border border-white/10 rounded-2xl flex items-center justify-center shadow-xl relative overflow-hidden">
+                <div className="w-18 sm:w-20 md:w-24 h-20 sm:h-24 md:h-28 bg-surface border border-amber-500/30 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/10 relative overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-b from-amber-500/10 to-transparent"></div>
-                  <span className="text-4xl md:text-5xl font-mono font-bold text-amber-400">{formatNum(remaining.seconds)}</span>
+                  <span className="text-3xl sm:text-4xl md:text-5xl font-mono font-bold text-amber-500 dark:text-amber-400">{formatNum(remaining.seconds)}</span>
                 </div>
-                <span className="text-xs text-zinc-500 mt-3 uppercase tracking-wider font-medium">{t('maintenance.seconds')}</span>
+                <span className="text-[10px] sm:text-xs text-amber-600 dark:text-amber-400 mt-2 sm:mt-3 uppercase tracking-wider font-bold">{t('maintenance.seconds')}</span>
               </div>
             </div>
           </div>
