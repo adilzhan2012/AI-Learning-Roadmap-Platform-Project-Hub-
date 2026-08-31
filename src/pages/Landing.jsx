@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkles, ArrowRight, Activity, Moon, CheckCircle2, Zap, Layers, Terminal, Star, Quote } from 'lucide-react';
 import Logo from '../components/shared/Logo.jsx';
-import LaunchCountdown from '../components/shared/LaunchCountdown.jsx';
 import UserAvatar from '../components/shared/UserAvatar.jsx';
 import { auth, db } from '../firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -167,9 +166,6 @@ export default function Landing() {
 
       {/* Hero Interactive Dashboard Wrapper */}
       <main className="relative pt-24 pb-12 md:pt-32 md:pb-32 px-4 sm:px-6 flex flex-col items-center justify-center text-center z-10 min-h-screen w-full">
-        
-        <LaunchCountdown />
-
         <motion.div 
           variants={staggerContainer}
           initial="hidden"
