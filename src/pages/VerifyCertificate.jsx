@@ -70,7 +70,7 @@ export default function VerifyCertificate() {
 
           setCertificate(data);
           
-          const verifyUrl = `https://beta.yourwayy.co/verify/${certId}`;
+          const verifyUrl = `https://yourwayy.co/verify/${certId}`;
           const qr = await QRCode.toDataURL(verifyUrl, { margin: 1, width: 220 });
           setQrCodeDataUrl(qr);
         } else {

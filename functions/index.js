@@ -1475,7 +1475,7 @@ exports.generateCertificate = onCall(
     const certId = certIdToUse || `YW-${year}-${randomCode}`;
 
     // 5. Generate QR Code
-    const verifyUrl = `https://beta.yourwayy.co/verify/${certId}`;
+    const verifyUrl = `https://yourwayy.co/verify/${certId}`;
     const qrCodeDataUrl = await QRCode.toDataURL(verifyUrl, {
       margin: 1,
       width: 240,
