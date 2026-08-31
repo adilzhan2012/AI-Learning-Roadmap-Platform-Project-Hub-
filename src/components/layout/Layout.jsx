@@ -113,8 +113,10 @@ export default function Layout() {
     );
   }
 
-  // Maintenance mode active: regular users see maintenance page, but admins/founders can bypass to test the platform
-  if (maintenance.isActive && !isAdmin) {
+  // Maintenance mode active:
+  // Allow accessing /login and /auth/action so admins can authenticate and enter
+  const isAuthOrLogin = ['/login', '/register', '/auth/action'].includes(location.pathname);
+  if (maintenance.isActive && !isAdmin && !isAuthOrLogin) {
     return <MaintenancePage endTime={maintenance.endTime} />;
   }
 

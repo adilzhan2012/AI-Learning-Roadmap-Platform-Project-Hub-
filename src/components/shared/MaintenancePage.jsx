@@ -41,8 +41,14 @@ export default function MaintenancePage({ endTime }) {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background text-on-background w-full px-4 overflow-hidden relative transition-colors duration-200">
-      {/* Top right language toggle */}
-      <div className="absolute top-6 right-6 z-20">
+      {/* Top controls: Language toggle and Admin sign-in */}
+      <div className="absolute top-6 right-6 z-20 flex items-center gap-3">
+        <a
+          href="/login"
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-surface-container hover:bg-surface-container-high border border-outline-variant text-on-surface text-xs font-semibold shadow-sm transition-all active:scale-95 text-indigo-400 hover:text-indigo-300"
+        >
+          <span>Вход для STAFF</span>
+        </a>
         <button
           onClick={toggleLanguage}
           className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-surface-container hover:bg-surface-container-high border border-outline-variant text-on-surface text-xs font-semibold shadow-sm transition-all active:scale-95"
