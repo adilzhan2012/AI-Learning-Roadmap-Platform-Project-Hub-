@@ -30,6 +30,7 @@ export default function Layout() {
   const [isBanned, setIsBanned] = useState(false);
   const [hasProfile, setHasProfile] = useState(false);
   const [isProfileLoaded, setIsProfileLoaded] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
@@ -62,28 +63,36 @@ export default function Layout() {
     return () => unsubscribe();
   }, []);
 
-  // Listen to user profile for ban status and profile completion
+  // Listen to user profile for ban status, profile completion, and admin role
   useEffect(() => {
     if (!user) {
       setIsBanned(false);
+      setIsAdmin(false);
       setHasProfile(false);
       setIsProfileLoaded(true);
       return;
     }
     setIsProfileLoaded(false);
+    const FOUNDER_EMAILS = ['daniilivakin30@gmail.com'];
+    const isFounderEmail = user.email && FOUNDER_EMAILS.includes(user.email.toLowerCase());
+
     const docRef = doc(db, 'users', user.uid);
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       setIsProfileLoaded(true);
       if (docSnap.exists()) {
         const data = docSnap.data();
         setIsBanned(data.isBanned === true);
+        const userIsAdmin = data.role === 'admin' || data.isAdmin === true || isFounderEmail;
+        setIsAdmin(userIsAdmin);
         // User profile is complete if it has username, firstName, or displayName
         setHasProfile(!!data.username || !!data.firstName || !!data.displayName || !!user.displayName);
       } else {
+        setIsAdmin(isFounderEmail);
         setHasProfile(false);
       }
     }, (err) => {
       // Catch transient permission errors
+      setIsAdmin(isFounderEmail);
       setIsProfileLoaded(true);
     });
     return () => unsubscribe();
@@ -104,7 +113,8 @@ export default function Layout() {
     );
   }
 
-  if (maintenance.isActive) {
+  // Maintenance mode active: regular users see maintenance page, but admins/founders can bypass to test the platform
+  if (maintenance.isActive && !isAdmin) {
     return <MaintenancePage endTime={maintenance.endTime} />;
   }
 
@@ -157,6 +167,15 @@ export default function Layout() {
 
   return (
     <div className="flex flex-col min-h-screen w-full overflow-x-hidden bg-background text-on-background font-sans transition-colors duration-200">
+      {/* Maintenance Mode active notice for Admins/Staff */}
+      {maintenance.isActive && isAdmin && (
+        <div className="sticky top-0 z-[100] bg-amber-500/15 border-b border-amber-500/30 text-amber-300 text-xs px-4 py-2 flex items-center justify-between backdrop-blur-md">
+          <div className="flex items-center gap-2 font-medium mx-auto sm:mx-0">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+            <span>Технический перерыв активен (Обычные пользователи видят заглушку. Вы вошли как STAFF/Admin).</span>
+          </div>
+        </div>
+      )}
       <div id="topbar-container"><Topbar /></div>
       <main 
         id="page-content" 
