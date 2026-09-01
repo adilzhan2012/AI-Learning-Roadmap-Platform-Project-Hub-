@@ -30,16 +30,15 @@ service cloud.firestore {
       ];
     }
 
-    // Helper: allowed fields on user document update (Settings / Profile edit)
-    // Progress fields (streakDays, hoursLearned, certificatesCount, activeCoursesCount)
-    // and immutable fields (createdAt, referralCode, referredBy) are excluded from client updates.
+    // Helper: allowed fields on user document update (Settings / Profile edit / Stats sync)
     function allowedUserUpdateFields() {
       return [
         'firstName', 'lastName', 'username', 'displayName', 'email',
         'photoURL', 'avatarUrl', 'avatarColor', 'bio', 'occupation', 'location',
         'githubUrl', 'linkedinUrl', 'telegramUrl', 'websiteUrl', 'locale', 'theme',
         'notificationSettings', 'targetHoursPerWeek', 'selectedCourseId', 'selectedNodeId',
-        'settings', 'lastActiveDate'
+        'settings', 'lastActiveDate', 'streakDays', 'activeCoursesCount', 'certificatesCount',
+        'hoursLearned', 'referralCode'
       ];
     }
 

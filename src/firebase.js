@@ -45,10 +45,14 @@ try {
   if (recaptchaKey) {
     if (typeof window !== 'undefined' && !window._appCheckInitialized) {
       window._appCheckInitialized = true;
-      initializeAppCheck(app, {
-        provider: new ReCaptchaV3Provider(recaptchaKey),
-        isTokenAutoRefreshEnabled: true
-      });
+      try {
+        initializeAppCheck(app, {
+          provider: new ReCaptchaV3Provider(recaptchaKey),
+          isTokenAutoRefreshEnabled: true
+        });
+      } catch (appCheckErr) {
+        console.warn("App Check initialization skipped or failed:", appCheckErr);
+      }
     }
   } else {
     console.warn("VITE_RECAPTCHA_SITE_KEY is missing. App Check will not function properly in production.");
