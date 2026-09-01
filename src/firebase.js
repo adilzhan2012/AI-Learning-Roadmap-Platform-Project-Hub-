@@ -41,7 +41,7 @@ try {
     self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
   }
   
-  const recaptchaKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+  const recaptchaKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6LcWcKMtAAAAAM_AiyLGiFxnarnWmpGEVA7c4Sn9";
   if (recaptchaKey) {
     if (typeof window !== 'undefined' && !window._appCheckInitialized) {
       window._appCheckInitialized = true;
@@ -54,8 +54,6 @@ try {
         console.warn("App Check initialization skipped or failed:", appCheckErr);
       }
     }
-  } else {
-    console.warn("VITE_RECAPTCHA_SITE_KEY is missing. App Check will not function properly in production.");
   }
 
   auth = getAuth(app);
