@@ -121,7 +121,7 @@ export default function Layout() {
   }
 
   // Route protection
-  const isPublicRoute = ['/', '/login', '/register'].includes(location.pathname);
+  const isPublicRoute = ['/', '/login', '/register', '/about'].includes(location.pathname);
   const currentUser = user || auth.currentUser;
 
   // Wait for profile data before deciding on protected routes

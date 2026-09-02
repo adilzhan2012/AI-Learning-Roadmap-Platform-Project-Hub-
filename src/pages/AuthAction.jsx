@@ -326,7 +326,7 @@ export default function AuthAction() {
         className="w-full max-w-md bg-white dark:bg-[#18181B] border border-gray-200 dark:border-white/10 rounded-3xl p-8 shadow-2xl z-10 relative"
       >
         <div className="flex items-center justify-center mb-8">
-          <Link to="/">
+          <Link to="/about" title="О проекте / About yourway.co">
             <Logo variant="full" className="h-8" />
           </Link>
         </div>

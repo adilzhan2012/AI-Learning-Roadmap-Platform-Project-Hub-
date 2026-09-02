@@ -482,7 +482,7 @@ export default function Auth({ type }) {
       >
         
         <div className="flex items-center justify-center mb-8">
-          <Link to="/">
+          <Link to="/about" title="О проекте / About yourway.co">
             <Logo variant="full" className="h-8" />
           </Link>
         </div>

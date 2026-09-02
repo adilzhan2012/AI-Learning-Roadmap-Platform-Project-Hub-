@@ -57,10 +57,10 @@ export default function Footer() {
           
           {/* Brand Column */}
           <div className="lg:col-span-2 flex flex-col items-start">
-            <div className="flex items-center gap-3 mb-6">
-              <Logo className="w-10 h-10" />
-              <span className="text-2xl font-bold font-clash text-on-surface">yourway.co</span>
-            </div>
+            <Link to="/about" className="flex items-center gap-3 mb-6 group cursor-pointer" title="О проекте / About yourway.co">
+              <Logo className="w-10 h-10 transition-transform group-hover:scale-105" />
+              <span className="text-2xl font-bold font-clash text-on-surface group-hover:text-primary transition-colors">yourway.co</span>
+            </Link>
             <p className="text-on-surface-variant text-sm leading-relaxed max-w-xs">
               {locale === 'ru' 
                 ? 'ИИ-платформа для создания персонализированных образовательных маршрутов. Учитесь эффективно, структурированно и с интересом.'
@@ -98,11 +98,20 @@ export default function Footer() {
             </h4>
             <ul className="flex flex-col gap-3">
               <li>
+                <Link
+                  to="/about"
+                  className="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1 group"
+                >
+                  <span>{locale === 'ru' ? 'О проекте' : 'About Project'}</span>
+                  <ChevronRight className="w-3 h-3 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                </Link>
+              </li>
+              <li>
                 <button 
                   onClick={() => setCompanyModalOpen(true)}
                   className="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors text-left flex items-center gap-1 group"
                 >
-                  <span>{locale === 'ru' ? 'О нас' : 'About Us'}</span>
+                  <span>{locale === 'ru' ? 'О нас (Команда)' : 'About Us (Team)'}</span>
                   <ChevronRight className="w-3 h-3 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                 </button>
               </li>

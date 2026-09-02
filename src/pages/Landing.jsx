@@ -117,7 +117,7 @@ export default function Landing() {
         className="fixed top-0 w-full z-50 bg-surface/60 backdrop-blur-xl border-b border-outline transition-all duration-300"
       >
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/">
+          <Link to="/about" title="О проекте / About yourway.co">
             <Logo variant="full" className="h-8" />
           </Link>
           <div className="flex items-center gap-2 sm:gap-4">

@@ -22,6 +22,7 @@ const MentorComponent = lazy(() => import('./pages/Mentor.jsx'));
 const PricingComponent = lazy(() => import('./pages/Pricing.jsx'));
 const LeaguesComponent = lazy(() => import('./pages/Leagues.jsx'));
 const VerifyCertificate = lazy(() => import('./pages/VerifyCertificate.jsx'));
+const AboutComponent = lazy(() => import('./pages/About.jsx'));
 
 // Admin Pages
 import AdminRoute from './components/admin/AdminRoute.jsx';
@@ -62,6 +63,7 @@ function AppRoutes() {
         <Route element={<Layout />}>
           {/* Public Routes */}
           <Route path="/" element={<Landing />} />
+          <Route path="/about" element={<AboutComponent />} />
           <Route path="/login" element={<Auth type="login" />} />
           <Route path="/register" element={<Auth type="register" />} />
           <Route path="/auth/action" element={<AuthAction />} />
