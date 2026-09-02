@@ -41,7 +41,7 @@ try {
     self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
   }
   
-  const recaptchaKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6LcWcKMtAAAAAM_AiyLGiFxnarnWmpGEVA7c4Sn9";
+  const recaptchaKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6LfmGaUtAAAAAF1J_Ks6-pJjFWMe_3rpqAGznxFd";
   if (recaptchaKey) {
     if (typeof window !== 'undefined' && !window._appCheckInitialized) {
       window._appCheckInitialized = true;
